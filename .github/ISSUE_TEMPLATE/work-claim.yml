@@ -1,0 +1,52 @@
+name: Parallel research work claim
+description: Claim a high-value task before substantial execution to prevent silent duplicate work.
+title: "[WORK] "
+body:
+  - type: input
+    id: work_id
+    attributes:
+      label: Work ID
+      placeholder: WORK-YYYYMMDD-short-name
+    validations:
+      required: true
+  - type: input
+    id: base_revision
+    attributes:
+      label: Base state revision
+      placeholder: "2"
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective and expected project contribution
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and explicit exclusions
+    validations:
+      required: true
+  - type: textarea
+    id: overlap
+    attributes:
+      label: Existing claims, PRs, registries, experiments, and artifacts checked
+    validations:
+      required: true
+  - type: checkboxes
+    id: reproduction
+    attributes:
+      label: Overlap classification
+      options:
+        - label: Any overlap is an intentional independent reproduction and is justified below.
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Source IDs, dataset IDs, code, and assumptions
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Expected artifacts and decision condition
+    validations:
+      required: true
