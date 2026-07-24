@@ -1,10 +1,10 @@
-schema_version = 1
+schema_version = 2
 
 [project]
 id = "smc-ict-2-live"
 name = "SMC_ICT_2_LIVE"
 timezone = "Asia/Seoul"
-status = "BOOTSTRAP"
+status = "ACTIVE_RESEARCH"
 default_language = "ko"
 
 [github]
@@ -26,12 +26,25 @@ snapshots_folder = "05_SNAPSHOTS"
 archive_folder = "90_ARCHIVE"
 
 [chatgpt]
-coordinator_lane = "00_COORDINATOR"
+execution_mode = "continuous_peer_parallel"
+central_coordinator_required = false
+fixed_sequence = false
 project_instructions_path = "instructions/project-instructions.md"
+worker_prompt_path = "prompts/goal-worker.md"
+state_reconcile_prompt_path = "prompts/reconcile-state.md"
 hot_context_manifest = "dist/context-manifest.json"
 
 [state]
 current_state_path = "control/current-state.md"
 champion_path = "control/champion.json"
-task_board_path = "control/task-board.csv"
+work_claims_path = "control/work-claims.csv"
+result_registry_path = "control/result-registry.jsonl"
+validation_cache_path = "control/validation-cache.jsonl"
 decision_log_path = "control/decisions.md"
+state_update_protocol = "optimistic_revision"
+
+[data]
+source_registry_path = "data/catalog/source-registry.jsonl"
+dataset_registry_path = "data/catalog/dataset-registry.jsonl"
+entity_registry_path = "data/catalog/entity-registry.jsonl"
+reuse_before_external_search = true
