@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Peer Work Claim",
+  "type": "object",
+  "required": [
+    "claim_id",
+    "worker_id",
+    "objective_fingerprint",
+    "scope_fingerprint",
+    "base_revision",
+    "status",
+    "started_at",
+    "lease_until"
+  ],
+  "properties": {
+    "claim_id": {"type": "string", "minLength": 1},
+    "worker_id": {"type": "string", "minLength": 1},
+    "objective_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scope_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "base_revision": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["CLAIMED", "RUNNING", "REPORTED", "MERGED", "RELEASED", "EXPIRED", "INVALID"]},
+    "started_at": {"type": "string"},
+    "lease_until": {"type": "string"},
+    "branch": {"type": "string"},
+    "pull_request": {"type": "string"},
+    "result_id": {"type": "string"},
+    "overlap_reason": {"type": "string"},
+    "updated_at": {"type": "string"}
+  },
+  "additionalProperties": false
+}
