@@ -1,0 +1,5 @@
+# State reconciliation prompt
+
+Read the latest GitHub main state, Champion, active work claims, result registry, validation cache, open PRs, and relevant Drive Run Reports. Compare each proposed state change against its base revision and dependency fingerprint. Reuse already merged evidence, reject accidental duplicates, and preserve intentional independent replications as separate evidence.
+
+Normalize data, cost, execution, and evaluation contracts before ranking results. Apply only supported changes. If the base revision is stale, re-evaluate the result under current state and rebase or resolve the conflict. Update state and Champion through a validated PR, close or renew related claims, and preserve a milestone snapshot when material. This reconciliation may be performed by any chat and must not block other workers from continuing independent useful work.
