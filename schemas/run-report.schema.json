@@ -1,54 +1,37 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Run report",
+  "title": "Peer worker Run Report",
   "type": "object",
   "required": [
     "schema_version",
-    "epoch_id",
-    "lane_id",
-    "task_id",
+    "worker_id",
+    "claim_id",
     "base_revision",
     "status",
     "started_at",
     "ended_at",
+    "scope_fingerprint",
     "next_action"
   ],
   "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "epoch_id": {
-      "type": "string"
-    },
-    "lane_id": {
-      "type": "string"
-    },
-    "task_id": {
-      "type": "string"
-    },
-    "base_revision": {
-      "type": "integer",
-      "minimum": 0
-    },
+    "schema_version": {"const": 2},
+    "worker_id": {"type": "string", "minLength": 1},
+    "claim_id": {"type": "string", "minLength": 1},
+    "base_revision": {"type": "integer", "minimum": 0},
     "status": {
-      "enum": [
-        "GOAL_MET",
-        "TIME_LIMIT",
-        "INVALID",
-        "FAILED",
-        "PARTIAL"
-      ]
+      "enum": ["GOAL_MET", "TIME_LIMIT", "INVALID", "FAILED", "PARTIAL", "REPORTED"]
     },
-    "started_at": {
-      "type": "string"
-    },
-    "ended_at": {
-      "type": "string"
-    },
-    "next_action": {
-      "type": "string",
-      "minLength": 1
-    }
+    "started_at": {"type": "string"},
+    "ended_at": {"type": "string"},
+    "objective_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scope_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dependency_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "result_id": {"type": "string"},
+    "reused_source_ids": {"type": "array", "items": {"type": "string"}},
+    "reused_dataset_ids": {"type": "array", "items": {"type": "string"}},
+    "reused_result_ids": {"type": "array", "items": {"type": "string"}},
+    "overlap_reason": {"type": "string"},
+    "next_action": {"type": "string", "minLength": 1}
   },
   "additionalProperties": true
 }
