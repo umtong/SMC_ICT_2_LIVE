@@ -1,31 +1,46 @@
-schema_version = 1
+schema_version = 2
+
+[parallel]
+mode = "continuous_goal_directed_mesh"
+coordinator_assignment_gate = false
+work_claim_registry = ["github_issues", "drive_active_work_board"]
+shared_state_update = "revision_checked_periodic_integration"
+all_chats_may_initiate_high_value_work = true
+intentional_independent_reproduction_allowed = true
 
 [[lane]]
-id = "00_COORDINATOR"
-role = "merge run reports, update shared state, select Champion, assign non-overlapping tasks"
+id = "00_INTEGRATION"
+role = "periodically reconcile concurrent results, resolve conflicts, update shared state and Champion, and expose the next highest-value gaps"
+priority_area_only = true
 shared_state_writer = true
+research_gate = false
 
 [[lane]]
 id = "10_ALPHA_A"
 role = "primary quantitative alpha discovery and implementation"
+priority_area_only = true
 shared_state_writer = false
 
 [[lane]]
 id = "11_ALPHA_B"
 role = "independent external-source and cross-method alpha discovery"
+priority_area_only = true
 shared_state_writer = false
 
 [[lane]]
 id = "20_EXECUTION_COST"
 role = "fees, spread, slippage, latency, liquidity, capacity, and order simulation"
+priority_area_only = true
 shared_state_writer = false
 
 [[lane]]
 id = "30_PORTFOLIO"
 role = "strategy combination, dependency, capital allocation, and account-path optimization"
+priority_area_only = true
 shared_state_writer = false
 
 [[lane]]
 id = "40_RED_TEAM"
-role = "causality, leakage, calculation, overfitting, concentration, and reproducibility attacks"
+role = "causality, leakage, calculation, overfitting, concentration, and reproducibility attacks followed by rapid return to alpha development"
+priority_area_only = true
 shared_state_writer = false
