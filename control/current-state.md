@@ -1,37 +1,39 @@
 # Current state
 
-- revision: 1
-- epoch: E001
-- phase: ACTIVE_RESEARCH
+- revision: 2
+- execution_mode: CONTINUOUS_PEER_PARALLEL
+- fixed_epoch: none
+- mandatory_coordinator: none
 - valid_champion: none
 - inherited_strategy_results: none
 - live_order_permission: none
 - repository: `umtong/SMC_ICT_2_LIVE`
-- GitHub milestone: bootstrap PR #1 merged at `dede440c9276d958c1e68b8c614cdfc3f1bbced1`
 - Drive root: resolved privately through `config/project.local.toml` or `00_PROJECT_BINDING`
 
-## Completed bootstrap
+## Active operating model
 
-- Reusable configuration-driven GitHub/Drive/ChatGPT harness is on `main`.
-- Fresh Drive control and data hierarchy is active; previous bootstrap is archived and not current.
-- Twenty user-provided Korean VTT transcripts are stored immutably and registered with canonical URLs, checksums, sizes, snippets, and processing state.
-- Source, Dataset, Entity, and Task Board registries are active.
-- Five independent E001 branches are ready.
+- Every project chat is a goal-directed peer worker.
+- No chat waits for a coordinator, task assignment, epoch boundary, or serial handoff.
+- Before substantial work, a chat checks current state, active work claims, result/validation registries, source/data registries, and relevant open PRs.
+- A worker claims an unresolved high-value scope with a lease and fingerprint, works on its own branch, and writes an append-only Run Report.
+- Any worker may reconcile and update shared state after checking the latest revision and resolving concurrent changes.
+- Fixed E001 task assignments and pre-created lane branches from revision 1 are superseded.
+
+## Durable data library
+
+- Twenty user-provided Korean VTT transcripts remain registered and reusable.
+- Publicly accessible information and materials may be used and retained for research.
+- Materials actually used are registered once and reused; unchanged searches, downloads, chart reconstruction, transforms, backtests, and validation are not repeated.
+- Full video files are retained only when they add unique research value; metadata, transcript, notes, extracted claims, and hypotheses are normally reused.
 
 ## Current objective
 
-Run the first non-overlapping research epoch:
-
-1. transcript-derived quantitative alpha hypotheses
-2. source and entity metadata enrichment
-3. realistic execution/cost contract
-4. strategy-independent account-path comparator
-5. causality, provenance, concurrency, and privacy red-team validation
+Pursue the top-level account-growth objective through simultaneous independent work while preventing accidental duplication and repeated whole-project validation.
 
 ## Current blockers
 
-None. A valid Champion does not yet exist because no strategy result has been validated in this fresh project.
+None. A valid Champion does not yet exist because no fresh strategy result has passed the evaluation contract.
 
 ## Next exact action
 
-Start TASK-101 through TASK-105 in separate project chats using the Drive `06_LANE_PROMPTS`. Every lane must check the durable registries before external search, use its assigned GitHub branch, and create an append-only Run Report. The coordinator merges completed evidence into revision 2.
+Each new chat reads `prompts/goal-worker.md`, checks `control/work-claims.csv`, `control/result-registry.jsonl`, `control/validation-cache.jsonl`, the durable source/data registries, and relevant open PRs; it then claims and executes the highest-value unresolved work. State reconciliation occurs opportunistically through revision-checked PRs and is not a prerequisite for other work.

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validation Attestation",
+  "type": "object",
+  "required": [
+    "attestation_id",
+    "dependency_fingerprint",
+    "validation_scope",
+    "status",
+    "evidence",
+    "created_at"
+  ],
+  "properties": {
+    "attestation_id": {"type": "string", "minLength": 1},
+    "dependency_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "validation_scope": {"type": "string", "minLength": 1},
+    "status": {"enum": ["PASS", "FAIL", "SUPERSEDED"]},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "changed_surface": {"type": "array", "items": {"type": "string"}},
+    "created_at": {"type": "string"}
+  },
+  "additionalProperties": false
+}

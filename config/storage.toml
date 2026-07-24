@@ -1,4 +1,4 @@
-schema_version = 1
+schema_version = 2
 
 [policy]
 raw_files_immutable = true
@@ -6,6 +6,17 @@ processed_files_versioned = true
 deduplicate_by = ["canonical_url", "sha256"]
 large_file_threshold_mb = 10
 public_repo_contains_private_drive_ids = false
+public_information_may_be_used = true
+storage_permission_classification_required = false
+store_materials_used_in_research = true
+
+[efficiency]
+registry_lookup_before_external_search = true
+reuse_existing_raw_and_processed_material = true
+full_video_default = "do_not_store_unless_it_adds_unique_research_value"
+transcript_default = "store_when_used"
+paper_default = "store_or_link_whichever_best_supports_reuse"
+unchanged_artifacts_are_not_rebuilt = true
 
 [github]
 store = [
@@ -15,28 +26,31 @@ store = [
   "schemas",
   "small manifests",
   "checksums",
+  "dependency fingerprints",
   "reproducible summaries",
 ]
 exclude = [
   "credentials",
-  "private Drive URLs",
+  "private Drive bindings",
   "raw large datasets",
-  "restricted PDFs or videos",
   "personal data",
 ]
 
 [google_drive]
 store = [
-  "raw user-provided source files",
-  "transcripts",
-  "open-access or licensed papers",
+  "research-used public sources",
+  "transcripts and source notes",
+  "papers and technical materials",
   "market datasets",
   "large experiment artifacts",
   "append-only run reports",
+  "validation evidence",
   "milestone snapshots",
 ]
 
-[copyright]
-full_youtube_video_download_default = false
-store_metadata_and_transcript_when_permitted = true
-papers_without_storage_permission = "link_and_citation_only"
+[retention]
+raw_sources = "immutable"
+processed_outputs = "versioned"
+superseded_outputs = "archive"
+duplicates = "reuse_or_quarantine"
+registry_or_manifest_required = true

@@ -3,6 +3,16 @@
 ```text
 <PROJECT_ROOT>/
 ├─ 00_CONTROL/
+│  ├─ 00_PROJECT_BINDING
+│  ├─ 01_PROJECT_STATE
+│  ├─ 02_CHAMPION
+│  ├─ 03_WORK_CLAIMS
+│  ├─ 04_DECISION_LOG
+│  ├─ 05_EVALUATION_CONTRACT
+│  ├─ 06_GOAL_WORKER_PROMPT
+│  ├─ 07_SYSTEM_MAP
+│  ├─ 08_RESULT_REGISTRY
+│  └─ 09_VALIDATION_CACHE
 ├─ 01_RUNS/
 ├─ 02_DATA/
 │  ├─ 00_INBOX/
@@ -27,4 +37,4 @@
 └─ 99_LEGACY_BOOTSTRAP_<DATE>/
 ```
 
-Only the coordinator edits shared control documents. Research lanes create unique run reports and source-intake batches.
+Every chat is a goal worker. Workers append unique Run Reports and use leased Work Claims. Any worker may update shared control documents after reading the latest revision and reconciling concurrent changes. A dedicated coordinator is optional, not required.

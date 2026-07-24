@@ -1,0 +1,45 @@
+schema_version = 1
+
+[concurrency]
+mode = "continuous_peer_parallel"
+central_coordinator_required = false
+fixed_sequence = false
+shared_objective = true
+state_update_protocol = "optimistic_revision"
+work_claims_path = "control/work-claims.csv"
+result_registry_path = "control/result-registry.jsonl"
+validation_cache_path = "control/validation-cache.jsonl"
+claim_lease_hours = 8
+intentional_replication_requires_reason = true
+scope_fingerprint_required = true
+
+[worker_defaults]
+goal_directed = true
+scope_is_advisory = true
+can_change_focus = true
+can_update_shared_state = true
+must_check_registries = true
+must_check_active_claims = true
+must_check_open_pull_requests = true
+must_write_run_report = true
+must_use_own_branch_for_repository_changes = true
+
+[[focus_profile]]
+id = "ALPHA_DISCOVERY"
+hint = "discover, quantify, implement, and compare new alpha mechanisms"
+
+[[focus_profile]]
+id = "EXTERNAL_IDEAS"
+hint = "reuse registered sources, fill high-value evidence gaps, and convert ideas into executable hypotheses"
+
+[[focus_profile]]
+id = "EXECUTION_AND_COST"
+hint = "improve executable net expectancy through orders, costs, latency, liquidity, and capacity"
+
+[[focus_profile]]
+id = "PORTFOLIO_AND_ACCOUNT_PATH"
+hint = "combine independent alpha and optimize account growth, drawdown, liquidation safety, and capital efficiency"
+
+[[focus_profile]]
+id = "TARGETED_RED_TEAM"
+hint = "attack only material changed surfaces or high-value assumptions, fix defects, then return to profitable search"

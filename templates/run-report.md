@@ -1,20 +1,35 @@
-# RUN__E000__LANE__TASK__YYYYMMDD-HHMM-KST
+# RUN__WORKER__CLAIM__YYYYMMDD-HHMM-KST
 
-- epoch_id:
-- lane_id:
-- task_id:
+- worker_id:
+- claim_id:
 - base_revision:
 - status: PARTIAL
 - started_at:
 - ended_at:
+- objective_fingerprint:
+- scope_fingerprint:
+- dependency_fingerprint:
+- result_id:
 
-## Objective and scope
+## Objective and claimed scope
 
-## Inputs and provenance
+## Existing work reused
+
+- Source IDs:
+- Dataset IDs:
+- Result IDs:
+- Validation attestations:
+- Relevant PRs:
+
+## Distinction from overlapping work
+
+State `none` or document the independent-replication purpose and different method.
 
 ## Work completed
 
-## Validation and metrics
+## Validation of changed surface
+
+## Metrics and comparison contract
 
 ## Invalidated or failed attempts
 
@@ -25,6 +40,11 @@
 - commit:
 - pull request:
 
-## Proposed state patch
+## Claim disposition
+
+- status: RELEASED / REPORTED / MERGED / RENEWED
+- lease update:
+
+## Revision-checked state patch
 
 ## Next exact action
