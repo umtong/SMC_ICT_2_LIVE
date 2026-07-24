@@ -1,0 +1,32 @@
+# Private bindings and credentials
+config/project.local.toml
+.env
+.env.*
+!.env.example
+
+# Raw and large data belong in Drive, object storage, or an approved external store
+data/raw/**
+data/cache/**
+data/downloads/**
+!data/raw/.gitkeep
+!data/cache/.gitkeep
+!data/downloads/.gitkeep
+
+# Generated artifacts
+dist/**
+artifacts/local/**
+*.log
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

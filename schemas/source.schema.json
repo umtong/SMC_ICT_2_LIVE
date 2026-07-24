@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Source registry entry",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source_id",
+    "source_type",
+    "status",
+    "retrieved_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "canonical_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "creator": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "retrieved_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "raw_drive_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
