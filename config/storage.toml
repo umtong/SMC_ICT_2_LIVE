@@ -1,10 +1,14 @@
-schema_version = 1
+schema_version = 2
 
 [policy]
+public_information_and_materials_usable = true
+separate_storage_permission_review = false
+store_when_used_or_reusable = true
 raw_files_immutable = true
 processed_files_versioned = true
 deduplicate_by = ["canonical_url", "sha256"]
 large_file_threshold_mb = 10
+full_video_storage_default = false
 public_repo_contains_private_drive_ids = false
 
 [github]
@@ -16,27 +20,24 @@ store = [
   "small manifests",
   "checksums",
   "reproducible summaries",
+  "work claims and decisions",
 ]
 exclude = [
   "credentials",
   "private Drive URLs",
   "raw large datasets",
-  "restricted PDFs or videos",
   "personal data",
 ]
 
 [google_drive]
 store = [
-  "raw user-provided source files",
+  "public research materials used by the project",
   "transcripts",
-  "open-access or licensed papers",
-  "market datasets",
+  "papers and technical reports",
+  "market and reference datasets",
+  "code and implementation references",
+  "research notes and extracted hypotheses",
   "large experiment artifacts",
   "append-only run reports",
   "milestone snapshots",
 ]
-
-[copyright]
-full_youtube_video_download_default = false
-store_metadata_and_transcript_when_permitted = true
-papers_without_storage_permission = "link_and_citation_only"
