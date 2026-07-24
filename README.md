@@ -48,4 +48,4 @@ The command rewrites only project-specific bindings. Put the private Google Driv
 
 ## Current status
 
-`BOOTSTRAP`: storage and control-plane structure are being initialized. No Champion is asserted and no strategy result is inherited.
+`ACTIVE_RESEARCH / revision 1 / E001`: the reusable control plane and durable data library are active. Twenty initial transcripts are registered, five independent research lanes are assigned, and no Champion is asserted until a fresh strategy result passes the project evaluation contract.
