@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Parallel Research Work Claim",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "work_id",
+    "base_revision",
+    "objective",
+    "scope",
+    "overlap_check",
+    "expected_artifacts",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "work_id": {"type": "string", "minLength": 3},
+    "chat_or_lane": {"type": "string"},
+    "base_revision": {"type": "integer", "minimum": 0},
+    "objective": {"type": "string", "minLength": 1},
+    "scope": {"type": "string", "minLength": 1},
+    "overlap_check": {"type": "array", "items": {"type": "string"}},
+    "intentional_independent_reproduction": {"type": "boolean", "default": false},
+    "source_ids": {"type": "array", "items": {"type": "string"}},
+    "dataset_ids": {"type": "array", "items": {"type": "string"}},
+    "expected_artifacts": {"type": "array", "items": {"type": "string"}},
+    "decision_condition": {"type": "string"},
+    "status": {"enum": ["OPEN", "ACTIVE", "BLOCKED", "DONE", "INVALID"]}
+  },
+  "additionalProperties": true
+}
