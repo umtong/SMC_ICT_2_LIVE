@@ -11,7 +11,9 @@ REQUIRED = [
     "config/storage.toml", "config/lanes.toml", "instructions/project-instructions.md",
     "control/current-state.md", "control/champion.json", "control/task-board.csv",
     "data/catalog/source-registry.jsonl", "data/catalog/dataset-registry.jsonl",
-    "schemas/source.schema.json", "schemas/run-report.schema.json",
+    "schemas/source.schema.json", "schemas/run-report.schema.json", "schemas/work-claim.schema.json",
+    "docs/parallel-research-mesh.md", ".github/ISSUE_TEMPLATE/work-claim.yml",
+    ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 
 
@@ -28,9 +30,22 @@ def main() -> int:
         repo=project["github"]["repository"]
         if repo.count("/") != 1: fail("invalid github.repository",errors)
     except Exception as exc: fail(f"project.toml: {exc}",errors)
+    parsed={}
     for rel in ["config/evaluation.toml","config/storage.toml","config/lanes.toml"]:
-        try: tomllib.loads((ROOT/rel).read_text(encoding="utf-8"))
+        try: parsed[rel]=tomllib.loads((ROOT/rel).read_text(encoding="utf-8"))
         except Exception as exc: fail(f"{rel}: {exc}",errors)
+    storage=parsed.get("config/storage.toml",{})
+    if storage:
+        policy=storage.get("policy",{})
+        if policy.get("public_information_and_materials_usable") is not True:
+            fail("storage policy must allow public information and materials",errors)
+        if policy.get("separate_storage_permission_review") is not False:
+            fail("storage policy must disable separate storage-permission review",errors)
+    lanes=parsed.get("config/lanes.toml",{})
+    if lanes:
+        parallel=lanes.get("parallel",{})
+        if parallel.get("coordinator_assignment_gate") is not False:
+            fail("parallel research must not require coordinator assignment",errors)
     try:
         champion=json.loads((ROOT/"control/champion.json").read_text(encoding="utf-8"))
         if champion.get("schema_version") != 1: fail("champion schema_version",errors)
@@ -49,6 +64,9 @@ def main() -> int:
             header=next(csv.reader(f))
         if "task_id" not in header or "base_revision" not in header: fail("task-board header",errors)
     except Exception as exc: fail(f"task-board: {exc}",errors)
+    runtime=(ROOT/"instructions/project-instructions.md").read_text(encoding="utf-8")
+    for forbidden in ["저장 권한을 확인", "classify storage permission", "when permitted"]:
+        if forbidden in runtime: fail(f"forbidden runtime storage gate: {forbidden}",errors)
     if (ROOT/"config/project.local.toml").exists():
         fail("config/project.local.toml must not be committed",errors)
     if errors:
