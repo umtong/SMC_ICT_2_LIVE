@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Project binding summary",
+  "type": "object",
+  "required": [
+    "project_id",
+    "github_repository",
+    "drive_root_name"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "github_repository": {
+      "type": "string",
+      "pattern": "^[^/]+/[^/]+$"
+    },
+    "drive_root_name": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

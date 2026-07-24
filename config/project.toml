@@ -1,0 +1,37 @@
+schema_version = 1
+
+[project]
+id = "smc-ict-2-live"
+name = "SMC_ICT_2_LIVE"
+timezone = "Asia/Seoul"
+status = "BOOTSTRAP"
+default_language = "ko"
+
+[github]
+repository = "umtong/SMC_ICT_2_LIVE"
+default_branch = "main"
+branch_prefix = "agent/"
+require_pull_request = true
+force_push_allowed = false
+
+[google_drive]
+root_folder_name = "SMC_ICT_2_LIVE"
+root_folder_id_source = "config/project.local.toml"
+control_folder = "00_CONTROL"
+runs_folder = "01_RUNS"
+data_folder = "02_DATA"
+research_folder = "03_RESEARCH"
+artifacts_folder = "04_ARTIFACTS"
+snapshots_folder = "05_SNAPSHOTS"
+archive_folder = "90_ARCHIVE"
+
+[chatgpt]
+coordinator_lane = "00_COORDINATOR"
+project_instructions_path = "instructions/project-instructions.md"
+hot_context_manifest = "dist/context-manifest.json"
+
+[state]
+current_state_path = "control/current-state.md"
+champion_path = "control/champion.json"
+task_board_path = "control/task-board.csv"
+decision_log_path = "control/decisions.md"

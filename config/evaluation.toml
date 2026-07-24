@@ -1,0 +1,37 @@
+schema_version = 1
+
+[objective]
+metric = "account_nav_geometric_daily_growth"
+target = 0.01
+calendar = "trading_days"
+fees_and_execution_costs_included = true
+
+[hard_validity]
+causal_information_only = true
+realistic_execution = true
+calculation_accuracy = true
+overfitting_controls = true
+invalid_if_violated = true
+
+[account_quality]
+require_no_forced_liquidation = true
+require_recoverable_drawdown = true
+require_non_concentrated_profit = true
+require_many_repeatable_positive_expectancy_trades = true
+
+[mandatory_reporting]
+metrics = [
+  "geometric_daily_growth",
+  "ending_nav_multiple",
+  "max_drawdown",
+  "drawdown_recovery",
+  "liquidation_probability_or_distance",
+  "tail_loss",
+  "trade_count",
+  "top_1pct_trade_contribution",
+  "top_5pct_trade_contribution",
+  "top_10pct_trade_contribution",
+  "performance_without_top_trades",
+  "cost_and_slippage_sensitivity",
+  "regime_and_period_breakdown",
+]
