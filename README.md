@@ -4,7 +4,7 @@ Configuration-driven research operating system for concurrent ChatGPT Project ch
 
 ## Purpose
 
-This repository is the canonical, versioned project layer. Google Drive is the high-frequency private data and live-state layer. ChatGPT Project chats are execution lanes that read the same binding, work independently, and return append-only reports for coordinator merge.
+This repository is the canonical, versioned project layer. Google Drive is the high-frequency private data and live-state layer. Every ChatGPT Project chat is an independent goal worker that reads the same state, claims a high-value unresolved scope, reuses existing evidence, and continues directly toward the project objective.
 
 The repository starts from a clean state. It does not inherit strategy code or state from `SMC-trading-system` unless a future task explicitly imports a verified artifact.
 
@@ -14,20 +14,34 @@ The repository starts from a clean state. It does not inherit strategy code or s
 2. `instructions/project-instructions.md`
 3. `control/current-state.md`
 4. `control/champion.json`
-5. `control/task-board.csv`
-6. the assigned prompt under `prompts/`
+5. `control/work-claims.csv`
+6. `control/result-registry.jsonl`
+7. the Source/Dataset/Entity registries
+8. `prompts/goal-worker.md`
+
+## Execution model
+
+- All chats are peer workers pursuing the same top-level objective.
+- There is no mandatory coordinator, fixed epoch gate, or serial handoff.
+- Workers avoid accidental duplicate work through leased scope fingerprints, registries, open-PR checks, and result/dependency fingerprints.
+- Intentional independent replication is allowed only when its distinct value is recorded.
+- Any worker may reconcile and update shared state through optimistic revision checks and a validated PR.
+- Unchanged searches, charts, data transforms, backtests, and audits are reused rather than rebuilt.
 
 ## Storage split
 
-- **GitHub:** instructions, configuration, code, schemas, scripts, small manifests, reproducible summaries, version history.
-- **Google Drive:** live control documents, large/raw source files, transcripts, PDFs where storage is permitted, market datasets, run artifacts, and snapshots.
+- **GitHub:** instructions, configuration, code, schemas, scripts, small manifests, dependency fingerprints, reproducible summaries, and version history.
+- **Google Drive:** live control documents, work claims, large/raw research-used sources, transcripts, papers and technical material, market datasets, run artifacts, validation evidence, and snapshots.
 - **ChatGPT Project:** active chats and a small hot context set; it is not the sole source of truth.
+
+Publicly accessible information and materials may be used and retained for research. Materials actually used are registered once and reused. Full video files are stored only when they add unique research value; transcripts, metadata, notes, claims, and hypotheses are normally sufficient.
 
 ## Quick checks
 
 ```bash
 python scripts/validate_project.py
 python scripts/register_source.py --help
+python scripts/claim_work.py --help
 python scripts/new_run.py --help
 python scripts/build_context_bundle.py
 ```
@@ -48,4 +62,4 @@ The command rewrites only project-specific bindings. Put the private Google Driv
 
 ## Current status
 
-`ACTIVE_RESEARCH / revision 1 / E001`: the reusable control plane and durable data library are active. Twenty initial transcripts are registered, five independent research lanes are assigned, and no Champion is asserted until a fresh strategy result passes the project evaluation contract.
+`ACTIVE_RESEARCH / revision 2 / CONTINUOUS_PEER_PARALLEL`: the control plane and durable data library are active. Twenty initial transcripts are registered, fixed E001 assignments are superseded by leased work claims, and no Champion is asserted until a fresh strategy result passes the evaluation contract.
