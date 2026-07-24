@@ -1,7 +1,9 @@
 # Run reports
 
-Each lane produces an append-only report named:
+Each peer worker produces an append-only report named:
 
-`RUN__<epoch>__<lane>__<task>__<timestamp>.md`
+`RUN__<worker_id>__<claim_id>__<timestamp>.md`
 
-A run report records base revision, task, assumptions, inputs, code/data versions, validation, metrics, failures, created artifacts, GitHub branch/commit/PR, Drive paths, and the next exact action. It proposes a state patch but does not directly overwrite shared state.
+A Run Report records the base revision, objective/scope/dependency fingerprints, reused sources/data/results/validation, work completed, changed-surface validation, metrics, failures, artifacts, branch/commit/PR, claim disposition, and next exact action.
+
+A worker may apply the report's state patch after re-reading the latest revision and reconciling concurrent changes. Otherwise the complete patch remains available for any later worker to integrate. No coordinator is required.
