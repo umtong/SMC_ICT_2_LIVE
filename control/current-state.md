@@ -1,37 +1,36 @@
 # Current state
 
-- revision: 1
-- epoch: E001
-- phase: ACTIVE_RESEARCH
+- revision: 2
+- epoch: CONTINUOUS
+- phase: ACTIVE_PARALLEL_RESEARCH
 - valid_champion: none
 - inherited_strategy_results: none
 - live_order_permission: none
 - repository: `umtong/SMC_ICT_2_LIVE`
-- GitHub milestone: bootstrap PR #1 merged at `dede440c9276d958c1e68b8c614cdfc3f1bbced1`
 - Drive root: resolved privately through `config/project.local.toml` or `00_PROJECT_BINDING`
 
-## Completed bootstrap
+## Active operating model
 
-- Reusable configuration-driven GitHub/Drive/ChatGPT harness is on `main`.
-- Fresh Drive control and data hierarchy is active; previous bootstrap is archived and not current.
-- Twenty user-provided Korean VTT transcripts are stored immutably and registered with canonical URLs, checksums, sizes, snippets, and processing state.
-- Source, Dataset, Entity, and Task Board registries are active.
-- Five independent E001 branches are ready.
+- All project chats work toward the same top-level objective concurrently.
+- Research does not wait for coordinator assignment, another chat, or an epoch boundary.
+- Each chat reads current state, registries, open Work Claims, active PRs, and reusable artifacts; then it claims the highest-value non-duplicate task and starts immediately.
+- An intentional independent reproduction is allowed when marked in its Work Claim.
+- Integration periodically reconciles results and updates shared state; it is not a research gate.
+
+## Durable reuse
+
+- Twenty user-provided Korean VTT transcripts are stored and registered with canonical URLs and checksums.
+- Public information and materials may be used. Materials used by the strategy or likely to be reused are stored and registered without a separate storage-permission investigation.
+- Existing data, charts, code, experiments, and invalidation records are reused. Equivalent search, chart reconstruction, and rigor checks are not repeated unless a material input or conflicting result changed.
 
 ## Current objective
 
-Run the first non-overlapping research epoch:
-
-1. transcript-derived quantitative alpha hypotheses
-2. source and entity metadata enrichment
-3. realistic execution/cost contract
-4. strategy-independent account-path comparator
-5. causality, provenance, concurrency, and privacy red-team validation
+Run continuous parallel research across alpha discovery, source/data enrichment, execution, portfolio construction, and rapid validity checks. Each chat may cross its priority area when another bottleneck has higher expected value.
 
 ## Current blockers
 
-None. A valid Champion does not yet exist because no strategy result has been validated in this fresh project.
+None. A valid Champion does not yet exist because no fresh strategy result has passed the project evaluation contract.
 
 ## Next exact action
 
-Start TASK-101 through TASK-105 in separate project chats using the Drive `06_LANE_PROMPTS`. Every lane must check the durable registries before external search, use its assigned GitHub branch, and create an append-only Run Report. The coordinator merges completed evidence into revision 2.
+Every active project chat checks open GitHub Issues/Work Claims and durable registries, creates a non-duplicate Work Claim, and immediately executes the highest-value task until goal completion or time limit. Integration may run at the same time and updates shared state when supported evidence is ready.
