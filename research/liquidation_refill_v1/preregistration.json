@@ -1,0 +1,70 @@
+{
+  "study_id": "LIQUIDATION_REFILL_V1",
+  "claim_id": "CLM-20260726-0500-LIQUIDATION-REFILL-001",
+  "base_revision": 11,
+  "decision": "Research-only fatal economic screen. No paper, testnet, or live orders.",
+  "primary_market": "Binance USD-M public liquidation samples for discovery; execution economics expressed as a conservative taker model before any Bybit replication.",
+  "target_market": "Bybit USDT linear perpetuals",
+  "assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "global_slot_limit": 1,
+  "information_boundary": {
+    "event_clock": "Tardis local_timestamp capture order in UTC",
+    "signal_data": "Completed liquidation event minute; reversal also waits for one completed confirmation minute",
+    "entry": "Next one-minute contract open after the decision minute",
+    "same_bar_execution": false,
+    "tie_break": "Original CSV row order after local_timestamp",
+    "known_source_limitation": "Binance forceOrder became a maximum one-order-per-second snapshot stream on 2021-04-27; observed liquidation flow is a lower bound, never reconstructed as full flow."
+  },
+  "periods": {
+    "fit": {"from": "2021-09-01", "to": "2022-12-01", "sample_day": 1},
+    "development": {"from": "2023-01-01", "to": "2023-12-01", "sample_day": 1},
+    "validation": {"from": "2024-01-01", "to": "2024-12-01", "sample_day": 1, "open_only_after_gate": true},
+    "confirmation": {"from": "2025-01-01", "to": "2025-12-01", "sample_day": 1, "sealed": true},
+    "final_2026": {"from": "2026-01-01", "to": "2026-06-01", "sample_day": 1, "sealed": true}
+  },
+  "source": {
+    "liquidations_url": "https://datasets.tardis.dev/v1/binance-futures/liquidations/{YYYY}/{MM}/01/PERPETUALS.csv.gz",
+    "price_url": "https://data.binance.vision/data/futures/um/daily/klines/{symbol}/1m/{symbol}-1m-{date}.zip",
+    "price_checksum_url": "{price_url}.CHECKSUM",
+    "price_days_after_signal_day": 1
+  },
+  "candidate_grid": {
+    "liquidation_quantile": [0.9, 0.95, 0.98],
+    "dominance_min": [0.6, 0.75],
+    "target_r": [1.0, 1.5, 2.0],
+    "min_stop_bps": [8.0, 15.0],
+    "continuation": {
+      "acceleration_min": [1.5, 3.0],
+      "impact_min_bps": [2.0, 6.0],
+      "close_location_min": [0.65, 0.8]
+    },
+    "reversal": {
+      "deceleration_max": [0.25, 0.5],
+      "recovery_min": [0.35, 0.55],
+      "event_move_min_bps": [3.0, 8.0]
+    }
+  },
+  "account": {
+    "initial_nav": 10000.0,
+    "risk_fraction": 0.005,
+    "cost_stress_round_trip_bps": [12.0, 18.0, 24.0],
+    "primary_cost_bps": 18.0,
+    "same_minute_stop_target_order": "stop_first",
+    "unresolved_position_treatment": "No forced exit. Candidate is penalized and cannot pass if any selected trade is unresolved inside the downloaded price path."
+  },
+  "development_gate": {
+    "minimum_trades": 30,
+    "minimum_active_days": 6,
+    "minimum_profit_factor_18bps": 1.15,
+    "minimum_median_trade_return_18bps": 0.0,
+    "minimum_total_return_18bps": 0.0,
+    "minimum_total_return_24bps": 0.0,
+    "minimum_top10_removed_return_18bps": 0.0,
+    "maximum_drawdown_18bps": 0.15,
+    "maximum_single_asset_trade_share": 0.75,
+    "maximum_unresolved": 0,
+    "fit_must_be_positive_18bps": true,
+    "fit_top10_removed_must_be_positive_18bps": true
+  },
+  "promotion_boundary": "A public first-day-monthly sample can only establish event-study discovery. It cannot certify the 2024-2026 full-calendar target or replace a Bybit-native replication with complete liquidation and execution data."
+}
