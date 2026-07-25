@@ -1,0 +1,58 @@
+name: Dynamic factor main reconciliation v2
+
+on:
+  push:
+    branches: [agent/r4-dynamic-factor-residual-001]
+    paths:
+      - '.github/dynamic-factor-main-reconcile.trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Merge latest main and union append-only registries
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          set +e
+          git merge --no-ff --no-commit origin/main
+          set -e
+          python - <<'PY'
+          import json, pathlib, subprocess
+          specs = {
+              'control/result-registry.jsonl': 'result_id',
+              'control/validation-cache.jsonl': 'attestation_id',
+              'data/catalog/dataset-registry.jsonl': 'dataset_id',
+          }
+          def show(ref, path):
+              p = subprocess.run(['git','show',f'{ref}:{path}'], text=True, capture_output=True)
+              return p.stdout if p.returncode == 0 else ''
+          for path, key in specs.items():
+              rows=[]; seen=set()
+              for text in (show('origin/main', path), show('HEAD', path)):
+                  for raw in text.splitlines():
+                      if not raw.strip(): continue
+                      obj=json.loads(raw); ident=str(obj.get(key,''))
+                      if ident in seen: continue
+                      seen.add(ident); rows.append(obj)
+              pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
+              pathlib.Path(path).write_text('\n'.join(json.dumps(x,separators=(',',':'),ensure_ascii=False) for x in rows)+'\n',encoding='utf-8')
+              subprocess.run(['git','add',path],check=True)
+          PY
+          remaining=$(git diff --name-only --diff-filter=U)
+          if [ -n "$remaining" ]; then
+            echo 'Unexpected merge conflicts:'; echo "$remaining"; exit 1
+          fi
+          git commit -m 'Merge latest main into verified dynamic-factor result'
+          git push origin HEAD:agent/r4-dynamic-factor-residual-001
