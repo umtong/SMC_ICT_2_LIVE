@@ -1,0 +1,39 @@
+name: Crossvenue forward evidence
+
+on:
+  push:
+    branches:
+      - agent/crossvenue-forward-capture-r6
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Extract deterministic source bundle
+        run: |
+          python research/experiments/crossvenue_forward_evidence/extract_bundle.py \
+            --archive research/experiments/crossvenue_forward_evidence/source-bundle.tar.gz \
+            --destination /tmp/crossvenue-forward-source
+      - name: Verify extracted source
+        run: |
+          cd /tmp/crossvenue-forward-source
+          python -m pytest -q
+          python -m compileall -q .
+      - name: Export readable source
+        run: tar -C /tmp/crossvenue-forward-source -czf /tmp/crossvenue-forward-extracted.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crossvenue-forward-extracted-source
+          path: /tmp/crossvenue-forward-extracted.tar.gz
+          if-no-files-found: error
+          retention-days: 7
