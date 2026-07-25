@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "created_at": "2026-07-26T02:56:00+09:00",
+  "timing": "Committed after preregistration and schema inspection but before any fit model, development score, simulated trade path or PnL was computed.",
+  "clarifications": {
+    "grid_semantics": "A 100ms bin contains events whose local_timestamp falls in [bin_start, bin_end). A decision at bin d is made at the end of bin d and can use bins through d only. With 100ms acknowledgment, the first trigger-eligible bin is d+2.",
+    "reference_quotes": "Upper and lower entry triggers use the last fresh ask and bid in the completed decision bin. The decision bin and every market-fill bin require BBO age between 0 and 200ms inclusive.",
+    "same_100ms_entry_trigger": "If upper and lower entry triggers are both crossed in the same first eligible bin, both market orders are treated as triggered. Equal opposite fills flatten the account and pay a full registered round-trip cost; no favorable ordering is inferred.",
+    "opposite_entry_cancel": "The cancel-effective timestamp is first-entry-fill time plus the registered cancel latency. An opposite trigger strictly before that timestamp creates a second fill and flattening. A trigger at or after cancel effectiveness is ignored.",
+    "exit_order_activation": "Reduce-only target and stop triggers become active 100ms after the first entry fill. The first eligible exit-trigger bin is entry-fill bin plus two.",
+    "target_stop_tie": "If target and stop are first crossed in the same 100ms bin, the stop is selected. The fill still occurs after the registered 100ms market-fill latency at the adverse executable BBO.",
+    "minimum_notional": "Before placing a pair, 0.1% of prior observed three-second quote volume must support at least USD 5 notional. Otherwise the decision is skipped without occupying the global slot.",
+    "capacity_and_sizing": "The actual notional for each cost-profile NAV replay is the minimum of 3x current NAV, 0.1% of prior three-second quote volume and NAV*0.5% divided by stop distance plus the profile's explicit cost reserve.",
+    "explicit_cost_interpretation": "The 12/18/24bp round-trip profiles are charged beyond observed bid/ask execution and jointly reserve taker fees, residual market impact/slippage and adverse funding exposure. No separate favorable maker rebate or exact funding credit is allowed.",
+    "pending_expiry": "An untriggered pair expires five seconds after activation. A completed decision at the same 100ms bin in which the prior slot is released may form the next order pair.",
+    "day_metric": "Observed-sample-day geometric growth is exp(log(ending_nav/starting_nav)/number_of_observed_days)-1. It is diagnostic and not silently treated as calendar-day growth."
+  },
+  "scientific_grid_changed": false,
+  "sealed_periods_changed": false,
+  "orders_permitted": false
+}
