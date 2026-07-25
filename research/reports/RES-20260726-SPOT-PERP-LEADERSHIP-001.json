@@ -1,0 +1,127 @@
+{
+  "artifact_fingerprint": "2d72befe8398bf8bf960453e4378a69a1c90ae4dcd516b20f5294299806f1768",
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/43",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30164791274",
+    "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30164791274/artifacts/8621251086",
+    "https://docs.google.com/document/d/1j78Ih8g2rHCmE-BTPjNb8phrUa_krhcWY5RYv0trn-Q/edit"
+  ],
+  "artifacts": [
+    {
+      "path": "artifact://development_2022_candidate_results.csv",
+      "sha256": "f0739f4c441c6dfb1d1bb5385be44fc3e412b0b1ec02ec56cce35dcaea2c2282"
+    },
+    {
+      "path": "artifact://best_development_ledger.json",
+      "sha256": "eec3617878395279b230a0a02e94b6e531dca59b0520a5a8c604cabd0e25a1b2"
+    },
+    {
+      "path": "artifact://dataset/SOURCE_MANIFEST.json",
+      "sha256": "e5fb549b83795744f32b0121486b4ea0337e2113e2732dcf39cdcd249089d6a5"
+    },
+    {
+      "path": "artifact://dataset/GAP_AUDIT.json",
+      "sha256": "0f885fda67c35bca94253612135ea14c4d4613d03ab1adf4589cdd3400ca3faf"
+    }
+  ],
+  "best_candidate": {
+    "basis_threshold": 1.5,
+    "candidate_id": "191444bb0a4348e2a52b",
+    "family": "perp_overshoot_reversal",
+    "flow_threshold": 0.0,
+    "hold_minutes": 10,
+    "lag_minutes": 1,
+    "lead_threshold": 0.0,
+    "lead_window_minutes": 1440,
+    "response_ratio": 0.6,
+    "shock_z": 2.0,
+    "stop_atr": 1.5
+  },
+  "claim_id": "CLM-20260726-0017-SPOTPERP-TAKEOVER-001",
+  "code_commit": "00a08f87cedc0e35882834a47a565216099c1477",
+  "comparison_confidence": "LOW",
+  "created_at": "2026-07-26T01:18:05+09:00",
+  "dataset_ids": [
+    "DS-BINANCE-SPOT-USDM-BTCETH-1M-202110-202212-R1"
+  ],
+  "dependency_fingerprint": "bea4b6ae694badd2f2950fa59545eff01ed04b46468821b8db29e56ed8161b23",
+  "economic_status": "BELOW_GATE",
+  "evaluation_contract_sha256": "754bc44bbdc2db38b48d4dc02c178a86907ddc2db63bc029b04ee96ab45bf1f3",
+  "execution_contract": {
+    "account": "One global slot, 0.5% planned-loss risk, 3x notional cap and 0.1% of the completed signal minute's USD-M quote volume.",
+    "cost_profiles_round_trip_bps": [12, 18, 24],
+    "entry": "Next exact contiguous USD-M one-minute open after a completed signal bar.",
+    "exit": "Fixed hold or adverse stop-first, with gap stops executed at the observed open and an extra two adverse basis points on stopped paths.",
+    "funding": "Official calc_time retained for inclusion in (entry, exit]; official containing-minute mark open, with exact same-minute USD-M contract-open fallback only when that mark observation is absent.",
+    "missing_data": "Regular UTC minute grid with absences retained as NaN; no filling, interpolation, synthetic OHLC or timeline compression."
+  },
+  "gate": {
+    "candidate_count": 496,
+    "development_gate_pass_count": 0,
+    "failures_for_best": [
+      "trade_count_at_least_150",
+      "positive_12bp_top10_removed",
+      "positive_18bp_top10_removed",
+      "top5_share_at_most_35pct",
+      "positive_median_trade"
+    ],
+    "selection_2023_opened": false,
+    "validation_2024_opened": false,
+    "sealed_2025": true,
+    "sealed_2026": true
+  },
+  "hard_validity_status": "PASS",
+  "known_weaknesses": [
+    "Only 17 trades were generated, far below the 150-trade development requirement.",
+    "The median account return is negative at 12, 18 and 24 basis points.",
+    "The top five positive trades contribute 92.7567% of positive PnL at 12 basis points.",
+    "Removing the largest 10% of trades changes the 12-basis-point return to -0.5817%.",
+    "ETH contributes +5.1768% while BTC contributes -0.7024%; the largest two ETH longs determine the sign of total return.",
+    "Minute bars cannot establish sub-minute price discovery or queue position.",
+    "Historical spread and partial fills are represented by stressed all-in cost profiles rather than historical bid/ask reconstruction.",
+    "Comparison with existing ranked results is provisional because windows, markets and execution contracts differ."
+  ],
+  "metrics": {
+    "12bps": {
+      "geometric_daily_growth": 0.0001189762570252828,
+      "maximum_drawdown": 0.01233651526877455,
+      "median_account_return_bps": -3.7736382963445485,
+      "positive_month_fraction": 0.6666666666666666,
+      "profit_factor": 2.463742254642994,
+      "target_gap": 0.009881023742974717,
+      "top10pct_removed_return": -0.005816864715868508,
+      "top5_positive_share": 0.9275674477189247,
+      "total_return": 0.04438035797110307,
+      "trade_count": 17,
+      "worst_month": -0.008567201183970696
+    },
+    "18bps": {
+      "geometric_daily_growth": 0.00009476997304735946,
+      "maximum_drawdown": 0.013753535304455666,
+      "median_account_return_bps": -10.384967040420902,
+      "profit_factor": 2.003123748537688,
+      "top10pct_removed_return": -0.014210550824254375,
+      "total_return": 0.03519457184505037
+    },
+    "24bps": {
+      "geometric_daily_growth": 0.00007054994065369691,
+      "maximum_drawdown": 0.018311812462640575,
+      "median_account_return_bps": -16.99629578449725,
+      "profit_factor": 1.6551938945843552,
+      "top10pct_removed_return": -0.02253842238750625,
+      "total_return": 0.026084210637396188
+    }
+  },
+  "orders_submitted": false,
+  "paper_or_live_permission": "none",
+  "ranking_role": "PROVISIONAL_RANK_3",
+  "result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
+  "schema_version": 1,
+  "source_ids": [
+    "SRC-BINANCE-PUBLIC-SPOT-USDM-1M-20260726"
+  ],
+  "status": "TESTED_BELOW_GATE",
+  "summary": "Hard-valid official Binance BTCUSDT/ETHUSDT spot-versus-USD-M one-minute price-discovery study. All 496 preregistered policies failed the 2022 development gate, so 2023 and later remained unopened. The best perpetual-overshoot-reversal candidate produced 17 trades, +4.4380% total return and 0.0118976% geometric daily growth at 12bp, PF 2.464 and MDD 1.234%, but had a negative median trade, 92.76% top-five positive-PnL concentration and -0.5817% after removing the top 10% of trades. The current first place remains unchanged; this result is provisional rank 3 by target proximity only.",
+  "target_status": "NOT_MET",
+  "worker_id": "gpt-5.6-pro-20260726-0017"
+}
