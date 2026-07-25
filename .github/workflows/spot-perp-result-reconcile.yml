@@ -1,0 +1,70 @@
+name: Reconcile spot-perpetual result and project state
+
+on:
+  push:
+    branches:
+      - agent/r8-spot-perp-leadership-001
+    paths:
+      - research/spot_perp_leadership/reconcile_result.py
+      - research/reports/RES-20260726-SPOT-PERP-LEADERSHIP-001.json
+      - runs/validation-cache/VAL-20260726-SPOT-PERP-LEADERSHIP-001.json
+      - .github/workflows/spot-perp-result-reconcile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/r8-spot-perp-leadership-001
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Merge latest main before common-state mutation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+      - name: Apply idempotent revision-10 reconciliation
+        run: |
+          python -m py_compile research/spot_perp_leadership/reconcile_result.py
+          python research/spot_perp_leadership/reconcile_result.py
+          python scripts/validate_project.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          ranking = json.loads(Path('control/ranking.json').read_text())
+          assert ranking['revision'] == 10
+          assert ranking['ranked_candidates'][0]['source_result_id'] == 'RES-20260725-DYNAMIC-FACTOR-001'
+          assert ranking['ranked_candidates'][2]['source_result_id'] == 'RES-20260726-SPOT-PERP-LEADERSHIP-001'
+          assert ranking['ranked_candidates'][3]['source_result_id'] == 'RES-20260726-DVOL-XSEC-001'
+          assert 'RES-20260726-SPOT-PERP-LEADERSHIP-001' in Path('control/result-registry.jsonl').read_text()
+          assert 'VAL-20260726-SPOT-PERP-LEADERSHIP-001' in Path('control/validation-cache.jsonl').read_text()
+          print('REVISION_10_RECONCILIATION_PASS')
+          PY
+      - name: Commit reconciled state to the claim branch
+        run: |
+          git add \
+            control/current-state.md \
+            control/ranking.json \
+            control/result-registry.jsonl \
+            control/validation-cache.jsonl \
+            control/work-claims.csv \
+            data/catalog/source-registry.jsonl \
+            data/catalog/dataset-registry.jsonl \
+            data/catalog/entity-registry.jsonl \
+            research/spot_perp_leadership/WORK_CLAIM.json \
+            research/spot_perp_leadership/RESULT_POINTER.json
+          if git diff --cached --quiet; then
+            echo "No reconciliation changes to commit."
+          else
+            git commit -m "Register spot-perpetual result and revision-10 ranking"
+            git push origin HEAD:agent/r8-spot-perp-leadership-001
+          fi
