@@ -1,0 +1,137 @@
+name: Cross-margin contingent sample confirmation
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-margin-dislocation-001
+    paths:
+      - "research/cross_margin_dislocation_20260725/tardis_confirmation_v2.py"
+      - "research_results/r5_cross_margin_dislocation_001/STATUS_SELECTION_PASS.txt"
+      - ".github/workflows/cross-margin-tardis-confirmation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5-cross-margin-tardis-confirmation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  confirmation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-margin-dislocation-001
+          fetch-depth: 1
+
+      - name: Enforce frozen selection primary
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/r5-cross-margin-dislocation-001
+          git reset --hard origin/agent/r5-cross-margin-dislocation-001
+          ready=false
+          if [[ -f research_results/r5_cross_margin_dislocation_001/STATUS_SELECTION_PASS.txt \
+             && -f research_results/r5_cross_margin_dislocation_001/tardis_selection_result.json ]]; then
+            ready=true
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          mkdir -p research_runs/cross_margin_dislocation_20260725/tardis_confirmation
+          python - "$ready" <<'PY'
+          import json, pathlib, sys
+          pathlib.Path('research_runs/cross_margin_dislocation_20260725/tardis_confirmation/PRECONDITION.json').write_text(
+              json.dumps({
+                  'selection_pass':sys.argv[1]=='true',
+                  'confirmation_opened':False,
+                  'target_1pct_daily_test_admissible':False,
+                  '2026_opened':False,
+                  'orders_submitted':False,
+              },indent=2,sort_keys=True)+'\n')
+          PY
+
+      - name: Install fixed environment
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Verify and run frozen 2025 confirmation
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/cross_margin_dislocation_20260725
+          runroot=research_runs/cross_margin_dislocation_20260725/tardis_confirmation
+          python -m py_compile "$root/tardis_pilot.py" "$root/tardis_development_v2.py" "$root/tardis_selection_v2.py" "$root/tardis_confirmation_v2.py"
+          sha256sum "$root/preregistration_tardis_v2.json" "$root/tardis_pilot.py" "$root/tardis_development_v2.py" "$root/tardis_selection_v2.py" "$root/tardis_confirmation_v2.py" > "$runroot/INPUT_SHA256SUMS.txt"
+          PYTHONPATH="$root" python "$root/tardis_confirmation_v2.py" \
+            --predecessor research_results/r5_cross_margin_dislocation_001/tardis_selection_result.json \
+            --output "$runroot/result" \
+            --cache "$RUNNER_TEMP/cross-margin-confirmation-cache" \
+            2>&1 | tee "$runroot/confirmation.log"
+
+      - name: Commit durable confirmation decision
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research_results/r5_cross_margin_dislocation_001
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root=pathlib.Path('research_runs/cross_margin_dislocation_20260725/tardis_confirmation')
+          output=pathlib.Path('research_results/r5_cross_margin_dislocation_001')
+          pre=json.loads((root/'PRECONDITION.json').read_text())
+          path=root/'result'/'CONFIRMATION_RESULT.json'
+          confirmation=json.loads(path.read_text()) if path.exists() else None
+          if not pre['selection_pass']:
+              status='CONFIRMATION_NOT_ACTIVATED_SELECTION_NOT_PASSED'
+          elif confirmation is None:
+              status='CONFIRMATION_INFRA_FAILURE'
+          elif bool(confirmation.get('sample_confirmation_pass')):
+              status='SAMPLE_CONFIRMATION_PASS'
+          else:
+              status='SAMPLE_CONFIRMATION_NO_EDGE'
+          result={
+              'schema_version':2,
+              'result_id':'RES-20260725-CROSS-MARGIN-CONFIRMATION-002',
+              'claim_id':'CLM-20260725-2120-CROSS-MARGIN-001',
+              'status':status,
+              'precondition':pre,
+              'confirmation':confirmation,
+              'target_1pct_daily_test_admissible':False,
+              'target_1pct_daily_pass':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+              'paper_live_started':False,
+              'champion_eligible':False,
+          }
+          durable=output/'tardis_confirmation_result.json'
+          durable.write_text(json.dumps(result,indent=2,sort_keys=True,default=str)+'\n')
+          (output/'tardis_confirmation_result.sha256').write_text(hashlib.sha256(durable.read_bytes()).hexdigest()+'  tardis_confirmation_result.json\n')
+          for old in output.glob('STATUS_CONFIRMATION_*.txt'):
+              old.unlink()
+          (output/f'STATUS_{status}.txt').write_text(json.dumps({'status':status,'sample_confirmation_pass':False if not confirmation else bool(confirmation.get('sample_confirmation_pass',False)),'target_1pct_daily_test_admissible':False,'2026_opened':False,'orders_submitted':False},indent=2,sort_keys=True)+'\n')
+          PY
+          find research_results/r5_cross_margin_dislocation_001 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > research_results/r5_cross_margin_dislocation_001/SHA256SUMS.txt
+          git config user.name "smc-ict-research-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add research_results/r5_cross_margin_dislocation_001
+          if ! git diff --cached --quiet; then
+            git commit -m "Record contingent cross-margin confirmation decision"
+            git push origin HEAD:agent/r5-cross-margin-dislocation-001
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-margin-tardis-confirmation-${{ github.sha }}
+          path: research_runs/cross_margin_dislocation_20260725/tardis_confirmation
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
