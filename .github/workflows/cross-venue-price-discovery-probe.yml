@@ -1,0 +1,127 @@
+name: Cross-venue price-discovery source probe
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-venue-price-discovery-001
+    paths:
+      - "research/cross_venue_price_discovery_20260725/**"
+      - ".github/workflows/cross-venue-price-discovery-probe.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/cross_venue_price_discovery_20260725/**"
+      - ".github/workflows/cross-venue-price-discovery-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r5-cross-venue-price-discovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-venue-price-discovery-001
+          fetch-depth: 1
+
+      - name: Install fixed probe environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "requests==2.32.4"
+          mkdir -p research_runs/cross_venue_price_discovery_20260725
+          python - <<'PY'
+          import json, platform, requests, sys
+          from pathlib import Path
+          Path('research_runs/cross_venue_price_discovery_20260725/environment.json').write_text(
+              json.dumps({
+                  'python': sys.version,
+                  'platform': platform.platform(),
+                  'requests': requests.__version__,
+                  'credentials_used': False,
+                  'orders_submitted': False,
+                  'paper_live_started': False,
+                  'selection_opened': False,
+                  'confirmation_opened': False,
+                  '2026_opened': False,
+              }, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+
+      - name: Verify preregistration and source code identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/cross_venue_price_discovery_20260725
+          python -m py_compile "$root/source_probe.py"
+          sha256sum "$root/preregistration.json" "$root/source_probe.py" > research_runs/cross_venue_price_discovery_20260725/INPUT_SHA256SUMS.txt
+          python - <<'PY'
+          import json
+          p=json.load(open('research/cross_venue_price_discovery_20260725/preregistration.json',encoding='utf-8'))
+          assert p['status']=='PREREGISTERED_BEFORE_ANY_PRICE_OR_PNL_SCREEN'
+          assert p['time_splits']['2026_opened'] is False
+          assert p['portfolio_and_execution']['one_global_open_or_pending_slot'] is True
+          PY
+
+      - name: Run synthetic fail-closed self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/cross_venue_price_discovery_20260725/source_probe.py \
+            --self-test --output research_runs/cross_venue_price_discovery_20260725 \
+            2>&1 | tee research_runs/cross_venue_price_discovery_20260725/self_test.log
+
+      - name: Probe public normalized tick and quote sources
+        shell: bash
+        run: |
+          set +e
+          python research/cross_venue_price_discovery_20260725/source_probe.py \
+            --date 2023-07-01 \
+            --output research_runs/cross_venue_price_discovery_20260725/probe \
+            2>&1 | tee research_runs/cross_venue_price_discovery_20260725/probe.log
+          rc=${PIPESTATUS[0]}
+          python - "$rc" <<'PY'
+          import json, pathlib, sys
+          root=pathlib.Path('research_runs/cross_venue_price_discovery_20260725')
+          probe=root/'probe'/'SOURCE_PROBE.json'
+          payload={
+              'probe_rc': int(sys.argv[1]),
+              'probe_manifest_present': probe.exists(),
+              'strategy_or_pnl_computed': False,
+              'selection_opened': False,
+              'confirmation_opened': False,
+              '2026_opened': False,
+              'orders_submitted': False,
+          }
+          if probe.exists():
+              p=json.loads(probe.read_text())
+              payload['all_required_sources_usable']=bool(p['all_required_sources_usable'])
+              payload['record_count']=len(p['records'])
+          (root/'RUN_STATUS.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+          exit 0
+
+      - name: Record output checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/cross_venue_price_discovery_20260725
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-venue-price-discovery-probe-${{ github.sha }}
+          path: research_runs/cross_venue_price_discovery_20260725
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
