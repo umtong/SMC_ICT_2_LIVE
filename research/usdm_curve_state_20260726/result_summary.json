@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-USDM-CURVE-001",
+  "claim_id": "CLM-20260726-0522-USDM-CURVE-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "UNRANKED_NEGATIVE_FAMILY_EVIDENCE",
+  "development_period": [
+    "2022-01-01T00:00:00Z",
+    "2024-01-01T00:00:00Z"
+  ],
+  "candidate_count": 108,
+  "gate_pass_count": 0,
+  "positive_candidate_count": {
+    "12bps": 0,
+    "18bps": 0,
+    "24bps": 0
+  },
+  "best_raw_candidate": {
+    "candidate_id": "9e4edc9180a0b744a137",
+    "family": "basis_exhaustion_reversal",
+    "window_bars": 672,
+    "threshold_z": 2.5,
+    "holding_bars": 4,
+    "stop_atr": 2.5,
+    "trade_count": 22,
+    "cost_12bps": {
+      "total_return": -0.004484386641539606,
+      "geometric_daily_growth": -0.000006156791546474416,
+      "profit_factor": 0.7808728313075829,
+      "median_account_return_bps": -8.557609577618914,
+      "top10pct_positive_removed_return": -0.01116132805192771
+    },
+    "cost_18bps": {
+      "total_return": -0.010131532399092813,
+      "geometric_daily_growth": -0.000013949499539700483,
+      "profit_factor": 0.5640501115161102,
+      "median_account_return_bps": -9.984603654730748,
+      "top10pct_positive_removed_return": -0.016012347894016288
+    },
+    "cost_24bps": {
+      "total_return": -0.015129133340719969,
+      "geometric_daily_growth": -0.000020882995978244168,
+      "profit_factor": 0.4119767010128805,
+      "median_account_return_bps": -11.7672189079779,
+      "top10pct_positive_removed_return": -0.020318312858823795
+    }
+  },
+  "family_best_at_18bps": {
+    "basis_flow_continuation": {
+      "candidate_id": "8f01c0458388b5466637",
+      "trade_count": 57,
+      "total_return": -0.035694835699257466,
+      "geometric_daily_growth": -0.00004978982070369398
+    },
+    "basis_catchup": {
+      "candidate_id": "f2b2b15153b51a889597",
+      "trade_count": 85,
+      "total_return": -0.0445865263223719,
+      "geometric_daily_growth": -0.0000624789734084974
+    },
+    "basis_exhaustion_reversal": {
+      "candidate_id": "9e4edc9180a0b744a137",
+      "trade_count": 22,
+      "total_return": -0.010131532399092813,
+      "geometric_daily_growth": -0.000013949499539700483
+    }
+  },
+  "source_coverage": {
+    "BTCUSDT": {
+      "perpetual_rows": 105120,
+      "current_quarter_rows": 101919,
+      "next_quarter_rows": 18569,
+      "found_dated_archives": 52
+    },
+    "ETHUSDT": {
+      "perpetual_rows": 105120,
+      "current_quarter_rows": 101828,
+      "next_quarter_rows": 18552,
+      "found_dated_archives": 52
+    }
+  },
+  "2024_downloaded": false,
+  "2025_or_2026_opened": false,
+  "orders_submitted": false,
+  "dependency_fingerprint": "4d8d041bdfec18a8b1b794c3e62f328dc02289d6a9ceda45593fea9f8ceedaca",
+  "source_manifest_sha256": "03ddb40ebb43a9296e550c53d90667813a12b94d52a9b2edd0c9a559f5de318d",
+  "workflow_run_id": 30174355757,
+  "workflow_artifact_id": 8623839093,
+  "workflow_artifact_digest": "sha256:138f28eaa40e857acf56676edaca32e49a153f3d948a0baa81ffc669fc7f018c",
+  "branch_head": "fe84530e3f63092129e9d6367b6230d1a9efe2d8",
+  "decision": "Close adjacent USD-M dated-futures curve-level, curve-slope and basis-price-flow tuning under this dependency fingerprint. No candidate was positive even at 12 bps, so further execution, leverage or parameter refinement has negative information value."
+}
