@@ -1,0 +1,171 @@
+name: Cross-venue price-discovery result controller
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-venue-price-discovery-001
+    paths:
+      - ".github/workflows/cross-venue-price-discovery-controller.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: r5-cross-venue-result-controller-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-venue-price-discovery-001
+          fetch-depth: 1
+
+      - name: Wait for staged workflows and download evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/evidence" research_results/r5_cross_venue_price_discovery_001
+          get_run() {
+            local workflow="$1"
+            local id=""
+            for attempt in $(seq 1 120); do
+              id=$(gh run list \
+                --repo umtong/SMC_ICT_2_LIVE \
+                --workflow "$workflow" \
+                --branch agent/r5-cross-venue-price-discovery-001 \
+                --limit 20 \
+                --json databaseId,status,conclusion \
+                --jq '[.[] | select(.status=="completed" and .conclusion=="success")][0].databaseId // ""')
+              if [[ -n "$id" ]]; then echo "$id"; return 0; fi
+              sleep 10
+            done
+            return 1
+          }
+          auth=$(get_run cross-venue-price-discovery-authoritative-v4b.yml)
+          sel=$(get_run cross-venue-price-discovery-selection-v4b.yml)
+          conf=$(get_run cross-venue-price-discovery-confirmation-v4b.yml)
+          printf 'authoritative=%s\nselection=%s\nconfirmation=%s\n' "$auth" "$sel" "$conf" > research_results/r5_cross_venue_price_discovery_001/PREDECESSOR_RUNS.txt
+          gh run download "$auth" --repo umtong/SMC_ICT_2_LIVE --dir "$RUNNER_TEMP/evidence/authoritative"
+          gh run download "$sel" --repo umtong/SMC_ICT_2_LIVE --dir "$RUNNER_TEMP/evidence/selection"
+          gh run download "$conf" --repo umtong/SMC_ICT_2_LIVE --dir "$RUNNER_TEMP/evidence/confirmation"
+
+      - name: Consolidate only authoritative V4B results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root=pathlib.Path(__import__('os').environ['RUNNER_TEMP'])/'evidence'
+          out=pathlib.Path('research_results/r5_cross_venue_price_discovery_001')
+          def one(pattern):
+              items=list(root.glob(pattern))
+              return json.loads(items[0].read_text()) if items else None
+          authoritative=one('authoritative/**/AUTHORITATIVE_RESULT.json')
+          development=one('authoritative/**/DEVELOPMENT_RESULT.json')
+          pilot=one('authoritative/**/PILOT_RESULT.json')
+          probe=one('authoritative/**/SOURCE_PROBE_V2.json')
+          selection=one('selection/**/SELECTION_RESULT.json')
+          confirmation=one('confirmation/**/CONFIRMATION_RESULT.json')
+          status='INFRASTRUCTURE_BLOCKED'
+          rationale='Authoritative result was not available.'
+          if authoritative:
+              stage=authoritative.get('stage')
+              if stage=='SOURCE_UNAVAILABLE':
+                  status='INFRASTRUCTURE_BLOCKED'
+                  rationale='Required local-arrival trades or quote sources were unavailable or schema-incompatible.'
+              elif stage=='DEVELOPMENT_BLOCKED_BY_FATAL_PILOT':
+                  status='INVALID'
+                  rationale='No causal V2 configuration passed the preregistered zero-fee and 5/10bp fatal-edge pilot.'
+              elif int(authoritative.get('development_gate_pass_count',0))<=0:
+                  status='TESTED_BELOW_GATE'
+                  rationale='The risk-based 2022-2023 development gate was zero under authoritative V4B execution.'
+              elif selection and int(selection.get('selection_gate_pass_count',0))<=0:
+                  status='TESTED_BELOW_GATE'
+                  rationale='Development representatives failed frozen 2024 selection.'
+              elif confirmation and confirmation.get('confirmation_opened') and not confirmation.get('sample_confirmation_pass',False):
+                  status='TESTED_BELOW_GATE'
+                  rationale='The frozen primary failed 2025 systematic-sample confirmation.'
+              elif confirmation and confirmation.get('sample_confirmation_pass',False):
+                  status='VALIDATED_COMPONENT_ONLY'
+                  rationale='Systematic sample confirmation passed, but the complete operable-day tick dataset and target test remain mandatory.'
+              else:
+                  status='TESTED_BELOW_GATE'
+                  rationale='A later preregistered gate did not pass.'
+          result={
+              'schema_version':1,
+              'result_id':'RES-20260725-XVENUE-001',
+              'claim_id':'CLM-20260725-1850-XVENUE-001',
+              'status':status,
+              'rationale':rationale,
+              'causal_version':2,
+              'account_engine_version':'4B',
+              'probe':probe,
+              'pilot':pilot,
+              'development':development,
+              'authoritative_stage':authoritative,
+              'selection':selection,
+              'confirmation':confirmation,
+              'target_1pct_daily_test_admissible':False if not confirmation else bool(confirmation.get('target_1pct_daily_test_admissible',False)),
+              'target_1pct_daily_pass':False,
+              'champion_eligible':False,
+              'selection_opened':False if not selection else bool(selection.get('selection_opened',False)),
+              'confirmation_opened':False if not confirmation else bool(confirmation.get('confirmation_opened',False)),
+              '2026_opened':False,
+              'orders_submitted':False,
+              'paper_live_started':False,
+              'superseded_outputs':['V1 source probe','V1 pilot','V2/V3/V4 account development'],
+          }
+          path=out/'result.json'
+          path.write_text(json.dumps(result,indent=2,sort_keys=True,default=str)+'\n')
+          (out/'result.sha256').write_text(hashlib.sha256(path.read_bytes()).hexdigest()+'  result.json\n')
+          summary={
+              'result_id':result['result_id'],
+              'status':status,
+              'rationale':rationale,
+              'development_gate_pass_count':0 if not authoritative else int(authoritative.get('development_gate_pass_count',0)),
+              'selection_gate_pass_count':0 if not selection else int(selection.get('selection_gate_pass_count',0)),
+              'confirmation_opened':result['confirmation_opened'],
+              'sample_confirmation_pass':False if not confirmation else bool(confirmation.get('sample_confirmation_pass',False)),
+              'target_1pct_daily_pass':False,
+              'champion_eligible':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+          }
+          (out/'SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,sort_keys=True))
+          PY
+          find research_results/r5_cross_venue_price_discovery_001 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > research_results/r5_cross_venue_price_discovery_001/SHA256SUMS.txt
+
+      - name: Commit durable result and comment on draft PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "smc-ict-research-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add research_results/r5_cross_venue_price_discovery_001
+          if ! git diff --cached --quiet; then
+            git commit -m "Record cross-venue price-discovery staged result"
+            git push origin HEAD:agent/r5-cross-venue-price-discovery-001
+          fi
+          pr=$(gh pr list --repo umtong/SMC_ICT_2_LIVE --head agent/r5-cross-venue-price-discovery-001 --json number --jq '.[0].number')
+          if [[ -n "$pr" ]]; then
+            summary=$(cat research_results/r5_cross_venue_price_discovery_001/SUMMARY.json)
+            gh pr comment "$pr" --repo umtong/SMC_ICT_2_LIVE --body "Authoritative staged result committed.\n\n\`\`\`json\n${summary}\n\`\`\`\n\nV1 and non-authoritative account outputs are superseded; no 2026 data or orders were used."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-price-discovery-controller-${{ github.sha }}
+          path: research_results/r5_cross_venue_price_discovery_001
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
