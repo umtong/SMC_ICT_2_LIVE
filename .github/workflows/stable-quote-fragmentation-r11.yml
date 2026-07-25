@@ -1,0 +1,131 @@
+name: Stable-quote fragmentation screen
+
+on:
+  push:
+    branches:
+      - agent/r11-stable-quote-fragmentation-001
+    paths:
+      - "research/stable_quote_fragmentation_20260726/**"
+      - ".github/workflows/stable-quote-fragmentation-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/stable_quote_fragmentation_20260726/**"
+      - ".github/workflows/stable-quote-fragmentation-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: stable-quote-fragmentation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen research environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "requests==2.32.4" \
+            "pytest==8.3.4"
+
+      - name: Compile and run deterministic tests
+        run: |
+          set -euo pipefail
+          root=research/stable_quote_fragmentation_20260726
+          cat "$root"/stable_quote_source.b64.part{1,2,3,4} | tr -d '\n' | base64 -d > "$root/stable_quote_source.zip"
+          echo "8b92d68e4aa25c5bf1906d0a22cbf66d1b67b8a7fe3c10a145a418a7317360c5  $root/stable_quote_source.zip" | sha256sum --check
+          unzip -q -o "$root/stable_quote_source.zip" -d "$root"
+          python -m py_compile \
+            "$root/archive_source.py" \
+            "$root/run_screen.py" \
+            "$root/test_archive_source.py" \
+            "$root/test_run_screen.py"
+          python -m pytest -q "$root/test_archive_source.py" "$root/test_run_screen.py"
+          mkdir -p research_runs/stable_quote_fragmentation/self_test
+          python "$root/run_screen.py" \
+            --self-test \
+            --output research_runs/stable_quote_fragmentation/self_test \
+            --cache "$RUNNER_TEMP/stable-quote-cache"
+          (cd research_runs/stable_quote_fragmentation/self_test && sha256sum --check SHA256SUMS.txt)
+
+      - name: Run frozen 2022-2023 official-archive economic screen
+        run: |
+          set -euo pipefail
+          root=research/stable_quote_fragmentation_20260726
+          mkdir -p research_runs/stable_quote_fragmentation/output
+          python "$root/run_screen.py" \
+            --output research_runs/stable_quote_fragmentation/output \
+            --cache "$RUNNER_TEMP/stable-quote-cache" \
+            2>&1 | tee research_runs/stable_quote_fragmentation/screen.log
+
+      - name: Verify result safety and project integrity
+        run: |
+          set -euo pipefail
+          (cd research_runs/stable_quote_fragmentation/output && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("research_runs/stable_quote_fragmentation/output/RESULT.json").read_text())
+          assert result["orders_submitted"] is False
+          assert result["2025_or_2026_opened"] is False
+          assert result["candidate_count"] == 108
+          if result.get("development", {}).get("gate_pass_count") == 0:
+              assert result["2024_downloaded"] is False
+          print(json.dumps({
+              "status": result["status"],
+              "hard_validity": result["hard_validity_status"],
+              "economic": result["economic_status"],
+              "gate_pass_count": result.get("development", {}).get("gate_pass_count"),
+              "2024_downloaded": result["2024_downloaded"],
+          }, sort_keys=True))
+          PY
+          python scripts/validate_project.py
+
+      - name: Record immutable input hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          sha256sum \
+            research/stable_quote_fragmentation_20260726/preregistration.json \
+            research/stable_quote_fragmentation_20260726/README.md \
+            research/stable_quote_fragmentation_20260726/stable_quote_source.b64.part1 \
+            research/stable_quote_fragmentation_20260726/stable_quote_source.b64.part2 \
+            research/stable_quote_fragmentation_20260726/stable_quote_source.b64.part3 \
+            research/stable_quote_fragmentation_20260726/stable_quote_source.b64.part4 \
+            research/stable_quote_fragmentation_20260726/stable_quote_source.zip \
+            research/stable_quote_fragmentation_20260726/archive_source.py \
+            research/stable_quote_fragmentation_20260726/run_screen.py \
+            research/stable_quote_fragmentation_20260726/test_archive_source.py \
+            research/stable_quote_fragmentation_20260726/test_run_screen.py \
+            .github/workflows/stable-quote-fragmentation-r11.yml \
+            > research_runs/stable_quote_fragmentation/INPUT_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stable-quote-fragmentation-${{ github.sha }}
+          path: research_runs/stable_quote_fragmentation
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
