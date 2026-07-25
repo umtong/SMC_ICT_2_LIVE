@@ -1,0 +1,61 @@
+{
+  "candidate_count": 11664,
+  "causality": {
+    "beta_and_z": "strictly prior bars",
+    "entry": "next 5m open",
+    "factor": "completed-bar leave-one-out median",
+    "gap_stop": "actual adverse open",
+    "same_bar": "stop priority"
+  },
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "contract_id": "EVAL-R4-DYNAMIC-FACTOR-RESIDUAL-20260725-V1",
+  "dataset": {
+    "artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "bars": 105120,
+    "dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "development": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "later_periods_opened": false,
+    "manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4"
+  },
+  "development_gate": {
+    "maximum_mdd": 0.2,
+    "maximum_single_symbol_share": 0.8,
+    "maximum_top5_share": 0.4,
+    "minimum_pf": 1.1,
+    "minimum_positive_month_fraction": 0.55,
+    "minimum_symbols": 2,
+    "minimum_trades": 60,
+    "minimum_worst_month": -0.05,
+    "positive_all_costs": true,
+    "positive_halves": true,
+    "positive_top10pct_removed": true
+  },
+  "execution": {
+    "funding_included": false,
+    "max_notional_leverage": 3.0,
+    "one_global_slot": true,
+    "prior_quote_participation": 0.001,
+    "risk_fraction": 0.005,
+    "round_trip_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ]
+  },
+  "families": [
+    "residual_flow_continuation",
+    "residual_mean_reversion",
+    "dispersion_absorption",
+    "dispersion_breakout"
+  ],
+  "schema_version": 1,
+  "stage_rule": {
+    "2026_opened": false,
+    "confirmation": "2025 only after frozen primary",
+    "development": "2023",
+    "selection": "2024 only after frozen representatives"
+  }
+}
