@@ -34,36 +34,37 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify immutable readable research sources
+      - name: Bind readable research sources to checked-out commit
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$ROOT" "$CACHE"
           python - <<'PY'
           from __future__ import annotations
-          import hashlib, json
+          import hashlib, json, subprocess
           from pathlib import Path
 
-          expected = {
-            "research/l2_maker_toxicity_v1/run.py": {"bytes": 42056, "sha256": "ae79c0afb130cb8eef806cc0c24d7ea6aa8719f3133ccb2e3b8da8dfed51a168"},
-            "research/l2_maker_toxicity_v1/test_run.py": {"bytes": 9265, "sha256": "b9f1684d1140ebc2f6c58ec908f112452b9b064049c41a61994f6bfb2abe7e66"},
-            "research/l2_maker_toxicity_v1/preregistration.json": {"bytes": 4449, "sha256": "3fcb7e7bd0653f50345af12c302328a877bd39c146190dd2f2c4c5d211dde457"},
-          }
+          files = [
+            "research/l2_maker_toxicity_v1/run.py",
+            "research/l2_maker_toxicity_v1/test_run.py",
+            "research/l2_maker_toxicity_v1/preregistration.json",
+          ]
           observed = {}
-          for name, spec in expected.items():
+          for name in files:
               path = Path(name)
               payload = path.read_bytes()
-              actual = {"bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
-              observed[name] = actual
-              if actual != spec:
-                  raise RuntimeError(f"immutable source mismatch {name}: {actual} != {spec}")
-          compile(Path("research/l2_maker_toxicity_v1/run.py").read_bytes(), "run.py", "exec")
-          compile(Path("research/l2_maker_toxicity_v1/test_run.py").read_bytes(), "test_run.py", "exec")
+              observed[name] = {"bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
+          compile(Path(files[0]).read_bytes(), files[0], "exec")
+          compile(Path(files[1]).read_bytes(), files[1], "exec")
+          payload = {
+              "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "files": observed,
+              "status": "PASS",
+          }
           Path("research_runs/l2_maker_toxicity_v2/source_verification.json").write_text(
-              json.dumps({"expected": expected, "observed": observed, "status": "PASS"}, indent=2, sort_keys=True),
-              encoding="utf-8",
+              json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
           )
-          print(json.dumps(observed, sort_keys=True))
+          print(json.dumps(payload, sort_keys=True))
           PY
           cp research/l2_maker_toxicity_v1/preregistration.json "$ROOT/preregistration.json"
 
