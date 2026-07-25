@@ -1,0 +1,376 @@
+schema_version = 2
+
+[[folder]]
+id = "drive.control"
+system = "drive"
+path = "00_CONTROL"
+canonical_role = "live_control"
+purpose = "자주 읽고 갱신하는 live 상태"
+inputs = ["검증된 update·claim·registry"]
+outputs = ["binding·state·Champion·contracts"]
+consumers = ["모든 실행"]
+use_when = "작은 live record 필요"
+done_when = "canonical role·revision/stable ID"
+retention = "이전 버전 snapshot/archive"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "drive.runs"
+system = "drive"
+path = "01_RUNS"
+canonical_role = "execution_reports"
+purpose = "실행별 복구 가능한 보고서"
+inputs = ["완료/시간제한 실행"]
+outputs = ["append-only Run Report"]
+consumers = ["result·state·재개"]
+use_when = "실행 경계 도달"
+done_when = "claim·PR·입출력·다음 작업 연결"
+retention = "overwrite 금지"
+empty_policy = "ready_on_demand"
+required = true
+
+[[folder]]
+id = "drive.data"
+system = "drive"
+path = "02_DATA"
+canonical_role = "source_dataset_library"
+purpose = "재사용 자료·데이터·가공물 보관"
+inputs = ["source·snapshot·transform"]
+outputs = ["registered asset"]
+consumers = ["가설·실험·검증"]
+use_when = "채팅 밖 재사용 또는 대용량"
+done_when = "immutable/versioned·stable ID"
+retention = "중복 재사용·충돌 quarantine"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "drive.inbox"
+system = "drive"
+path = "02_DATA/00_INBOX"
+canonical_role = "temporary_intake"
+purpose = "분류 전 파일 임시 수신"
+inputs = ["unclassified file"]
+outputs = ["정식 등록 또는 quarantine"]
+consumers = ["intake"]
+use_when = "업로드 시 분류 미정"
+done_when = "origin claim 종료 전 이동"
+retention = "장기 보관 금지"
+empty_policy = "prefer_empty"
+required = false
+
+[[folder]]
+id = "drive.youtube"
+system = "drive"
+path = "02_DATA/10_YOUTUBE"
+canonical_role = "youtube_sources"
+purpose = "유튜브 자료 계층화"
+inputs = ["registered video/transcript"]
+outputs = ["raw·note·claim"]
+consumers = ["가설 생성"]
+use_when = "유튜브 자료 사용"
+done_when = "source ID로 연결"
+retention = "가설은 03_RESEARCH"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.yt.raw"
+system = "drive"
+path = "02_DATA/10_YOUTUBE/00_RAW_TRANSCRIPTS"
+canonical_role = "youtube_transcripts"
+purpose = "사용 자막 원본 보존"
+inputs = ["VTT/text"]
+outputs = ["immutable transcript"]
+consumers = ["source note·claim"]
+use_when = "자막을 연구에 사용"
+done_when = "Source Registry·hash 연결"
+retention = "원본 변경 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.yt.notes"
+system = "drive"
+path = "02_DATA/10_YOUTUBE/10_SOURCE_NOTES"
+canonical_role = "youtube_notes"
+purpose = "원문 재독 비용 감소"
+inputs = ["registered transcript"]
+outputs = ["timestamped source note"]
+consumers = ["claim extraction"]
+use_when = "긴 source 재사용"
+done_when = "source ID·구현 단서 포함"
+retention = "단순 감상문 미보존"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.yt.claims"
+system = "drive"
+path = "02_DATA/10_YOUTUBE/20_EXTRACTED_CLAIMS"
+canonical_role = "youtube_claims"
+purpose = "외부 주장을 시험 단위로 분리"
+inputs = ["source note"]
+outputs = ["claim·조건·timestamp"]
+consumers = ["hypothesis promotion"]
+use_when = "검증 가치 주장 존재"
+done_when = "승격/기각 상태 기록"
+retention = "가설 파일 중복 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.papers"
+system = "drive"
+path = "02_DATA/20_PAPERS"
+canonical_role = "paper_sources"
+purpose = "논문·기술자료 재검색 방지"
+inputs = ["used paper/report"]
+outputs = ["source copy·note"]
+consumers = ["hypothesis·experiment"]
+use_when = "문헌을 연구에 사용"
+done_when = "Source Registry 연결"
+retention = "원본/재현형태 유지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.traders"
+system = "drive"
+path = "02_DATA/30_TRADERS_AND_FUNDS"
+canonical_role = "trader_sources"
+purpose = "인물·운용사 방법 재사용"
+inputs = ["case material"]
+outputs = ["entity·method note"]
+consumers = ["hypothesis"]
+use_when = "사례를 연구에 사용"
+done_when = "Entity/Source ID 연결"
+retention = "주장과 검증 분리"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.cases"
+system = "drive"
+path = "02_DATA/40_COMPETITIONS_AND_CASES"
+canonical_role = "case_sources"
+purpose = "대회·실계좌·운영 사례 재사용"
+inputs = ["case material"]
+outputs = ["conditions·claims·operational clues"]
+consumers = ["hypothesis"]
+use_when = "사례를 연구에 사용"
+done_when = "source ID·조건 포함"
+retention = "미검증 성과는 claim"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.execution_docs"
+system = "drive"
+path = "02_DATA/50_EXCHANGES_BROKERS_APIS"
+canonical_role = "execution_reference"
+purpose = "체결·비용·데이터 계약 근거"
+inputs = ["official docs"]
+outputs = ["versioned fee/order/API reference"]
+consumers = ["execution model"]
+use_when = "공식 근거 필요"
+done_when = "experiment에서 source ID 참조"
+retention = "낡은 버전 supersede"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.code"
+system = "drive"
+path = "02_DATA/60_CODE_AND_REPOS"
+canonical_role = "external_code"
+purpose = "외부 구현 반복 탐색 방지"
+inputs = ["repo/release"]
+outputs = ["commit-pinned code note"]
+consumers = ["implementation"]
+use_when = "외부 구현 사용"
+done_when = "repo·commit·notes 연결"
+retention = "복제물과 link 구분"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.market"
+system = "drive"
+path = "02_DATA/70_MARKET_AND_REFERENCE_DATA"
+canonical_role = "market_snapshots"
+purpose = "실험 입력 고정"
+inputs = ["market/reference bytes"]
+outputs = ["immutable dataset snapshot"]
+consumers = ["experiment"]
+use_when = "새 데이터 사용"
+done_when = "Dataset Registry·기간·hash"
+retention = "overwrite 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.processed"
+system = "drive"
+path = "02_DATA/80_PROCESSED_AND_EXTRACTED"
+canonical_role = "processed_data"
+purpose = "결정론적 가공 결과 재사용"
+inputs = ["raw IDs·transform"]
+outputs = ["versioned processed asset"]
+consumers = ["experiment"]
+use_when = "가공 데이터 재사용"
+done_when = "transform·input IDs·hash"
+retention = "연구 결론 저장 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.manifests"
+system = "drive"
+path = "02_DATA/90_MANIFESTS_AND_INDEXES"
+canonical_role = "data_indexes"
+purpose = "자료 검색·중복 방지"
+inputs = ["metadata"]
+outputs = ["Source·Dataset·Entity registry"]
+consumers = ["모든 작업"]
+use_when = "자료 조회/등록"
+done_when = "current index 유지"
+retention = "원본/결과 저장 금지"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "drive.quarantine"
+system = "drive"
+path = "02_DATA/99_DUPLICATES_AND_QUARANTINE"
+canonical_role = "quarantine"
+purpose = "충돌·손상 파일 격리"
+inputs = ["duplicate/invalid file"]
+outputs = ["investigation item"]
+consumers = ["intake/audit"]
+use_when = "정식 자료 혼입 방지"
+done_when = "재사용·삭제·정식등록 판정"
+retention = "archive 대용 금지"
+empty_policy = "prefer_empty"
+required = false
+
+[[folder]]
+id = "drive.research"
+system = "drive"
+path = "03_RESEARCH"
+canonical_role = "research_pipeline"
+purpose = "가설→실험→판단 지식 보관"
+inputs = ["claims·datasets·evidence"]
+outputs = ["hypotheses·experiments·reports·failures"]
+consumers = ["research·Champion"]
+use_when = "연구 객체가 Drive 규모/형식"
+done_when = "provenance·조건·결정 연결"
+retention = "large artifact 분리"
+empty_policy = "ready_on_demand"
+required = true
+
+[[folder]]
+id = "drive.hypotheses"
+system = "drive"
+path = "03_RESEARCH/10_HYPOTHESES"
+canonical_role = "hypothesis_library"
+purpose = "반증 가능한 가설 canonical 보관"
+inputs = ["reasoning/claim ID"]
+outputs = ["hypothesis ID·prediction"]
+consumers = ["experiments"]
+use_when = "시험 가치 있음"
+done_when = "실험/기각 연결"
+retention = "다른 폴더 중복 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.experiments"
+system = "drive"
+path = "03_RESEARCH/20_EXPERIMENTS"
+canonical_role = "experiment_records"
+purpose = "실험 조건·재현 명령 고정"
+inputs = ["hypothesis·dataset·contracts"]
+outputs = ["experiment evidence"]
+consumers = ["result registration"]
+use_when = "가설 실행"
+done_when = "snapshot·boundary·cost·checksum"
+retention = "large artifacts 분리"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.reports"
+system = "drive"
+path = "03_RESEARCH/30_REPORTS"
+canonical_role = "decision_reports"
+purpose = "동일 조건 검증 비교 제공"
+inputs = ["results·attestations"]
+outputs = ["comparison·decision"]
+consumers = ["Champion·next work"]
+use_when = "비교 판단 필요"
+done_when = "IDs·조건 차이·결정 포함"
+retention = "raw output 복제 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.invalidated"
+system = "drive"
+path = "03_RESEARCH/40_INVALIDATED_AND_REJECTED"
+canonical_role = "failure_knowledge"
+purpose = "실패 반복 방지"
+inputs = ["invalid/rejected evidence"]
+outputs = ["cause·revisit condition"]
+consumers = ["future work"]
+use_when = "접근 무효/폐기"
+done_when = "활성 결과 제외·후속 이동"
+retention = "삭제 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.artifacts"
+system = "drive"
+path = "04_ARTIFACTS"
+canonical_role = "large_artifacts"
+purpose = "Git 부적합 대형 실행 산출물"
+inputs = ["experiment output"]
+outputs = ["ledger·model·charts·logs"]
+consumers = ["result·run report"]
+use_when = "대형 파일 생성"
+done_when = "result ID·Run 연결"
+retention = "orphan 파일 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.snapshots"
+system = "drive"
+path = "05_SNAPSHOTS"
+canonical_role = "state_snapshots"
+purpose = "중요 상태 전환 복구"
+inputs = ["current state bundle"]
+outputs = ["milestone snapshot"]
+consumers = ["recovery/audit"]
+use_when = "Champion·contract·구조 중요 변경"
+done_when = "완전한 revision 복구 가능"
+retention = "매 실행 생성 금지"
+empty_policy = "ready_on_demand"
+required = false
+
+[[folder]]
+id = "drive.archive"
+system = "drive"
+path = "90_ARCHIVE"
+canonical_role = "archive"
+purpose = "비활성 자료의 현재 검색 방해 제거"
+inputs = ["superseded material"]
+outputs = ["auditable archive"]
+consumers = ["historical audit"]
+use_when = "현재 사용 중단"
+done_when = "원위치·대체·이유 기록"
+retention = "현재 입력 금지"
+empty_policy = "ready_on_demand"
+required = false
