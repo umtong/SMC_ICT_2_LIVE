@@ -4,14 +4,14 @@ Work Claim: `CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001`
 
 This experiment tests a deliberately narrow, non-overlapping microstructure mechanism. It trades the **Bybit USDT linear perpetual** only when **Binance USDT perpetual** and **Bybit spot** deliver a same-direction completed 100 ms price shock while the Bybit perpetual remains behind its prior-only cross-venue basis.
 
-The first question is not whether a polished strategy can be optimized. It is whether the strongest executable 30-second payoff upper bound can survive 100–500 ms latency, adverse equal-timestamp ordering, exact bid/ask crossing, modeled top-quote impact and 12/18/24 bp extra round-trip cost. A negative future-oracle result is fatal for this exact family and prevents wasting time on exit, risk or leverage tuning.
+The first question is not whether a polished strategy can be optimized. It is whether the strongest executable 30-second payoff upper bound can survive 100–500 ms latency, completed same-message signal groups, adverse equal-timestamp execution, exact bid/ask crossing, modeled top-quote impact and 12/18/24 bp extra round-trip cost. A negative future-oracle result is fatal for this exact family and prevents wasting time on exit, risk or leverage tuning.
 
 ## Causal boundaries
 
 - Tardis `local_timestamp` is the only cross-feed availability clock.
 - All signal state comes from completed `[t-100ms,t)` buckets and is usable only at `t`.
 - Joint rolling basis state resets after unavailable observations; no time compression or gap filling occurs.
-- Equal-local-time ambiguity invalidates signal state. Entry and exit quote groups are resolved against the requested side.
+- Quote rows sharing one `local_timestamp` are consumed as a complete captured-message group; only the final reconstructed BBO row is read after the bucket boundary. Entry and exit quote groups are still resolved against the requested side.
 - Development data are downloaded only after a candidate passes every fit upper-bound gate.
 - 2024, 2025 and 2026 remain sealed.
 
@@ -36,3 +36,7 @@ python research/bybit_consensus_lag_v1/run.py run \
 ```
 
 No credentials, paper orders, testnet orders or live orders are used.
+
+## V1B source-semantic correction
+
+The first diagnostic run incorrectly invalidated completed quote state whenever the prior row shared the same `local_timestamp`; it is preserved as non-decision evidence in `DIAGNOSTIC_INVALIDATION_001.md`. `PREREGISTRATION_AMENDMENT_001.json` freezes the only correction and records that candidate PnL had already been observed. No threshold, date, cost, gate or execution parameter changed.
