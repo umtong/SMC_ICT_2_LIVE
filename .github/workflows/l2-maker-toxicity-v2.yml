@@ -42,36 +42,56 @@ jobs:
           mkdir -p "$SOURCE_ROOT" "$ROOT" "$CACHE"
           python - <<'PY'
           from __future__ import annotations
-          import base64, gzip, hashlib, json
+          import base64, gzip, hashlib, json, traceback
           from pathlib import Path
 
           transport=Path('research/l2_maker_toxicity_v1/v2_source')
           output=Path('research_runs/l2_maker_toxicity_v2/source')
-          manifest=json.loads((transport/'manifest.json').read_text(encoding='utf-8'))
-          names={'run.py':'run_py.gz.b64.part', 'test_run.py':'test_run_py.gz.b64.part', 'preregistration.json':'preregistration_json.gz.b64.part'}
-          for logical,prefix in names.items():
-              spec=manifest[logical]
-              chunks=[]
-              for part in spec['parts']:
-                  path=transport/part['name']
-                  payload=path.read_bytes()
-                  assert len(payload)==part['bytes']
-                  assert hashlib.sha256(payload).hexdigest()==part['sha256']
-                  chunks.append(payload)
-              encoded=b''.join(chunks)
-              assert len(encoded)==spec['base64_bytes']
-              assert hashlib.sha256(encoded).hexdigest()==spec['base64_sha256']
-              compressed=base64.b64decode(encoded,validate=True)
-              assert len(compressed)==spec['gzip_bytes']
-              assert hashlib.sha256(compressed).hexdigest()==spec['gzip_sha256']
-              raw=gzip.decompress(compressed)
-              assert len(raw)==spec['raw_bytes']
-              assert hashlib.sha256(raw).hexdigest()==spec['raw_sha256']
-              (output/logical).write_bytes(raw)
-          (output/'transport_manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding='utf-8')
-          compile((output/'run.py').read_bytes(),str(output/'run.py'),'exec')
-          compile((output/'test_run.py').read_bytes(),str(output/'test_run.py'),'exec')
-          print({k:v['raw_sha256'] for k,v in manifest.items()})
+          diagnostics={'files_present':sorted(p.name for p in transport.glob('*')),'checks':[],'errors':[]}
+          def digest(data:bytes)->str: return hashlib.sha256(data).hexdigest()
+          def require(label:str,actual,expected):
+              ok=actual==expected
+              diagnostics['checks'].append({'label':label,'actual':actual,'expected':expected,'ok':ok})
+              if not ok: diagnostics['errors'].append({'label':label,'actual':actual,'expected':expected})
+          try:
+              manifest=json.loads((transport/'manifest.json').read_text(encoding='utf-8'))
+              for logical in ('run.py','test_run.py','preregistration.json'):
+                  spec=manifest[logical]
+                  chunks=[]
+                  for part in spec['parts']:
+                      path=transport/part['name']
+                      require(f'{logical}:{part["name"]}:exists',path.exists(),True)
+                      if not path.exists(): continue
+                      payload=path.read_bytes()
+                      require(f'{logical}:{part["name"]}:bytes',len(payload),part['bytes'])
+                      require(f'{logical}:{part["name"]}:sha256',digest(payload),part['sha256'])
+                      chunks.append(payload)
+                  encoded=b''.join(chunks)
+                  require(f'{logical}:base64_bytes',len(encoded),spec['base64_bytes'])
+                  require(f'{logical}:base64_sha256',digest(encoded),spec['base64_sha256'])
+                  if diagnostics['errors']: continue
+                  compressed=base64.b64decode(encoded,validate=True)
+                  require(f'{logical}:gzip_bytes',len(compressed),spec['gzip_bytes'])
+                  require(f'{logical}:gzip_sha256',digest(compressed),spec['gzip_sha256'])
+                  raw=gzip.decompress(compressed)
+                  require(f'{logical}:raw_bytes',len(raw),spec['raw_bytes'])
+                  require(f'{logical}:raw_sha256',digest(raw),spec['raw_sha256'])
+                  if not diagnostics['errors']:
+                      (output/logical).write_bytes(raw)
+              if diagnostics['errors']:
+                  raise RuntimeError(f"source reconstruction mismatches: {diagnostics['errors']}")
+              (output/'transport_manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding='utf-8')
+              compile((output/'run.py').read_bytes(),str(output/'run.py'),'exec')
+              compile((output/'test_run.py').read_bytes(),str(output/'test_run.py'),'exec')
+              diagnostics['status']='PASS'
+          except Exception as exc:
+              diagnostics['status']='FAIL'
+              diagnostics['exception']=repr(exc)
+              diagnostics['traceback']=traceback.format_exc()
+              raise
+          finally:
+              Path('research_runs/l2_maker_toxicity_v2/reconstruction_diagnostics.json').write_text(json.dumps(diagnostics,indent=2,sort_keys=True),encoding='utf-8')
+              print(json.dumps(diagnostics,sort_keys=True))
           PY
 
       - name: Install fixed research environment
