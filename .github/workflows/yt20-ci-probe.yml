@@ -1,0 +1,39 @@
+name: YT20 CI failure probe
+
+on:
+  push:
+    branches:
+      - agent/r3-transcript-alpha-001
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install "pytest>=8"
+      - name: Capture full pytest result
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q > pytest.log 2>&1
+          code=$?
+          echo "$code" > pytest.exit_code
+          cat pytest.log
+          exit 0
+      - name: Upload probe logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt20-ci-probe
+          path: |
+            pytest.log
+            pytest.exit_code
+          if-no-files-found: error
+          retention-days: 1
