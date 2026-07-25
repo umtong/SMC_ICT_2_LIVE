@@ -4,7 +4,7 @@ from __future__ import annotations
 
 The public USD-M kline archive changed the header label for trade count from
 `number_of_trades`/headerless position 9 to `count` for some monthly files.
-All three names represent the same official kline field. No strategy,
+All three names represent the same official kline field.  No strategy,
 parameter, data split, cost, or execution rule is modified.
 """
 
