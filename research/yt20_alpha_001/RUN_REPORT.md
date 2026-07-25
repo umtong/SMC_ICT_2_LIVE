@@ -71,7 +71,7 @@ The double-engulf subset has slightly positive arithmetic R but negative geometr
 
 - transcript_claims.jsonl: `0dea110e0f1ea4a2f3f7b2a3c944841957b67f8af4a33c7592eed026874f7503`
 - hypotheses.json: `e98ca0dd87970a56cb7a4ab64a09dbcd6c82fe8f65de21a486716c72ed042ccc`
-- preregistration.json: `35b5fa5a2e2d9c6f9db0f1b0fcdcbb247764774e254bb2f09342bb56cc`
+- preregistration.json: `35b5fa5a2e2c1c0dfd7c6f9db0f1b0fcdcbb247764774e254bb2f09342bb56cc`
 - final_summary.json: `3fcbad8b02db6bfc78764d329087d3c07ea99d242d4a98d4b96723dd1cbead03`
 - prefix_invariance.json: `ab3b03bc04288ca860dbde45df1b479f8923ca71230e0d47a546d6c1176f5020`
-- sweep_engulf_vectorized.py: `2afdca00ccbfe5e1136dc7ff2a6e406c5aa7a32a0bf6f55058694aa6ee1f3837`
+- local executed sweep-engulf implementation: `2afdca00ccbfe5e1136dc7ff2a6e406c5aa7a32a0bf6f55058694aa6ee1f3837`
