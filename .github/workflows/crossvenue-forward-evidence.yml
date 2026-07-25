@@ -29,21 +29,52 @@ jobs:
           python-version: '3.12'
       - name: Install test dependency
         run: python -m pip install --disable-pip-version-check pytest
-      - name: Extract deterministic source bundle
+      - name: Capture bundle and repository diagnostics
+        id: diagnostic
+        shell: bash
         run: |
+          set +e
+          mkdir -p /tmp/crossvenue-diagnostics
+          sha256sum research/experiments/crossvenue_forward_evidence/source-bundle.tar.gz \
+            | tee /tmp/crossvenue-diagnostics/source-bundle.sha256
           python research/experiments/crossvenue_forward_evidence/extract_bundle.py \
             --archive research/experiments/crossvenue_forward_evidence/source-bundle.tar.gz \
-            --destination /tmp/crossvenue-forward-source
-      - name: Verify extracted source
-        run: |
-          cd /tmp/crossvenue-forward-source
-          python -m pytest -q
-          python -m compileall -q .
-      - name: Export readable source
-        run: tar -C /tmp/crossvenue-forward-source -czf /tmp/crossvenue-forward-extracted.tar.gz .
+            --destination /tmp/crossvenue-forward-source \
+            > /tmp/crossvenue-diagnostics/extract.log 2>&1
+          echo $? > /tmp/crossvenue-diagnostics/extract.exit
+          python scripts/validate_project.py \
+            > /tmp/crossvenue-diagnostics/validate-project.log 2>&1
+          echo $? > /tmp/crossvenue-diagnostics/validate-project.exit
+          python -m pytest -q \
+            > /tmp/crossvenue-diagnostics/repository-pytest.log 2>&1
+          echo $? > /tmp/crossvenue-diagnostics/repository-pytest.exit
+          if [ -d /tmp/crossvenue-forward-source ]; then
+            cd /tmp/crossvenue-forward-source
+            python -m pytest -q > /tmp/crossvenue-diagnostics/bundle-pytest.log 2>&1
+            echo $? > /tmp/crossvenue-diagnostics/bundle-pytest.exit
+            python -m compileall -q . > /tmp/crossvenue-diagnostics/bundle-compile.log 2>&1
+            echo $? > /tmp/crossvenue-diagnostics/bundle-compile.exit
+            tar -czf /tmp/crossvenue-forward-extracted.tar.gz .
+          fi
+          exit 0
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crossvenue-forward-diagnostics
+          path: /tmp/crossvenue-diagnostics
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('/tmp/crossvenue-forward-extracted.tar.gz') != ''
         with:
           name: crossvenue-forward-extracted-source
           path: /tmp/crossvenue-forward-extracted.tar.gz
-          if-no-files-found: error
           retention-days: 7
+      - name: Enforce verification outcomes
+        shell: bash
+        run: |
+          test "$(cat /tmp/crossvenue-diagnostics/extract.exit)" = 0
+          test "$(cat /tmp/crossvenue-diagnostics/validate-project.exit)" = 0
+          test "$(cat /tmp/crossvenue-diagnostics/repository-pytest.exit)" = 0
+          test "$(cat /tmp/crossvenue-diagnostics/bundle-pytest.exit)" = 0
+          test "$(cat /tmp/crossvenue-diagnostics/bundle-compile.exit)" = 0
