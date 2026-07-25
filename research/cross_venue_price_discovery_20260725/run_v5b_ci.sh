@@ -22,6 +22,7 @@ root=Path('research_runs/cross_venue_price_discovery_20260725/exact_arrival_v5b'
     'selection_opened':False,
     'confirmation_opened':False,
     '2026_opened':False,
+    'source_clock_contract':'same-region Tardis local_timestamp; completed 100ms only',
 },indent=2,sort_keys=True)+'\n',encoding='utf-8')
 PY
 
@@ -54,6 +55,7 @@ python scripts/validate_project.py
 sha256sum \
   "$root/CAUSAL_EXECUTION_CORRECTION_V5.md" \
   "$root/FUNDING_BOUNDARY_CORRECTION_V5B.md" \
+  "$root/SOURCE_CLOCK_VALIDATION_V5B.md" \
   "$root/cross_venue_execution_v5.py" \
   "$root/cross_venue_signals_v5b.py" \
   "$root/cross_venue_execution_v5b.py" \
@@ -99,6 +101,7 @@ payload={
     'orders_submitted':False,
     'paper_live_started':False,
     'ranking_eligible':False,
+    'source_clock_contract':'same-region Tardis local_timestamp; completed 100ms only',
 }
 (root/'V5B_SEQUENTIAL_RESULT.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
 PY
@@ -136,6 +139,7 @@ payload={
     'paper_live_started':False,
     'ranking_eligible':False,
     'earlier_engine_outputs_admissible':False,
+    'source_clock_contract':'same-region Tardis local_timestamp; completed 100ms only',
 }
 (root/'V5B_SEQUENTIAL_RESULT.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
 print(json.dumps(payload,indent=2,sort_keys=True))
