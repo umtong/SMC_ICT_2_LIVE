@@ -1,0 +1,131 @@
+schema_version = 3
+
+[[action]]
+id = "read_current_context"
+purpose = "오래된 판단과 반복 작업 방지"
+trigger = "모든 작업 시작"
+required_inputs = ["Project State·Champion", "수행 범위와 관련된 claims·registries·cache·Run Reports·PR"]
+steps = ["Project State와 Champion을 읽음", "수행 범위를 정함", "관련 기록만 검색해 재사용 입력을 식별"]
+outputs = ["기준 revision", "재사용 입력 목록"]
+done_when = "실행이 사용할 revision과 기존 증거가 현재 작업 기록에 남음"
+evidence = ["현재 작업 기록 또는 Work Claim"]
+
+[[action]]
+id = "claim_work"
+purpose = "비용이 큰 중복과 공유 산출물 충돌 방지"
+trigger = "장시간 조사·데이터 취득/변환·백테스트·공용 코드/상태 변경처럼 중복 비용 또는 재사용 가치가 큰 작업 전"
+required_inputs = ["목적·범위", "objective/scope/dependency fingerprint", "base revision·lease·branch", "관련 claim/result/PR 검색 결과"]
+steps = ["기존 claim·result·PR을 확인", "겹치지 않는 범위 또는 독립 재현 사유를 등록"]
+outputs = ["ACTIVE Work Claim"]
+done_when = "Claim에 범위·지문·lease·branch·중복 판정이 기록됨"
+evidence = ["Work Claim entry 또는 GitHub Issue"]
+
+[[action]]
+id = "register_source"
+purpose = "실제로 사용한 자료의 재검색·재다운로드 방지"
+trigger = "새 외부 자료를 작업에 사용했거나 다시 찾을 가능성이 높음"
+required_inputs = ["canonical URL", "파일/hash 또는 재현 가능한 표현", "최소 메타데이터·Drive 위치"]
+steps = ["URL/hash 중복 확인", "원본 또는 재현 가능한 형태 보존", "필요 최소 메타데이터 등록"]
+outputs = ["stable source ID"]
+done_when = "Source Registry entry가 provenance와 위치를 포함함"
+evidence = ["Source Registry entry"]
+
+[[action]]
+id = "register_dataset"
+purpose = "실험 입력을 불변 snapshot으로 고정"
+trigger = "새 데이터 snapshot을 실험 또는 재사용 가능한 분석에 사용"
+required_inputs = ["provider·market·symbols·time range·snapshot time·hash·causal fields"]
+steps = ["중복 확인", "snapshot과 시간적 가용성 등록"]
+outputs = ["immutable dataset ID"]
+done_when = "Dataset Registry entry가 범위·hash·가용성 정보를 포함함"
+evidence = ["Dataset Registry entry"]
+
+[[action]]
+id = "promote_claim_to_hypothesis"
+purpose = "외부 주장이나 추론을 시험 가능한 연구 대상으로 변환"
+trigger = "주장의 기대 정보가치가 최소 실험 비용보다 큼"
+required_inputs = ["source/claim ID", "메커니즘·조건·인과 정보 경계"]
+steps = ["정량 예측", "최소 실험", "성공·실패 조건 정의"]
+outputs = ["stable hypothesis ID"]
+done_when = "가설이 canonical hypothesis 위치에 기록되고 실험 또는 기각 경로가 정의됨"
+evidence = ["Hypothesis record"]
+
+[[action]]
+id = "run_experiment"
+purpose = "가설에 대한 재현 가능한 증거 생성"
+trigger = "가설·데이터·평가 조건이 정의되고 실행의 기대 정보가치가 양수"
+required_inputs = ["hypothesis ID·dataset ID·code commit·cost/execution/evaluation contract"]
+steps = ["인과 경계 고정", "후보 가치에 맞는 검증 단계 선택", "재현 명령으로 실행"]
+outputs = ["experiment evidence·checksums·decision"]
+done_when = "실험 기록이 입력 snapshot, 명령, 출력 checksum과 판정을 포함함"
+evidence = ["Experiment record", "material checkpoint이면 Run Report와 artifacts"]
+
+[[action]]
+id = "register_result"
+purpose = "재사용 가능한 결과 공개와 동일 rerun 방지"
+trigger = "결과가 다른 작업의 입력이 되거나 상태·접근 전환·후속 실험에 영향을 줌"
+required_inputs = ["결과 요약", "artifact/dependency fingerprint", "evaluation contract hash", "관련 claim"]
+steps = ["동일 fingerprint 결과 확인", "stable result ID 등록"]
+outputs = ["Result Registry entry"]
+done_when = "결과가 상태·입력 IDs·artifact와 dependency fingerprint를 포함함"
+evidence = ["Result Registry entry"]
+
+[[action]]
+id = "attest_validation"
+purpose = "변하지 않은 검증 증거 재사용"
+trigger = "반복 사용할 가치가 있는 검사가 완료됨"
+required_inputs = ["dependency fingerprint·validation scope·changed surface·evidence"]
+steps = ["동일 dependency의 기존 attestation 확인", "PASS/FAIL 등록"]
+outputs = ["Validation Cache entry"]
+done_when = "attestation이 scope·dependency·evidence·status를 포함함"
+evidence = ["Validation Cache entry"]
+
+[[action]]
+id = "write_run_report"
+purpose = "중요 체크포인트와 정확한 재개점 보존"
+trigger = "목표 달성·시간제한·판정 가능한 결과·접근 전환·Champion/공통 상태 변경"
+required_inputs = ["작업 범위·base revision·재사용 입력·작업·검증·artifacts"]
+steps = ["완료·실패·산출물·registry 반영·다음 작업을 기록"]
+outputs = ["Run Report와 다음 정확한 작업"]
+done_when = "보고서가 branch/commit/PR, claim disposition, result/validation 상태와 다음 판정 조건을 포함함"
+evidence = ["Run Report"]
+
+[[action]]
+id = "update_state_or_champion"
+purpose = "현재 상태를 최신 최선 증거와 정렬"
+trigger = "검증된 결과가 상태 또는 Champion을 실질적으로 변경"
+required_inputs = ["result ID·validation evidence·latest revision·open PRs"]
+steps = ["최신 revision 재확인", "조건 정규화", "PR로 갱신"]
+outputs = ["revision-checked state/Champion update"]
+done_when = "새 revision이 증거를 참조하고 이전 Champion 재현 조건이 보존됨"
+evidence = ["검증된 state PR", "material change이면 snapshot"]
+
+[[action]]
+id = "snapshot_material_state"
+purpose = "중요한 상태 전환의 복구 가능성 확보"
+trigger = "Champion·평가계약·구조의 중요한 변경"
+required_inputs = ["current state·Champion·contracts·registry indexes·commit"]
+steps = ["해당 revision을 재구성할 최소 완전 묶음 저장"]
+outputs = ["milestone snapshot"]
+done_when = "snapshot만으로 주요 상태와 증거 위치를 복구 가능"
+evidence = ["05_SNAPSHOTS entry"]
+
+[[action]]
+id = "archive_or_quarantine"
+purpose = "비활성·중복·손상 자료를 active 경로에서 분리"
+trigger = "자료가 대체·중복·손상·불명확 상태로 판정됨"
+required_inputs = ["대상 ID/path·판정 이유·대체 위치 또는 조사 조건"]
+steps = ["대체 자료는 archive", "충돌·손상 자료는 quarantine"]
+outputs = ["감사 가능한 비활성 항목"]
+done_when = "현재 검색 경로에서 제외되고 원위치·이유·대체/해결 조건이 기록됨"
+evidence = ["Archive/quarantine manifest 또는 Run Report"]
+
+[[action]]
+id = "build_context_bundle"
+purpose = "새 실행에 작고 최신인 문맥 제공"
+trigger = "material revision 변경 또는 Project context 갱신 필요"
+required_inputs = ["runtime instructions·current state·Champion·작은 관련 registry·folder/action reference"]
+steps = ["hot files만 복사", "각 파일 hash 기록"]
+outputs = ["rebuildable context bundle·manifest"]
+done_when = "raw·historical bulk 없이 모든 포함 파일의 source path와 hash가 기록됨"
+evidence = ["dist/context-manifest.json"]
