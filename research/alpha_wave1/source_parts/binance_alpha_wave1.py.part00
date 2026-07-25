@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import io
+import json
+import math
+import os
+import time
+import urllib.error
+import urllib.request
+import zipfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Iterable
+
+import numpy as np
+import pandas as pd
+
+STUDY_ID = "SMC_ICT_2_LIVE_CAUSAL_ALPHA_WAVE1_20260725"
+SYMBOLS = ("BTCUSDT", "ETHUSDT")
+BASE_URL = "https://data.binance.vision/data/futures/um/monthly"
+COSTS_BPS = {"base": 16.0, "stress": 24.0, "hard": 32.0}
+STOP_EXTRA_BPS = 4.0
+WARMUP_START = pd.Timestamp("2021-10-01", tz="UTC")
+DEVELOPMENT_START = pd.Timestamp("2022-01-01", tz="UTC")
+DEVELOPMENT_END = pd.Timestamp("2023-01-01", tz="UTC")
+VALIDATION_START = pd.Timestamp("2023-01-01", tz="UTC")
+VALIDATION_END = pd.Timestamp("2024-01-01", tz="UTC")
+MAX_REPRESENTATIVES_PER_FAMILY = 2
+MAX_EVENT_JACCARD = 0.85
+
+KLINE_COLUMNS = [
+    "open_time",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "close_time",
+    "quote_volume",
+    "count",
+    "taker_buy_volume",
+    "taker_buy_quote_volume",
+    "ignore",
+]
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def atomic_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def month_starts(start: pd.Timestamp, end: pd.Timestamp) -> list[pd.Timestamp]:
+    return list(pd.date_range(start.floor("D").replace(day=1), end, freq="MS", inclusive="left", tz="UTC"))
+
+
+def http_get(url: str, attempts: int = 6) -> bytes:
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "smc-ict-2-live-alpha-wave1/1.0"})
+            with urllib.request.urlopen(req, timeout=600) as response:
+                return response.read()
+        except Exception as exc:  # pragma: no cover - network path
+            last = exc
+            if attempt + 1 < attempts:
+                time.sleep(min(30, 2**attempt))
+    raise RuntimeError(f"download failed: {url}: {last!r}")
+
+
+def download_verified(cache: Path, url: str) -> tuple[Path, dict[str, Any]]:
+    cache.mkdir(parents=True, exist_ok=True)
+    name = url.rsplit("/", 1)[-1]
+    path = cache / name
+    checksum_path = cache / f"{name}.CHECKSUM"
+    if not path.exists():
+        path.write_bytes(http_get(url))
+    if not checksum_path.exists():
+        checksum_path.write_bytes(http_get(url + ".CHECKSUM"))
+    checksum_text = checksum_path.read_text(encoding="utf-8-sig").strip()
+    expected = checksum_text.split()[0].lower()
+    actual = sha256_file(path)
+    if actual != expected:
+        raise ValueError(f"checksum mismatch for {name}: {actual} != {expected}")
+    return path, {"url": url, "sha256": actual, "bytes": path.stat().st_size, "checksum": checksum_text}
+
+
+def normalize_epoch(values: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(values, errors="coerce")
+    finite = numeric.dropna().abs()
+    if finite.empty:
+        return pd.to_datetime(numeric, unit="ms", utc=True, errors="coerce")
+    median = float(finite.median())
+    unit = "us" if median >= 1e14 else "ms" if median >= 1e11 else "s"
+    return pd.to_datetime(numeric, unit=unit, utc=True, errors="coerce")
+
+
+def read_kline_zip(path: Path) -> pd.DataFrame:
+    with zipfile.ZipFile(path) as archive:
+        members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
+        if len(members) != 1:
+            raise ValueError(f"expected one CSV in {path}, got {members}")
+        raw = archive.read(members[0])
+    first = raw.splitlines()[0].decode("utf-8-sig", errors="replace").lower()
+    has_header = "open_time" in first or "open time" in first
+    frame = pd.read_csv(io.BytesIO(raw), header=0 if has_header else None)
+    if frame.shape[1] < 12:
+        raise ValueError(f"unexpected kline width {frame.shape[1]} in {path}")
+    frame = frame.iloc[:, :12]
+    frame.columns = KLINE_COLUMNS
+    frame["time"] = normalize_epoch(frame["open_time"])
+    for column in ["open", "high", "low", "close", "quote_volume", "count", "taker_buy_quote_volume"]:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame = frame.dropna(subset=["time", "open", "high", "low", "close"]).sort_values("time")
+    frame = frame.drop_duplicates("time", keep="last")
+    invalid = (
+        (frame["open"] <= 0)
+        | (frame["high"] < frame[["open", "close", "low"]].max(axis=1))
+        | (frame["low"] > frame[["open", "close", "high"]].min(axis=1))
+        | (frame["quote_volume"] < 0)
+        | (frame["taker_buy_quote_volume"] < 0)
+        | (frame["taker_buy_quote_volume"] > frame["quote_volume"] * 1.000001)
+    )
+    if bool(invalid.any()):
+        raise ValueError(f"invalid kline rows in {path}: {int(invalid.sum())}")
+    return frame[["time", "open", "high", "low", "close", "quote_volume", "count", "taker_buy_quote_volume"]]
+
+
+def read_funding_zip(path: Path) -> pd.DataFrame:
+    with zipfile.ZipFile(path) as archive:
+        members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
+        if len(members) != 1:
+            raise ValueError(f"expected one funding CSV in {path}, got {members}")
+        raw = archive.read(members[0])
+    rows = list(csv.reader(io.StringIO(raw.decode("utf-8-sig", errors="replace"))))
+    if not rows:
+        return pd.DataFrame(columns=["time", "rate"])
+    header = [str(value).strip().lower() for value in rows[0]]
+    has_header = any("time" in value or "rate" in value for value in header)
+    data = rows[1:] if has_header else rows
+    width = max(len(row) for row in data) if data else len(header)
+    if has_header:
+        time_candidates = [i for i, value in enumerate(header) if "time" in value]
+        rate_candidates = [i for i, value in enumerate(header) if "rate" in value]
+        time_index = time_candidates[0] if time_candidates else 0
+        rate_index = rate_candidates[-1] if rate_candidates else width - 1
+    else:
+        time_index = 0
+        rate_index = width - 1
+    parsed: list[tuple[Any, Any]] = []
+    for row in data:
+        if len(row) <= max(time_index, rate_index):
+            continue
+        parsed.append((row[time_index], row[rate_index]))
+    frame = pd.DataFrame(parsed, columns=["raw_time", "raw_rate"])
+    frame["time"] = normalize_epoch(frame["raw_time"])
+    frame["rate"] = pd.to_numeric(frame["raw_rate"], errors="coerce")
+    frame = frame.dropna(subset=["time", "rate"]).sort_values("time").drop_duplicates("time", keep="last")
+    if bool((frame["rate"].abs() > 0.02).any()):
+        raise ValueError(f"implausible funding rate in {path}")
+    return frame[["time", "rate"]].reset_index(drop=True)
+
+
+def archive_url(symbol: str, kind: str, month: pd.Timestamp, interval: str | None = None) -> str:
+    ym = month.strftime("%Y-%m")
+    if kind == "klines":
+        if interval is None:
+            raise ValueError("interval required for klines")
+        name = f"{symbol}-{interval}-{ym}.zip"
+        return f"{BASE_URL}/klines/{symbol}/{interval}/{name}"
+    if kind == "fundingRate":
+        name = f"{symbol}-fundingRate-{ym}.zip"
+        return f"{BASE_URL}/fundingRate/{symbol}/{name}"
+    raise ValueError(kind)
+
+
+def exact_minute_panel(frames: list[pd.DataFrame], start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+    raw = pd.concat(frames, ignore_index=True).sort_values("time").drop_duplicates("time", keep="last")
+    raw = raw[(raw["time"] >= start) & (raw["time"] < end)].copy()
+    index = pd.date_range(start, end, freq="1min", inclusive="left", tz="UTC")
+    raw = raw.set_index("time").reindex(index)
+    raw.index.name = "time"
+    raw["present"] = raw[["open", "high", "low", "close", "quote_volume", "taker_buy_quote_volume"]].notna().all(axis=1)
+    return raw
+
+
+def build_five_minute(one: pd.DataFrame) -> pd.DataFrame:
+    key = one.index.floor("5min")
+    grouped = one.assign(_key=key).groupby("_key", sort=True)
+    out = pd.DataFrame(index=pd.DatetimeIndex(sorted(key.unique()), tz="UTC"))
+    out.index.name = "time"
+    out["minutes_present"] = grouped["present"].sum().astype(int)
+    out["open"] = grouped["open"].first()
+    out["high"] = grouped["high"].max()
+    out["low"] = grouped["low"].min()
+    out["close"] = grouped["close"].last()
+    out["quote_volume"] = grouped["quote_volume"].sum(min_count=1)
+    out["taker_buy_quote_volume"] = grouped["taker_buy_quote_volume"].sum(min_count=1)
+    out["count"] = grouped["count"].sum(min_count=1)
+    out["present"] = out["minutes_present"].eq(5) & out[["open", "high", "low", "close"]].notna().all(axis=1)
+    out.loc[~out["present"], ["open", "high", "low", "close", "quote_volume", "taker_buy_quote_volume", "count"]] = np.nan
+    return out
+
+
+def prior_z(series: pd.Series, window: int, min_periods: int) -> pd.Series:
+    history = series.shift(1)
+    mean = history.rolling(window, min_periods=min_periods).mean()
+    std = history.rolling(window, min_periods=min_periods).std(ddof=0).replace(0.0, np.nan)
+    return (series - mean) / std
+
+
+def build_features(five: pd.DataFrame) -> pd.DataFrame:
+    frame = five.copy()
+    present = frame["present"].astype(bool)
+    log_close = np.log(frame["close"].where(frame["close"] > 0))
+    prev_close = frame["close"].shift(1)
+    tr = pd.concat(
+        [
+            frame["high"] - frame["low"],
+            (frame["high"] - prev_close).abs(),
+            (frame["low"] - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    contiguous_prior_20 = present.shift(1).rolling(20, min_periods=20).sum().eq(20)
+    frame["atr20"] = tr.shift(1).rolling(20, min_periods=20).median().where(contiguous_prior_20)
+    frame["ret1"] = log_close.diff().where(present & present.shift(1, fill_value=False))
+    frame["body"] = frame["close"] - frame["open"]
+    frame["body_atr"] = frame["body"] / frame["atr20"]
+    frame["range_atr"] = (frame["high"] - frame["low"]) / frame["atr20"]
+    frame["close_location"] = (frame["close"] - frame["low"]) / (frame["high"] - frame["low"]).replace(0.0, np.nan)
+    frame["flow"] = 2.0 * frame["taker_buy_quote_volume"] / frame["quote_volume"].replace(0.0, np.nan) - 1.0
+    frame["ret_z"] = prior_z(frame["ret1"], 30 * 24 * 12, 10 * 24 * 12)
+    frame["flow_z"] = prior_z(frame["flow"], 30 * 24 * 12, 10 * 24 * 12)
+    frame["qv_z"] = prior_z(np.log1p(frame["quote_volume"]), 30 * 24 * 12, 10 * 24 * 12)
+    for lookback in (12, 24, 48, 96, 288):
+        contiguous = present.shift(1).rolling(lookback, min_periods=lookback).sum().eq(lookback)
+        frame[f"prior_high_{lookback}"] = frame["high"].shift(1).rolling(lookback, min_periods=lookback).max().where(contiguous)
+        frame[f"prior_low_{lookback}"] = frame["low"].shift(1).rolling(lookback, min_periods=lookback).min().where(contiguous)
+    frame["trend48"] = (log_close.shift(1) - log_close.shift(49)).where(
+        present.shift(1).rolling(49, min_periods=49).sum().eq(49)
+    )
+    frame["trend288"] = (log_close.shift(1) - log_close.shift(289)).where(
+        present.shift(1).rolling(289, min_periods=289).sum().eq(289)
+    )
+    frame["hour_utc"] = frame.index.hour.astype(np.int16)
+    return frame
+
+
+def spec_id(spec: dict[str, Any]) -> str:
+    return sha256_bytes(canonical_json(spec).encode("utf-8"))[:20]
+
+
+def candidate_specs() -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    for lookback in (12, 48):
