@@ -1,0 +1,58 @@
+name: Dynamic factor verified bundle export
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/dynamic-factor-test-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          fetch-depth: 1
+
+      - name: Reconstruct verified extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, tarfile
+          root = pathlib.Path('research/dynamic_factor_residual_20260725')
+          manifest = json.loads((root / 'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          chunks = []
+          for item in manifest['parts']:
+              raw = (root / item['path']).read_bytes()
+              assert len(raw) == item['bytes']
+              assert hashlib.sha256(raw).hexdigest() == item['sha256']
+              chunks.append(raw)
+          combined = b''.join(chunks)
+          assert hashlib.sha256(combined).hexdigest() == manifest['combined_base64_sha256']
+          archive = base64.b64decode(combined, validate=True)
+          assert len(archive) == manifest['decoded_tar_gz_bytes']
+          assert hashlib.sha256(archive).hexdigest() == manifest['decoded_tar_gz_sha256']
+          out = pathlib.Path('/tmp/dynamic-factor-verified')
+          out.mkdir()
+          archive_path = out / 'extension_bundle.tar.gz'
+          archive_path.write_bytes(archive)
+          with tarfile.open(archive_path, 'r:gz') as tf:
+              tf.extractall(out / 'extension', filter='data')
+          for name in ['dynamic_factor_residual.py','test_dynamic_factor_residual.py','preregistration.json','result_summary.json','revision5_champion_comparison.json','EXTENSION_BUNDLE_MANIFEST.json']:
+              (out / name).write_bytes((root / name).read_bytes())
+          PY
+
+      - name: Upload verified source set
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamic-factor-verified-source
+          path: /tmp/dynamic-factor-verified
+          if-no-files-found: error
+          retention-days: 14

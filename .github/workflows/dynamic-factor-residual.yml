@@ -1,0 +1,190 @@
+name: Dynamic factor residual research verification
+
+on:
+  push:
+    branches:
+      - agent/r4-dynamic-factor-residual-001
+    paths:
+      - "research/dynamic_factor_residual_20260725/**"
+      - ".github/workflows/dynamic-factor-residual.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dynamic_factor_residual_20260725/**"
+      - ".github/workflows/dynamic-factor-residual.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dynamic-factor-residual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          fetch-depth: 1
+
+      - name: Install fixed verification environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "numba==0.61.0" "pytest==8.3.4"
+
+      - name: Capture immutable bundle diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, tarfile
+          root = pathlib.Path('research/dynamic_factor_residual_20260725')
+          manifest = json.loads((root / 'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          report = {'parts': []}
+          chunks = []
+          for item in manifest['parts']:
+              path = root / item['path']
+              raw = path.read_bytes()
+              observed = {
+                  'path': item['path'],
+                  'observed_bytes': len(raw),
+                  'expected_bytes': item['bytes'],
+                  'observed_sha256': hashlib.sha256(raw).hexdigest(),
+                  'expected_sha256': item['sha256'],
+              }
+              observed['matches'] = (
+                  observed['observed_bytes'] == observed['expected_bytes']
+                  and observed['observed_sha256'] == observed['expected_sha256']
+              )
+              report['parts'].append(observed)
+              chunks.append(raw)
+          combined = b''.join(chunks)
+          report['combined'] = {
+              'observed_bytes': len(combined),
+              'observed_sha256': hashlib.sha256(combined).hexdigest(),
+              'expected_sha256': manifest['combined_base64_sha256'],
+          }
+          report['combined']['matches'] = report['combined']['observed_sha256'] == report['combined']['expected_sha256']
+          try:
+              archive = base64.b64decode(combined, validate=True)
+              report['archive'] = {
+                  'decode_ok': True,
+                  'observed_bytes': len(archive),
+                  'expected_bytes': manifest['decoded_tar_gz_bytes'],
+                  'observed_sha256': hashlib.sha256(archive).hexdigest(),
+                  'expected_sha256': manifest['decoded_tar_gz_sha256'],
+              }
+              report['archive']['matches'] = (
+                  report['archive']['observed_bytes'] == report['archive']['expected_bytes']
+                  and report['archive']['observed_sha256'] == report['archive']['expected_sha256']
+              )
+              pathlib.Path('/tmp/dynamic-extension-diagnostic.tar.gz').write_bytes(archive)
+              with tarfile.open('/tmp/dynamic-extension-diagnostic.tar.gz', 'r:gz') as tf:
+                  report['archive_members'] = sorted(tf.getnames())
+          except Exception as exc:
+              report['archive'] = {'decode_ok': False, 'error': repr(exc)}
+          out = pathlib.Path('/tmp/dynamic-bundle-diagnostics.json')
+          out.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
+          print(out.read_text())
+          PY
+
+      - name: Reconstruct and verify immutable extension bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/dynamic_factor_residual_20260725
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, shutil, tarfile
+          root=pathlib.Path('research/dynamic_factor_residual_20260725')
+          manifest=json.loads((root/'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          chunks=[]
+          for item in manifest['parts']:
+              path=root/item['path']
+              raw=path.read_bytes()
+              observed=hashlib.sha256(raw).hexdigest()
+              print(json.dumps({'part':str(path),'observed_bytes':len(raw),'expected_bytes':item['bytes'],'observed_sha256':observed,'expected_sha256':item['sha256']}),flush=True)
+              if len(raw)!=item['bytes']:
+                  raise AssertionError(f'part size mismatch: {path}: {len(raw)} != {item["bytes"]}')
+              if observed!=item['sha256']:
+                  raise AssertionError(f'part sha mismatch: {path}: {observed} != {item["sha256"]}')
+              chunks.append(raw)
+          combined=b''.join(chunks)
+          combined_sha=hashlib.sha256(combined).hexdigest()
+          print(json.dumps({'combined_bytes':len(combined),'observed_combined_sha256':combined_sha,'expected_combined_sha256':manifest['combined_base64_sha256']}),flush=True)
+          if combined_sha!=manifest['combined_base64_sha256']:
+              raise AssertionError('combined Base64 checksum mismatch')
+          archive=base64.b64decode(combined, validate=True)
+          archive_sha=hashlib.sha256(archive).hexdigest()
+          print(json.dumps({'archive_bytes':len(archive),'expected_archive_bytes':manifest['decoded_tar_gz_bytes'],'observed_archive_sha256':archive_sha,'expected_archive_sha256':manifest['decoded_tar_gz_sha256']}),flush=True)
+          if len(archive)!=manifest['decoded_tar_gz_bytes']:
+              raise AssertionError('archive size mismatch')
+          if archive_sha!=manifest['decoded_tar_gz_sha256']:
+              raise AssertionError('archive checksum mismatch')
+          pathlib.Path('/tmp/dynamic-extension.tar.gz').write_bytes(archive)
+          shutil.rmtree('/tmp/dynamic-extension',ignore_errors=True)
+          pathlib.Path('/tmp/dynamic-extension').mkdir()
+          with tarfile.open('/tmp/dynamic-extension.tar.gz','r:gz') as tf:
+              tf.extractall('/tmp/dynamic-extension', filter='data')
+          manifest_path=pathlib.Path('/tmp/dynamic-extension/MANIFEST.json')
+          inner_sha=hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+          print(json.dumps({'observed_content_manifest_sha256':inner_sha,'expected_content_manifest_sha256':manifest['content_manifest_sha256']}),flush=True)
+          if inner_sha!=manifest['content_manifest_sha256']:
+              raise AssertionError('content manifest checksum mismatch')
+          inner=json.loads(manifest_path.read_text())
+          expected={x['path']:(x['bytes'],x['sha256']) for x in inner['files']}
+          for rel,(size,digest) in expected.items():
+              path=pathlib.Path('/tmp/dynamic-extension')/rel
+              raw=path.read_bytes()
+              observed=hashlib.sha256(raw).hexdigest()
+              print(json.dumps({'file':rel,'observed_bytes':len(raw),'expected_bytes':size,'observed_sha256':observed,'expected_sha256':digest}),flush=True)
+              if len(raw)!=size or observed!=digest:
+                  raise AssertionError(f'content mismatch: {rel}')
+          print(json.dumps({'parts':len(chunks),'files':len(expected),'archive_sha256':archive_sha},sort_keys=True),flush=True)
+          PY
+
+      - name: Compile and run causal self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/research/dynamic_factor_residual_20260725"
+          ext=/tmp/dynamic-extension
+          cp "$root/dynamic_factor_residual.py" "$ext/dynamic_factor_residual.py"
+          cmp --silent "$root/dynamic_factor_residual.py" "$ext/dynamic_factor_residual.py"
+          python -m py_compile "$root/dynamic_factor_residual.py" "$root/test_dynamic_factor_residual.py" "$ext"/*.py
+          PYTHONPATH="$root:$ext" python "$root/dynamic_factor_residual.py" --self-test
+          PYTHONPATH="$root:$ext" python "$ext/rank_rotation.py" --self-test
+          PYTHONPATH="$root:$ext" python "$ext/state_exit.py" --self-test
+          PYTHONPATH="$root:$ext" python "$ext/state_exit_portfolio.py" --self-test
+          PYTHONPATH="$root:$ext" pytest -q "$root/test_dynamic_factor_residual.py" -k 'not later_periods_sealed'
+
+      - name: Verify safety and stage seals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('research/dynamic_factor_residual_20260725')
+          comparison=json.loads((root/'revision5_champion_comparison.json').read_text())
+          result=json.loads((root/'result_summary.json').read_text())
+          assert comparison['2026_opened'] is False
+          assert comparison['orders_submitted'] is False
+          assert comparison['promotion_gate_passed'] is False
+          assert result['dataset']['later_periods_opened'] is False
+          assert result['validation']['2026_opened'] is False
+          assert result['validation']['orders_submitted'] is False
+          print('safety and stage seals passed')
+          PY
+
+      - name: Upload immutable bundle diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamic-factor-bundle-diagnostics
+          path: /tmp/dynamic-bundle-diagnostics.json
+          if-no-files-found: error
+          retention-days: 14
