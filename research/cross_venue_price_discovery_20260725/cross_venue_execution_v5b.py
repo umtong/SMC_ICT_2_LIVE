@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Iterable
 
 import numpy as np
@@ -17,7 +18,7 @@ FixedTradeV5 = base.FixedTradeV5
 AccountTradeV5 = base.AccountTradeV5
 
 _ORIGINAL_ENTRY_CANDIDATES = base._entry_candidates
-_ORIGINAL_FIRST_QUOTE_INDEX = base._first_quote_index
+_ORIGINAL_ACCOUNT_METRICS = base.account_metrics_v5
 _GUARD_PATCHED = False
 
 
@@ -58,12 +59,32 @@ def _entry_candidates_with_funding_guard(
     return guarded
 
 
+def _account_metrics_frozen_contract(
+    trades: list[AccountTradeV5],
+    state: dict[str, float],
+    days: Iterable[str],
+) -> dict:
+    result = _ORIGINAL_ACCOUNT_METRICS(trades, state, days)
+    if not trades:
+        return result
+    frame = pd.DataFrame([asdict(item) for item in trades])
+    by_symbol = frame.groupby("symbol").net_pnl.sum()
+    positive_symbol = by_symbol.clip(lower=0.0)
+    denominator = float(positive_symbol.sum())
+    result["maximum_single_symbol_positive_pnl_share"] = (
+        float(positive_symbol.max() / denominator) if denominator > 0 else 1.0
+    )
+    result["symbol_positive_pnl"] = positive_symbol.to_dict()
+    return result
+
+
 def patch_v5() -> None:
     global _GUARD_PATCHED
     base.patch_v5()
     if not _GUARD_PATCHED:
         base._first_quote_index = _first_quote_index_cached
         base._entry_candidates = _entry_candidates_with_funding_guard
+        base.account_metrics_v5 = _account_metrics_frozen_contract
         _GUARD_PATCHED = True
 
 
@@ -98,4 +119,5 @@ def simulate_account_day_v5(*args, **kwargs):
 
 
 def account_metrics_v5(*args, **kwargs):
+    patch_v5()
     return base.account_metrics_v5(*args, **kwargs)
