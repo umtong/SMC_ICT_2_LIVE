@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0459-EVENT-TAPE-001",
+  "screen_id": "EVENT-TAPE-BURST-FATAL-SCREEN-20260726-V1",
+  "provisional_result_id": "RES-20260726-EVENT-TAPE-FATAL-001",
+  "base_revision": 11,
+  "base_commit": "109a564b8d2b7043769f72c089ff95d30a165eb7",
+  "branch": "agent/r11-event-tape-burst-001",
+  "research_stage": "sparse_pre_2024_fatal_alpha_screen",
+  "rank_eligibility": false,
+  "objective": "Test whether native event-time aggression episodes contain a repeatable after-cost continuation or absorption-reversal markout large enough to justify broader reconstruction before any official 2024 opening.",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "source_concept_contract": {
+    "used_pre_cutoff_sources": [
+      {
+        "type": "youtube",
+        "video_id": "g6WZyHwd7oY",
+        "publisher": "Humbled Trader",
+        "published": "2020-05-13",
+        "role": "time-and-sales sequencing and pace as observable market state"
+      },
+      {
+        "type": "youtube",
+        "video_id": "ZWBslSS1h1A",
+        "publisher": "Orderflows / Michael Valtos",
+        "published": "2021-03-07",
+        "role": "aggressive versus passive participation and order-flow interpretation"
+      },
+      {
+        "type": "youtube",
+        "video_id": "61K5sJVe0Ic",
+        "publisher": "Optimus Futures",
+        "published": "2023-01-06",
+        "role": "absorption as aggressive effort that fails to produce directional price result"
+      },
+      {
+        "type": "youtube_webinar",
+        "title": "5D ORDER FLOW",
+        "publisher": "MBoxWave",
+        "published": "2022-06-09",
+        "role": "tape speed plus bid/offer control; effort-versus-result distinction"
+      }
+    ],
+    "post_cutoff_material_not_used_to_define_historical_rules": [
+      "ljk9BovCSqI",
+      "Tdac8U1qpTU"
+    ],
+    "translation_to_testable_variables": {
+      "pace": "episode total aggressor notional divided by causal episode duration",
+      "control": "absolute signed aggressor-notional imbalance divided by total notional",
+      "result": "direction-adjusted episode price displacement",
+      "effort_result_efficiency": "direction-adjusted displacement divided by log(1 + episode notional)",
+      "absorption": "high effort and control with low efficiency plus end-of-episode retracement",
+      "initiation": "high effort and control with high positive displacement efficiency"
+    }
+  },
+  "data_contract": {
+    "venue": "Bybit",
+    "market": "USDT linear perpetual public historical trades",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "base_url": "https://public.bybit.com/trading",
+    "fit_dates": [
+      "2023-01-15",
+      "2023-03-19",
+      "2023-05-21"
+    ],
+    "development_dates": [
+      "2023-07-16",
+      "2023-09-17",
+      "2023-11-19"
+    ],
+    "later_periods_opened": false,
+    "required_fields": [
+      "timestamp",
+      "side",
+      "size",
+      "price"
+    ],
+    "integrity": "downloaded gzip bytes, line count, CRC read and SHA-256 are recorded"
+  },
+  "causal_event_contract": {
+    "segmentations": [
+      {
+        "name": "q100_cap1000",
+        "quiet_ms": 100,
+        "maximum_duration_ms": 1000
+      },
+      {
+        "name": "q250_cap3000",
+        "quiet_ms": 250,
+        "maximum_duration_ms": 3000
+      }
+    ],
+    "episode_closure": "an episode is available only after the quiet interval has elapsed or the preregistered duration cap is reached",
+    "entry_latency_ms": 100,
+    "entry_mark": "first observed trade at or after decision time plus latency",
+    "markout_horizons_seconds": [
+      10,
+      30,
+      120,
+      300
+    ],
+    "minimum_episode_trades": 5,
+    "one_global_slot": "enforced independently for each candidate and markout horizon across BTCUSDT and ETHUSDT",
+    "same_timestamp_tie_break": "stable symbol ordering from the deterministic event sort"
+  },
+  "hypotheses": [
+    {
+      "family": "continuation",
+      "direction": "dominant aggressor side",
+      "logic": "high notional, high pace, high control, high positive impact efficiency and limited retracement indicate initiative flow whose price response persists"
+    },
+    {
+      "family": "absorption_reversal",
+      "direction": "opposite dominant aggressor side",
+      "logic": "high notional, high pace and control but low impact efficiency with material retracement indicate aggression absorbed by passive liquidity"
+    }
+  ],
+  "frozen_candidate_grid": {
+    "segmentations": 2,
+    "families": 2,
+    "notional_quantiles": [
+      0.9,
+      0.97
+    ],
+    "speed_quantiles": [
+      0.75,
+      0.9
+    ],
+    "minimum_imbalance": [
+      0.7,
+      0.85
+    ],
+    "efficiency_quantiles_per_family": 2,
+    "markout_horizons": 4,
+    "candidate_count": 256,
+    "threshold_learning": "symbol-and-segmentation quantiles are estimated only from the three fit dates"
+  },
+  "cost_and_execution_screen": {
+    "all_in_round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "same_gross_path_replay": true,
+    "historical_bbo_replay": false,
+    "funding": "not material over 10-300 second markout windows and therefore not separately modeled at this fatal-screen stage",
+    "qualification": "fatal alpha screen only; a survivor must receive exact BBO/depth, structural exits, risk sizing, funding and NAV replay before becoming rank eligible"
+  },
+  "development_gate": {
+    "minimum_trades_at_18bp": 60,
+    "mean_net_markout_at_18bp": "> 0",
+    "median_net_markout_at_12bp": "> 0",
+    "total_return_at_24bp": "> 0",
+    "top_10_percent_removed_return_at_18bp": "> 0",
+    "positive_symbol_date_fraction_at_18bp": ">= 2/3",
+    "top_five_positive_trade_share_at_18bp": "<= 50%"
+  },
+  "conditional_next_stage": {
+    "if_zero_survivors": "report reusable negative evidence, keep 2024-2026 sealed and move to a structurally different source/payoff",
+    "if_one_or_more_survivors": "expand reconstruction across 2023 before freezing one family for sequential 2024 evaluation; do not tune on 2024"
+  },
+  "prohibitions": [
+    "no 2024, 2025 or 2026 download in this workflow",
+    "no same-trade or pre-decision entry",
+    "no favorable missing-price fill",
+    "no live credentials or orders",
+    "no promotion into the cumulative strategy ranking from this sparse screen"
+  ]
+}
