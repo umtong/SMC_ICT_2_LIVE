@@ -1,4 +1,4 @@
-name: L2 maker toxicity V2 causal research
+name: L2 maker toxicity V2 direct-source causal research
 
 on:
   pull_request:
@@ -25,7 +25,6 @@ jobs:
       HF_HUB_ETAG_TIMEOUT: "120"
       HF_HUB_DOWNLOAD_TIMEOUT: "600"
       ROOT: ${{ github.workspace }}/research_runs/l2_maker_toxicity_v2
-      SOURCE_ROOT: ${{ github.workspace }}/research_runs/l2_maker_toxicity_v2/source
       CACHE: ${{ github.workspace }}/.cache/l2_maker_toxicity_v2
 
     steps:
@@ -35,64 +34,38 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Reconstruct and verify corrected immutable sources
+      - name: Verify immutable readable research sources
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$SOURCE_ROOT" "$ROOT" "$CACHE"
+          mkdir -p "$ROOT" "$CACHE"
           python - <<'PY'
           from __future__ import annotations
-          import base64, gzip, hashlib, json, traceback
+          import hashlib, json
           from pathlib import Path
 
-          transport=Path('research/l2_maker_toxicity_v1/v2_source')
-          output=Path('research_runs/l2_maker_toxicity_v2/source')
-          diagnostics={'files_present':sorted(p.name for p in transport.glob('*')),'checks':[],'errors':[]}
-          def digest(data:bytes)->str: return hashlib.sha256(data).hexdigest()
-          def require(label:str,actual,expected):
-              ok=actual==expected
-              diagnostics['checks'].append({'label':label,'actual':actual,'expected':expected,'ok':ok})
-              if not ok: diagnostics['errors'].append({'label':label,'actual':actual,'expected':expected})
-          try:
-              manifest=json.loads((transport/'manifest.json').read_text(encoding='utf-8'))
-              for logical in ('run.py','test_run.py','preregistration.json'):
-                  spec=manifest[logical]
-                  chunks=[]
-                  for part in spec['parts']:
-                      path=transport/part['name']
-                      require(f'{logical}:{part["name"]}:exists',path.exists(),True)
-                      if not path.exists(): continue
-                      payload=path.read_bytes()
-                      require(f'{logical}:{part["name"]}:bytes',len(payload),part['bytes'])
-                      require(f'{logical}:{part["name"]}:sha256',digest(payload),part['sha256'])
-                      chunks.append(payload)
-                  encoded=b''.join(chunks)
-                  require(f'{logical}:base64_bytes',len(encoded),spec['base64_bytes'])
-                  require(f'{logical}:base64_sha256',digest(encoded),spec['base64_sha256'])
-                  if diagnostics['errors']: continue
-                  compressed=base64.b64decode(encoded,validate=True)
-                  require(f'{logical}:gzip_bytes',len(compressed),spec['gzip_bytes'])
-                  require(f'{logical}:gzip_sha256',digest(compressed),spec['gzip_sha256'])
-                  raw=gzip.decompress(compressed)
-                  require(f'{logical}:raw_bytes',len(raw),spec['raw_bytes'])
-                  require(f'{logical}:raw_sha256',digest(raw),spec['raw_sha256'])
-                  if not diagnostics['errors']:
-                      (output/logical).write_bytes(raw)
-              if diagnostics['errors']:
-                  raise RuntimeError(f"source reconstruction mismatches: {diagnostics['errors']}")
-              (output/'transport_manifest.json').write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding='utf-8')
-              compile((output/'run.py').read_bytes(),str(output/'run.py'),'exec')
-              compile((output/'test_run.py').read_bytes(),str(output/'test_run.py'),'exec')
-              diagnostics['status']='PASS'
-          except Exception as exc:
-              diagnostics['status']='FAIL'
-              diagnostics['exception']=repr(exc)
-              diagnostics['traceback']=traceback.format_exc()
-              raise
-          finally:
-              Path('research_runs/l2_maker_toxicity_v2/reconstruction_diagnostics.json').write_text(json.dumps(diagnostics,indent=2,sort_keys=True),encoding='utf-8')
-              print(json.dumps(diagnostics,sort_keys=True))
+          expected = {
+            "research/l2_maker_toxicity_v1/run.py": {"bytes": 42056, "sha256": "ae79c0afb130cb8eef806cc0c24d7ea6aa8719f3133ccb2e3b8da8dfed51a168"},
+            "research/l2_maker_toxicity_v1/test_run.py": {"bytes": 9265, "sha256": "b9f1684d1140ebc2f6c58ec908f112452b9b064049c41a61994f6bfb2abe7e66"},
+            "research/l2_maker_toxicity_v1/preregistration.json": {"bytes": 4449, "sha256": "3fcb7e7bd0653f50345af12c302328a877bd39c146190dd2f2c4c5d211dde457"},
+          }
+          observed = {}
+          for name, spec in expected.items():
+              path = Path(name)
+              payload = path.read_bytes()
+              actual = {"bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
+              observed[name] = actual
+              if actual != spec:
+                  raise RuntimeError(f"immutable source mismatch {name}: {actual} != {spec}")
+          compile(Path("research/l2_maker_toxicity_v1/run.py").read_bytes(), "run.py", "exec")
+          compile(Path("research/l2_maker_toxicity_v1/test_run.py").read_bytes(), "test_run.py", "exec")
+          Path("research_runs/l2_maker_toxicity_v2/source_verification.json").write_text(
+              json.dumps({"expected": expected, "observed": observed, "status": "PASS"}, indent=2, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(observed, sort_keys=True))
           PY
+          cp research/l2_maker_toxicity_v1/preregistration.json "$ROOT/preregistration.json"
 
       - name: Install fixed research environment
         shell: bash
@@ -112,25 +85,25 @@ jobs:
           import numpy, pandas, pyarrow, sklearn, huggingface_hub
           from pathlib import Path
           payload={
-            'python':sys.version,'platform':platform.platform(),'machine':platform.machine(),
-            'numpy':numpy.__version__,'pandas':pandas.__version__,'pyarrow':pyarrow.__version__,
-            'scikit_learn':sklearn.__version__,'huggingface_hub':huggingface_hub.__version__,
-            'orders_submitted':False,'paper_live_enabled':False,'terminal_dates_opened':False,
+            "python":sys.version,"platform":platform.platform(),"machine":platform.machine(),
+            "numpy":numpy.__version__,"pandas":pandas.__version__,"pyarrow":pyarrow.__version__,
+            "scikit_learn":sklearn.__version__,"huggingface_hub":huggingface_hub.__version__,
+            "orders_submitted":False,"paper_live_enabled":False,"terminal_dates_opened":False,
           }
-          Path('research_runs/l2_maker_toxicity_v2/environment.json').write_text(json.dumps(payload,indent=2,sort_keys=True))
+          Path("research_runs/l2_maker_toxicity_v2/environment.json").write_text(json.dumps(payload,indent=2,sort_keys=True))
           PY
 
-      - name: Run corrected causality and execution regression tests
+      - name: Run causality and execution regression tests
         shell: bash
         run: |
           set -euo pipefail
-          pytest -q "$SOURCE_ROOT/test_run.py" 2>&1 | tee "$ROOT/unit_tests.log"
+          pytest -q research/l2_maker_toxicity_v1/test_run.py 2>&1 | tee "$ROOT/unit_tests.log"
 
       - name: Run preregistered discovery and validation
         shell: bash
         run: |
           set -euo pipefail
-          python "$SOURCE_ROOT/run.py" --output "$ROOT" --cache "$CACHE" 2>&1 | tee "$ROOT/run.log"
+          python research/l2_maker_toxicity_v1/run.py --output "$ROOT" --cache "$CACHE" 2>&1 | tee "$ROOT/run.log"
 
       - name: Assert safety and evidence status
         if: always()
@@ -140,17 +113,17 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          root=Path('research_runs/l2_maker_toxicity_v2')
-          payload={'orders_submitted':False,'paper_live_enabled':False,'terminal_dates_opened':False,'v1_evidence_accepted':False}
-          summary=root/'summary.json'
+          root=Path("research_runs/l2_maker_toxicity_v2")
+          payload={"orders_submitted":False,"paper_live_enabled":False,"terminal_dates_opened":False,"v1_evidence_accepted":False}
+          summary=root/"summary.json"
           if summary.exists():
-              value=json.loads(summary.read_text(encoding='utf-8'))
-              assert not value.get('terminal_dates_opened',False)
-              assert not value.get('orders_submitted',False)
-              assert not value.get('paper_live_enabled',False)
-              payload.update({k:value.get(k) for k in ('status','candidate_count','calibration_gate_count','validation_gate_count','target_met')})
-          payload['summary_present']=summary.exists()
-          (root/'wrapper_status.json').write_text(json.dumps(payload,indent=2,sort_keys=True),encoding='utf-8')
+              value=json.loads(summary.read_text(encoding="utf-8"))
+              assert not value.get("terminal_dates_opened",False)
+              assert not value.get("orders_submitted",False)
+              assert not value.get("paper_live_enabled",False)
+              payload.update({k:value.get(k) for k in ("status","candidate_count","calibration_gate_count","validation_gate_count","target_met")})
+          payload["summary_present"]=summary.exists()
+          (root/"wrapper_status.json").write_text(json.dumps(payload,indent=2,sort_keys=True),encoding="utf-8")
           print(json.dumps(payload,sort_keys=True))
           PY
 
