@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260725-2315-XSEC-POSITIONING-001",
+  "base_revision": 7,
+  "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "SOLUSDT", "DOGEUSDT", "LINKUSDT"],
+  "warmup_start": "2021-10-01T00:00:00Z",
+  "development": ["2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+  "selection": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+  "validation": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+  "families": [
+    "oi_price_alignment_continuation",
+    "oi_price_alignment_reversal",
+    "oi_price_divergence_continuation",
+    "oi_price_divergence_reversal",
+    "oi_shock_continuation",
+    "oi_shock_reversal",
+    "top_position_vs_account_continuation",
+    "top_position_vs_account_reversal",
+    "top_vs_crowd_continuation",
+    "top_vs_crowd_reversal",
+    "taker_position_disagreement_continuation",
+    "deleveraging_reversal"
+  ],
+  "basket_sizes": [1, 2],
+  "holding_hours": [2, 4, 8],
+  "min_abs_scores": [0.75, 1.0, 1.25],
+  "cost_bps": [12, 18, 24],
+  "min_prior_24h_quote_volume": 50000000.0,
+  "min_cross_section": 6,
+  "decision_minute": 0,
+  "entry_delay_minutes": 5,
+  "rolling_window_samples": 2016,
+  "rolling_min_samples": 576,
+  "initial_gate": {
+    "minimum_events": 500,
+    "minimum_leg_trades": 2000,
+    "maximum_drawdown_12bps": 0.25,
+    "minimum_profit_factor_12bps": 1.02,
+    "require_positive_growth_at_bps": [12, 18],
+    "require_positive_top10_removed_at_bps": 12
+  },
+  "selection_gate": {
+    "minimum_events": 500,
+    "maximum_drawdown_12bps": 0.25,
+    "require_positive_growth_at_bps": [12, 18],
+    "require_positive_top10_removed_at_bps": 12
+  },
+  "portfolio": {
+    "gross_notional": 1.0,
+    "long_gross": 0.5,
+    "short_gross": 0.5,
+    "account_nav_start": 1.0,
+    "orders_submitted": false
+  }
+}
