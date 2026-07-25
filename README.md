@@ -13,7 +13,9 @@
 
 ## Champion
 
-Champion은 목표 달성 인증이 아니라 현재 가장 우수한 hard-valid 전략 또는 전략 포트폴리오 후보다. 검증 단계, 목표 달성 여부, 목표 격차와 실사용 가능성은 별도로 기록한다. 판정 가능한 새 전략 결과는 현재 Champion과 비교하며, 더 우수하면 즉시 교체한다.
+Champion은 목표 달성 인증이 아니라 현재 가장 우수한 hard-valid 전략 또는 전략 포트폴리오 후대를 가리키는 순위 포인터다. 검증 단계, 목표 달성 여부, 목표 격차와 실사용 가능성은 별도로 기록한다. 판정 가능한 새 전략 결과는 현재 Champion과 비교하며, 더 우수하면 포인터를 즉시 교체한다.
+
+Champion 지위는 연구 우선권, 추가 검증 의무, 보호 예산 또는 기본 개선 경로를 부여하지 않는다. 작업은 Champion 주변 개선 여부가 아니라 전체 목표 달성 가능성과 정보가치로 선택한다. 판정 가능한 결과는 Champion 여부와 무관하게 일반 Result 기록과 버전관리로 남으므로, 포인터 교체 때 별도 백업 절차를 반복하지 않는다.
 
 ## 작업 흐름
 
@@ -21,10 +23,11 @@ Champion은 목표 달성 인증이 아니라 현재 가장 우수한 hard-valid
 2. 관련된 기존 작업과 산출물만 검색한다.
 3. 중복 비용이 크거나 재사용 가치가 높은 작업에만 Work Claim을 만든다.
 4. 기존 자료·데이터·차트·코드·결과·검증 증거를 재사용한다.
-5. 후보 가치에 비례해 단계형 검증을 적용한다.
-6. 판정 가능한 전략 결과를 현재 Champion과 비교한다.
-7. 공용·재사용 가능한 변경은 브랜치·검증·PR로 반영하고, 중요한 체크포인트는 Run Report로 남긴다.
-8. 상태 변경 전 최신 revision과 열린 PR을 다시 확인한다.
+5. 후보 가치와 의사결정 중요도에 비례해 단계형 검증을 적용한다.
+6. 가장 높은 목표 기여도와 정보가치를 가진 작업을 수행한다.
+7. 판정 가능한 전략 결과가 생기면 현재 Champion과 비교하여 순위 포인터를 갱신한다.
+8. 공용·재사용 가능한 변경은 브랜치·검증·PR로 반영하고, 중요한 체크포인트는 Run Report로 남긴다.
+9. 상태 변경 전 최신 revision과 열린 PR을 다시 확인한다.
 
 ## 저장 위치
 
@@ -56,4 +59,4 @@ python scripts/init_project.py \
 
 ## 현재 상태
 
-`ACTIVE_RESEARCH / revision 5`: 현 research Champion은 `CHAMPION-20260725-HIGH-RESISTANCE-SWEEP-C232AE43`이며, stage는 `EXPLORATORY`, target status는 `NOT_MET`이다. 이 후보는 현재 비교 기준일 뿐 검증 완료나 실사용 가능성을 의미하지 않는다.
+`ACTIVE_RESEARCH / revision 6`: 현 research Champion은 `CHAMPION-20260725-HIGH-RESISTANCE-SWEEP-C232AE43`이며, stage는 `EXPLORATORY`, target status는 `NOT_MET`이다. 이 후보는 현재 순위 포인터일 뿐 검증 완료, 실사용 가능성 또는 연구 우선순위를 의미하지 않는다.
