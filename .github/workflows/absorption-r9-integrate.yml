@@ -1,0 +1,74 @@
+name: Integrate absorption-flow result onto revision 9
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/absorption-r9-integrate.trigger'
+      - '.github/workflows/absorption-r9-integrate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r9-absorption-register-20260726
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed verification environment
+        run: |
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install 'numpy==2.3.5' 'pandas==2.2.3' 'pyarrow==25.0.0' 'pytest==8.3.4'
+      - name: Copy exact research source and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_ref=origin/agent/absorption-flow-benchmark-r7-final-20260725
+          git fetch origin main agent/absorption-flow-benchmark-r7-final-20260725 agent/absorption-flow-benchmark-20260725
+          git checkout "$source_ref" -- .github/workflows/absorption-flow-benchmark-r7.yml research/absorption_flow_benchmark_r7
+          root=research/absorption_flow_benchmark_r7
+          python "$root/reconstruct.py"
+          mkdir -p /tmp/abs-base
+          git archive origin/agent/absorption-flow-benchmark-20260725 research/absorption_flow_benchmark_v1 | tar -x -C /tmp/abs-base
+          python /tmp/abs-base/research/absorption_flow_benchmark_v1/reconstruct.py
+          base=/tmp/abs-base/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
+          echo 'e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  '"$base" | sha256sum -c -
+          cp "$base" "$root/reconstructed/research/absorption_flow_benchmark.py"
+          python -m py_compile "$root"/reconstructed/research/*.py "$root"/reconstructed/tests/*.py
+          pytest -q "$root/reconstructed/tests/test_dollar_bar_absorption_v2.py" "$root/reconstructed/tests/test_dollar_bar_fast_equivalence.py"
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('research/absorption_flow_benchmark_r7')
+          result=json.loads((root/'RESULT.json').read_text())
+          att=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          assert result['result_id']=='RES-20260725-ABS-FLOW-001'
+          assert result['baseline_screen']['candidate_count']==216
+          assert result['dollar_bar_screen']['candidate_count']==324
+          assert result['ranking_decision']['rank']==2
+          assert result['ranking_candidate']['base']['trades']==184
+          assert result['ranking_candidate']['stress_2x']['trades']==183
+          assert att['status']=='PASS'
+          assert not result['orders_submitted'] and not result['paper_or_live_started']
+          print('revision-9 absorption result checks passed')
+          PY
+          python scripts/validate_project.py
+          python -m pytest -q
+          python scripts/build_context_bundle.py
+      - name: Commit integrated source and remove one-shot trigger
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/absorption-r9-integrate.trigger .github/workflows/absorption-r9-integrate.yml
+          git add .github/workflows/absorption-flow-benchmark-r7.yml research/absorption_flow_benchmark_r7 control/current-state.md control/ranking.json control/result-registry.jsonl control/validation-cache.jsonl control/work-claims.csv
+          git commit -m 'Register absorption-flow result and revision-9 rank two'
+          git push origin HEAD:agent/r9-absorption-register-20260726
