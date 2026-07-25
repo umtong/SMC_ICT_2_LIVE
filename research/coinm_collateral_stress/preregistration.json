@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260725-2320-COINM-COLLATERAL-001",
+  "objective": "Test whether crypto-collateral stress in Binance COIN-M perpetuals transmits to USD-M price continuation or exhaustion reversal after realistic costs and funding.",
+  "base_revision": 8,
+  "symbols": {
+    "BTC": {"coinm": "BTCUSD_PERP", "usdm": "BTCUSDT"},
+    "ETH": {"coinm": "ETHUSD_PERP", "usdm": "ETHUSDT"}
+  },
+  "data": {
+    "provider": "Binance Vision official monthly archives",
+    "interval": "5m",
+    "download_start": "2021-01-01T00:00:00Z",
+    "development_a": ["2021-07-01T00:00:00Z", "2022-01-01T00:00:00Z"],
+    "development_b": ["2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "selection": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "validation": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "sealed_after": "2025-01-01T00:00:00Z",
+    "checksum_required": true,
+    "gap_fill": false
+  },
+  "information_boundary": [
+    "All stress and confirmation features use completed five-minute bars only.",
+    "Rolling means, standard deviations and extrema exclude the current bar where used as historical reference.",
+    "Funding features use only funding settlements timestamped no later than the completed decision bar.",
+    "Entry occurs no earlier than the next five-minute open after confirmation.",
+    "Validation and sealed periods are not read unless the prior registered gate passes."
+  ],
+  "mechanisms": [
+    "COLLATERAL_STRESS_CONTINUATION",
+    "COLLATERAL_STRESS_EXHAUSTION"
+  ],
+  "grid": {
+    "shock_z": [1.5, 2.0],
+    "coinm_volume_z": [1.0, 2.0],
+    "relative_flow_z": [1.0, 2.0],
+    "relative_premium_z": [0.5, 1.0],
+    "confirmation_bars": [1, 3],
+    "stop_lookback_bars": [12, 24],
+    "target_r": [2.0, 3.0],
+    "exit_mode": ["BARRIER", "STATE"]
+  },
+  "execution": {
+    "trade_market": "USD-M perpetual",
+    "cost_profiles_round_trip_bps": [12.0, 18.0, 24.0],
+    "risk_fraction": 0.01,
+    "maximum_gross_leverage": 5.0,
+    "stop_buffer_atr": 0.10,
+    "minimum_cost_adjusted_rr": 1.20,
+    "same_bar_ordering": "STOP_FIRST",
+    "gap_stop": "ADVERSE_OPEN_PLUS_COST",
+    "global_positions": 1,
+    "end_of_data_forced_exit": false,
+    "funding": "actual USD-M funding at event timestamp using official mark open with contract-open fallback only"
+  },
+  "development_gate": {
+    "minimum_trades_each_half": 40,
+    "minimum_profit_factor_each_half": 1.20,
+    "positive_sum_r_each_half": true,
+    "maximum_top5_positive_share_each_half": 0.50,
+    "minimum_positive_month_fraction_each_half": 0.50,
+    "positive_at_18bps_each_half": true,
+    "unresolved_positions": 0
+  },
+  "selection_gate": {
+    "minimum_trades": 60,
+    "minimum_profit_factor": 1.20,
+    "positive_sum_r": true,
+    "positive_at_18bps": true,
+    "maximum_top5_positive_share": 0.50
+  },
+  "authority": {"paper": false, "live": false, "credentials": false}
+}

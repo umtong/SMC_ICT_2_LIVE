@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "amendment_id": "COINM-COLLATERAL-AMENDMENT-001",
+  "claim_id": "CLM-20260725-2320-COINM-COLLATERAL-001",
+  "status": "PRE_OUTCOME_MECHANICAL_AND_CAUSAL_FIX",
+  "strategy_pnl_observed_before_fix": false,
+  "reason": [
+    "The first implementation would have counted the declared round-trip cost twice by shifting entry/exit prices and adding the same fee terms again.",
+    "The raw target inherited the cost-adjusted entry and would therefore move when the cost profile changed.",
+    "Funding fallback used the last prior mark rather than the exact same-timestamp contract open.",
+    "Rolling features could cross a source gap, and the first workflow would download later-stage archives before prior gates passed.",
+    "The 5x leverage cap was declared but not applied to account NAV returns."
+  ],
+  "unchanged": [
+    "economic hypotheses",
+    "512 policy cells",
+    "development, selection and validation intervals",
+    "event thresholds",
+    "structural stop definitions",
+    "2R and 3R raw target multiples",
+    "global one-position constraint",
+    "development and selection gates"
+  ],
+  "fixed_contract": {
+    "cost": "the declared all-in round-trip bps is split once between entry and exit",
+    "target": "raw target is fixed from the raw next-open price and raw structural stop before applying cost",
+    "funding": "official mark open at the exact settlement timestamp, with exact contract-open fallback only; no prior or forward fill",
+    "gaps": "rolling states restart at every non-five-minute source gap",
+    "stage_seal": "2023 and 2024 archives are not downloaded or read unless the preceding registered gate passes",
+    "account_nav": "actual per-trade risk is min(1% NAV, 5x leverage times unit risk/entry)"
+  },
+  "paper_live_authority": false,
+  "created_at": "2026-07-25T23:45:00+09:00"
+}
