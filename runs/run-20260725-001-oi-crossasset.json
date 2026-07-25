@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "worker_id": "worker-20260725-1507-oi",
+  "claim_id": "claim-20260725-001-btc-oi-crossasset",
+  "base_revision": 3,
+  "status": "REPORTED",
+  "started_at": "2026-07-25T15:07:37+09:00",
+  "ended_at": "2026-07-25T15:33:00+09:00",
+  "objective_fingerprint": "18be971a3b55e75173d6bbc81fc14c491a43443968b50aa1aa109284ac8aee82",
+  "scope_fingerprint": "94e1d87f80ebd9b6443ebeb58564356e7959d148793e75ed4364f913db7e5d56",
+  "dependency_fingerprint": "394466e12a04e46df5fe4c4be8113c5cdc1866123d4df534bb877434c41c6f8d",
+  "result_id": "result-20260725-001-btc-oi-crossasset-invalid",
+  "reused_source_ids": [],
+  "reused_dataset_ids": [
+    "dataset:binance-usdm-btceth-5m-2020-12_2026-06",
+    "dataset:binance-usdm-btc-positioning-2021_2025"
+  ],
+  "reused_result_ids": [],
+  "overlap_reason": "No active Work Claim or fresh strategy result overlapped at claim start.",
+  "completed_work": [
+    "Audited official Binance archive manifests and BTC/ETH five-minute continuity.",
+    "Built a causal price and positioning panel using only metrics timestamped strictly before decision time.",
+    "Screened 128 direct OI-shock and order-flow candidates.",
+    "Screened 256 shock-to-CISD/reclaim confirmation candidates."
+  ],
+  "validated_metrics": {
+    "direct_candidates": 128,
+    "direct_eligible": 0,
+    "sequential_candidates": 256,
+    "sequential_eligible": 0,
+    "validation_2024_opened": false,
+    "holdout_2025_opened": false
+  },
+  "drive_run_report": "https://docs.google.com/document/d/157dlgLCPN9qJZSXbPrVOXsHFKJUu-Rax1Ik2BP-6GsE/edit",
+  "next_action": "Open a new claim for exact BTC/ETH funding-settlement mechanics using verified fundingRate, premiumIndexKlines, and five-minute klines; test carry, unwind, continuation, and relative asymmetry."
+}
