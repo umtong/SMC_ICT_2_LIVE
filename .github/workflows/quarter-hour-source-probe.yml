@@ -1,0 +1,108 @@
+name: Quarter-hour official source probe
+
+on:
+  push:
+    branches:
+      - agent/r10-quarter-hour-orderflow-001
+    paths:
+      - "research/quarter_hour_orderflow_20260726/**"
+      - ".github/workflows/quarter-hour-source-probe.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/quarter_hour_orderflow_20260726/**"
+      - ".github/workflows/quarter-hour-source-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quarter-hour-source-probe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "requests==2.32.4" "pytest==8.3.4"
+
+      - name: Verify frozen source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/quarter_hour_orderflow_20260726
+          mkdir -p research_runs/quarter_hour_orderflow_20260726/source_probe
+          python -m py_compile "$root/source_probe.py" "$root/test_source_probe.py"
+          PYTHONPATH="$root" pytest -q "$root/test_source_probe.py" \
+            2>&1 | tee research_runs/quarter_hour_orderflow_20260726/source_probe/tests.log
+          PYTHONPATH="$root" python "$root/source_probe.py" \
+            --self-test \
+            --output research_runs/quarter_hour_orderflow_20260726/source_probe/self_test \
+            --cache "$RUNNER_TEMP/qhour-source-cache" \
+            2>&1 | tee research_runs/quarter_hour_orderflow_20260726/source_probe/self_test.log
+          python scripts/validate_project.py
+          sha256sum \
+            "$root/preregistration.json" \
+            "$root/README.md" \
+            "$root/source_probe.py" \
+            "$root/test_source_probe.py" \
+            > research_runs/quarter_hour_orderflow_20260726/source_probe/INPUT_SHA256SUMS.txt
+
+      - name: Probe six-symbol official archives
+        shell: bash
+        run: |
+          set +e
+          root=research/quarter_hour_orderflow_20260726
+          PYTHONPATH="$root" python "$root/source_probe.py" \
+            --date 2022-01-01 \
+            --output research_runs/quarter_hour_orderflow_20260726/source_probe/result \
+            --cache "$RUNNER_TEMP/qhour-source-cache" \
+            2>&1 | tee research_runs/quarter_hour_orderflow_20260726/source_probe/probe.log
+          echo ${PIPESTATUS[0]} > research_runs/quarter_hour_orderflow_20260726/source_probe/PROBE_EXIT.txt
+          exit 0
+
+      - name: Record immutable output checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/quarter_hour_orderflow_20260726/source_probe
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quarter-hour-source-probe-${{ github.sha }}
+          path: research_runs/quarter_hour_orderflow_20260726/source_probe
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Enforce source usability
+        shell: bash
+        run: |
+          test "$(cat research_runs/quarter_hour_orderflow_20260726/source_probe/PROBE_EXIT.txt)" = 0
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('research_runs/quarter_hour_orderflow_20260726/source_probe/result/SOURCE_PROBE.json').read_text())
+          assert result['all_required_sources_usable'] is True
+          assert result['strategy_or_pnl_computed'] is False
+          assert result['selection_opened'] is False
+          assert result['validation_opened'] is False
+          assert result['2025_2026_opened'] is False
+          print('official source probe passed')
+          PY
