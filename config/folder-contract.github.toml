@@ -1,0 +1,271 @@
+schema_version = 2
+
+[[folder]]
+id = "gh.github"
+system = "github"
+path = ".github"
+canonical_role = "repository_automation"
+purpose = "PR·Issue·CI로 반복 규칙을 자동 강제"
+inputs = ["repository event"]
+outputs = ["검증 상태와 구조화된 review"]
+consumers = ["기여자·CI"]
+use_when = "자동 강제가 필요한 반복 행동"
+done_when = "실제 event에서 증거 생성"
+retention = "사용되지 않는 workflow/template 제거"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.config"
+system = "github"
+path = "config"
+canonical_role = "public_configuration"
+purpose = "도구가 읽는 공개 프로젝트 계약"
+inputs = ["목표·평가·저장·구조 설정"]
+outputs = ["machine-readable config"]
+consumers = ["script·worker"]
+use_when = "여러 도구가 같은 설정을 써야 함"
+done_when = "validator와 소비자가 참조"
+retention = "사용되지 않는 key 제거"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.instructions"
+system = "github"
+path = "instructions"
+canonical_role = "runtime_instructions"
+purpose = "새 실행이 따를 단일 규칙"
+inputs = ["목표·기본조건·행동"]
+outputs = ["직접 실행 규칙"]
+consumers = ["Project·worker"]
+use_when = "모든 실행에 적용할 규칙"
+done_when = "행동을 직접 바꾸고 배경설명 없음"
+retention = "canonical file 하나 유지"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.control"
+system = "github"
+path = "control"
+canonical_role = "durable_small_state"
+purpose = "작고 diff 가능한 지속 상태와 index"
+inputs = ["Run Report·검증된 PR·Drive live state"]
+outputs = ["state·Champion·claim·result·validation"]
+consumers = ["새 실행·상태 갱신"]
+use_when = "채팅을 넘어 작은 사실 유지"
+done_when = "stable ID/revision/증거 연결"
+retention = "상세·대형 정보는 Drive/archive"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.data"
+system = "github"
+path = "data"
+canonical_role = "small_data_metadata"
+purpose = "Drive 자료를 찾는 registry와 manifest"
+inputs = ["source·dataset·entity metadata"]
+outputs = ["stable ID·checksum·Drive path"]
+consumers = ["검색·실험·감사"]
+use_when = "대형 bytes 없이 provenance 버전 관리"
+done_when = "모든 지속 자산 검색 가능"
+retention = "원시 대형 bytes 저장 금지"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.docs"
+system = "github"
+path = "docs"
+canonical_role = "operating_documentation"
+purpose = "구조·수명주기·절차 설명"
+inputs = ["승인된 설계·감사 결과"]
+outputs = ["human reference"]
+consumers = ["유지관리자·필요한 실행"]
+use_when = "runtime 규칙보다 자세한 절차 필요"
+done_when = "trigger·입력·출력·완료·정리 명시"
+retention = "낡은 설계는 archive"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.prompts"
+system = "github"
+path = "prompts"
+canonical_role = "reusable_task_procedures"
+purpose = "반복 작업의 짧은 절차"
+inputs = ["runtime 규칙·task 절차"]
+outputs = ["일관된 실행 순서"]
+consumers = ["worker"]
+use_when = "반복 작업의 누락 방지"
+done_when = "정의된 artifact 생성"
+retention = "unused prompt 제거"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.research"
+system = "github"
+path = "research"
+canonical_role = "small_research_records"
+purpose = "가설·실험·보고·무효 지식 보존"
+inputs = ["source ID·dataset ID·증거"]
+outputs = ["재사용 연구 기록"]
+consumers = ["실험·Champion 비교"]
+use_when = "작고 지속적인 연구 객체"
+done_when = "provenance·조건·결정 연결"
+retention = "큰 artifacts는 Drive"
+empty_policy = "ready_on_demand"
+required = true
+
+[[folder]]
+id = "gh.runs"
+system = "github"
+path = "runs"
+canonical_role = "small_run_reports"
+purpose = "실행 체크포인트 보존"
+inputs = ["완료/시간제한 실행"]
+outputs = ["append-only Run Report"]
+consumers = ["상태 갱신·재개"]
+use_when = "실행 결과가 작고 review 가치 있음"
+done_when = "claim·증거·다음 작업 연결"
+retention = "수정 대신 supersede"
+empty_policy = "ready_on_demand"
+required = true
+
+[[folder]]
+id = "gh.schemas"
+system = "github"
+path = "schemas"
+canonical_role = "machine_contracts"
+purpose = "구조화 기록 필수 필드 보장"
+inputs = ["record semantics"]
+outputs = ["JSON schema"]
+consumers = ["writer·validator"]
+use_when = "둘 이상이 만드는 기록"
+done_when = "validator가 사용"
+retention = "미사용 schema 제거"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.scripts"
+system = "github"
+path = "scripts"
+canonical_role = "deterministic_automation"
+purpose = "반복 기계작업을 재현 가능하게 자동화"
+inputs = ["config·registry·files"]
+outputs = ["등록·검증·bundle"]
+consumers = ["CI·worker"]
+use_when = "반복 수작업 제거"
+done_when = "명확한 I/O와 test/caller"
+retention = "caller 없는 script 제거"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.templates"
+system = "github"
+path = "templates"
+canonical_role = "record_templates"
+purpose = "반복 기록 필드 누락 방지"
+inputs = ["schema·layout"]
+outputs = ["일관된 초안"]
+consumers = ["script·worker"]
+use_when = "같은 기록 반복 생성"
+done_when = "schema/action과 연결"
+retention = "미사용 template 제거"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.tests"
+system = "github"
+path = "tests"
+canonical_role = "regression_checks"
+purpose = "반복 실패 자동 탐지"
+inputs = ["invariant·code"]
+outputs = ["pass/fail evidence"]
+consumers = ["CI"]
+use_when = "자동 탐지 가능한 실패"
+done_when = "금지 행동에서 fail"
+retention = "보호 대상과 함께 유지"
+empty_policy = "must_not_be_empty"
+required = true
+
+[[folder]]
+id = "gh.data.raw"
+system = "github"
+path = "data/raw"
+canonical_role = "local_raw_staging"
+purpose = "등록 전 local bytes 임시 보관"
+inputs = ["새 raw file"]
+outputs = ["Drive 등록 또는 삭제"]
+consumers = ["source/dataset intake"]
+use_when = "local transform/upload에 bytes 필요"
+done_when = "claim 종료 전 disposition"
+retention = "임시; canonical 금지"
+empty_policy = "prefer_empty"
+required = false
+
+[[folder]]
+id = "gh.data.cache"
+system = "github"
+path = "data/cache"
+canonical_role = "rebuildable_cache"
+purpose = "비싼 재생성 중간값 cache"
+inputs = ["registered input·transform"]
+outputs = ["fingerprinted cache"]
+consumers = ["local experiment"]
+use_when = "재생성 비용이 큼"
+done_when = "삭제해도 증거 손실 없음"
+retention = "dependency 변경/비활성 시 삭제"
+empty_policy = "prefer_empty"
+required = false
+
+[[folder]]
+id = "gh.data.downloads"
+system = "github"
+path = "data/downloads"
+canonical_role = "download_staging"
+purpose = "download 후 분류·hash 전 임시 보관"
+inputs = ["downloaded file"]
+outputs = ["등록·quarantine·삭제"]
+consumers = ["intake"]
+use_when = "tool이 local destination 필요"
+done_when = "claim에 최종 disposition"
+retention = "임시; 완료 후 비움"
+empty_policy = "prefer_empty"
+required = false
+
+[[folder]]
+id = "gh.artifacts.local"
+system = "github"
+path = "artifacts/local"
+canonical_role = "local_artifact_staging"
+purpose = "대형 산출물 업로드 전 임시 보관"
+inputs = ["experiment output"]
+outputs = ["Drive artifact 또는 삭제"]
+consumers = ["result registration"]
+use_when = "Git commit 부적합 output 생성"
+done_when = "result/run에 연결"
+retention = "임시; canonical 금지"
+empty_policy = "prefer_empty"
+required = false
+
+[[folder]]
+id = "gh.dist"
+system = "github"
+path = "dist"
+canonical_role = "generated_context"
+purpose = "hot context 생성물 보관"
+inputs = ["현재 작은 state"]
+outputs = ["context bundle·manifest"]
+consumers = ["Project refresh"]
+use_when = "material revision context 생성"
+done_when = "manifest hash 완전"
+retention = "재생성 가능; 정본 금지"
+empty_policy = "prefer_absent"
+required = false
