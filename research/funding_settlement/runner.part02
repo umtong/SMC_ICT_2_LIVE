@@ -1,0 +1,155 @@
+        funding["next_event_time"] = funding.event_time.shift(-1)
+        funding["next_funding_rate"] = funding.funding_rate.shift(-1)
+
+        prev_premium = p.premium_close.shift(1)
+        funding["premium_pre"] = prev_premium.reindex(pd.DatetimeIndex(funding.event_time)).to_numpy()
+        funding["premium_z"] = past_z(funding.premium_pre)
+        funding["settlement_price"] = p.open.reindex(pd.DatetimeIndex(funding.event_time)).to_numpy()
+        funding["symbol"] = symbol
+        panels[symbol] = p
+        panels[symbol].attrs["funding"] = funding.reset_index(drop=True)
+
+        gaps = p.index.to_series().diff().dropna()
+        nonstandard = int((gaps != pd.Timedelta(minutes=5)).sum())
+        panel_manifests.append({
+            "symbol": symbol,
+            "panel_rows": int(len(p)),
+            "panel_start": str(p.index.min()),
+            "panel_end": str(p.index.max()),
+            "funding_events": int(len(funding)),
+            "nonstandard_gaps": nonstandard,
+            "median_calc_delay_ms": float(funding.calc_delay_ms.median()),
+        })
+    return panels, source_records, panel_manifests
+
+
+def build_event_table(panels: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    fs = {}
+    for symbol, p in panels.items():
+        f = p.attrs["funding"].copy()
+        f = f.set_index("event_time")
+        fs[symbol] = f
+    common = fs["BTCUSDT"].index.intersection(fs["ETHUSDT"].index)
+    btc = fs["BTCUSDT"].reindex(common)
+    eth = fs["ETHUSDT"].reindex(common)
+    spread = btc.funding_rate - eth.funding_rate
+    spread_z = past_z(spread)
+    rows = []
+    for symbol in SYMBOLS:
+        f = fs[symbol].reindex(common).copy()
+        f["spread_z"] = spread_z
+        f["btc_funding_z"] = btc.funding_z
+        f["eth_funding_z"] = eth.funding_z
+        f["event_time"] = common
+        f["symbol"] = symbol
+        rows.append(f.reset_index(drop=True))
+    out = pd.concat(rows, ignore_index=True)
+    out = out.sort_values(["event_time", "symbol"]).reset_index(drop=True)
+    out["event_id"] = np.arange(len(out), dtype=np.int64)
+    return out
+
+
+def add_confirmation(events: pd.DataFrame, panels: dict[str, pd.DataFrame], wait: int) -> pd.DataFrame:
+    parts = []
+    for symbol, g in events.groupby("symbol", sort=False):
+        p = panels[symbol]
+        loc = p.index.get_indexer(pd.DatetimeIndex(g.event_time))
+        valid = loc >= 0
+        g = g.loc[valid].copy()
+        loc = loc[valid]
+        op = p.open.to_numpy(float); cl = p.close.to_numpy(float); lo = p.low.to_numpy(float); hi = p.high.to_numpy(float)
+        flow = p.flow.to_numpy(float); atr = p.atr.to_numpy(float); gap = p.gap.to_numpy(bool)
+        n = len(p)
+        keep=[]; post_ret=[]; post_flow=[]; wlo=[]; whi=[]; decision_atr=[]; entry_time=[]; entry_index=[]; path_ok=[]
+        for i in loc:
+            last = i + wait - 1
+            ent = i + wait
+            if ent >= n or last >= n:
+                keep.append(False); post_ret.append(np.nan); post_flow.append(np.nan); wlo.append(np.nan); whi.append(np.nan); decision_atr.append(np.nan); entry_time.append(pd.NaT); entry_index.append(-1); path_ok.append(False); continue
+            ok = not gap[i:last+1].any() and np.isfinite(atr[last])
+            keep.append(ok)
+            post_ret.append(math.log(cl[last]/op[i]) if op[i] > 0 and cl[last] > 0 else np.nan)
+            post_flow.append(float(np.nansum(flow[i:last+1])))
+            wlo.append(float(np.nanmin(lo[i:last+1])))
+            whi.append(float(np.nanmax(hi[i:last+1])))
+            decision_atr.append(float(atr[last]))
+            entry_time.append(p.index[ent])
+            entry_index.append(ent)
+            path_ok.append(ok)
+        g["post_return"] = post_ret; g["post_flow"] = post_flow; g["window_low"] = wlo; g["window_high"] = whi
+        g["decision_atr"] = decision_atr; g["entry_time"] = entry_time; g["entry_index"] = entry_index; g["confirmation_ok"] = path_ok; g["wait_bars"] = wait
+        parts.append(g)
+    return pd.concat(parts, ignore_index=True)
+
+
+@dataclass(frozen=True)
+class RawOutcome:
+    event_id: int
+    symbol: str
+    entry_time: pd.Timestamp
+    exit_time: pd.Timestamp
+    entry_raw: float
+    exit_raw: float
+    stop_raw: float
+    target_raw: float
+    side: int
+    reason: str
+    funding_rate_crossed: float
+    funding_mark: float
+    signal_score: float
+
+
+def simulate_raw(row: pd.Series, panel: pd.DataFrame, side: int, stop_atr: float, target_r: float, signal_score: float) -> RawOutcome | None:
+    ent = int(row.entry_index)
+    idx = panel.index
+    n = len(panel)
+    next_event = row.next_event_time
+    if pd.isna(next_event) or ent < 0 or ent >= n - 2:
+        return None
+    next_i = panel.index.get_indexer([pd.Timestamp(next_event)])[0]
+    if next_i < 0 or next_i + 1 >= n:
+        return None
+    # Exit at the next bar open only after the next settlement's first full 5m bar is complete.
+    expiry_exit_i = next_i + 1
+    if expiry_exit_i <= ent or panel.gap.to_numpy(bool)[ent:expiry_exit_i + 1].any():
+        return None
+
+    op = panel.open.to_numpy(float); hi = panel.high.to_numpy(float); lo = panel.low.to_numpy(float); cl = panel.close.to_numpy(float); flow = panel.flow.to_numpy(float)
+    entry = float(op[ent]); atr = float(row.decision_atr)
+    if not np.isfinite(entry) or not np.isfinite(atr) or entry <= 0 or atr <= 0:
+        return None
+    buffer = 0.05 * atr
+    if side > 0:
+        structural = entry - (float(row.window_low) - buffer)
+    else:
+        structural = (float(row.window_high) + buffer) - entry
+    stop_distance = max(stop_atr * atr, structural)
+    if not np.isfinite(stop_distance) or stop_distance <= 0 or stop_distance > 5 * atr:
+        return None
+    stop = entry - side * stop_distance
+    target = entry + side * target_r * stop_distance
+    if stop <= 0:
+        return None
+    anchor = float(row.settlement_price)
+    raw_exit = float(op[expiry_exit_i]); exit_i = expiry_exit_i; reason = "next_settlement_refresh"
+
+    for j in range(ent, expiry_exit_i):
+        stop_hit = lo[j] <= stop if side > 0 else hi[j] >= stop
+        target_hit = hi[j] > target if side > 0 else lo[j] < target
+        if stop_hit:
+            raw_exit = stop; exit_i = j; reason = "stop"; break
+        if target_hit:
+            raw_exit = target; exit_i = j; reason = "target"; break
+        if j >= ent + 2 and j + 1 <= expiry_exit_i:
+            f3 = float(np.nansum(flow[j-2:j+1]))
+            opposite = f3 < 0 if side > 0 else f3 > 0
+            anchor_break = cl[j] < anchor if side > 0 else cl[j] > anchor
+            if opposite and anchor_break:
+                raw_exit = float(op[j+1]); exit_i = j+1; reason = "flow_anchor_invalidation"; break
+
+    crossed = float(row.next_funding_rate) if exit_i > next_i and pd.notna(row.next_funding_rate) else 0.0
+    funding_mark = float(op[next_i]) if crossed != 0 else 0.0
+    return RawOutcome(
+        event_id=int(row.event_id), symbol=str(row.symbol), entry_time=idx[ent], exit_time=idx[exit_i],
+        entry_raw=entry, exit_raw=raw_exit, stop_raw=stop, target_raw=target, side=int(side), reason=reason,
+        funding_rate_crossed=crossed, funding_mark=funding_mark, signal_score=float(signal_score),
