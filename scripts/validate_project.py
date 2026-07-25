@@ -33,6 +33,8 @@ AI_FACING_FILES = [
     "instructions/project-instructions.md",
     "prompts/goal-worker.md",
     "prompts/reconcile-state.md",
+    "prompts/source-intake.md",
+    "prompts/time-limit-checkpoint.md",
     "AGENTS.md",
     "README.md",
     "config/storage.toml",
@@ -69,7 +71,25 @@ FORBIDDEN_RUNTIME_PHRASES = [
     "no chat waits",
     "any chat may",
     "별도 총괄",
+    "작업 시작 시 최신 project state, champion, 활성 work claim",
 ]
+
+EFFICIENCY_REQUIREMENTS = {
+    "instructions/project-instructions.md": [
+        "전체 기록을 일괄 검토하지 않는다",
+        "중복될 때 손실이 크거나 산출물의 재사용 가치가 높은 작업에만",
+        "검증 깊이는 후보의 경제적 가능성과 의사결정 중요도에 비례",
+        "사용하지 않은 검색 결과는 등록하지",
+        "공용·재사용 가능한 코드",
+        "완전한 run report는 목표 달성, 시간제한",
+    ],
+    "prompts/goal-worker.md": [
+        "관련된 활성 work claim",
+        "중복 비용이 크거나 산출물의 재사용 가치가 높은 작업에만",
+        "검증 깊이를 후보의 경제적 가능성과 의사결정 중요도에 맞춘다",
+        "공용·재사용 가능한 저장소 변경에만",
+    ],
+}
 
 
 def fail(message: str, errors: list[str]) -> None:
@@ -109,9 +129,31 @@ def main() -> int:
     try:
         workers = tomllib.loads((ROOT / "config/workers.toml").read_text(encoding="utf-8"))
         work = workers["work"]
+        lookup = workers["lookup"]
+        validation = workers["validation"]
+        records = workers["records"]
         defaults = workers["defaults"]
+
         if work.get("state_update_protocol") != "optimistic_revision":
             fail("unexpected work state_update_protocol", errors)
+        if not work.get("claim_required_for_costly_or_reusable_work"):
+            fail("costly/reusable work must use claims", errors)
+        if not work.get("claim_optional_for_short_local_work"):
+            fail("short local work must not require a new claim", errors)
+        if not lookup.get("targeted_related_records_only"):
+            fail("lookup must be targeted to the intended scope", errors)
+        if lookup.get("full_registry_scan_by_default") is not False:
+            fail("full registry scan must not be the default", errors)
+        if validation.get("mode") != "staged":
+            fail("validation must be staged", errors)
+        if not records.get("register_used_or_reusable_sources_only"):
+            fail("source registration must be use/reuse based", errors)
+        if not records.get("minimal_metadata_first"):
+            fail("source registration must start with minimal metadata", errors)
+        if not records.get("full_run_report_for_material_checkpoint_only"):
+            fail("full Run Reports must be limited to material checkpoints", errors)
+        if not records.get("pull_request_for_shared_or_reusable_changes_only"):
+            fail("PRs must be limited to shared or reusable changes", errors)
         if not defaults.get("check_active_claims"):
             fail("active work claims must be checked", errors)
         if not defaults.get("reuse_registered_artifacts"):
@@ -182,6 +224,12 @@ def main() -> int:
         for phrase in FORBIDDEN_RUNTIME_PHRASES:
             if phrase.lower() in text:
                 fail(f"AI-facing meta-commentary in {rel}: {phrase}", errors)
+
+    for rel, fragments in EFFICIENCY_REQUIREMENTS.items():
+        text = (ROOT / rel).read_text(encoding="utf-8").lower()
+        for fragment in fragments:
+            if fragment.lower() not in text:
+                fail(f"missing efficiency gate in {rel}: {fragment}", errors)
 
     if (ROOT / "config/project.local.toml").exists():
         fail("config/project.local.toml must not be committed", errors)
