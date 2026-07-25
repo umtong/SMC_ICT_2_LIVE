@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Iterable
 
+import numpy as np
+import pandas as pd
+
 import cross_venue_development_v2 as d2
 import cross_venue_execution_v5 as base
 import cross_venue_pilot as v1
@@ -14,7 +17,22 @@ FixedTradeV5 = base.FixedTradeV5
 AccountTradeV5 = base.AccountTradeV5
 
 _ORIGINAL_ENTRY_CANDIDATES = base._entry_candidates
+_ORIGINAL_FIRST_QUOTE_INDEX = base._first_quote_index
 _GUARD_PATCHED = False
+
+
+def _first_quote_index_cached(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    cached = frame.attrs.get("_v5b_first_quote_index")
+    if cached is not None:
+        return cached
+    raw = pd.to_numeric(frame["bn_first_event_us"], errors="coerce").to_numpy(float)
+    positions = np.flatnonzero(np.isfinite(raw))
+    times = raw[positions].astype(np.int64)
+    if len(times) and np.any(np.diff(times) < 0):
+        raise ValueError("Binance first local-arrival quote times are not monotonic")
+    cached = (positions, times)
+    frame.attrs["_v5b_first_quote_index"] = cached
+    return cached
 
 
 def _entry_candidates_with_funding_guard(
@@ -44,6 +62,7 @@ def patch_v5() -> None:
     global _GUARD_PATCHED
     base.patch_v5()
     if not _GUARD_PATCHED:
+        base._first_quote_index = _first_quote_index_cached
         base._entry_candidates = _entry_candidates_with_funding_guard
         _GUARD_PATCHED = True
 
