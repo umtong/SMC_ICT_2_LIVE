@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260725-ALPHA-HYP-001",
+  "claim_id": "CLAIM-20260725-1501-ALPHA-HYP",
+  "status": "INVALID",
+  "base_revision": 3,
+  "re_evaluated_project_revision": 4,
+  "run_commit": "bab92ab56edde981a61e8f432d8f9fc633bd4277",
+  "workflow_run_id": 30148349010,
+  "artifact_id": 8617292379,
+  "artifact_digest_sha256": "a130746654e49476cd0ffcf8804c85ac7b4c61fd0d83ed39b30b3dd8c1243a83",
+  "evaluation_contract_id": "EVAL-ALPHA-HYP-5M-20260725-V1",
+  "evaluation_contract_sha256": "65ec8ae1dce3dc7687f89121d46b38796a8b3859d07cce418d22d258dabb98de",
+  "dependency_fingerprint": "e3ebb53e7e529d08a502cd643e27938312065ec3fce03569af5b5d400dfc52ca",
+  "dataset": {
+    "provider": "Binance Vision official USD-M monthly archives",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "bar_interval": "5m",
+    "development": ["2021-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "selection_opened": false,
+    "confirmation_opened": false,
+    "2025_opened": false,
+    "2026_opened": false,
+    "archive_count": 72,
+    "checksums_verified": true
+  },
+  "mechanism_families": {
+    "low_resistance_run": 64,
+    "high_resistance_sweep": 32,
+    "breaker_first_retest": 32,
+    "fakeout_first_retest": 32,
+    "po3_session_delivery": 32
+  },
+  "development": {
+    "specifications": 192,
+    "gate_pass": 0,
+    "positive_at_12bps": 2,
+    "positive_at_18bps": 0,
+    "positive_at_24bps": 0,
+    "best_12bps": {
+      "spec_id": "c232ae43b7a1401d",
+      "family": "high_resistance_sweep",
+      "parameters": {
+        "buffer": 0.2,
+        "flow": -0.1,
+        "hold": 48,
+        "scale": 576,
+        "wick": 0.55
+      },
+      "trades": 55,
+      "total_return": 0.0180756057390134,
+      "geometric_daily_return": 0.0000245553331665,
+      "profit_factor": 1.089638,
+      "maximum_drawdown": 0.072774,
+      "top5_positive_share": 0.669168,
+      "return_18bps": -0.0064008129188801,
+      "return_24bps": -0.0263222544201507
+    }
+  },
+  "gate_failure": "No specification remained profitable at 18 and 24 bps; the two base-cost-positive specifications also failed preregistered profit-factor or concentration requirements.",
+  "causality_and_safety": {
+    "completed_bars_only": true,
+    "next_bar_entry": true,
+    "one_global_slot": true,
+    "ambiguous_bar_stop_priority": true,
+    "gap_stop_at_adverse_open": true,
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_or_live_started": false
+  },
+  "champion_eligible": false,
+  "next_decision": "Retire these five OHLC/taker-flow formulations and transfer research priority to non-overlapping state variables such as L1/L2 execution toxicity, depth replenishment, actual funding and distinct mechanism families already under active claims.",
+  "created_at": "2026-07-25T17:12:08+09:00"
+}
