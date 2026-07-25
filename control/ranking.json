@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 7,
+  "revision": 8,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260725-R7",
+  "ranking_id": "STRATEGY-RANKING-20260725-R8",
   "ranking_rule": {
     "eligibility": "hard_valid_strategy_or_portfolio_result",
     "primary_objective": "minimum_distance_to_full_project_objective",
@@ -22,43 +22,71 @@
   },
   "first_place": {
     "rank": 1,
-    "first_place_id": "FIRST-20260725-HIGH-RESISTANCE-SWEEP-C232AE43",
+    "first_place_id": "FIRST-20260725-DYNAMIC-STATE-021FBAB6",
     "candidate_type": "STRATEGY",
-    "source_result_id": "RES-20260725-ALPHA-HYP-001",
-    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/10",
+    "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/25",
     "qualification_stage": "EXPLORATORY",
     "target_status": "NOT_MET",
-    "selection_reason": "Among currently ranked hard-valid strategy results, this specification has the smallest recorded gap to the 1% after-cost geometric daily-growth target. A closer dynamic-factor candidate remains outside the ranking until its failed scientific verification workflow is repaired.",
-    "comparison_confidence": "LOW",
+    "selection_reason": "This hard-valid actual-funding candidate has the smallest recorded after-cost geometric daily-growth gap to the 1% objective. It also exceeds the prior first place in 18/24 bp cost performance, trade count, profit factor, drawdown and top-five concentration. Economic gate failure and 2024 family instability are disclosed separately and prevent practical promotion, not ranking eligibility.",
+    "comparison_confidence": "LOW_TO_MODERATE",
     "metrics": {
-      "spec_id": "c232ae43b7a1401d",
-      "family": "high_resistance_sweep",
+      "candidate_id": "021fbab613517a31ad98",
+      "family": "rank_transition_with_flow_decay_exit",
       "base_cost_bps": 12,
-      "geometric_daily_growth": 0.0000245553331665,
+      "geometric_daily_growth": 0.0005730774040979547,
       "target_geometric_daily_growth": 0.01,
-      "target_gap": 0.0099754446668335,
-      "target_fraction": 0.00245553331665,
-      "target_multiple_required": 407.2435072329891,
-      "total_return": 0.0180756057390134,
-      "profit_factor": 1.089638,
-      "maximum_drawdown": 0.072774,
-      "trade_count": 55,
-      "top5_positive_share": 0.669168,
-      "return_at_18bps": -0.0064008129188801,
-      "return_at_24bps": -0.0263222544201507
+      "target_gap": 0.009426922595902045,
+      "target_fraction": 0.05730774040979547,
+      "target_multiple_required": 17.449649782895165,
+      "total_return": 0.23258469071784216,
+      "profit_factor": 1.504104514971923,
+      "maximum_drawdown": 0.04617359906457541,
+      "trade_count": 194,
+      "top5_positive_share": 0.35350035699014853,
+      "top10pct_removed_return": -0.21858317166515617,
+      "median_account_return_bps": -11.753199657443606,
+      "positive_month_fraction": 0.5833333333333334,
+      "worst_month": -0.030262841878915592,
+      "return_at_18bps": 0.16717016419382946,
+      "return_at_24bps": 0.1126493999740854,
+      "actual_funding_included": true,
+      "funding_event_count": 100
+    },
+    "sequential_evidence": {
+      "development_period": "2023",
+      "development_gate_pass_count": 0,
+      "frozen_portfolio_selection_period": "2024",
+      "selection_gate_pass_count": 0,
+      "least_negative_2024_portfolio_return_12bps": -0.1011378745379432,
+      "exact_candidate_2024_opened": false,
+      "2025_opened": false,
+      "2026_opened": false
     },
     "known_weaknesses": [
-      "No sequential selection or confirmation interval was opened because the preregistered gate failed.",
-      "Performance becomes negative at 18 and 24 bps.",
-      "The top five positive trades contribute 66.92% of positive PnL.",
-      "Only 55 trades were observed.",
-      "Daily growth is far below the 1% target.",
-      "Comparison across studies is not fully normalized for data window, market set, and cost contract."
+      "No preregistered single-candidate development gate passed.",
+      "Removing the top 10% of trades changes actual-funding return to -21.8583%.",
+      "Median account return per trade is negative at all three cost profiles.",
+      "All four portfolios frozen from 2023 lost in 2024.",
+      "The exact candidate has no preregistered 2024 out-of-sample result.",
+      "SOL and XRP contribute 179 of 194 trades.",
+      "Historical order-book queue execution is absent.",
+      "Daily growth remains far below the 1% target.",
+      "Comparison across studies is not fully normalized for window, market set and execution contract."
     ]
   },
   "ranked_candidates": [
     {
       "rank": 1,
+      "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+      "candidate_label": "dynamic state-exit 021fbab613517a31ad98",
+      "geometric_daily_growth": 0.0005730774040979547,
+      "target_gap": 0.009426922595902045,
+      "comparison_confidence": "LOW_TO_MODERATE",
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_EXECUTION_CONTRACT"
+    },
+    {
+      "rank": 2,
       "source_result_id": "RES-20260725-ALPHA-HYP-001",
       "candidate_label": "high_resistance_sweep c232ae43b7a1401d",
       "geometric_daily_growth": 0.0000245553331665,
@@ -67,7 +95,7 @@
       "comparison_status": "PROVISIONAL"
     },
     {
-      "rank": 2,
+      "rank": 3,
       "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
       "candidate_label": "balance_to_imbalance best nonzero specification",
       "geometric_daily_growth": -0.000719,
@@ -76,7 +104,7 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 3,
+      "rank": 4,
       "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
       "candidate_label": "leader-shock underreaction best recorded configuration",
       "geometric_daily_growth": -0.01483,
@@ -86,19 +114,6 @@
     }
   ],
   "unranked_results": [
-    {
-      "source_result_id": "PR-25-CANDIDATE-021fbab613517a31ad98",
-      "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/25",
-      "observed_geometric_daily_growth": 0.0005709202100963,
-      "observed_target_gap": 0.0094290797899037,
-      "would_rank": 1,
-      "reason": "Scientific workflow run 30157741432 failed during immutable extension-bundle reconstruction, so compilation, causal self-tests and safety-stage checks were skipped. Rank after successful verification and result registration.",
-      "known_weaknesses": [
-        "Top-10-percent trade removal changes return to -21.93%.",
-        "All four frozen 2024 portfolios lost money.",
-        "Actual funding and order-book execution are absent."
-      ]
-    },
     {
       "source_result_id": "result-20260725-001-btc-oi-crossasset-invalid",
       "reason": "No normalized account-level geometric daily-growth metric is recorded for ranking."
@@ -117,5 +132,5 @@
       "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag by +0.200 bp in development, +0.199 bp in validation, and +0.149 bp in confirmation, while remaining unsuitable as a standalone strategy."
     }
   ],
-  "updated_at": "2026-07-25T22:00:00+09:00"
+  "updated_at": "2026-07-25T23:25:00+09:00"
 }

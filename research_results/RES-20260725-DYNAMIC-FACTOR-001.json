@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_valid": true,
+  "economic_gate_passed": false,
+  "target_status": "NOT_MET",
+  "candidate": {
+    "candidate_id": "021fbab613517a31ad98",
+    "family": "rank_transition_with_flow_decay_exit",
+    "qualification_stage": "EXPLORATORY",
+    "base_cost_bps": 12,
+    "geometric_daily_growth": 0.0005730774040979547,
+    "target_gap": 0.009426922595902045,
+    "target_fraction": 0.05730774040979547,
+    "total_return": 0.23258469071784216,
+    "return_at_18bps": 0.16717016419382946,
+    "return_at_24bps": 0.1126493999740854,
+    "trade_count": 194,
+    "profit_factor": 1.504104514971923,
+    "maximum_drawdown": 0.04617359906457541,
+    "top5_positive_share": 0.35350035699014853,
+    "top10pct_removed_return": -0.21858317166515617,
+    "positive_month_fraction": 0.5833333333333334,
+    "worst_month": -0.030262841878915592,
+    "median_account_return_bps": -11.753199657443606,
+    "funding_event_count": 100,
+    "funding_pnl": 8.383383949678517,
+    "symbol_trade_counts": {
+      "BTCUSDT": 9,
+      "ETHUSDT": 6,
+      "SOLUSDT": 113,
+      "XRPUSDT": 66
+    }
+  },
+  "sequential_evidence": {
+    "development": "2023",
+    "development_gate_pass_count": 0,
+    "frozen_portfolio_selection": "2024",
+    "selection_gate_pass_count": 0,
+    "least_negative_2024_portfolio_return_12bps": -0.1011378745379432,
+    "exact_candidate_2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "known_weaknesses": [
+    "Top-10-percent-removed actual-funding return is -21.8583%.",
+    "Median account return per trade is negative at 12, 18 and 24 bps.",
+    "All four frozen 2024 portfolios lost money.",
+    "The exact candidate has no preregistered 2024 out-of-sample result.",
+    "Historical order-book queue execution is absent.",
+    "SOL and XRP contribute 179 of 194 trades.",
+    "Daily growth is only 5.73% of the 1% target."
+  ],
+  "identities": {
+    "market_dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "market_dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "market_dataset_artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "funding_dataset_id": "DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1",
+    "funding_parent_manifest_sha256": "26cd583f4dd32b201d03d15b95600440251c777b89838ddc9ab0342d90730d48",
+    "funding_parent_tar_sha256": "614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f",
+    "evaluation_contract_id": "EVAL-R4-DYNAMIC-FACTOR-ACTUAL-FUNDING-20260725-V1",
+    "evaluation_contract_sha256": "4cbeb57c1d910f9f2837fb5ccd270651ee52be0318dcfe2f55d21820c7a84d64",
+    "dependency_fingerprint": "7dcce21901d8ee6e6a55316da98edc5c44ffce79a148dea25f6a9b470ad49046",
+    "actual_funding_audit_bundle_sha256": "e2b83969c61daea1bd1fe74b0dcd4382ad1da097f468c57b4d648289bf4d21b6"
+  },
+  "verification": {
+    "research_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/25",
+    "workflow_run": "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30160153690",
+    "workflow_result": "PASS",
+    "official_funding_and_mark_archives_verified": 96,
+    "no_funding_reproduction_max_abs_error": 6.661338147750939e-16,
+    "run_report": "https://docs.google.com/document/d/13uJdu4zMIlvXDB_D52wDq5rd1sPFZCntpZzY2GfB6eg/edit"
+  },
+  "ranking_decision": {
+    "proposed_first_place_id": "FIRST-20260725-DYNAMIC-STATE-021FBAB6",
+    "comparison_confidence": "LOW_TO_MODERATE",
+    "reason": "Smallest verified recorded gap to the 1% objective among hard-valid ranked candidates; stronger cost sensitivity, PF, MDD, trade count and top-five concentration than the previous first place."
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_or_live_started": false
+  }
+}
