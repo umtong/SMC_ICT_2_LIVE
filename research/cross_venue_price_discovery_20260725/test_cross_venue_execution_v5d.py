@@ -6,6 +6,7 @@ import pytest
 
 import cross_venue_basis_v5d as basis_v5d
 import cross_venue_execution_v5d as v5d
+import cross_venue_failclosed_v5d as failclosed_v5d
 import cross_venue_pilot as v1
 import cross_venue_signals_v5d as signals_v5d
 import test_cross_venue_execution_v5c as fixtures
@@ -100,23 +101,35 @@ def test_terminal_account_loss_is_finite_and_clamped() -> None:
     assert metrics["maximum_drawdown"] == 1.0
 
 
-def test_position_crossing_unavailable_state_fails_closed() -> None:
-    basis_v5d.patch()
-    v5d.patch_v5()
+def test_position_crossing_unavailable_state_gets_punitive_exit() -> None:
+    failclosed_v5d.patch()
     frame = execution_frame()
     frame.loc[61_000:61_500, "bb_mid"] = np.nan
-    with pytest.raises(ValueError, match="unavailable"):
-        v5d.simulate_fixed_day_v5({("synthetic", "BTCUSDT"): frame}, [event()], config())
+    trades = v5d.simulate_fixed_day_v5({("synthetic", "BTCUSDT"): frame}, [event()], config())
+    assert len(trades) == 1
+    assert trades[0].exit_reason == "source_gap_punitive_exit"
+    assert trades[0].exit_price < trades[0].entry_price
+    assert trades[0].exit_liquidity_overrun is True
 
 
-def test_exit_quote_delayed_over_one_second_fails_closed() -> None:
-    basis_v5d.patch()
-    v5d.patch_v5()
+def test_exit_quote_delayed_over_one_second_gets_punitive_exit() -> None:
+    failclosed_v5d.patch()
     frame = execution_frame()
     columns = [name for name in frame.columns if name.startswith("bn_first_")]
     frame.loc[63_300:64_400, columns] = np.nan
-    with pytest.raises(ValueError, match="exit exceeded"):
-        v5d.simulate_fixed_day_v5({("synthetic", "BTCUSDT"): frame}, [event()], config())
+    trades = v5d.simulate_fixed_day_v5({("synthetic", "BTCUSDT"): frame}, [event()], config())
+    assert len(trades) == 1
+    assert trades[0].exit_reason == "source_gap_punitive_exit"
+    assert trades[0].exit_price < trades[0].entry_price
+
+
+def test_entry_quote_delayed_over_one_second_is_not_filled() -> None:
+    failclosed_v5d.patch()
+    frame = execution_frame()
+    columns = [name for name in frame.columns if name.startswith("bn_first_")]
+    frame.loc[60_100:61_200, columns] = np.nan
+    trades = v5d.simulate_fixed_day_v5({("synthetic", "BTCUSDT"): frame}, [event()], config())
+    assert trades == []
 
 
 def test_segmented_basis_history_does_not_cross_source_gap() -> None:
@@ -139,8 +152,7 @@ def test_segmented_basis_history_does_not_cross_source_gap() -> None:
 
 
 def test_time_compressed_grid_is_rejected() -> None:
-    basis_v5d.patch()
-    v5d.patch_v5()
+    failclosed_v5d.patch()
     frame = execution_frame().drop(index=61_000)
     with pytest.raises(ValueError, match="complete 100-ms"):
         v5d.simulate_fixed_day_v5({("synthetic", "BTCUSDT"): frame}, [event()], config())
