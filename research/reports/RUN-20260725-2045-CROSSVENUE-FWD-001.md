@@ -10,7 +10,8 @@
 - Historical result: `RES-20260725-2045-CROSSVENUE-HIST-001`
 - Forward component: `RES-20260725-2045-CROSSVENUE-FWD-COMP-001`
 - Base revision: `8`
-- Clean branch: `agent/r8-crossvenue-forward-evidence-clean-001`
+- Clean branch: `agent/r8-crossvenue-forward-evidence-final-001`
+- Pull request: `https://github.com/umtong/SMC_ICT_2_LIVE/pull/45`
 
 ## Scope and reuse
 
@@ -28,7 +29,7 @@ Result: zero strict and zero exploratory survivors. The tested specification is 
 
 The readable source implements observation-only Binance/Bybit public capture and Bybit private execution/order/position evidence primitives with local wall and monotonic receive timestamps, raw payload hashes, append-only chain hashes, sequence and clock checks, environment-only authentication, execId-authoritative reconciliation, exact-capture-prefix dynamic-gate versus always-taker Shadow A/B and automatic risk-state mapping.
 
-The implementation passed 21 tests and compileall locally. It contains no order-placement path and no credentials.
+The implementation passed 22 tests, per-file SHA-256 and byte-size manifest verification, and compileall locally. It contains no order-placement path, no credentials and no prospective observations.
 
 ## Decision
 
