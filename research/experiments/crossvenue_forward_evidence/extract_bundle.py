@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 import tarfile
 
-EXPECTED_ARCHIVE_SHA256 = "8d8bf1824a4b7560e1f31ec729d8b659ec0bf4fba7de2331e28581895fe72683"
+EXPECTED_ARCHIVE_SHA256 = "ebd83c20abaf6bf3ab7c9c467e63bd1d1129db813ddad9fa2fd3fdcca5ffcaa2"
 
 
 def safe_extract(archive: Path, destination: Path) -> None:
