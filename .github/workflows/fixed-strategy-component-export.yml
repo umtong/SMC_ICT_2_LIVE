@@ -3,7 +3,12 @@ name: Fixed strategy component source export
 on:
   push:
     branches:
-      - agent/r8-fixed-strategy-portfolio-001
+      - "agent/r8-fixed-strategy-portfolio-*"
+    paths:
+      - "research/fixed_strategy_portfolio_20260726/**"
+      - ".github/workflows/fixed-strategy-component-export.yml"
+  pull_request:
+    branches: [main]
     paths:
       - "research/fixed_strategy_portfolio_20260726/**"
       - ".github/workflows/fixed-strategy-component-export.yml"
@@ -17,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout portfolio branch
+      - name: Checkout portfolio head
         uses: actions/checkout@v4
         with:
-          ref: agent/r8-fixed-strategy-portfolio-001
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: portfolio
           fetch-depth: 1
       - name: Checkout frozen dynamic component branch
