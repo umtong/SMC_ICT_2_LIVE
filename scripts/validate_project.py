@@ -127,6 +127,20 @@ def main() -> int:
             fail(f"{rel}: {exc}", errors)
 
     try:
+        evaluation = tomllib.loads((ROOT / "config/evaluation.toml").read_text(encoding="utf-8"))
+        if evaluation.get("validation", {}).get("mode") != "staged":
+            fail("evaluation validation mode must be staged", errors)
+        if not evaluation.get("validation", {}).get("depth_proportional_to_economic_promise_and_decision_value"):
+            fail("validation depth must follow economic promise and decision value", errors)
+        for stage in ["initial", "promising", "champion"]:
+            if not evaluation.get("stage", {}).get(stage, {}).get("required"):
+                fail(f"evaluation stage missing requirements: {stage}", errors)
+        if evaluation.get("final_reporting", {}).get("applies_to") != "champion_challenger_or_material_final_report":
+            fail("final reporting scope is not materiality-gated", errors)
+    except Exception as exc:
+        fail(f"evaluation.toml: {exc}", errors)
+
+    try:
         workers = tomllib.loads((ROOT / "config/workers.toml").read_text(encoding="utf-8"))
         work = workers["work"]
         lookup = workers["lookup"]
