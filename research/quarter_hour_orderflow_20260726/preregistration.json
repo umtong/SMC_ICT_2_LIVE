@@ -3,8 +3,8 @@
   "claim_id": "CLM-20260726-0240-QHOUR-001",
   "status": "PREREGISTERED_BEFORE_ANY_PROJECT_PRICE_OR_PNL_SCREEN",
   "created_at": "2026-07-26T02:40:00+09:00",
-  "base_revision": 10,
-  "base_commit": "a5891628769419fa9311923c6bd5895255559806",
+  "base_revision": 11,
+  "base_commit": "109a564b8d2b7043769f72c089ff95d30a165eb7",
   "source_ids": [
     "paper:arxiv:2607.09426",
     "SRC-BINANCE-PUBLIC-DATA-USD-M-20260725",
@@ -47,7 +47,8 @@
     "aggtrade_sign": "buyer-maker true is aggressive sell; false is aggressive buy",
     "opening_imbalance": "sum(signed price*quantity)/sum(price*quantity) over the completed ten-second window",
     "activity_ratio": "event quote notional divided by the prior 24 same-phase event median for the same symbol; current and future events excluded",
-    "funding": "recorded funding rate at its timestamp with contemporaneous official mark open; no inferred future funding"
+    "funding": "recorded funding rate at its timestamp with contemporaneous official mark open; no inferred future funding",
+    "capacity": "entry notional cannot exceed 0.1 percent of the immediately preceding completed one-minute contract quote volume"
   },
   "stages": {
     "source_probe": "2022-01-01 schemas only; no PnL",
@@ -70,6 +71,7 @@
     "initial_nav": 10000.0,
     "planned_loss_fraction": 0.005,
     "maximum_leverage": 3.0,
+    "maximum_prior_quote_volume_participation": 0.001,
     "global_directional_slots": 1,
     "global_basket_slots": 1,
     "cross_sectional_basket": "equal gross long and short notional; account-level gross leverage and per-leg costs enforced",
