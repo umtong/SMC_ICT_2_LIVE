@@ -1,4 +1,5 @@
 name: L2 Tardis single-sample integrity check
+# Probe revision 2: trigger after workflow exists on the PR branch.
 
 on:
   pull_request:
@@ -52,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import csv, hashlib, json, os
+          import hashlib, json, os
           from pathlib import Path
           out=Path(os.environ['OUT'])
           raw=Path(os.environ['RAW'])
