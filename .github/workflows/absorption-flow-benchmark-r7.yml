@@ -1,0 +1,63 @@
+name: Absorption flow benchmark R7 verification
+
+on:
+  push:
+    branches: [agent/absorption-flow-benchmark-r7-final-20260725]
+    paths:
+      - 'research/absorption_flow_benchmark_r7/**'
+      - '.github/workflows/absorption-flow-benchmark-r7.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/absorption_flow_benchmark_r7/**'
+      - '.github/workflows/absorption-flow-benchmark-r7.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed verification dependencies
+        run: |
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install 'numpy==2.3.5' 'pandas==2.2.3' 'pyarrow==25.0.0' 'pytest==8.3.4'
+      - name: Reconstruct and verify immutable package
+        run: |
+          set -euo pipefail
+          cd research/absorption_flow_benchmark_r7
+          python reconstruct.py
+          python reconstructed/results/reconstruct_artifacts.py
+      - name: Compile and run causal, executor, and result checks
+        run: |
+          set -euo pipefail
+          root=research/absorption_flow_benchmark_r7/reconstructed
+          python -m py_compile "$root"/research/*.py "$root"/tests/*.py
+          pytest -q \
+            "$root/tests/test_dollar_bar_absorption_v2.py" \
+            "$root/tests/test_dollar_bar_fast_equivalence.py" \
+            "$root/results/test_result_consistency.py"
+      - name: Validate repository contracts
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+          python -m pytest -q
+          python scripts/build_context_bundle.py
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: absorption-flow-r7-verification-${{ github.run_id }}
+          path: |
+            research/absorption_flow_benchmark_r7/reconstructed/results/RESULT.json
+            research/absorption_flow_benchmark_r7/reconstructed/results/VALIDATION_ATTESTATION.json
+            research/absorption_flow_benchmark_r7/reconstructed/results/RUN_REPORT.md
+          if-no-files-found: error
+          retention-days: 30
