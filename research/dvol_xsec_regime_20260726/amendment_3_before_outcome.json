@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "study_id": "DVOL_XSEC_REGIME_ROUTER_V1",
+  "claim_id": "CLM-20260726-0005-DVOL-XSEC-001",
+  "amended_at": "2026-07-26T00:24:00+09:00",
+  "status": "AMENDED_AFTER_INPUT_LOAD_FAILURE_BEFORE_ANY_SIGNAL_OR_PNL_OUTPUT",
+  "observed_failure": "The initial development command stopped while loading the first historical kline/mark archive because some official Binance monthly CSVs use the same canonical 12-column row schema without a header row. No feature, signal, trade or PnL output was produced.",
+  "schema_rule": {
+    "kline_and_mark_columns": ["open_time", "open", "high", "low", "close", "volume", "close_time", "quote_volume", "count", "taker_buy_volume", "taker_buy_quote_volume", "ignore"],
+    "funding_columns": ["calc_time", "funding_interval_hours", "last_funding_rate"],
+    "header_detection": "If the first field is the canonical text header, parse normally. Otherwise parse the first row as data using the fixed canonical column names and require the exact expected column count.",
+    "integrity": "The raw nested ZIP SHA-256 must still match the retained FILE_MANIFEST before parsing. No value repair, gap fill, row deletion or timestamp substitution is allowed."
+  },
+  "unchanged": [
+    "scientific hypotheses and candidate grid",
+    "data periods and stage seals",
+    "feature, signal and execution definitions",
+    "cost, funding, risk and economic gates"
+  ],
+  "safety": {
+    "features_generated": false,
+    "signals_generated": false,
+    "development_outcomes_seen": false,
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  }
+}
