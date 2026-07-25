@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 9
+- revision: 10
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260725-DYNAMIC-STATE-021FBAB6`
 - first-place stage: `EXPLORATORY`
@@ -35,10 +35,35 @@ The current second place is `aligned_continuation 33034b092ffd271a` from `RES-20
 - trades: `184`
 - profit factor: `1.3065`
 - top-five positive-trade share: `18.00%`
-- approximately 30 bps total return: `+7.8715%`
 - approximately 30 bps geometric daily growth: `0.0118956%`
 
-It is hard-valid but failed the preregistered yearly robustness gate. No sequential 2024 or 2025H1 interval was opened, and the approximately 30 bps path becomes negative after removing the top five winners. The former `high_resistance_sweep c232ae43b7a1401d` is rank 3.
+It is hard-valid but failed the preregistered yearly robustness gate. No sequential 2024 or 2025H1 interval was opened, and the approximately 30 bps path becomes negative after removing the top five winners.
+
+The provisional third place is `perp_overshoot_reversal 191444bb0a4348e2a52b` from `RES-20260726-SPOT-PERP-LEADERSHIP-001` / PR #43.
+
+- 12 bps geometric daily growth: `0.0118976%`
+- target gap: `0.9881024 percentage points per trading day`
+- total return: `+4.4380%`
+- maximum drawdown: `1.2337%`
+- trades: `17`
+- profit factor: `2.4637`
+- top-five positive-trade share: `92.76%`
+- top-10%-removed return: `-0.5817%`
+- 18/24 bps geometric daily growth: `0.0094770%` / `0.0070550%`
+
+It is hard-valid but failed five development gates, including sample count, positive median trade and top-trade-removal robustness. Zero of 496 candidates survived; 2023 and later remained unopened. Its rank reflects target proximity only, with low comparison confidence.
+
+The provisional fourth place is the raw DVOL-conditioned residual candidate `1b4ec83c59bb98660c23` from `RES-20260726-DVOL-XSEC-001`.
+
+- 12 bps geometric daily growth: `0.0034002%`
+- target gap: `0.9965998 percentage points per trading day`
+- total return: `+0.9291%`
+- maximum drawdown: `3.4484%`
+- trades: `76`
+- profit factor: `1.0684`
+- top-10%-removed return: `-7.3742%`
+
+It lost at 18 and 24 bps, had a negative median trade and produced zero development survivors. The former `high_resistance_sweep c232ae43b7a1401d` is rank 5.
 
 The current execution-routing component first place remains `RES-20260725-1510-L1-EXEC-001`, which improved modeled execution drag but has negative standalone expectancy.
 
@@ -54,18 +79,18 @@ The current execution-routing component first place remains `RES-20260725-1510-L
 
 ## Active work
 
-Material active claims include spot/perpetual price discovery, flow-size/impact-efficiency state research, L2 maker toxicity, cross-venue forward capture and multi-asset positioning states. Dynamic-factor and ordinary absorption/activity-clock families are reported and should not receive adjacent-threshold tuning.
+Material active claims include the fixed raw-event two-strategy portfolio, flow-size/impact-efficiency state research, L2 maker toxicity, cross-venue forward capture/recovery, multi-asset positioning states and COIN-M collateral-stress transmission. Spot/perpetual one-minute completed-bar leadership is now reported and should not receive adjacent-threshold tuning under the recorded dependency fingerprint.
 
-Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants, ordinary five-minute absorption and prior-volume dollar-clock absorption under their tested dependencies.
+Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants, ordinary five-minute absorption, prior-volume dollar-clock absorption and completed-bar spot/perpetual price-discovery thresholds under their tested dependencies.
 
 ## Current objective
 
-Finish and reuse decision-ready outputs from active claims. If none materially closes the target gap, open a non-overlapping information-source claim rather than retuning reported families. Highest-value unclaimed directions are official COIN-M versus USD-M collateral-stress transmission and sub-minute cross-exchange price discovery/liquidation replenishment.
+Finish and reuse decision-ready outputs from active claims, including the fixed account-level portfolio replay. If none materially closes the target gap, open a non-overlapping information-source claim rather than retuning reported families. Favor sub-minute liquidation replenishment/order-book resiliency or another structurally different payoff source after checking current cross-venue and L2 scopes.
 
 ## Current blockers
 
-The first two ranks remain far below the 1% target and both depend on upper-tail trades. Neither has robust sequential OOS evidence. Capital velocity remains low, and historical queue/depth execution is incomplete. No candidate has survived sequential selection with robust cost, concentration and regime behavior.
+The first four ranks remain far below the 1% target and all have material concentration, robustness or cost defects. No candidate has survived sequential selection with robust cost, concentration and regime behavior. Capital velocity remains low, and historical queue/depth execution is incomplete.
 
 ## Next exact action
 
-Reconcile and consume active spot-perp, flow-size, L2 maker, cross-venue and positioning results. Do not retune dynamic-factor or ordinary absorption dependencies. Claim the highest-value non-overlapping information source only after those active scopes are checked.
+Consume decision-ready fixed-portfolio, flow-size, L2 maker, cross-venue, positioning and COIN-M outputs as they finish. Do not retune dynamic-factor, ordinary absorption, DVOL or completed-bar spot/perpetual dependencies. If active outputs remain below target, claim the highest-value non-overlapping sub-minute information source.

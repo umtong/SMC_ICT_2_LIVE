@@ -1,0 +1,106 @@
+name: Spot-perpetual leadership screen
+
+on:
+  push:
+    branches:
+      - agent/r8-spot-perp-leadership-001
+    paths:
+      - research/spot_perp_leadership/**
+      - .github/workflows/spot-perp-leadership.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/spot_perp_leadership/**
+      - .github/workflows/spot-perp-leadership.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deterministic dependencies
+        run: pip install --disable-pip-version-check numpy==2.1.3 pandas==2.2.3 requests==2.32.4
+      - name: Validate project, compile, and run causal tests
+        run: |
+          python scripts/validate_project.py
+          python -m py_compile research/spot_perp_leadership/pipeline.py
+          python -m py_compile research/spot_perp_leadership/gap_safe_runner.py
+          python -m py_compile research/spot_perp_leadership/finalize_artifact.py
+          python -m research.spot_perp_leadership.pipeline self-test
+          python -m research.spot_perp_leadership.gap_safe_runner self-test
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          amendment = json.loads(Path('research/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json').read_text())
+          assert amendment['candidate_pnl_observed_before_amendment'] is False
+          assert amendment['unchanged_contract']['candidate_count'] == 496
+          assert amendment['unchanged_contract']['parameter_or_gate_retuning'] is False
+          assert not any(amendment['stage_seal_status_at_amendment'].values())
+          print('PREREGISTRATION_AMENDMENT_PASS')
+          PY
+      - name: Reuse checksum-verified diagnostic archives when available
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/spot_perp_leadership /tmp/prior-spot-perp
+          gh run download 30163979038 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name spot-perp-leadership-20260726 \
+            --dir /tmp/prior-spot-perp || true
+          if [[ -d /tmp/prior-spot-perp/dataset ]]; then
+            cp -a /tmp/prior-spot-perp/dataset artifacts/spot_perp_leadership/
+            echo "REUSED_PRIOR_CHECKSUM_VERIFIED_ARCHIVES=true"
+          else
+            echo "REUSED_PRIOR_CHECKSUM_VERIFIED_ARCHIVES=false"
+          fi
+      - name: Acquire only permitted stages and run the frozen screen
+        shell: bash
+        run: |
+          mkdir -p artifacts/spot_perp_leadership/source_snapshot
+          cp research/spot_perp_leadership/pipeline.py \
+            artifacts/spot_perp_leadership/source_snapshot/pipeline.py
+          cp research/spot_perp_leadership/gap_safe_runner.py \
+            artifacts/spot_perp_leadership/source_snapshot/gap_safe_runner.py
+          cp research/spot_perp_leadership/finalize_artifact.py \
+            artifacts/spot_perp_leadership/source_snapshot/finalize_artifact.py
+          cp research/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json \
+            artifacts/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json
+          set +e
+          python -m research.spot_perp_leadership.gap_safe_runner staged-run \
+            --output artifacts/spot_perp_leadership \
+            2>&1 | tee artifacts/spot_perp_leadership/run.log
+          status=${PIPESTATUS[0]}
+          tail -n 250 artifacts/spot_perp_leadership/run.log \
+            > artifacts/spot_perp_leadership/run_tail.log
+          exit "$status"
+      - name: Finalize gap-safe metadata and hashes
+        run: |
+          python -m research.spot_perp_leadership.finalize_artifact \
+            --output artifacts/spot_perp_leadership
+      - name: Echo decision-ready compact result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('artifacts/spot_perp_leadership/result_summary.json').read_text())
+          print('DECISION_READY_RESULT=' + json.dumps(result, sort_keys=True, separators=(',', ':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spot-perp-leadership-20260726
+          path: artifacts/spot_perp_leadership
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6

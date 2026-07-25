@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 9,
+  "revision": 10,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260726-R9",
+  "ranking_id": "STRATEGY-RANKING-20260726-R10",
   "ranking_rule": {
     "eligibility": "hard_valid_strategy_or_portfolio_result",
     "primary_objective": "minimum_distance_to_full_project_objective",
@@ -95,16 +95,34 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 3,
+      "source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
+      "candidate_label": "perp_overshoot_reversal 191444bb0a4348e2a52b",
+      "geometric_daily_growth": 0.0001189762570252828,
+      "target_gap": 0.009881023742974717,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT",
+      "rank": 3
+    },
+    {
+      "source_result_id": "RES-20260726-DVOL-XSEC-001",
+      "candidate_label": "LOW_VRP_RESIDUAL_CONTINUATION 1b4ec83c59bb98660c23",
+      "geometric_daily_growth": 3.400166161160456e-05,
+      "target_gap": 0.009965998338388396,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT",
+      "rank": 4
+    },
+    {
+      "rank": 5,
       "source_result_id": "RES-20260725-ALPHA-HYP-001",
       "candidate_label": "high_resistance_sweep c232ae43b7a1401d",
-      "geometric_daily_growth": 0.0000245553331665,
+      "geometric_daily_growth": 2.45553331665e-05,
       "target_gap": 0.0099754446668335,
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 4,
+      "rank": 6,
       "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
       "candidate_label": "balance_to_imbalance best nonzero specification",
       "geometric_daily_growth": -0.000719,
@@ -113,7 +131,7 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 5,
+      "rank": 7,
       "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
       "candidate_label": "leader-shock underreaction best recorded configuration",
       "geometric_daily_growth": -0.01483,
@@ -141,5 +159,10 @@
       "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag by +0.200 bp in development, +0.199 bp in validation and +0.149 bp in confirmation, while remaining unsuitable as a standalone strategy."
     }
   ],
-  "updated_at": "2026-07-26T00:40:00+09:00"
+  "updated_at": "2026-07-26T01:18:05+09:00",
+  "reconciliation_notes": [
+    "Inserted hard-valid RES-20260726-SPOT-PERP-LEADERSHIP-001 at provisional rank 3 by after-cost daily-growth target proximity.",
+    "Inserted previously merged but omitted RES-20260726-DVOL-XSEC-001 at provisional rank 4.",
+    "First place and its qualification, economic failure and deployability status are unchanged."
+  ]
 }
