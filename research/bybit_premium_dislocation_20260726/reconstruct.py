@@ -21,10 +21,12 @@ def sha256(payload: bytes) -> str:
 
 
 def main() -> int:
-    transport = SOURCE.read_bytes()
+    # Contents-API transport may wrap base64 text. Normalize ASCII whitespace
+    # before verifying the immutable base64, gzip, and raw-source hashes.
+    transport = b"".join(SOURCE.read_bytes().split())
     if sha256(transport) != EXPECTED["base64_sha256"]:
         raise SystemExit("base64 transport checksum mismatch")
-    compressed = base64.b64decode(transport, validate=False)
+    compressed = base64.b64decode(transport, validate=True)
     if sha256(compressed) != EXPECTED["gzip_sha256"]:
         raise SystemExit("gzip checksum mismatch")
     raw = gzip.decompress(compressed)
