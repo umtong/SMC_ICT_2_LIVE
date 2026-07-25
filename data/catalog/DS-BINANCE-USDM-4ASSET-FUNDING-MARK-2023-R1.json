@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "dataset_id": "DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1",
+  "provider": "Binance Vision official public archives",
+  "market": "USD-M perpetual futures",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "timeframe": "exact fundingRate calc timestamps plus five-minute mark-price opens",
+  "start": "2023-01-01T00:00:00Z",
+  "end": "2023-12-31T23:59:59Z",
+  "snapshot_at": "2026-07-25T22:58:00+09:00",
+  "status": "VERIFIED_REPRODUCIBLE",
+  "sha256": "614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f",
+  "size_bytes": 347709440,
+  "license_or_terms": "Binance public-data and exchange archive terms apply.",
+  "causal_availability": "Funding rate is available at its recorded calc_time. Mark-price bars are not strategy inputs in this audit; the mark open at the exact settlement bar is used only for contemporaneous funding cashflow. When the official mark archive lacks that exact settlement bar, the exact contract open is used as a disclosed fallback. No future bar is used.",
+  "notes": "Verified 96 official 2023 fundingRate and markPriceKlines archives across BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT. Parent research tar SHA-256 614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f; parent MANIFEST.json SHA-256 26cd583f4dd32b201d03d15b95600440251c777b89838ddc9ab0342d90730d48. The candidate audit used 1,092 official mark-price observations and three exact contract-open fallbacks per symbol."
+}
