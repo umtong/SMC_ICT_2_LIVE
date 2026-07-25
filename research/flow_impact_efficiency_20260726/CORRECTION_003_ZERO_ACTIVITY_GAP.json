@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "created_at": "2026-07-26T02:04:00+09:00",
+  "status": "MANDATORY_DATA_AND_EXECUTION_CORRECTION",
+  "discovery": "The retained official BTCUSDT USD-M archive contains 64 consecutive May 2022 one-minute rows with quote_volume == 0 and trade_count == 0. Their timestamps and OHLC fields exist, but they contain no executable market activity.",
+  "causal_rule": "A bar with nonpositive quote volume or nonpositive trade count is unavailable for this activity/impact strategy. It cannot contribute to a lag feature, signal, entry, stop path, capacity estimate or normal exit.",
+  "change": [
+    "Retain the regular UTC timestamp grid but mark zero-activity bars unavailable.",
+    "Require every bar in the registered lag aggregation block to be activity-valid.",
+    "Require signal, entry, every intraposition bar and planned exit bar to be activity-valid.",
+    "Do not fill, compress or synthesize the unavailable interval."
+  ],
+  "reason_not_tuning": "The correction follows from realistic execution and from the feature's dependence on actual trade count, quote volume and taker flow. It is independent of strategy family, threshold and observed PnL.",
+  "invalidated_output": "All local candidate metrics computed before this correction are diagnostic only and excluded from registry, ranking and validation.",
+  "scientific_grid_changed": false,
+  "costs_changed": false,
+  "sealed_periods_changed": false,
+  "orders_permitted": false
+}

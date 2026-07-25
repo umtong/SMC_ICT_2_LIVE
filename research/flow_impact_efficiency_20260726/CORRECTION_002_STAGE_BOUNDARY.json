@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "created_at": "2026-07-26T02:00:00+09:00",
+  "status": "MANDATORY_STAGE_SEAL_CORRECTION",
+  "discovery": "A real-prefix audit showed that when a longer source array is present, a signal just before a registered stage end could inspect a planned exit after the stage boundary. The retained 2022-only artifact naturally prevented this, but the runner must remain safe when conditional later-stage data are present.",
+  "causal_rule": "Before inspecting any post-entry high, low or exit price, reject a signal whose registered maximum-hold exit timestamp is greater than or equal to the exclusive evaluation-stage end.",
+  "change": "Require planned_exit_time < stage_end_time before simulating a path.",
+  "reason_not_tuning": "This physically enforces the preregistered development/selection/validation seals and is independent of family, parameters and observed profitability.",
+  "current_2022_result_effect": "None, because the reused artifact ends at 2022-12-31T23:59:00Z and already made every cross-boundary path unavailable. The rule is added for reproducibility and future conditional-stage safety.",
+  "scientific_grid_changed": false,
+  "costs_changed": false,
+  "signals_changed": false,
+  "orders_permitted": false
+}

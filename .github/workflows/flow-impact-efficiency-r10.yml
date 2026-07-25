@@ -1,0 +1,119 @@
+name: Flow-impact efficiency screen
+
+on:
+  push:
+    branches:
+      - agent/r10-flow-impact-takeover-001
+    paths:
+      - research/flow_impact_efficiency_20260726/**
+      - .github/workflows/flow-impact-efficiency-r10.yml
+      - control/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/flow_impact_efficiency_20260726/**
+      - .github/workflows/flow-impact-efficiency-r10.yml
+      - control/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deterministic dependencies
+        run: pip install --disable-pip-version-check numpy==2.1.3 pandas==2.2.3 requests==2.32.4
+      - name: Validate project and reconstruct source
+        run: |
+          python scripts/validate_project.py
+          python research/flow_impact_efficiency_20260726/reconstruct.py
+          python -m py_compile research/flow_impact_efficiency_20260726/implementation/run.py
+          python research/flow_impact_efficiency_20260726/implementation/run.py self-test
+      - name: Reuse checksum-verified official source artifact
+        shell: bash
+        run: |
+          rm -rf /tmp/spot-perp-source
+          mkdir -p /tmp/spot-perp-source
+          gh run download 30164791274 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name spot-perp-leadership-20260726 \
+            --dir /tmp/spot-perp-source
+          test -f /tmp/spot-perp-source/FILE_MANIFEST.sha256
+          test -d /tmp/spot-perp-source/dataset
+          sha256sum /tmp/spot-perp-source/FILE_MANIFEST.sha256
+      - name: Run corrected frozen development screen
+        run: |
+          rm -rf artifacts/flow_impact_efficiency
+          python research/flow_impact_efficiency_20260726/implementation/run.py run \
+            --source /tmp/spot-perp-source \
+            --output artifacts/flow_impact_efficiency
+      - name: Verify registered result and causal audit
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          expected = json.loads(Path('research/flow_impact_efficiency_20260726/RESULT.json').read_text())
+          observed = json.loads(Path('artifacts/flow_impact_efficiency/result_summary.json').read_text())
+          audit = json.loads(Path('artifacts/flow_impact_efficiency/validation_audit.json').read_text())
+
+          assert observed['result_id'] == expected['result_id']
+          assert observed['candidate_count'] == expected['screen']['candidate_count'] == 864
+          assert observed['development_gate_pass_count'] == expected['screen']['development_gate_pass_count'] == 0
+          assert observed['positive_12bp_candidate_count'] == expected['screen']['positive_12bp_candidate_count']
+          assert observed['positive_18bp_candidate_count'] == expected['screen']['positive_18bp_candidate_count']
+          assert observed['positive_24bp_candidate_count'] == expected['screen']['positive_24bp_candidate_count']
+          assert observed['trade_count_at_least_200_candidate_count'] == expected['screen']['trade_count_at_least_200_candidate_count']
+
+          best = observed['best_raw_candidate']
+          registered = expected['best_raw_candidate']
+          assert best['candidate_id'] == registered['candidate_id']
+          assert best['trade_count_12bps'] == registered['trade_count']
+          for left, right in [
+              (best['total_return_12bps'], registered['12bp']['total_return']),
+              (best['geometric_daily_growth_12bps'], registered['12bp']['geometric_daily_growth']),
+              (best['profit_factor_12bps'], registered['12bp']['profit_factor']),
+              (best['maximum_drawdown_12bps'], registered['12bp']['maximum_drawdown']),
+              (best['top10pct_removed_return_12bps'], registered['12bp']['top_10_percent_removed_return']),
+              (best['total_return_18bps'], registered['18bp']['total_return']),
+              (best['total_return_24bps'], registered['24bp']['total_return']),
+          ]:
+              assert math.isclose(float(left), float(right), rel_tol=0.0, abs_tol=1e-12)
+
+          prefix = audit['prefix_invariance']
+          assert prefix['maximum_array_difference'] == 0.0
+          assert prefix['total_availability_mismatches'] == 0
+          assert prefix['event_column_mismatch_count'] == 0
+          assert prefix['maximum_event_score_difference'] == 0.0
+          assert audit['global_slot_overlap_count'] == 0
+          assert audit['same_path_cost_replay'] is True
+          assert audit['later_periods_opened'] is False
+          assert audit['orders_submitted'] is False
+
+          print('REGISTERED_RESULT_REPRODUCED')
+          print(json.dumps(observed, sort_keys=True, separators=(',', ':')))
+          PY
+      - name: Build CI artifact inventory
+        shell: bash
+        run: |
+          find artifacts/flow_impact_efficiency -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > artifacts/flow_impact_efficiency/CI_SHA256SUMS.txt
+          sha256sum artifacts/flow_impact_efficiency/CI_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flow-impact-efficiency-20260726
+          path: artifacts/flow_impact_efficiency
+          retention-days: 14
+          compression-level: 6

@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "worker_id": "gpt-5.6-pro-20260726-0145",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "evaluation_contract_sha256": "f5aa9811e59a11745ebc555118268f8e919104abf109416cced3179262e93c19",
+  "dependency_fingerprint": "24091c6d65207292510bee2942a0a95b8729700e95d92ff0f5bc5ecc50d28833",
+  "implementation_sha256": "67297d73435514c28731183c47b9d1fce73476cb5bbc0329cf20a17b2cff2658",
+  "source_artifact_sha256": "2d72befe8398bf8bf960453e4378a69a1c90ae4dcd516b20f5294299806f1768",
+  "local_scientific_fingerprint": "5d21a5d253b0e09ea0a86d74ec5006744991f9d8f0c9277619faf8794834ba8d",
+  "screen": {
+    "candidate_count": 864,
+    "development_gate_pass_count": 0,
+    "positive_12bp_candidate_count": 26,
+    "positive_18bp_candidate_count": 14,
+    "positive_24bp_candidate_count": 12,
+    "positive_12_and_18bp_candidate_count": 14,
+    "positive_12_and_18bp_with_positive_top_removal_count": 1,
+    "trade_count_at_least_200_candidate_count": 510,
+    "selection_opened": false,
+    "validation_opened": false,
+    "sealed_periods": ["2025", "2026"]
+  },
+  "best_raw_candidate": {
+    "candidate_id": "95f3b144d5a291abc61c",
+    "family": "fragmented_flow_reversal",
+    "lag_minutes": 5,
+    "hold_minutes": 30,
+    "trade_count": 4,
+    "12bp": {
+      "total_return": 0.007522560707914794,
+      "geometric_daily_growth": 0.00002053283367287051,
+      "profit_factor": 2.1283612667257006,
+      "maximum_drawdown": 0.0035513289536770465,
+      "median_trade_bps": 14.143192747182338,
+      "top_five_positive_pnl_share": 1.0,
+      "top_10_percent_removed_return": -0.0007506086510118415,
+      "positive_half_count": 1
+    },
+    "18bp": {
+      "total_return": 0.005490955380686557,
+      "geometric_daily_growth": 0.000015002674303765673,
+      "top_10_percent_removed_return": -0.0024460930251029023
+    },
+    "24bp": {
+      "total_return": 0.003461240277827793,
+      "geometric_daily_growth": 0.000009466521442957898
+    },
+    "gate_failures": [
+      "trade_count_at_least_200",
+      "positive_12bp_top10_removed",
+      "positive_18bp_top10_removed",
+      "top5_share_at_most_30pct",
+      "both_halves_positive"
+    ]
+  },
+  "best_candidate_with_at_least_200_trades": {
+    "candidate_id": "ac6889a41c4892bdde58",
+    "family": "large_trade_aligned_continuation",
+    "trade_count": 265,
+    "12bp_total_return": -0.3021835478482553,
+    "12bp_geometric_daily_growth": -0.000985265466748042,
+    "12bp_profit_factor": 0.515643494923219,
+    "12bp_maximum_drawdown": 0.3021835478482553,
+    "12bp_median_trade_bps": -34.49838259035274,
+    "12bp_top_10_percent_removed_return": -0.4914514010101423,
+    "18bp_total_return": -0.42408003383214277,
+    "24bp_total_return": -0.5248452708163163
+  },
+  "target_geometric_daily_growth": 0.01,
+  "best_raw_target_gap": 0.00997946716632713,
+  "ranking_decision": {
+    "provisional_rank": 6,
+    "comparison_confidence": "VERY_LOW",
+    "reason": "Its 12bp daily growth is below the current rank-five high-resistance sweep and is based on only four trades. Economic gate and concentration robustness fail."
+  },
+  "summary": "A hard-valid official Binance USD-M one-minute flow-size and price-impact-efficiency study tested 864 preregistered continuation, absorption, fragmentation and impact-transition policies. Zero passed the 2022 development gate, so 2023 and later remained unopened. The best raw candidate had only four trades and became negative after removing one top trade; every candidate with at least 200 trades had negative after-cost geometric growth. Ordinary one-minute threshold routing on these activity and impact states is retired under this dependency fingerprint.",
+  "orders_submitted": false,
+  "paper_or_live_started": false,
+  "created_at": "2026-07-26T02:10:00+09:00"
+}

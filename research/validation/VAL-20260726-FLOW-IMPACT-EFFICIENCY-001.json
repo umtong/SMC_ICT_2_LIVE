@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-FLOW-IMPACT-EFFICIENCY-001",
+  "result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
+  "dependency_fingerprint": "24091c6d65207292510bee2942a0a95b8729700e95d92ff0f5bc5ecc50d28833",
+  "status": "PASS",
+  "validation_scope": "Retained official archive identity, gap-safe activity availability, prior-only flow and impact features, exact stage boundaries, next-contiguous-open entry, one-global-slot account replay, stop-first and adverse-gap execution, actual funding, identical 12/18/24bp paths, prefix invariance, independent ledger reproduction, concentration metrics and sealed later periods.",
+  "changed_surface": [
+    "new six-family one-minute flow-size and impact-efficiency screen",
+    "causal account-slot release at the exit-minute open",
+    "strict exclusive stage-end path boundary",
+    "zero-activity bars retained as unavailable rather than filled",
+    "noncircular artifact finalization"
+  ],
+  "evidence": [
+    "GitHub Actions run 30167543708 and the project harness completed successfully.",
+    "The reused source artifact SHA-256 is 2d72befe8398bf8bf960453e4378a69a1c90ae4dcd516b20f5294299806f1768 and all 132 retained file hashes passed before use.",
+    "The regular grid contains 658080 minutes; both symbols have 64 zero-activity minutes explicitly unavailable to features and execution.",
+    "Each symbol has 1371 official funding events. Millisecond calc_time is retained; six BTC and three ETH events use disclosed same-minute contract-open fallback and zero events are unvalued.",
+    "Feature and event prefix maximum differences and availability mismatches are zero.",
+    "Independent reconstruction of the four-trade primary reproduced total return, profit factor and top-10%-removed return at all costs to maximum absolute error 4.440892098500626e-16.",
+    "The one-global-slot overlap count is zero and identical 12/18/24bp paths were replayed.",
+    "864 candidates completed with zero development-gate passes; later stages and sealed periods remained unopened.",
+    "The final Actions artifact 8622014229 has SHA-256 83c29725a935e4100489baad73c98fbb207f85bac750c60b2a067367e0d186ee and its CI inventory has SHA-256 fd8b416ab10191c1a62c60facec35e1b083cf63691afdbb00e18ccd948761486.",
+    "No credential, paper order, testnet order or live order was used."
+  ],
+  "code_commit": "df09d88b7846be964b03c065f4ee68b9a9c799bd",
+  "created_at": "2026-07-26T02:29:00+09:00"
+}

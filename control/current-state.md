@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 10
+- revision: 11
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260725-DYNAMIC-STATE-021FBAB6`
 - first-place stage: `EXPLORATORY`
@@ -51,7 +51,7 @@ The provisional third place is `perp_overshoot_reversal 191444bb0a4348e2a52b` fr
 - top-10%-removed return: `-0.5817%`
 - 18/24 bps geometric daily growth: `0.0094770%` / `0.0070550%`
 
-It is hard-valid but failed five development gates, including sample count, positive median trade and top-trade-removal robustness. Zero of 496 candidates survived; 2023 and later remained unopened. Its rank reflects target proximity only, with low comparison confidence.
+It is hard-valid but failed five development gates, including sample count, positive median trade and top-trade-removal robustness. Zero of 496 candidates survived; later stages remained unopened. Its rank reflects target proximity only, with low comparison confidence.
 
 The provisional fourth place is the raw DVOL-conditioned residual candidate `1b4ec83c59bb98660c23` from `RES-20260726-DVOL-XSEC-001`.
 
@@ -63,7 +63,21 @@ The provisional fourth place is the raw DVOL-conditioned residual candidate `1b4
 - profit factor: `1.0684`
 - top-10%-removed return: `-7.3742%`
 
-It lost at 18 and 24 bps, had a negative median trade and produced zero development survivors. The former `high_resistance_sweep c232ae43b7a1401d` is rank 5.
+It lost at 18 and 24 bps, had a negative median trade and produced zero development survivors. The former `high_resistance_sweep c232ae43b7a1401d` remains rank 5.
+
+The provisional sixth place is `fragmented_flow_reversal 95f3b144d5a291abc61c` from `RES-20260726-FLOW-IMPACT-EFFICIENCY-001` / PR #52.
+
+- 12 bps geometric daily growth: `0.0020533%`
+- target gap: `0.9979467 percentage points per trading day`
+- total return: `+0.7523%`
+- maximum drawdown: `0.3551%`
+- trades: `4`
+- profit factor: `2.1284`
+- top-five positive-trade share: `100%`
+- top-10%-removed return: `-0.0751%`
+- 18/24 bps total return: `+0.5491%` / `+0.3461%`
+
+It is hard-valid but failed the sample, concentration, top-trade-removal and half-year gates. Zero of 864 candidates survived, every candidate with at least 200 trades had negative after-cost growth, and later stages remained unopened. Comparison confidence is very low and the family is not deployable.
 
 The current execution-routing component first place remains `RES-20260725-1510-L1-EXEC-001`, which improved modeled execution drag but has negative standalone expectancy.
 
@@ -79,18 +93,18 @@ The current execution-routing component first place remains `RES-20260725-1510-L
 
 ## Active work
 
-Material active claims include the fixed raw-event two-strategy portfolio, flow-size/impact-efficiency state research, L2 maker toxicity, cross-venue forward capture/recovery, multi-asset positioning states and COIN-M collateral-stress transmission. Spot/perpetual one-minute completed-bar leadership is now reported and should not receive adjacent-threshold tuning under the recorded dependency fingerprint.
+Material active claims include the fixed raw-event two-strategy portfolio, L2 maker toxicity, exact-arrival cross-venue V5D, multi-asset positioning states, COIN-M/cross-margin collateral stress and option-surface skew/term structure. The flow-size/impact-efficiency claim is now reported and should not receive adjacent-threshold tuning under the recorded dependency fingerprint.
 
-Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants, ordinary five-minute absorption, prior-volume dollar-clock absorption and completed-bar spot/perpetual price-discovery thresholds under their tested dependencies.
+Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants, ordinary five-minute absorption, prior-volume dollar-clock absorption, completed-bar spot/perpetual price-discovery thresholds, DVOL-conditioned residual routing and ordinary one-minute activity/impact threshold routing under their tested dependencies.
 
 ## Current objective
 
-Finish and reuse decision-ready outputs from active claims, including the fixed account-level portfolio replay. If none materially closes the target gap, open a non-overlapping information-source claim rather than retuning reported families. Favor sub-minute liquidation replenishment/order-book resiliency or another structurally different payoff source after checking current cross-venue and L2 scopes.
+Finish and reuse decision-ready outputs from active claims, especially the fixed account-level portfolio and corrected sub-minute cross-venue replay. If none materially closes the target gap, change the payoff structure rather than retuning reported directional thresholds. A high-information next direction is movement-hazard-conditioned two-sided OCO execution, provided active cross-venue and L2 scopes do not already cover it.
 
 ## Current blockers
 
-The first four ranks remain far below the 1% target and all have material concentration, robustness or cost defects. No candidate has survived sequential selection with robust cost, concentration and regime behavior. Capital velocity remains low, and historical queue/depth execution is incomplete.
+Every positive raw rank remains far below the 1% target and has material concentration, sample, cost or sequential-robustness defects. No candidate has survived sequential selection with robust cost, concentration and regime behavior. Capital velocity remains low, and exact historical queue/depth execution is incomplete.
 
 ## Next exact action
 
-Consume decision-ready fixed-portfolio, flow-size, L2 maker, cross-venue, positioning and COIN-M outputs as they finish. Do not retune dynamic-factor, ordinary absorption, DVOL or completed-bar spot/perpetual dependencies. If active outputs remain below target, claim the highest-value non-overlapping sub-minute information source.
+Consume decision-ready fixed-portfolio, cross-venue V5D, L2 maker, positioning, COIN-M/cross-margin and option-surface outputs as they finish. Do not retune dynamic-factor, ordinary absorption, DVOL, completed-bar spot/perpetual or one-minute flow-impact dependencies. If active outputs remain below target, search claims and open a non-overlapping movement-hazard-conditioned two-sided OCO or other structurally different sub-minute payoff study.

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "created_at": "2026-07-26T01:56:00+09:00",
+  "status": "MANDATORY_EXECUTION_CORRECTION",
+  "discovery": "The first local diagnostic implementation set the next eligible signal bar to exit_bar + 1. That imposed an unregistered extra one-minute lockout after a position had already exited at the exit_bar open.",
+  "causal_rule": "A position that exits at the open of minute t is absent during minute t. Information from minute t becomes available only at its close, so a signal formed on minute t may causally enter at the open of minute t+1. Signals with signal_bar < exit_bar remain suppressed; signal_bar == exit_bar is eligible.",
+  "change": "Set the global slot release marker to exit_bar, not exit_bar + 1.",
+  "reason_not_tuning": "This follows directly from the preregistered next-open information boundary and one-global-slot contract. It is independent of signal family, parameter values and observed profitability.",
+  "invalidated_output": "All local diagnostic candidate metrics computed before this correction are excluded from Result Registry, ranking and validation evidence.",
+  "scientific_grid_changed": false,
+  "costs_changed": false,
+  "signals_changed": false,
+  "sealed_periods_changed": false,
+  "orders_permitted": false
+}

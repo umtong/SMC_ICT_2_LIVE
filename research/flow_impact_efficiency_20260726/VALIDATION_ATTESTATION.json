@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-FLOW-IMPACT-EFFICIENCY-001",
+  "result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
+  "dependency_fingerprint": "24091c6d65207292510bee2942a0a95b8729700e95d92ff0f5bc5ecc50d28833",
+  "status": "PASS",
+  "validation_scope": "Retained official archive identity, gap-safe activity availability, prior-only flow/impact features, exact stage boundaries, next-contiguous-open entry, one-global-slot account replay, stop-first and adverse-gap execution, actual funding, identical 12/18/24bp paths, prefix invariance, independent ledger reproduction, concentration metrics and sealed later periods.",
+  "mandatory_corrections_before_final_result": [
+    "Slot release changed from exit_bar + 1 to exit_bar so the completed exit minute may causally form the next signal.",
+    "Every maximum-hold path must end strictly before the exclusive evaluation-stage boundary.",
+    "Bars with nonpositive quote volume or trade count remain on the UTC grid but are unavailable to features and every execution-path role.",
+    "The artifact manifest identity is noncircular and finalized after all covered files."
+  ],
+  "evidence": [
+    "The reused spot/perpetual artifact SHA-256 is 2d72befe8398bf8bf960453e4378a69a1c90ae4dcd516b20f5294299806f1768 and all 132 retained file hashes passed before use.",
+    "The 658080-minute regular grid contains no missing USD-M timestamps. BTCUSDT and ETHUSDT each have 64 zero-activity minutes that are explicitly unavailable rather than filled or compressed.",
+    "BTCUSDT and ETHUSDT each contain 1371 official funding events. Millisecond calc_time is retained; six BTC and three ETH events use disclosed exact same-minute contract-open fallback and zero events are unvalued.",
+    "All rolling volatility, ATR and z-score references exclude the current observation. A real-prefix audit produced maximum feature difference 0 and zero availability mismatches.",
+    "All 144 event-key prefix comparisons matched exactly with maximum score difference 0.",
+    "The best raw and best >=200-trade candidate trade paths and all registered metrics matched between full and prefix computations.",
+    "Independent reconstruction of the best four-trade ledger reproduced total return, profit factor and top-10%-removed return at 12/18/24bp to maximum absolute error 4.440892098500626e-16.",
+    "The one-global-slot overlap count is zero, signals enter only at the next contiguous minute open, the same path is replayed at 12/18/24bp, and stop paths use the adverse observed open.",
+    "864 candidates completed with zero development-gate passes. 2023 selection, 2024 validation and 2025/2026 sealed periods remained unopened.",
+    "No credentials, paper orders, testnet orders or live orders were used."
+  ],
+  "local_scientific_fingerprint": "5d21a5d253b0e09ea0a86d74ec5006744991f9d8f0c9277619faf8794834ba8d",
+  "created_at": "2026-07-26T02:10:00+09:00"
+}

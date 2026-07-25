@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "frozen_before_strategy_outcomes": true,
+  "frozen_at": "2026-07-26T01:47:00+09:00",
+  "economic_hypothesis": "Aggressive flow has positive expectancy only when its price response distinguishes informed pressure from absorption, fragmentation and impact-state transition. Trade count and average quote trade size separate many-small-order crowding from fewer-large-order pressure; price response per unit signed flow separates continuation from reversal.",
+  "data": {
+    "provider": "Binance public data",
+    "market": "USD-M perpetual futures",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "bar": "one minute",
+    "warmup": "2021-10-01 through 2021-12-31",
+    "development": "2022-01-01 through 2022-12-31",
+    "selection": "calendar 2023, physically opened only for one frozen development survivor per family",
+    "validation": "calendar 2024, physically opened only for the same candidate after selection passage",
+    "sealed": ["2025", "2026"],
+    "reused_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
+    "reused_workflow_run": 30164791274,
+    "reused_artifact_id": 8621251086,
+    "reused_artifact_sha256": "2d72befe8398bf8bf960453e4378a69a1c90ae4dcd516b20f5294299806f1768",
+    "source_manifest_sha256": "e5fb549b83795744f32b0121486b4ea0337e2113e2732dcf39cdcd249089d6a5",
+    "source_rule": "Every retained monthly ZIP was previously verified against the adjacent official CHECKSUM. Reuse is allowed only after the retained artifact hash inventory passes. Any later-stage acquisition must repeat adjacent CHECKSUM verification.",
+    "missing_data_rule": "Use a regular UTC minute grid. Keep absent observations as NaN; no forward fill, backfill, interpolation, synthetic OHLC or timeline compression. Signals and orders require all relevant observed values and contiguous entry/exit bars."
+  },
+  "information_boundary": {
+    "features": "Current one-minute bar values are usable only after that bar closes. Rolling means, standard deviations, volatility, beta and state references exclude the current observation.",
+    "entry": "First contiguous USD-M one-minute open after the completed signal bar.",
+    "funding": "Apply official funding events in (entry, exit] at recorded calc_time. Use the containing-minute official mark open; use the same-minute official contract open only when that mark observation is absent.",
+    "simultaneous_symbol_rule": "Within a candidate, sort by signal timestamp, descending absolute registered score, then fixed symbol order BTCUSDT before ETHUSDT. One global account slot suppresses all later entries until the accepted position exits."
+  },
+  "features": {
+    "signed_taker_flow": "(2 * taker_buy_quote - quote_volume) / quote_volume over the registered lag",
+    "average_quote_trade_size": "sum quote_volume / sum trade_count over the registered lag",
+    "activity": "prior-standardized log summed trade_count and log average quote trade size",
+    "return": "log close-to-close return over the registered lag",
+    "prior_volatility": "rolling standard deviation of one-minute log returns, shifted one completed bar",
+    "impact_efficiency": "sign(signed_taker_flow) * lag return / (prior volatility * sqrt(lag) * max(abs(signed_taker_flow), 0.05))",
+    "impact_z": "impact_efficiency standardized against a shifted 10,080-minute history with at least 4,320 observations",
+    "flow_activity_z": "absolute signed flow standardized against the same shifted history",
+    "impact_delta": "current impact_z minus the immediately preceding non-overlapping lag impact_z"
+  },
+  "families": [
+    {
+      "name": "aligned_high_impact_continuation",
+      "condition": "flow_activity_z >= activity_z, abs(flow) >= min_abs_flow, impact_z >= impact_threshold",
+      "side": "sign(flow)"
+    },
+    {
+      "name": "flow_absorption_reversal",
+      "condition": "flow_activity_z >= activity_z, abs(flow) >= min_abs_flow, impact_z <= -impact_threshold",
+      "side": "-sign(flow)"
+    },
+    {
+      "name": "large_trade_aligned_continuation",
+      "condition": "average_trade_size_z >= activity_z, abs(flow) >= min_abs_flow, impact_z >= impact_threshold",
+      "side": "sign(flow)"
+    },
+    {
+      "name": "fragmented_flow_reversal",
+      "condition": "trade_count_z >= activity_z, average_trade_size_z <= -0.5, abs(flow) >= min_abs_flow, impact_z <= -0.5 * impact_threshold",
+      "side": "-sign(flow)"
+    },
+    {
+      "name": "impact_decay_reversal",
+      "condition": "previous impact_z >= activity_z, same flow sign across adjacent lag blocks, abs(flow) >= min_abs_flow, impact_delta <= -impact_threshold",
+      "side": "-sign(flow)"
+    },
+    {
+      "name": "impact_reacceleration_continuation",
+      "condition": "previous impact_z <= -activity_z, same flow sign across adjacent lag blocks, abs(flow) >= min_abs_flow, impact_delta >= impact_threshold",
+      "side": "sign(flow)"
+    }
+  ],
+  "grid": {
+    "family": [
+      "aligned_high_impact_continuation",
+      "flow_absorption_reversal",
+      "large_trade_aligned_continuation",
+      "fragmented_flow_reversal",
+      "impact_decay_reversal",
+      "impact_reacceleration_continuation"
+    ],
+    "lag_minutes": [1, 3, 5],
+    "activity_z": [1.5, 2.0],
+    "min_abs_flow": [0.15, 0.30],
+    "impact_threshold": [0.75, 1.50],
+    "hold_minutes": [5, 15, 30],
+    "stop_atr": [1.0, 1.5],
+    "candidate_count": 864,
+    "candidate_id": "first 20 hex characters of SHA-256 over canonical sorted candidate JSON"
+  },
+  "execution": {
+    "position": "one USD-M perpetual position in one global BTCUSDT/ETHUSDT account slot",
+    "risk": "0.5% of current NAV planned loss including a 26bp adverse reserve",
+    "notional_cap": "3.0 times current NAV",
+    "participation_cap": "0.1% of observed signal-minute quote volume",
+    "stop": "max(stop_atr times prior ATR, 5bp of entry price)",
+    "same_bar": "stop-first",
+    "gap_stop": "adverse observed open",
+    "normal_exit": "registered fixed hold at the exact contiguous one-minute open",
+    "cost_profiles_round_trip_bps": [12, 18, 24],
+    "stopped_path_extra_bps": 2,
+    "same_path_cost_replay": true
+  },
+  "development_gate": {
+    "trade_count_at_least": 200,
+    "geometric_daily_growth_positive_at_bps": [12, 18],
+    "top_10_percent_removed_return_positive_at_bps": [12, 18],
+    "profit_factor_12bps_at_least": 1.10,
+    "maximum_drawdown_12bps_at_most": 0.15,
+    "top_five_positive_pnl_share_12bps_at_most": 0.30,
+    "median_trade_12bps_positive": true,
+    "both_half_years_12bps_positive": true
+  },
+  "freeze_rule": "If any candidates pass development, freeze the single highest 18bp geometric-growth candidate per family; ties resolve by 18bp top-10%-removed return, lower 18bp drawdown, then candidate_id. Only those representatives may open 2023.",
+  "promotion_boundary": "A basic-cost-positive raw candidate may be ranked if hard-valid and account-normalized, but no practical-use promotion is allowed without sequential passage, concentration robustness and later execution validation.",
+  "orders_permitted": false
+}
