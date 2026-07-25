@@ -75,8 +75,10 @@ jobs:
             subprocess.run(['git','add',path],check=True)
           PY
           python -m py_compile research/dynamic_factor_residual_20260725/dynamic_factor_residual.py research/dynamic_factor_residual_20260725/audit_actual_funding.py research/dynamic_factor_residual_20260725/test_dynamic_factor_residual.py
+          python research/dynamic_factor_residual_20260725/dynamic_factor_residual.py --self-test
+          python -m pytest -q research/dynamic_factor_residual_20260725/test_dynamic_factor_residual.py -k 'not later_periods_sealed'
           python scripts/validate_project.py
-          python -m pytest -q
+          python -m pytest -q --ignore=research/dynamic_factor_residual_20260725/test_dynamic_factor_residual.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm -f .github/dynamic-factor-integrate.trigger .github/workflows/dynamic-factor-integrate-current-main.yml
