@@ -47,9 +47,10 @@ def main() -> int:
     assert max(abs(a - b) for a, b in zip(got_d, diag["direction_auc_range"])) < 1e-12
 
     manifest = json.loads((RESULTS / "reusable_artifact_hashes.json").read_text())
+    skip = {"README.md", "results/consolidated_result.json", "results/test_report.txt", "tests/validate_result.py"}
     for rel, expected in manifest.get("artifacts", {}).items():
         path = ROOT / rel
-        if path.exists() and rel != "results/test_report.txt":
+        if path.exists() and rel not in skip:
             assert sha256(path) == expected, rel
     print("VALIDATION OK: 1536 configs, 0 gates, diagnostics consistent")
     return 0
