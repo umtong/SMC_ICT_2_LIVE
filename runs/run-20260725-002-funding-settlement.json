@@ -10,15 +10,9 @@
   "scope_fingerprint": "a8c7f3eb18be799c181390acfd882935015ea9cf0a6b676bfe26282f17ef4a5c",
   "dependency_fingerprint": "f689c2b5341cc3d226519f57f64c1c46a1f117a0b5ef2e48ce9aeddc638a5fc1",
   "result_id": "result-20260725-002-funding-settlement-invalid",
-  "reused_source_ids": [
-    "source:binance-vision-usdm-public-archives"
-  ],
-  "reused_dataset_ids": [
-    "dataset:binance-usdm-btceth-funding-premium-5m-2021_2025"
-  ],
-  "reused_result_ids": [
-    "result:v12-funding-premium-all-arms-invalid"
-  ],
+  "reused_source_ids": ["source:binance-vision-usdm-public-archives"],
+  "reused_dataset_ids": ["dataset:binance-usdm-btceth-funding-premium-5m-2021_2025"],
+  "reused_result_ids": ["result:v12-funding-premium-all-arms-invalid"],
   "overlap_reason": "Distinct from active spot-perp leadership and general completed-bar claims: exact settlement cashflow, premium state, next-settlement refresh and BTC/ETH relative funding asymmetry only.",
   "completed_work": [
     "Rebased the active claim from revision 3 to revision 4 without changing the economic candidate grid.",
@@ -36,26 +30,11 @@
     "holdout_2025_opened": false
   },
   "artifacts": [
-    {
-      "path": "research/funding_settlement/runner.part01",
-      "sha256": "c81454b7ce36d31435a49b2da9bfe5b5e9c9ebf487a54572efc4c4115efd48cf"
-    },
-    {
-      "path": "research/funding_settlement/runner.part02",
-      "sha256": "2bfb4d46fc9b2dccbda9f1494b6cee766d8d2969974951a5b54cddd03961fcea"
-    },
-    {
-      "path": "research/funding_settlement/runner.part03",
-      "sha256": "a167340ed88827a3649e04a7be0f7087831ee693cf7ee9639f616cf4437c4c38"
-    },
-    {
-      "path": "research/funding_settlement/compact_result.json",
-      "sha256": "4543ac745a6272e937da5a8c2cff23875734ea3cb7223a2cfc51718f823a67ad"
-    },
-    {
-      "path": "research/funding_settlement/README.md",
-      "sha256": "5daebb6f6b84b9e0a66ad9fb5802aa6caf11e0aff343bb73a24769253fb6db18"
-    }
+    {"path":"research/funding_settlement/runner.part01","sha256":"c81454b7ce36d31435a49b2da9bfe5b5e9c9ebf487a54572efc4c4115efd48cf"},
+    {"path":"research/funding_settlement/runner.part02","sha256":"2bfb4d46fc9b2dccbda9f1494b6cee766d8d2969974951a5b54cddd03961fcea"},
+    {"path":"research/funding_settlement/runner.part03","sha256":"a167340ed88827a3649e04a7be0f7087831ee693cf7ee9639f616cf4437c4c38"},
+    {"path":"research/funding_settlement/compact_result.json","sha256":"4543ac745a6272e937da5a8c2cff23875734ea3cb7223a2cfc51718f823a67ad"},
+    {"path":"research/funding_settlement/README.md","sha256":"aee0da812ae4a1d21b8329b0153bbcde33c9c48f2ffda008f161207d6f6f30e4"}
   ],
   "next_action": "Test the changed information surface only: exact settlement state conditioned on pre-settlement OI change and crowding. If no basic-cost edge survives, retire the funding/OI mechanism and move to event-time dollar-volume OFI."
 }
