@@ -134,9 +134,9 @@ def main() -> int:
 
     try:
         rows = read_jsonl(ROOT / "data/catalog/source-registry.jsonl")
-        unique([str(row.get("source_id", "")) for row in rows], "source_id", errors)
-        unique([str(row.get("canonical_url", "")) for row in rows], "canonical_url", errors)
-        unique([str(row.get("sha256", "")) for row in rows], "source sha256", errors)
+        unique([str(row.get("source_id") or "") for row in rows], "source_id", errors)
+        unique([str(row.get("canonical_url") or "") for row in rows], "canonical_url", errors)
+        unique([str(row.get("sha256") or "") for row in rows], "source sha256", errors)
     except Exception as exc:
         fail(f"source registry: {exc}", errors)
 
