@@ -1,0 +1,111 @@
+schema_version = 1
+template_version = "1.0.0"
+source_repository = "umtong/SMC_ICT_2_LIVE"
+required_inputs = ["target_github_repository", "target_google_drive_root"]
+
+[derivation]
+project_name = "target_repository_basename"
+project_id = "lowercase_slug_of_project_name"
+drive_root_name = "drive_folder_metadata_name_or_project_name"
+
+[copy]
+required_paths = [
+  ".github",
+  ".editorconfig",
+  ".gitignore",
+  "AGENTS.md",
+  "pyproject.toml",
+  "instructions",
+  "prompts",
+  "schemas",
+  "scripts",
+  "templates",
+  "tests",
+  "bootstrap",
+  "config/evaluation.toml",
+  "config/storage.toml",
+  "config/workers.toml",
+  "config/project.local.example.toml",
+  "control/README.md",
+  "data/README.md",
+  "data/catalog/README.md",
+  "research/hypotheses/README.md",
+  "research/experiments/README.md",
+  "research/reports/README.md",
+  "research/invalidated/README.md",
+  "runs/README.md"
+]
+optional_paths = [
+  "docs/architecture.md",
+  "docs/data-retention.md",
+  "docs/drive-layout.md",
+  "docs/operating-playbook.md",
+  "docs/ranking-policy.md"
+]
+
+[[render]]
+template = "bootstrap/reset/README.md.tmpl"
+destination = "README.md"
+
+[[render]]
+template = "bootstrap/reset/config/project.toml.tmpl"
+destination = "config/project.toml"
+
+[[render]]
+template = "bootstrap/reset/control/current-state.md.tmpl"
+destination = "control/current-state.md"
+
+[[render]]
+template = "bootstrap/reset/control/ranking.json.tmpl"
+destination = "control/ranking.json"
+
+[[render]]
+template = "bootstrap/reset/control/work-claims.csv.tmpl"
+destination = "control/work-claims.csv"
+
+[[render]]
+template = "bootstrap/reset/control/decisions.md.tmpl"
+destination = "control/decisions.md"
+
+[[render]]
+template = "bootstrap/reset/docs/ranking-policy.md.tmpl"
+destination = "docs/ranking-policy.md"
+
+[reset]
+empty_jsonl_paths = [
+  "control/result-registry.jsonl",
+  "control/validation-cache.jsonl",
+  "data/catalog/source-registry.jsonl",
+  "data/catalog/dataset-registry.jsonl",
+  "data/catalog/entity-registry.jsonl"
+]
+marker_paths = [
+  "data/raw/.gitkeep",
+  "data/cache/.gitkeep",
+  "data/downloads/.gitkeep",
+  "data/manifests/.gitkeep",
+  "data/processed/.gitkeep",
+  "data/indexes/.gitkeep",
+  "research/hypotheses/.gitkeep",
+  "research/experiments/.gitkeep",
+  "research/reports/.gitkeep",
+  "research/invalidated/.gitkeep",
+  "runs/.gitkeep",
+  "artifacts/local/.gitkeep"
+]
+
+[completion]
+initial_revision = 1
+initial_phase = "ACTIVE_RESEARCH"
+initial_ranking_status = "EMPTY"
+inherit_strategy_results = false
+inherit_ranking = false
+inherit_work_claims = false
+inherit_sources = false
+inherit_datasets = false
+inherit_runs = false
+validate_commands = [
+  "python scripts/validate_project.py",
+  "python -m pytest",
+  "python scripts/build_context_bundle.py"
+]

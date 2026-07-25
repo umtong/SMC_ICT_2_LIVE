@@ -49,15 +49,23 @@ python scripts/build_context_bundle.py
 
 ## 다른 프로젝트에 재사용
 
+새 프로젝트의 채팅에 `prompts/bootstrap-new-project.md`를 붙여 넣고 다음 두 값만 교체한다.
+
+- 새 GitHub 저장소
+- 새 Google Drive 루트 폴더
+
+새 AI는 `bootstrap/bootstrap-contract.md`, `bootstrap/template-manifest.toml`, `bootstrap/drive-blueprint.json`을 사용해 GitHub와 Drive를 revision 1의 빈 연구 상태로 구성한다.
+
+로컬 실행 환경에서는 다음을 사용할 수 있다.
+
 ```bash
-python scripts/init_project.py \
-  --project-id new-project \
-  --project-name NEW_PROJECT \
+python scripts/instantiate_project.py \
   --github-repository owner/NEW_PROJECT \
-  --drive-root-name NEW_PROJECT
+  --drive-root-url 'https://drive.google.com/drive/folders/DRIVE_ID' \
+  --output /tmp/NEW_PROJECT
 ```
 
-비공개 Google Drive 폴더 ID는 Git에서 제외되는 `config/project.local.toml`에 기록한다.
+자세한 내용은 `docs/reusable-bootstrap.md`를 참고한다. 비공개 Google Drive URL·ID는 Git에서 제외되는 `config/project.local.toml`에 기록한다.
 
 ## 현재 상태
 

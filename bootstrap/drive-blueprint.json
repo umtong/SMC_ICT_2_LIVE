@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "template_version": "1.0.0",
+  "folders": [
+    "00_CONTROL",
+    "01_RUNS",
+    "02_DATA/00_INBOX",
+    "02_DATA/10_YOUTUBE/00_RAW_TRANSCRIPTS",
+    "02_DATA/10_YOUTUBE/10_SOURCE_NOTES",
+    "02_DATA/10_YOUTUBE/20_EXTRACTED_CLAIMS",
+    "02_DATA/10_YOUTUBE/30_HYPOTHESES",
+    "02_DATA/20_PAPERS",
+    "02_DATA/30_TRADERS_AND_FUNDS",
+    "02_DATA/40_COMPETITIONS_AND_CASES",
+    "02_DATA/50_EXCHANGES_BROKERS_APIS",
+    "02_DATA/60_CODE_AND_REPOS",
+    "02_DATA/70_MARKET_AND_REFERENCE_DATA",
+    "02_DATA/80_PROCESSED_AND_EXTRACTED",
+    "02_DATA/90_MANIFESTS_AND_INDEXES",
+    "02_DATA/99_DUPLICATES_AND_QUARANTINE",
+    "03_RESEARCH",
+    "04_ARTIFACTS",
+    "05_SNAPSHOTS",
+    "90_ARCHIVE"
+  ],
+  "documents": [
+    {"path": "00_START_HERE", "template": "bootstrap/drive-templates/00_START_HERE.md.tmpl"},
+    {"path": "00_CONTROL/00_PROJECT_BINDING", "template": "bootstrap/drive-templates/00_PROJECT_BINDING.md.tmpl"},
+    {"path": "00_CONTROL/01_PROJECT_STATE", "source_file": "control/current-state.md"},
+    {"path": "00_CONTROL/02_STRATEGY_RANKING", "template": "bootstrap/drive-templates/02_STRATEGY_RANKING.md.tmpl"},
+    {"path": "00_CONTROL/04_DECISION_LOG", "source_file": "control/decisions.md"},
+    {"path": "00_CONTROL/05_EVALUATION_CONTRACT", "source_file": "config/evaluation.toml"},
+    {"path": "00_CONTROL/06_GOAL_WORKER_PROMPT", "source_file": "prompts/goal-worker.md"},
+    {"path": "00_CONTROL/07_SYSTEM_MAP", "template": "bootstrap/drive-templates/07_SYSTEM_MAP.md.tmpl"},
+    {"path": "00_CONTROL/10_STATE_RECONCILE_PROMPT", "source_file": "prompts/reconcile-state.md"}
+  ],
+  "sheets": [
+    {
+      "path": "00_CONTROL/03_WORK_CLAIMS",
+      "columns": ["claim_id", "worker_id", "objective", "scope", "objective_fingerprint", "scope_fingerprint", "base_revision", "status", "claimed_at", "lease_until", "branch", "run_report", "pull_request", "overlap_reason"]
+    },
+    {
+      "path": "00_CONTROL/08_RESULT_REGISTRY",
+      "columns": ["result_id", "result_type", "status", "artifact_fingerprint", "dependency_fingerprint", "dataset_ids", "source_ids", "code_commit", "evaluation_contract", "cost_execution_contract", "artifact_path", "run_report", "created_at"]
+    },
+    {
+      "path": "00_CONTROL/09_VALIDATION_CACHE",
+      "columns": ["attestation_id", "validation_type", "status", "dependency_fingerprint", "tool_version", "evidence_path", "created_at", "recheck_condition"]
+    },
+    {
+      "path": "02_DATA/90_MANIFESTS_AND_INDEXES/00_SOURCE_REGISTRY",
+      "columns": ["source_id", "source_type", "canonical_url", "title", "creator", "language", "status", "raw_drive_path", "sha256", "related_hypotheses", "related_experiments", "notes"]
+    },
+    {
+      "path": "02_DATA/90_MANIFESTS_AND_INDEXES/01_DATASET_REGISTRY",
+      "columns": ["dataset_id", "provider", "market", "symbols", "timeframe", "start", "end", "snapshot_at", "status", "raw_drive_path", "sha256", "availability_notes", "related_experiments"]
+    },
+    {
+      "path": "02_DATA/90_MANIFESTS_AND_INDEXES/02_ENTITY_REGISTRY",
+      "columns": ["entity_id", "entity_type", "canonical_name", "aliases", "canonical_url", "language", "related_source_ids", "notes"]
+    }
+  ],
+  "bootstrap_run_report_path": "01_RUNS/RUN__BOOTSTRAP__REVISION-001__<TIMESTAMP>"
+}

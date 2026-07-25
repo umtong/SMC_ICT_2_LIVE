@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "status": "EMPTY",
+  "ranking_id": "STRATEGY-RANKING-{{PROJECT_ID}}-R1",
+  "ranking_rule": {
+    "eligibility": "hard_valid_strategy_or_portfolio_result",
+    "primary_objective": "minimum_distance_to_full_project_objective",
+    "primary_metric": "realistic_after_cost_geometric_daily_growth_gap_to_0.01",
+    "survival_constraint": "a candidate with forced liquidation or irrecoverable account damage cannot outrank a survival-qualified candidate solely through raw return",
+    "secondary_criteria": [
+      "maximum_drawdown_and_recovery",
+      "liquidation_and_tail_loss",
+      "profit_concentration_and_top_trade_removal",
+      "effective_independent_trade_count",
+      "execution_and_cost_robustness",
+      "capital_efficiency",
+      "validation_and_comparison_confidence"
+    ],
+    "incomplete_normalization": "provisional_rank_with_disclosed_confidence",
+    "rank_does_not_determine_work_priority": true
+  },
+  "first_place": null,
+  "ranked_candidates": [],
+  "unranked_results": [],
+  "component_rankings": [],
+  "updated_at": "{{INITIALIZED_AT}}"
+}
