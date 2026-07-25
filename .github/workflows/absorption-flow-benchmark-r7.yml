@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -29,11 +31,18 @@ jobs:
         run: |
           python -m pip install --upgrade 'pip==25.1.1'
           python -m pip install 'numpy==2.3.5' 'pandas==2.2.3' 'pyarrow==25.0.0' 'pytest==8.3.4'
-      - name: Reconstruct and verify immutable source package
+      - name: Reconstruct dollar-clock source package and prior baseline source
         run: |
           set -euo pipefail
-          cd research/absorption_flow_benchmark_r7
-          python reconstruct.py
+          root=research/absorption_flow_benchmark_r7
+          python "$root/reconstruct.py"
+          git fetch origin agent/absorption-flow-benchmark-20260725
+          mkdir -p /tmp/abs-base
+          git archive origin/agent/absorption-flow-benchmark-20260725 research/absorption_flow_benchmark_v1 | tar -x -C /tmp/abs-base
+          python /tmp/abs-base/research/absorption_flow_benchmark_v1/reconstruct.py
+          base=/tmp/abs-base/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
+          echo 'e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  '"$base" | sha256sum -c -
+          cp "$base" "$root/reconstructed/research/absorption_flow_benchmark.py"
       - name: Compile and run causal and exact-executor checks
         run: |
           set -euo pipefail
