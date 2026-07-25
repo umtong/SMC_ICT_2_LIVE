@@ -39,6 +39,12 @@ jobs:
           ref: agent/causal-alpha-wave1-20260725
           fetch-depth: 1
 
+      - name: Reconstruct and verify registered research source
+        run: |
+          set -euo pipefail
+          python research/alpha_wave1/reconstruct_source.py
+          python -m py_compile research/alpha_wave1/binance_alpha_wave1.py
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -137,6 +143,8 @@ jobs:
           cp "$ROOT/hypotheses.jsonl" "$EVIDENCE/"
           cp "$ROOT/binance_alpha_wave1.py" "$EVIDENCE/"
           cp "$ROOT/requirements-lock.txt" "$EVIDENCE/"
+          cp "$ROOT/SOURCE_MANIFEST.json" "$EVIDENCE/"
+          cp "$ROOT/reconstruct_source.py" "$EVIDENCE/"
           cp tests/test_alpha_wave1.py "$EVIDENCE/"
           python - <<'PY'
           import json
