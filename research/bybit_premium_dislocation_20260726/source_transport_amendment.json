@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0547-BYBIT-PREMIUM-DISLOCATION-001",
+  "amendment_id": "AMEND-20260726-BYBIT-PREMIUM-TRANSPORT-001",
+  "timestamp": "2026-07-26T06:12:00+09:00",
+  "reason": "The first GitHub Actions probe was source-blocked before any fit or development data were opened because the westus hosted runner received HTTP 403 country-block responses from api.bybit.com and api.bytick.com.",
+  "failed_run": {
+    "workflow_run_id": 30174891949,
+    "job_id": 89721967969,
+    "artifact_id": 8623936694,
+    "head_sha": "63069a5b50952fb5070ae823ba935c63e4f54e2d",
+    "failed_step": "Probe every frozen Bybit public source",
+    "economic_data_opened": false,
+    "2024_or_later_opened": false
+  },
+  "frozen_contract_changes": {
+    "hypotheses": false,
+    "symbols": false,
+    "dates": false,
+    "features": false,
+    "candidate_grid": false,
+    "costs": false,
+    "risk_or_leverage": false,
+    "execution_or_exit_rules": false,
+    "gates": false
+  },
+  "transport_only_change": {
+    "original_hosts_retained": [
+      "https://api.bybit.com",
+      "https://api.bytick.com"
+    ],
+    "official_regional_public_hosts_added": [
+      "https://api.bybit.nl",
+      "https://api.bybit.tr",
+      "https://api.bybit.kz",
+      "https://api.bybitgeorgia.ge",
+      "https://api.bybit.ae",
+      "https://api.bybit.id",
+      "https://api.byhkbit.com"
+    ],
+    "selection_rule": "For every request, try the immutable ordered host list and accept only HTTP 200, retCode 0 responses with the same endpoint path and parameters. Record the successful host and full response hash in the request manifest.",
+    "source_authority": "Bybit official V5 integration guidance lists regional mainnet API hosts and explicitly documents that United States IPs receive HTTP 403 on the primary API.",
+    "no_proxy_or_third_party_data": true
+  },
+  "interpretation": "This amendment can only restore source access. A second source failure remains SOURCE_BLOCKED; it cannot be interpreted as economic evidence."
+}
