@@ -1,0 +1,32 @@
+    parser.add_argument("--stage", choices=("development", "validation"), required=True)
+    parser.add_argument("--cache", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--hypotheses", type=Path, required=True)
+    parser.add_argument("--freeze", type=Path)
+    args = parser.parse_args()
+    if args.stage == "validation" and args.freeze is None:
+        parser.error("--freeze is required for validation")
+    try:
+        rc = development(args) if args.stage == "development" else validation(args)
+        write_checksums(args.output)
+        return rc
+    except Exception as exc:
+        args.output.mkdir(parents=True, exist_ok=True)
+        atomic_json(
+            args.output / "failure.json",
+            {
+                "study_id": STUDY_ID,
+                "stage": args.stage,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+                "target_validated": False,
+                "orders_submitted": False,
+                "paper_or_live_enabled": False,
+            },
+        )
+        write_checksums(args.output)
+        raise
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
