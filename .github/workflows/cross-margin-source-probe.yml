@@ -1,0 +1,105 @@
+name: Cross-margin official source probe
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-margin-dislocation-001
+    paths:
+      - "research/cross_margin_dislocation_20260725/**"
+      - ".github/workflows/cross-margin-source-probe.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/cross_margin_dislocation_20260725/**"
+      - ".github/workflows/cross-margin-source-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r5-cross-margin-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-margin-dislocation-001
+          fetch-depth: 1
+
+      - name: Install fixed environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "requests==2.32.4"
+          mkdir -p research_runs/cross_margin_dislocation_20260725/source_probe
+
+      - name: Verify preregistration and self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/cross_margin_dislocation_20260725
+          python -m py_compile "$root/source_probe.py"
+          sha256sum "$root/preregistration.json" "$root/source_probe.py" > research_runs/cross_margin_dislocation_20260725/source_probe/INPUT_SHA256SUMS.txt
+          python "$root/source_probe.py" --self-test --output research_runs/cross_margin_dislocation_20260725/source_probe \
+            2>&1 | tee research_runs/cross_margin_dislocation_20260725/source_probe/self_test.log
+          python - <<'PY'
+          import json
+          p=json.load(open('research/cross_margin_dislocation_20260725/preregistration.json'))
+          assert p['status']=='PREREGISTERED_BEFORE_SOURCE_OR_PRICE_SCREEN'
+          assert p['time_splits']['2026_opened'] is False
+          assert p['portfolio_and_costs']['one_global_open_or_pending_slot'] is True
+          PY
+
+      - name: Probe official checksum-verified archives
+        shell: bash
+        run: |
+          set +e
+          python research/cross_margin_dislocation_20260725/source_probe.py \
+            --date 2023-07-01 \
+            --output research_runs/cross_margin_dislocation_20260725/source_probe/result \
+            2>&1 | tee research_runs/cross_margin_dislocation_20260725/source_probe/probe.log
+          rc=${PIPESTATUS[0]}
+          python - "$rc" <<'PY'
+          import json, pathlib, sys
+          root=pathlib.Path('research_runs/cross_margin_dislocation_20260725/source_probe')
+          source=root/'result'/'SOURCE_PROBE.json'
+          payload={
+              'probe_rc':int(sys.argv[1]),
+              'result_present':source.exists(),
+              'strategy_or_pnl_computed':False,
+              'selection_opened':False,
+              'confirmation_opened':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+          }
+          if source.exists():
+              item=json.loads(source.read_text())
+              payload['all_required_tick_and_bbo_sources_usable']=bool(item['all_required_tick_and_bbo_sources_usable'])
+              payload['record_count']=len(item['records'])
+          (root/'RUN_STATUS.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+          exit 0
+
+      - name: Record checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/cross_margin_dislocation_20260725/source_probe
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-margin-source-probe-${{ github.sha }}
+          path: research_runs/cross_margin_dislocation_20260725/source_probe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6

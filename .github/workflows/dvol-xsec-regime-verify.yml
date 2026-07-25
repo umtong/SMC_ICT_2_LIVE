@@ -1,0 +1,72 @@
+name: DVOL cross-sectional regime verification
+
+on:
+  push:
+    branches:
+      - agent/r8-dvol-xsec-regime-001
+    paths:
+      - "research/dvol_xsec_regime_20260726/**"
+      - ".github/workflows/dvol-xsec-regime-verify.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dvol_xsec_regime_20260726/**"
+      - ".github/workflows/dvol-xsec-regime-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r8-dvol-xsec-regime-001
+          fetch-depth: 1
+      - name: Install fixed test environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "numba==0.61.0"
+      - name: Verify preregistration, compile and causal self-tests
+        run: |
+          set -euo pipefail
+          root=research/dvol_xsec_regime_20260726
+          python -m py_compile "$root/dvol_xsec_regime.py" "$root/schema_compat_runner.py"
+          python "$root/schema_compat_runner.py" --self-test
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('research/dvol_xsec_regime_20260726')
+          pre=json.loads((root/'preregistration.json').read_text())
+          a1=json.loads((root/'amendment_before_outcome.json').read_text())
+          a2=json.loads((root/'amendment_2_before_outcome.json').read_text())
+          a3=json.loads((root/'amendment_3_before_outcome.json').read_text())
+          assert pre['parameter_grid']['registered_candidate_count']==960
+          assert pre['safety']['2023_opened'] is False
+          assert pre['safety']['2024_opened'] is False
+          assert pre['safety']['2025_or_2026_opened'] is False
+          assert pre['safety']['orders_submitted'] is False
+          assert a1['safety']['development_outcomes_seen'] is False
+          assert a2['safety']['development_outcomes_seen'] is False
+          assert a3['safety']['development_outcomes_seen'] is False
+          print('preregistration and stage seals passed')
+          PY
+      - name: Export exact repository source set
+        run: |
+          set -euo pipefail
+          root=research/dvol_xsec_regime_20260726
+          mkdir -p /tmp/dvol-source
+          cp "$root"/preregistration.json /tmp/dvol-source/
+          cp "$root"/amendment*_before_outcome.json /tmp/dvol-source/
+          cp "$root"/dvol_xsec_regime.py /tmp/dvol-source/
+          cp "$root"/schema_compat_runner.py /tmp/dvol-source/
+          (cd /tmp/dvol-source && sha256sum * > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dvol-xsec-regime-source
+          path: /tmp/dvol-source
+          if-no-files-found: error
+          retention-days: 14

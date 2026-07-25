@@ -1,0 +1,105 @@
+name: Cross-margin official source decision
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-margin-dislocation-001
+    paths:
+      - ".github/workflows/cross-margin-source-controller.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: r5-cross-margin-source-controller-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-margin-dislocation-001
+          fetch-depth: 1
+
+      - name: Recover latest successful source-probe workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id=""
+          for attempt in $(seq 1 120); do
+            run_id=$(gh run list \
+              --repo umtong/SMC_ICT_2_LIVE \
+              --workflow cross-margin-source-probe.yml \
+              --branch agent/r5-cross-margin-dislocation-001 \
+              --limit 20 \
+              --json databaseId,status,conclusion \
+              --jq '[.[] | select(.status=="completed" and .conclusion=="success")][0].databaseId // ""')
+            if [[ -n "$run_id" ]]; then break; fi
+            sleep 10
+          done
+          if [[ -z "$run_id" ]]; then
+            echo "No completed source probe" >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/probe" research_results/r5_cross_margin_dislocation_001
+          gh run download "$run_id" --repo umtong/SMC_ICT_2_LIVE --dir "$RUNNER_TEMP/probe"
+          echo "$run_id" > research_results/r5_cross_margin_dislocation_001/OFFICIAL_PROBE_RUN_ID.txt
+          find "$RUNNER_TEMP/probe" -type f -print | sort > research_results/r5_cross_margin_dislocation_001/OFFICIAL_PROBE_FILES.txt
+
+      - name: Commit durable source decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          evidence=pathlib.Path(os.environ['RUNNER_TEMP'])/'probe'
+          output=pathlib.Path('research_results/r5_cross_margin_dislocation_001')
+          items=list(evidence.glob('**/SOURCE_PROBE.json'))
+          source=json.loads(items[0].read_text()) if items else None
+          usable=bool(source and source.get('all_required_tick_and_bbo_sources_usable'))
+          result={
+              'schema_version':1,
+              'result_id':'RES-20260725-CROSS-MARGIN-SOURCE-001',
+              'claim_id':'CLM-20260725-2120-CROSS-MARGIN-001',
+              'status':'SOURCE_USABLE' if usable else 'INFRASTRUCTURE_BLOCKED',
+              'official_source_probe':source,
+              'official_strategy_or_pnl_computed':False,
+              'official_development_opened':False,
+              'fallback_source_allowed':not usable,
+              'fallback_requires_frozen_preregistration':True,
+              'selection_opened':False,
+              'confirmation_opened':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+              'paper_live_started':False,
+              'champion_eligible':False,
+          }
+          path=output/'source_result.json'
+          path.write_text(json.dumps(result,indent=2,sort_keys=True,default=str)+'\n')
+          (output/'source_result.sha256').write_text(hashlib.sha256(path.read_bytes()).hexdigest()+'  source_result.json\n')
+          for old in output.glob('STATUS_*.txt'):
+              old.unlink()
+          sentinel=output/f"STATUS_{result['status']}.txt"
+          sentinel.write_text(json.dumps({
+              'status':result['status'],
+              'official_strategy_or_pnl_computed':False,
+              'fallback_source_allowed':result['fallback_source_allowed'],
+              '2026_opened':False,
+              'orders_submitted':False,
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          find research_results/r5_cross_margin_dislocation_001 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > research_results/r5_cross_margin_dislocation_001/SHA256SUMS.txt
+          git config user.name "smc-ict-research-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add research_results/r5_cross_margin_dislocation_001
+          if ! git diff --cached --quiet; then
+            git commit -m "Record official cross-margin source decision"
+            git push origin HEAD:agent/r5-cross-margin-dislocation-001
+          fi
