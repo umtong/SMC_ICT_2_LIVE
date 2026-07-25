@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "study_id": "DVOL_XSEC_REGIME_ROUTER_V1",
+  "claim_id": "CLM-20260726-0005-DVOL-XSEC-001",
+  "result_id": "RES-20260726-DVOL-XSEC-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "candidate_count": 960,
+  "unique_signal_path_count": 240,
+  "development_gate_pass_count": 0,
+  "selection_opened": false,
+  "2024_opened": false,
+  "2025_or_2026_opened": false,
+  "orders_submitted": false,
+  "data": {
+    "binance_tar_sha256": "614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f",
+    "dvol_zip_sha256": "fc27e7f23deb5064ec554b001ce5bfaa56a5c43cf3decb64ab36e90a2ce4d747",
+    "verified_binance_archive_count": 156,
+    "funding_contract_open_fallbacks": 8,
+    "development": ["2022-04-04T00:00:00Z", "2023-01-01T00:00:00Z"]
+  },
+  "best_raw": {
+    "candidate_id": "1b4ec83c59bb98660c23",
+    "family": "LOW_VRP_RESIDUAL_CONTINUATION",
+    "trades": 76,
+    "return_12bps": 0.009291192349552002,
+    "geometric_daily_12bps": 0.00003400166161160456,
+    "profit_factor_12bps": 1.0683756648659843,
+    "max_drawdown_12bps": 0.034484403234366634,
+    "median_trade_bps_12bps": -7.787055765261462,
+    "top5_positive_share_12bps": 0.4644663390453395,
+    "top10pct_removed_return_12bps": -0.07374171483799907,
+    "return_18bps": -0.008453427632443389,
+    "return_24bps": -0.024827112929082018
+  },
+  "best_minimum_100_trades": {
+    "candidate_id": "91a62acece2112caeaf6",
+    "family": "IV_SHOCK_DISPERSION_CONTINUATION",
+    "trades": 232,
+    "return_12bps": 0.007606041194142765,
+    "geometric_daily_12bps": 0.000027857965620547986,
+    "profit_factor_12bps": 1.013627843734322,
+    "max_drawdown_12bps": 0.07188013797593085,
+    "median_trade_bps_12bps": -14.174628083835199,
+    "top5_positive_share_12bps": 0.25844090956085913,
+    "top10pct_removed_return_12bps": -0.3114866356420074,
+    "return_18bps": -0.049605449604857466,
+    "return_24bps": -0.09774249329739648,
+    "h1_return_12bps": 0.050388731206717496,
+    "h2_return_12bps": -0.04073033986515162
+  },
+  "global_diagnostics": {
+    "minimum_100_trades": 905,
+    "positive_12bps": 2,
+    "positive_18bps": 0,
+    "positive_24bps": 0,
+    "positive_median_trade": 0,
+    "positive_after_top10pct_removal": 0
+  },
+  "prefix_invariance": {"max_abs_diff": 0.0, "finite_mismatch": 0, "pass": true},
+  "repository_source_equivalence": {
+    "repository_commit": "68073cf303438d77b29ccad449c52e9f4058b7f6",
+    "screen_sha256": "1999f04f499e5c947782e38ed42a33249485b66c6ae883c30c28d97aa9e40164",
+    "maximum_numeric_difference": 0.0,
+    "screen_bytes_identical": true
+  },
+  "decision": "Reject the preregistered DVOL cross-sectional router under this dependency fingerprint without opening 2023. The current strategy first place is unchanged."
+}
