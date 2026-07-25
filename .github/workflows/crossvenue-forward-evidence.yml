@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - agent/crossvenue-forward-capture-r6
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/crossvenue-forward-evidence.yml'
+      - 'research/experiments/crossvenue_forward_evidence/**'
+      - 'tests/test_crossvenue_forward_bundle.py'
+      - 'control/**'
+      - 'data/catalog/**'
+      - 'research/reports/**'
   workflow_dispatch:
 
 permissions:
