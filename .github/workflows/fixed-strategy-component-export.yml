@@ -3,7 +3,12 @@ name: Fixed strategy component source export
 on:
   push:
     branches:
-      - agent/r8-fixed-strategy-portfolio-001
+      - "agent/r8-fixed-strategy-portfolio-*"
+    paths:
+      - "research/fixed_strategy_portfolio_20260726/**"
+      - ".github/workflows/fixed-strategy-component-export.yml"
+  pull_request:
+    branches: [main]
     paths:
       - "research/fixed_strategy_portfolio_20260726/**"
       - ".github/workflows/fixed-strategy-component-export.yml"
@@ -17,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout portfolio branch
+      - name: Checkout portfolio head
         uses: actions/checkout@v4
         with:
-          ref: agent/r8-fixed-strategy-portfolio-001
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: portfolio
           fetch-depth: 1
       - name: Checkout frozen dynamic component branch
@@ -76,11 +81,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile dynamic_verified/*.py absorption_verified/*.py
+          mapfile -d '' python_files < <(find dynamic_verified absorption_verified -type f -name '*.py' -print0 | sort -z)
+          test ${#python_files[@]} -gt 0
+          python -m py_compile "${python_files[@]}"
           mkdir -p /tmp/fixed-component-sources/dynamic /tmp/fixed-component-sources/absorption /tmp/fixed-component-sources/portfolio
           cp -a dynamic_verified/. /tmp/fixed-component-sources/dynamic/
           cp -a absorption_verified/. /tmp/fixed-component-sources/absorption/
-          cp portfolio/research/fixed_strategy_portfolio_20260726/preregistration.json /tmp/fixed-component-sources/portfolio/
+          if [ -f portfolio/research/fixed_strategy_portfolio_20260726/preregistration.json ]; then
+            cp portfolio/research/fixed_strategy_portfolio_20260726/preregistration.json /tmp/fixed-component-sources/portfolio/
+          fi
           (cd /tmp/fixed-component-sources && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
