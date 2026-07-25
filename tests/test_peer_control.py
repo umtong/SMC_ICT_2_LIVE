@@ -1,4 +1,5 @@
 import csv
+import json
 import tomllib
 from pathlib import Path
 
@@ -32,7 +33,26 @@ def test_work_configuration_uses_conditional_efficiency_gates():
     assert evaluation["validation"]["mode"] == "staged"
     assert evaluation["validation"]["depth_proportional_to_economic_promise_and_decision_value"] is True
     assert evaluation["stage"]["initial"]["purpose"] == "cheap_rejection"
-    assert evaluation["final_reporting"]["applies_to"] == "champion_challenger_or_material_final_report"
+    assert evaluation["final_reporting"]["applies_to"] == "current_champion_challenger_or_material_final_report"
+
+
+def test_champion_is_current_best_not_goal_certification():
+    evaluation = tomllib.loads((ROOT / "config/evaluation.toml").read_text(encoding="utf-8"))
+    policy = evaluation["champion"]
+    champion = json.loads((ROOT / "control/champion.json").read_text(encoding="utf-8"))
+
+    assert policy["definition"] == "current_best_hard_valid_strategy_or_portfolio_candidate"
+    assert policy["select_when_any_comparable_hard_valid_candidate_exists"] is True
+    assert policy["target_attainment_required"] is False
+    assert policy["full_validation_required"] is False
+    assert policy["economic_gate_failure_is_not_hard_invalidity"] is True
+
+    assert champion["status"] == "RESEARCH_CHAMPION"
+    assert champion["champion_id"]
+    assert champion["target_status"] == "NOT_MET"
+    assert champion["qualification_stage"] == "EXPLORATORY"
+    assert champion["metrics"]["target_geometric_daily_growth"] == 0.01
+    assert champion["metrics"]["geometric_daily_growth"] < 0.01
 
 
 def test_work_claim_registry_has_deduplication_fields():
@@ -55,9 +75,11 @@ def test_reuse_registries_are_parseable():
     read_jsonl(ROOT / "control/validation-cache.jsonl")
 
 
-def test_runtime_instructions_apply_staged_validation_and_targeted_lookup():
+def test_runtime_instructions_apply_staged_validation_targeted_lookup_and_champion_policy():
     text = (ROOT / "instructions/project-instructions.md").read_text(encoding="utf-8")
     assert "전체 기록을 일괄 검토하지 않는다" in text
     assert "검증 깊이는 후보의 경제적 가능성과 의사결정 중요도에 비례시킨다" in text
     assert "사용하지 않은 검색 결과는 등록하지" in text
     assert "공용·재사용 가능한 코드" in text
+    assert "Champion은 목표 달성 인증이나 실사용 승인 상태가 아니라" in text
+    assert "목표 달성 여부나 최종 검증 통과를 기다려 Champion 선정을 미루지 않는다" in text

@@ -3,12 +3,31 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from common import ROOT, read_jsonl
 
 REGISTRY = ROOT / "control/result-registry.jsonl"
+RESULT_STATUSES = [
+    "VALID",
+    "CANDIDATE",
+    "TESTED_BELOW_GATE",
+    "VALIDATED_COMPONENT_ONLY",
+    "HARD_INVALID",
+    "INVALID",
+    "SUPERSEDED",
+]
+HARD_VALIDITY_STATUSES = ["PASS", "FAIL", "UNKNOWN"]
+ECONOMIC_STATUSES = [
+    "UNSCREENED",
+    "BELOW_GATE",
+    "BASIC_COST_POSITIVE",
+    "OUT_OF_SAMPLE_POSITIVE",
+    "VALIDATED",
+    "NOT_APPLICABLE",
+]
 
 
 def file_hash(path: Path) -> str:
@@ -28,7 +47,9 @@ def main() -> int:
     parser.add_argument("--result-id", required=True)
     parser.add_argument("--claim-id", required=True)
     parser.add_argument("--worker-id", required=True)
-    parser.add_argument("--status", choices=["VALID", "CANDIDATE", "INVALID", "SUPERSEDED"], required=True)
+    parser.add_argument("--status", choices=RESULT_STATUSES, required=True)
+    parser.add_argument("--hard-validity-status", choices=HARD_VALIDITY_STATUSES, default="UNKNOWN")
+    parser.add_argument("--economic-status", choices=ECONOMIC_STATUSES, default="UNSCREENED")
     parser.add_argument("--artifact", action="append", default=[])
     parser.add_argument("--source-id", action="append", default=[])
     parser.add_argument("--dataset-id", action="append", default=[])
@@ -36,6 +57,18 @@ def main() -> int:
     parser.add_argument("--evaluation-contract", default="config/evaluation.toml")
     parser.add_argument("--summary", required=True)
     args = parser.parse_args()
+
+    if args.status == "INVALID":
+        print(
+            "warning: INVALID is retained only for legacy compatibility; use HARD_INVALID "
+            "for validity failures or TESTED_BELOW_GATE for economically weak but method-valid results",
+            file=sys.stderr,
+        )
+
+    if args.status == "HARD_INVALID" and args.hard_validity_status != "FAIL":
+        raise SystemExit("HARD_INVALID requires --hard-validity-status FAIL")
+    if args.status == "TESTED_BELOW_GATE" and args.hard_validity_status == "FAIL":
+        raise SystemExit("TESTED_BELOW_GATE cannot have hard validity FAIL")
 
     artifacts: list[dict[str, str]] = []
     artifact_parts: list[str] = []
@@ -81,6 +114,8 @@ def main() -> int:
         "claim_id": args.claim_id,
         "worker_id": args.worker_id,
         "status": args.status,
+        "hard_validity_status": args.hard_validity_status,
+        "economic_status": args.economic_status,
         "summary": args.summary,
         "source_ids": sorted(set(args.source_id)),
         "dataset_ids": sorted(set(args.dataset_id)),

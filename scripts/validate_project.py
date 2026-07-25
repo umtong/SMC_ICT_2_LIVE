@@ -22,6 +22,7 @@ REQUIRED = [
     "control/validation-cache.jsonl",
     "data/catalog/source-registry.jsonl",
     "data/catalog/dataset-registry.jsonl",
+    "schemas/champion.schema.json",
     "schemas/source.schema.json",
     "schemas/run-report.schema.json",
     "schemas/work-claim.schema.json",
@@ -82,12 +83,15 @@ EFFICIENCY_REQUIREMENTS = {
         "사용하지 않은 검색 결과는 등록하지",
         "공용·재사용 가능한 코드",
         "완전한 run report는 목표 달성, 시간제한",
+        "champion은 목표 달성 인증이나 실사용 승인 상태가 아니라",
+        "목표 달성 여부나 최종 검증 통과를 기다려 champion 선정을 미루지 않는다",
     ],
     "prompts/goal-worker.md": [
         "관련된 활성 work claim",
         "중복 비용이 크거나 산출물의 재사용 가치가 높은 작업에만",
         "검증 깊이를 후보의 경제적 가능성과 의사결정 중요도에 맞춘다",
         "공용·재사용 가능한 저장소 변경에만",
+        "champion은 최종 목표 달성 인증이 아니라",
     ],
 }
 
@@ -132,10 +136,19 @@ def main() -> int:
             fail("evaluation validation mode must be staged", errors)
         if not evaluation.get("validation", {}).get("depth_proportional_to_economic_promise_and_decision_value"):
             fail("validation depth must follow economic promise and decision value", errors)
-        for stage in ["initial", "promising", "champion"]:
+        for stage in ["initial", "promising", "deep_validation"]:
             if not evaluation.get("stage", {}).get(stage, {}).get("required"):
                 fail(f"evaluation stage missing requirements: {stage}", errors)
-        if evaluation.get("final_reporting", {}).get("applies_to") != "champion_challenger_or_material_final_report":
+        champion_policy = evaluation.get("champion", {})
+        if champion_policy.get("definition") != "current_best_hard_valid_strategy_or_portfolio_candidate":
+            fail("Champion definition must be current-best hard-valid candidate", errors)
+        if champion_policy.get("target_attainment_required") is not False:
+            fail("Champion selection must not require target attainment", errors)
+        if champion_policy.get("full_validation_required") is not False:
+            fail("Champion selection must not require full validation", errors)
+        if not champion_policy.get("select_when_any_comparable_hard_valid_candidate_exists"):
+            fail("Champion must be selected when a comparable hard-valid candidate exists", errors)
+        if evaluation.get("final_reporting", {}).get("applies_to") != "current_champion_challenger_or_material_final_report":
             fail("final reporting scope is not materiality-gated", errors)
     except Exception as exc:
         fail(f"evaluation.toml: {exc}", errors)
@@ -177,7 +190,7 @@ def main() -> int:
 
     try:
         champion = json.loads((ROOT / "control/champion.json").read_text(encoding="utf-8"))
-        if champion.get("schema_version") != 1:
+        if champion.get("schema_version") != 2:
             fail("champion schema_version", errors)
         state_text = (ROOT / "control/current-state.md").read_text(encoding="utf-8")
         match = re.search(r"(?m)^- revision:\s*(\d+)\s*$", state_text)
@@ -185,6 +198,24 @@ def main() -> int:
             fail("current state revision missing", errors)
         elif champion.get("revision") != int(match.group(1)):
             fail("Champion revision does not match current state", errors)
+        if champion.get("status") == "NONE":
+            fail("current project has comparable hard-valid candidates but Champion is NONE", errors)
+        for key in [
+            "champion_id",
+            "candidate_type",
+            "source_result_id",
+            "qualification_stage",
+            "target_status",
+            "selection_reason",
+            "comparison_confidence",
+            "metrics",
+            "known_weaknesses",
+            "component_leaders",
+        ]:
+            if key not in champion:
+                fail(f"Champion missing field: {key}", errors)
+        if champion.get("target_status") != "NOT_MET":
+            fail("current Champion target status must remain NOT_MET", errors)
     except Exception as exc:
         fail(f"champion.json: {exc}", errors)
 
@@ -243,7 +274,7 @@ def main() -> int:
         text = (ROOT / rel).read_text(encoding="utf-8").lower()
         for fragment in fragments:
             if fragment.lower() not in text:
-                fail(f"missing efficiency gate in {rel}: {fragment}", errors)
+                fail(f"missing efficiency or Champion rule in {rel}: {fragment}", errors)
 
     if (ROOT / "config/project.local.toml").exists():
         fail("config/project.local.toml must not be committed", errors)
