@@ -1,0 +1,47 @@
+schema_version = 4
+
+[project]
+id = "{{PROJECT_ID}}"
+name = "{{PROJECT_NAME}}"
+timezone = "Asia/Seoul"
+status = "ACTIVE_RESEARCH"
+default_language = "ko"
+
+[github]
+repository = "{{GITHUB_REPOSITORY}}"
+default_branch = "main"
+branch_prefix = "agent/"
+require_pull_request = true
+force_push_allowed = false
+
+[google_drive]
+root_folder_name = "{{DRIVE_ROOT_NAME}}"
+root_folder_id_source = "config/project.local.toml"
+control_folder = "00_CONTROL"
+runs_folder = "01_RUNS"
+data_folder = "02_DATA"
+research_folder = "03_RESEARCH"
+artifacts_folder = "04_ARTIFACTS"
+snapshots_folder = "05_SNAPSHOTS"
+archive_folder = "90_ARCHIVE"
+
+[chatgpt]
+project_instructions_path = "instructions/project-instructions.md"
+work_prompt_path = "prompts/goal-worker.md"
+state_reconcile_prompt_path = "prompts/reconcile-state.md"
+hot_context_manifest = "dist/context-manifest.json"
+
+[state]
+current_state_path = "control/current-state.md"
+ranking_path = "control/ranking.json"
+work_claims_path = "control/work-claims.csv"
+result_registry_path = "control/result-registry.jsonl"
+validation_cache_path = "control/validation-cache.jsonl"
+decision_log_path = "control/decisions.md"
+update_protocol = "optimistic_revision"
+
+[data]
+source_registry_path = "data/catalog/source-registry.jsonl"
+dataset_registry_path = "data/catalog/dataset-registry.jsonl"
+entity_registry_path = "data/catalog/entity-registry.jsonl"
+reuse_before_external_search = true
