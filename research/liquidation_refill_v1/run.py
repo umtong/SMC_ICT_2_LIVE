@@ -43,18 +43,35 @@ def run(prereg_path: Path, output: Path, cache: Path) -> dict[str, Any]:
         fit_positive, [float(x) for x in prereg["candidate_grid"]["liquidation_quantile"]]
     )
     candidates = generate_candidates(prereg)
-    candidate_results, best_trades = evaluate_candidates(
-        candidates, fit_features, dev_features, thresholds, make_price_series(klines), prereg
+    price_series = make_price_series(klines)
+    candidate_results, _ = evaluate_candidates(
+        candidates, fit_features, dev_features, thresholds, price_series, prereg
     )
     candidate_results.to_csv(output / "candidate_results.csv", index=False)
     write_json(output / "fit_thresholds.json", thresholds)
     write_json(output / "source_manifest.json", [record.as_dict() for record in records])
-    for label, trades in best_trades.items():
-        trades.to_csv(output / f"best_raw_{label}_trades_18bps.csv", index=False)
-
     survivors = candidate_results.loc[candidate_results["development_gate_pass"] == True].copy()  # noqa: E712
     nonzero = candidate_results.loc[candidate_results["dev18_trade_count"] > 0]
     best_raw = (nonzero.iloc[0] if not nonzero.empty else candidate_results.iloc[0]).to_dict()
+    best_raw_params = dict(
+        next(candidate for candidate in candidates if candidate["candidate_id"] == best_raw["candidate_id"])
+    )
+    for label, features, period in (
+        ("fit", fit_features, periods["fit"]),
+        ("dev", dev_features, periods["development"]),
+    ):
+        signals = select_signals(features, best_raw_params, thresholds)
+        _, trades = simulate_account(
+            signals,
+            best_raw_params,
+            price_series,
+            initial_nav=float(prereg["account"]["initial_nav"]),
+            risk_fraction=float(prereg["account"]["risk_fraction"]),
+            cost_bps=float(prereg["account"]["primary_cost_bps"]),
+            calendar_days=inclusive_calendar_days(period),
+            observed_days=len(month_starts(period["from"], period["to"])),
+        )
+        trades.to_csv(output / f"best_raw_{label}_trades_18bps.csv", index=False)
     validation_opened = False
     selected_payload: dict[str, Any] | None = None
     validation_metrics: dict[str, Any] | None = None
