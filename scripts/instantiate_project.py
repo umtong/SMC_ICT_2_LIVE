@@ -5,7 +5,6 @@ import json
 import re
 import shutil
 import subprocess
-import sys
 import tomllib
 from datetime import datetime
 from pathlib import Path
@@ -41,11 +40,7 @@ def normalize_repo(value: str) -> str:
 
 def parse_drive_id(value: str) -> str | None:
     raw = value.strip()
-    for pattern in [
-        r"/folders/([A-Za-z0-9_-]+)",
-        r"[?&]id=([A-Za-z0-9_-]+)",
-        r"^([A-Za-z0-9_-]{10,})$",
-    ]:
+    for pattern in [r"/folders/([A-Za-z0-9_-]+)", r"[?&]id=([A-Za-z0-9_-]+)", r"^([A-Za-z0-9_-]{10,})$"]:
         match = re.search(pattern, raw)
         if match:
             return match.group(1)
@@ -54,23 +49,14 @@ def parse_drive_id(value: str) -> str | None:
 
 def git_head(root: Path) -> str:
     try:
-        return subprocess.check_output(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
+        return subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unresolved"
 
 
 def copy_entry(source: Path, destination: Path) -> None:
     if source.is_dir():
-        shutil.copytree(
-            source,
-            destination,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "*.pyc", "dist"),
-        )
+        shutil.copytree(source, destination, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "*.pyc", "dist"))
     else:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
@@ -193,7 +179,7 @@ def main() -> int:
         "initialized_at": values["INITIALIZED_AT"],
         "initial_revision": manifest["completion"]["initial_revision"],
         "initial_ranking_status": manifest["completion"]["initial_ranking_status"],
-        "inherited_state": false
+        "inherited_state": False,
     }
     report_path = output / "bootstrap/instantiation.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)
