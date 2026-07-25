@@ -1,4 +1,4 @@
-schema_version = 2
+schema_version = 3
 
 [work]
 state_update_protocol = "optimistic_revision"
@@ -8,6 +8,27 @@ validation_cache_path = "control/validation-cache.jsonl"
 claim_lease_hours = 8
 intentional_replication_requires_reason = true
 scope_fingerprint_required = true
+claim_required_for_costly_or_reusable_work = true
+claim_optional_for_short_local_work = true
+
+[lookup]
+targeted_related_records_only = true
+full_registry_scan_by_default = false
+check_open_pull_requests_for_touched_paths = true
+
+[validation]
+mode = "staged"
+initial_gate = "causality_calculation_basic_cost_sample_concentration"
+promising_gate = "sequential_oos_parameter_neighborhood_period_symbol_execution_sensitivity"
+champion_gate = "account_paths_liquidation_tail_top_trade_removal_latency_partial_fill_liquidity_capacity_replication"
+
+[records]
+register_used_or_reusable_sources_only = true
+minimal_metadata_first = true
+full_run_report_for_material_checkpoint_only = true
+pull_request_for_shared_or_reusable_changes_only = true
+drive_is_live_record = true
+github_is_versioned_milestone = true
 
 [defaults]
 select_highest_value_unresolved_work = true
