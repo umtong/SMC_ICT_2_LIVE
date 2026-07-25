@@ -10,7 +10,7 @@ for item in M['parts']:
 combined=b''.join(chunks)
 assert hashlib.sha256(combined).hexdigest()==M['combined_base64_sha256']
 archive=base64.b64decode(combined,validate=True)
-assert len(archive)==M['decoded_tar_gz_bytes'] and hashlib.sha256(archive).hexdigest()==M['decoded_tar_gz_sha256']
+assert len(archive)==M['archive_bytes'] and hashlib.sha256(archive).hexdigest()==M['archive_sha256']
 out=ROOT/'reconstructed'
 shutil.rmtree(out,ignore_errors=True);out.mkdir()
 arc=ROOT/'bundle.tar.gz';arc.write_bytes(archive)
@@ -20,4 +20,4 @@ inner=json.loads((out/'MANIFEST.json').read_text())
 for item in inner['files']:
     raw=(out/item['path']).read_bytes()
     assert len(raw)==item['bytes'] and hashlib.sha256(raw).hexdigest()==item['sha256']
-print(len(inner['files']),M['decoded_tar_gz_sha256'])
+print(len(inner['files']),M['archive_sha256'])
