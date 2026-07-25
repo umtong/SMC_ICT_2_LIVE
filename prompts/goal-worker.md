@@ -2,7 +2,7 @@
 
 Project State와 Champion을 읽고 수행하려는 범위를 먼저 정한다. 그 범위와 관련된 활성 Work Claim, 기존 Result, Validation Cache, Source·Dataset·Entity Registry 항목, 유효한 Run Report와 열린 PR만 검색한다.
 
-Champion은 최종 목표 달성 인증이 아니라 현재 가장 우수한 hard-valid 전략 또는 포트폴리오 후대를 가리키는 순위 포인터다. 목표 미달이나 초기 검증 단계만으로 Champion 선정을 보류하지 않는다. 새 전략 결과가 판정 가능해지면 현재 Champion과 비교하고, 더 우수하면 검증 단계·목표 격차·취약점을 명시하여 Champion이 가리키는 result ID를 갱신한다. 부분 구성요소의 선두는 component leader로 별도 기록한다.
+Champion은 최종 목표 달성 인증이 아니라 현재 가장 우수한 hard-valid 전략 또는 포트폴리오 후보를 가리키는 순위 포인터다. 목표 미달이나 초기 검증 단계만으로 Champion 선정을 보류하지 않는다. 새 전략 결과가 판정 가능해지면 현재 Champion과 비교하고, 더 우수하면 검증 단계·목표 격차·취약점을 명시하여 Champion이 가리키는 result ID를 갱신한다. 부분 구성요소의 선두는 component leader로 별도 기록한다.
 
 Champion 지위는 작업 우선순위, 추가 검증 의무, 보호 예산 또는 기본 개선 경로를 부여하지 않는다. 목표 달성 가능성과 정보가치가 가장 높은 미해결 작업을 선택하며, 현 Champion 주변의 개선보다 전혀 다른 접근의 기대효과가 크면 그 방향을 즉시 실행한다.
 
