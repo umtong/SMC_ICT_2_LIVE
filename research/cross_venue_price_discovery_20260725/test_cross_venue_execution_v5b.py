@@ -6,6 +6,7 @@ import pandas as pd
 import cross_venue_development_v2 as d2
 import cross_venue_execution_v5b as v5b
 import cross_venue_pilot as v1
+import cross_venue_signals_v5b as signals
 
 
 def frame_around(start_ms: int, end_ms: int) -> pd.DataFrame:
@@ -35,6 +36,23 @@ def frame_around(start_ms: int, end_ms: int) -> pd.DataFrame:
         "bn_high_ask_amount": 1_000.0,
     }.items():
         frame[name] = value
+    return frame
+
+
+def signal_frame() -> pd.DataFrame:
+    rng = np.random.default_rng(20260726)
+    index = np.arange(0, 180_000, v1.BUCKET_MS, dtype=np.int64)
+    bn_log = np.log(100.0) + np.cumsum(rng.normal(0.0, 0.00012, len(index)))
+    basis = 0.0005 * np.sin(np.arange(len(index)) / 37.0) + rng.normal(0.0, 0.00008, len(index))
+    frame = pd.DataFrame(index=index)
+    frame["bn_mid"] = np.exp(bn_log)
+    frame["bb_mid"] = np.exp(bn_log + basis)
+    frame["bn_spread"] = frame.bn_mid * 0.00004
+    frame["bb_spread"] = frame.bb_mid * 0.00004
+    for prefix in ("bn", "bb"):
+        notional = rng.uniform(100.0, 10_000.0, len(index))
+        frame[f"{prefix}_trade_notional"] = notional
+        frame[f"{prefix}_signed_notional"] = notional * rng.uniform(-1.0, 1.0, len(index))
     return frame
 
 
@@ -116,3 +134,44 @@ def test_symbol_concentration_uses_net_symbol_profit_contract() -> None:
     )
     assert abs(metrics["maximum_single_symbol_positive_pnl_share"] - (5.0 / 6.0)) < 1e-12
     assert metrics["symbol_positive_pnl"] == {"BTCUSDT": 1.0, "ETHUSDT": 5.0}
+
+
+def test_cached_signal_engine_matches_frozen_v2_events() -> None:
+    if not hasattr(v1, "_signal_events_v1"):
+        v1._signal_events_v1 = v1.signal_events
+    configs = [
+        v1.Config("bybit_to_binance_propagation", 1_000, 4.0, 0.60, 0.50, 100, 3_000, 4.0, 2.0),
+        v1.Config("binance_overshoot_fade", 3_000, 8.0, 0.75, 0.25, 500, 10_000, 8.0, 3.0),
+        v1.Config("simultaneous_shock_basis_snapback", 1_000, 8.0, 0.75, 0.25, 500, 10_000, 8.0, 2.0),
+    ]
+    for cfg in configs:
+        reference_frame = signal_frame()
+        cached_frame = reference_frame.copy()
+        expected = signals._ORIGINAL_SIGNAL_EVENTS_V2(reference_frame, cfg, "2023-01-01", "BTCUSDT")
+        actual = signals.signal_events_v5b(cached_frame, cfg, "2023-01-01", "BTCUSDT")
+        assert [(item.decision_ms, item.side) for item in actual] == [
+            (item.decision_ms, item.side) for item in expected
+        ]
+        assert np.allclose(
+            [item.score for item in actual],
+            [item.score for item in expected],
+            rtol=0.0,
+            atol=1e-12,
+            equal_nan=True,
+        )
+        assert np.allclose(
+            [item.initial_basis_residual for item in actual],
+            [item.initial_basis_residual for item in expected],
+            rtol=0.0,
+            atol=1e-15,
+            equal_nan=True,
+        )
+
+
+def test_signal_cache_ignores_only_non_signal_parameters() -> None:
+    frame = signal_frame()
+    first = v1.Config("bybit_to_binance_propagation", 1_000, 4.0, 0.60, 0.50, 100, 3_000, 4.0, 2.0)
+    second = v1.Config("bybit_to_binance_propagation", 1_000, 4.0, 0.60, 0.50, 500, 3_000, 8.0, 3.0)
+    left = signals.signal_events_v5b(frame, first, "2023-01-01", "BTCUSDT")
+    right = signals.signal_events_v5b(frame, second, "2023-01-01", "BTCUSDT")
+    assert left is right
