@@ -19,7 +19,7 @@
     "result_id": {"type": "string", "minLength": 1},
     "claim_id": {"type": "string", "minLength": 1},
     "worker_id": {"type": "string", "minLength": 1},
-    "status": {"enum": ["VALID", "CANDIDATE", "INVALID", "SUPERSEDED"]},
+    "status": {"enum": ["VALID", "CANDIDATE", "VALIDATED_COMPONENT_ONLY", "INVALID", "SUPERSEDED"]},
     "summary": {"type": "string", "minLength": 1},
     "source_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "dataset_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
@@ -39,6 +39,7 @@
         "additionalProperties": false
       }
     },
+    "artifact_links": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "created_at": {"type": "string"}
   },
   "additionalProperties": false
