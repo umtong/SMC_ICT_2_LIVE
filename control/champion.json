@@ -1,12 +1,46 @@
 {
-  "schema_version": 1,
-  "revision": 4,
-  "status": "NONE",
-  "champion_id": null,
-  "reason": "No fresh strategy result has passed the evaluation contract.",
-  "evidence": [
-    "Twenty user-provided transcripts are registered and reusable",
-    "Work Claims, Result Registry, Validation Cache and staged validation rules are active"
+  "schema_version": 2,
+  "revision": 5,
+  "status": "RESEARCH_CHAMPION",
+  "champion_id": "CHAMPION-20260725-HIGH-RESISTANCE-SWEEP-C232AE43",
+  "candidate_type": "STRATEGY",
+  "source_result_id": "RES-20260725-ALPHA-HYP-001",
+  "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/10",
+  "qualification_stage": "EXPLORATORY",
+  "target_status": "NOT_MET",
+  "selection_reason": "Among completed causally valid strategy candidates currently available, this is the only recorded specification with positive growth at its declared base-cost case. It is selected as the current comparison leader, not as a validated or deployable strategy.",
+  "comparison_confidence": "LOW",
+  "metrics": {
+    "spec_id": "c232ae43b7a1401d",
+    "family": "high_resistance_sweep",
+    "base_cost_bps": 12,
+    "geometric_daily_growth": 0.0000245553331665,
+    "target_geometric_daily_growth": 0.01,
+    "target_fraction": 0.00245553331665,
+    "target_multiple_required": 407.2435072329891,
+    "total_return": 0.0180756057390134,
+    "profit_factor": 1.089638,
+    "maximum_drawdown": 0.072774,
+    "trade_count": 55,
+    "top5_positive_share": 0.669168,
+    "return_at_18bps": -0.0064008129188801,
+    "return_at_24bps": -0.0263222544201507
+  },
+  "known_weaknesses": [
+    "No sequential selection or confirmation interval was opened because the preregistered gate failed.",
+    "Performance becomes negative at 18 and 24 bps.",
+    "The top five positive trades contribute 66.92% of positive PnL.",
+    "Only 55 trades were observed over the development interval.",
+    "The observed daily growth is about 0.2456% of the 1% daily target and is not close to practical-use qualification.",
+    "Comparison across current studies is not fully normalized for data window, market set, and cost contract."
   ],
-  "updated_at": "2026-07-25T16:29:00+09:00"
+  "component_leaders": [
+    {
+      "component": "execution_routing",
+      "leader_id": "COMPONENT-20260725-L1-DYNAMIC-MAKER-TAKER",
+      "source_result_id": "RES-20260725-1510-L1-EXEC-001",
+      "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag by +0.200 bp in development, +0.199 bp in validation, and +0.149 bp in confirmation, while remaining unsuitable as a standalone strategy."
+    }
+  ],
+  "updated_at": "2026-07-25T17:33:06+09:00"
 }
