@@ -1,0 +1,48 @@
+name: Dynamic factor result reconciliation
+
+on:
+  push:
+    branches:
+      - agent/r7-dynamic-factor-residual-final-001
+    paths:
+      - "research/dynamic_factor_residual_final_20260725/**"
+      - "research/reports/RES-20260725-DYNAMIC-FACTOR-001.json"
+      - "research/validation/VAL-20260725-DYNAMIC-FACTOR-ACTUAL-FUNDING-001.json"
+      - "data/catalog/DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1.json"
+      - "tests/test_dynamic_factor_reconciliation.py"
+      - ".github/workflows/dynamic-factor-reconciliation.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dynamic_factor_residual_final_20260725/**"
+      - "research/reports/RES-20260725-DYNAMIC-FACTOR-001.json"
+      - "research/validation/VAL-20260725-DYNAMIC-FACTOR-ACTUAL-FUNDING-001.json"
+      - "data/catalog/DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1.json"
+      - "tests/test_dynamic_factor_reconciliation.py"
+      - ".github/workflows/dynamic-factor-reconciliation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify reconciliation identities and metrics
+        run: |
+          set -euo pipefail
+          python -m unittest tests/test_dynamic_factor_reconciliation.py -v
+
+      - name: Run project validator
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+
+      - name: Build context bundle
+        run: |
+          set -euo pipefail
+          python scripts/build_context_bundle.py
