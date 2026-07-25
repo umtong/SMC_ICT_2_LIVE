@@ -1,0 +1,103 @@
+name: Event-time trade-tape burst fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-event-tape-burst-001
+    paths:
+      - research/event_tape_burst_20260726/**
+      - .github/workflows/event-tape-burst-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/event_tape_burst_20260726/**
+      - .github/workflows/event-tape-burst-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: event-tape-burst-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deterministic dependency
+        run: pip install --disable-pip-version-check requests==2.32.4
+      - name: Reconstruct and validate causal implementation
+        run: |
+          python scripts/validate_project.py
+          python research/event_tape_burst_20260726/reconstruct.py
+          python -m py_compile research/event_tape_burst_20260726/run_screen.py
+          python research/event_tape_burst_20260726/run_screen.py self-test
+          python -m json.tool research/event_tape_burst_20260726/preregistration.json >/dev/null
+      - name: Cache immutable preregistered public archives
+        uses: actions/cache@v4
+        with:
+          path: /tmp/bybit-event-tape
+          key: bybit-event-tape-v1-${{ hashFiles('research/event_tape_burst_20260726/preregistration.json') }}
+      - name: Run sparse pre-2024 fatal alpha screen
+        run: |
+          rm -rf artifacts/event_tape_burst
+          python research/event_tape_burst_20260726/run_screen.py run \
+            --cache /tmp/bybit-event-tape \
+            --output artifacts/event_tape_burst
+      - name: Verify frozen contract and causal boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/event_tape_burst")
+          result = json.loads((root / "result_summary.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          prereg = json.loads(Path("research/event_tape_burst_20260726/preregistration.json").read_text())
+
+          assert result["result_id"] == prereg["provisional_result_id"]
+          assert result["candidate_count"] == prereg["frozen_candidate_grid"]["candidate_count"] == 256
+          assert result["2024_opened"] is False
+          assert result["2025_opened"] is False
+          assert result["2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert manifest["later_periods_opened"] is False
+          assert manifest["orders_submitted"] is False
+          assert tuple(manifest["symbols"]) == ("BTCUSDT", "ETHUSDT")
+          assert len(manifest["archives"]) == 12
+          assert all(str(row["date"]).startswith("2023-") for row in manifest["archives"])
+          assert all(int(row["compressed_bytes"]) > 0 for row in manifest["archives"])
+          assert all(len(str(row["sha256"])) == 64 for row in manifest["archives"])
+
+          best = result["best_raw_candidate"]["cost_metrics"]
+          totals = [float(best[key]["total_return"]) for key in ("12", "18", "24")]
+          assert totals[0] >= totals[1] >= totals[2]
+          assert result["qualification"] == "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE"
+          print("FROZEN_CONTRACT_PASS")
+          print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+          PY
+      - name: Build artifact checksums
+        run: |
+          find artifacts/event_tape_burst -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > artifacts/event_tape_burst/CI_SHA256SUMS.txt
+          sha256sum artifacts/event_tape_burst/CI_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: event-tape-burst-20260726
+          path: artifacts/event_tape_burst
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
