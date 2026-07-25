@@ -57,9 +57,12 @@ jobs:
         run: |
           set -euo pipefail
           root=research/bybit_premium_dislocation_20260726
-          python "$root/reconstruct.py"
-          python -m py_compile "$root/reconstruct.py" "$root/run_screen.py"
           mkdir -p research_runs/bybit_premium_dislocation
+          python "$root/reconstruct.py" \
+            2>&1 | tee research_runs/bybit_premium_dislocation/reconstruct.log
+          cp "$root/RECONSTRUCTED_SOURCE.json" \
+            research_runs/bybit_premium_dislocation/RECONSTRUCTED_SOURCE.json
+          python -m py_compile "$root/reconstruct.py" "$root/run_screen.py"
           python "$root/run_screen.py" self-test \
             | tee research_runs/bybit_premium_dislocation/self_test.json
 
@@ -108,6 +111,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
+          mkdir -p research_runs/bybit_premium_dislocation
           sha256sum \
             research/bybit_premium_dislocation_20260726/WORK_CLAIM.json \
             research/bybit_premium_dislocation_20260726/preregistration.json \
