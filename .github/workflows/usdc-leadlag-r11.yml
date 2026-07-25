@@ -1,0 +1,115 @@
+name: Bybit USDC-to-USDT lead-lag fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-usdc-leadlag-001
+    paths:
+      - research/usdc_leadlag_20260726/**
+      - .github/workflows/usdc-leadlag-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/usdc_leadlag_20260726/**
+      - .github/workflows/usdc-leadlag-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: usdc-leadlag-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deterministic dependency
+        run: pip install --disable-pip-version-check requests==2.32.4
+      - name: Reconstruct and validate frozen implementation
+        run: |
+          python scripts/validate_project.py
+          python research/usdc_leadlag_20260726/reconstruct.py
+          python -m py_compile research/usdc_leadlag_20260726/run_screen.py
+          python research/usdc_leadlag_20260726/run_screen.py self-test
+          python -m json.tool research/usdc_leadlag_20260726/preregistration.json >/dev/null
+      - name: Cache immutable preregistered archives
+        uses: actions/cache@v4
+        with:
+          path: /tmp/bybit-usdc-leadlag
+          key: bybit-usdc-leadlag-v1-${{ hashFiles('research/usdc_leadlag_20260726/preregistration.json') }}
+      - name: Open frozen pre-2024 validation and run fatal screen
+        shell: bash
+        run: |
+          rm -rf artifacts/usdc_leadlag
+          mkdir -p artifacts/usdc_leadlag
+          set -o pipefail
+          python research/usdc_leadlag_20260726/run_screen.py run \
+            --cache /tmp/bybit-usdc-leadlag \
+            --output artifacts/usdc_leadlag \
+            2>&1 | tee artifacts/usdc_leadlag/run.log
+      - name: Verify stage, data and cost boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/usdc_leadlag")
+          result = json.loads((root / "result_summary.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          candidates = json.loads((root / "candidate_results.json").read_text())
+          prereg = json.loads(Path("research/usdc_leadlag_20260726/preregistration.json").read_text())
+
+          assert result["result_id"] == prereg["provisional_result_id"]
+          assert result["candidate_count"] == prereg["frozen_candidate_grid"]["candidate_count"] == 320
+          assert len(candidates) == 320
+          assert manifest["archive_count"] == len(manifest["archives"]) == 28
+          assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
+          assert result["orders_submitted"] is False
+          assert manifest["later_periods_opened"] is False
+          assert manifest["orders_submitted"] is False
+          assert result["qualification"] == "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE"
+          assert all(str(row["date"]).startswith("2023-") for row in manifest["archives"])
+          assert all(int(row["retrieved_bytes"]) > 0 for row in manifest["archives"])
+          assert all(int(row["row_count"]) > 0 for row in manifest["archives"])
+          assert all(len(str(row["sha256"])) == 64 for row in manifest["archives"])
+
+          discovery = sorted({row["date"] for row in manifest["archives"] if row["role"] == "discovery"})
+          validation = sorted({row["date"] for row in manifest["archives"] if row["role"] == "frozen_validation"})
+          assert discovery == sorted(prereg["data_contract"]["discovery_dates_already_opened"])
+          assert validation == sorted(prereg["data_contract"]["frozen_validation_dates_unopened_at_preregistration"])
+
+          for candidate in candidates:
+              costs = candidate["cost_metrics"]
+              assert costs["12"]["trade_count"] == costs["18"]["trade_count"] == costs["24"]["trade_count"]
+              assert costs["12"]["total_return"] >= costs["18"]["total_return"] >= costs["24"]["total_return"]
+
+          print("FROZEN_CONTRACT_PASS")
+          print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+          PY
+      - name: Build artifact checksums
+        run: |
+          find artifacts/usdc_leadlag -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > artifacts/usdc_leadlag/CI_SHA256SUMS.txt
+          sha256sum artifacts/usdc_leadlag/CI_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usdc-leadlag-20260726
+          path: artifacts/usdc_leadlag
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
