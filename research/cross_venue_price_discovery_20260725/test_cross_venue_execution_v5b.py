@@ -52,6 +52,38 @@ def config() -> v1.Config:
     )
 
 
+def account_trade(symbol: str, net: float, nav_before: float, nav_after: float) -> v5b.AccountTradeV5:
+    return v5b.AccountTradeV5(
+        "cfg",
+        "2022-01-01",
+        symbol,
+        "f",
+        0,
+        1,
+        2,
+        1_000,
+        2_000,
+        1,
+        100.0,
+        100.0,
+        99.0,
+        1.0,
+        100.0,
+        1.0,
+        net,
+        0.0,
+        net,
+        net / nav_before,
+        nav_before,
+        nav_after,
+        "horizon",
+        1.0,
+        False,
+        0.0,
+        2_000,
+    )
+
+
 def test_maximum_exit_path_crossing_funding_is_excluded() -> None:
     settlement = d2.FUNDING_INTERVAL_MS
     day = "synthetic"
@@ -69,3 +101,18 @@ def test_entry_after_settlement_remains_eligible() -> None:
     trades = v5b.simulate_fixed_day_v5({(day, "BTCUSDT"): frame}, [event], config())
     assert len(trades) == 1
     assert trades[0].entry_ms > settlement
+
+
+def test_symbol_concentration_uses_net_symbol_profit_contract() -> None:
+    trades = [
+        account_trade("BTCUSDT", 10.0, 10_000.0, 10_010.0),
+        account_trade("BTCUSDT", -9.0, 10_010.0, 10_001.0),
+        account_trade("ETHUSDT", 5.0, 10_001.0, 10_006.0),
+    ]
+    metrics = v5b.account_metrics_v5(
+        trades,
+        {"nav": 10_006.0, "peak": 10_010.0, "maximum_drawdown": 9.0 / 10_010.0},
+        ["2022-01-01"],
+    )
+    assert abs(metrics["maximum_single_symbol_positive_pnl_share"] - (5.0 / 6.0)) < 1e-12
+    assert metrics["symbol_positive_pnl"] == {"BTCUSDT": 1.0, "ETHUSDT": 5.0}
