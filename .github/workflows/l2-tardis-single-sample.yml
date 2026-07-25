@@ -1,0 +1,103 @@
+name: L2 Tardis single-sample integrity check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/l2-tardis-single-sample.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l2-tardis-single-sample-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sample:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      OUT: ${{ github.workspace }}/research_runs/l2_tardis_single_sample_v1
+      RAW: ${{ runner.temp }}/tardis_sample
+      BASE: https://datasets.tardis.dev/v1/binance-futures
+      DATE_PATH: 2025/08/01
+      SYMBOL: BTCUSDT
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download independent normalized tick samples
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT" "$RAW"
+          for kind in book_ticker trades book_snapshot_5; do
+            url="$BASE/$kind/$DATE_PATH/$SYMBOL.csv.gz"
+            file="$RAW/${SYMBOL}_${kind}_2025-08-01.csv.gz"
+            echo "DOWNLOAD $url"
+            curl -L --fail --silent --show-error \
+              --retry 3 --retry-all-errors --connect-timeout 30 --max-time 3600 \
+              --user-agent 'SMC-ICT-2-LIVE-research/1.0' \
+              --max-filesize 8589934592 \
+              --output "$file" "$url"
+            gzip -t "$file"
+            sha256sum "$file" >> "$OUT/SOURCE_SHA256SUMS.txt"
+            stat --printf='%n,%s\n' "$file" >> "$OUT/compressed_sizes.csv"
+            gzip -cd "$file" | sed -n '1,6p' > "$OUT/${kind}_head.csv"
+            rows=$(gzip -cd "$file" | wc -l)
+            printf '%s,%s\n' "$kind" "$rows" >> "$OUT/row_counts.csv"
+          done
+
+      - name: Build immutable sample manifest
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, hashlib, json, os
+          from pathlib import Path
+          out=Path(os.environ['OUT'])
+          raw=Path(os.environ['RAW'])
+          rows=[]
+          for kind in ('book_ticker','trades','book_snapshot_5'):
+              p=raw/f"BTCUSDT_{kind}_2025-08-01.csv.gz"
+              rows.append({
+                  'exchange':'binance-futures','symbol':'BTCUSDT','date':'2025-08-01',
+                  'data_type':kind,'compressed_bytes':p.stat().st_size,
+                  'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+                  'url':f"https://datasets.tardis.dev/v1/binance-futures/{kind}/2025/08/01/BTCUSDT.csv.gz",
+              })
+          payload={
+              'study':'L2_TARDIS_SINGLE_SAMPLE_INTEGRITY_V1',
+              'source':'Tardis normalized CSV from captured exchange WebSocket feeds',
+              'strategy_outcomes_opened':False,'orders_simulated':False,
+              'rows':rows,
+          }
+          (out/'manifest.json').write_text(json.dumps(payload,indent=2,sort_keys=True),encoding='utf-8')
+          print(json.dumps({'files':len(rows),'total_bytes':sum(x['compressed_bytes'] for x in rows)},sort_keys=True))
+          PY
+
+      - name: Assert research-only state
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          out=Path(os.environ['OUT']); out.mkdir(parents=True,exist_ok=True)
+          status={'strategy_outcomes_opened':False,'orders_simulated':False,'paper_live_enabled':False}
+          (out/'wrapper_status.json').write_text(json.dumps(status,indent=2,sort_keys=True))
+          PY
+
+      - name: Record immutable output hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l2-tardis-single-sample-${{ github.sha }}
+          path: research_runs/l2_tardis_single_sample_v1
+          if-no-files-found: error
+          retention-days: 30
