@@ -7,4 +7,7 @@
 - 논문, 기술 문서, 트레이더·운용사 자료, 대회 사례, 코드 저장소, API 문서와 시장 자료에 같은 등록·재사용 절차를 적용한다.
 - canonical URL과 SHA-256으로 중복을 확인한다. 동일 자료는 재사용하고 충돌하는 중복은 원본을 덮어쓰지 않고 quarantine에 둔다.
 - 지속 보관 파일은 registry 또는 manifest에서 검색 가능해야 한다.
+- 가설은 `03_RESEARCH/10_HYPOTHESES`, 대형 실행 산출물은 `04_ARTIFACTS`, 중요 상태 복구점은 `05_SNAPSHOTS`에만 둔다.
+- 임시 inbox·download staging·local artifacts는 해당 Work Claim 종료 전에 정식 등록·quarantine·삭제로 정리한다.
 - 오래된 snapshot과 대체된 가공 산출물은 archive로 이동하고 현재 registry는 작고 검색 가능하게 유지한다.
+- 세부 수명주기는 `config/folder-contract.drive.toml`과 `docs/folder-action-contract.md`를 따른다.
