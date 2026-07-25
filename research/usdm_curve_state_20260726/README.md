@@ -27,3 +27,7 @@ This is not a funding-threshold retune. Funding is only an actual cashflow in th
 4. Keep 2025-2026 sealed.
 
 A failed source probe is not treated as evidence against the hypothesis. A completed negative development screen closes adjacent parameter tuning under the resulting dependency fingerprint.
+
+## Source-transport amendment
+
+The first GitHub-hosted source-only attempt was blocked by Binance REST regional policy before any market row was read. It computed no PnL and did not request 2024. `source_transport_amendment.json` therefore changes only transport: the frozen strategy now consumes Binance's official monthly public archives, verifies every adjacent SHA-256 CHECKSUM, and deterministically reconstructs the current/next quarterly curve from actual `PAIR_YYMMDD` delivery contracts. The candidate grid, features, execution, costs, gates and sealed periods are unchanged.

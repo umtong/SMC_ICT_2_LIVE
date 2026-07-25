@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMD-20260726-USDM-CURVE-SOURCE-TRANSPORT-001",
+  "claim_id": "CLM-20260726-0522-USDM-CURVE-001",
+  "amended_at": "2026-07-26T05:38:00+09:00",
+  "reason": "The first source-only workflow received HTTP 451 from Binance USD-M REST and non-data HTTP 202 responses from alternate REST hosts before reading any market row. The attempt computed no strategy outcome and did not request 2024.",
+  "scientific_contract_changed": false,
+  "candidate_grid_changed": false,
+  "feature_definition_changed": false,
+  "execution_contract_changed": false,
+  "development_gate_changed": false,
+  "opened_period_changed": false,
+  "replacement_transport": {
+    "source": "Official Binance public monthly USD-M archives",
+    "archive_base": "https://data.binance.vision/ with an official S3 mirror fallback",
+    "integrity": "Every ZIP must match its adjacent SHA-256 .CHECKSUM before parsing",
+    "perpetual": "BTCUSDT and ETHUSDT monthly 15-minute klines",
+    "dated_contracts": "Actual BTCUSDT_YYMMDD and ETHUSDT_YYMMDD delivery-contract monthly 15-minute klines",
+    "curve_construction": "At each timestamp, rank unexpired dated contracts by known expiry; rank 0 is current quarter and rank 1 is next quarter",
+    "funding": "BTCUSDT and ETHUSDT monthly fundingRate archives"
+  },
+  "roll_rule": "The original deterministic last-Friday delivery calendar and plus/minus 48-hour exclusion remain unchanged.",
+  "safety": {
+    "market_rows_read_in_blocked_attempt": 0,
+    "strategy_pnl_computed_in_blocked_attempt": false,
+    "2024_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  }
+}

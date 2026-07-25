@@ -53,8 +53,17 @@ jobs:
         run: |
           set -euo pipefail
           root=research/usdm_curve_state_20260726
-          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py"
-          python -m pytest -q "$root/test_run_screen.py"
+          echo "378b09529573696656231ae78ef81fcbbb7a2d4b05d3c26e7777c58678d11c85  $root/archive_transport_source.zip" | sha256sum --check
+          unzip -q -o "$root/archive_transport_source.zip" -d "$root"
+          python -m py_compile \
+            "$root/run_screen.py" \
+            "$root/archive_source.py" \
+            "$root/run_archive_screen.py" \
+            "$root/test_run_screen.py" \
+            "$root/test_archive_source.py"
+          python -m pytest -q \
+            "$root/test_run_screen.py" \
+            "$root/test_archive_source.py"
           mkdir -p research_runs/usdm_curve_state/self_test
           python "$root/run_screen.py" \
             --self-test \
@@ -62,12 +71,12 @@ jobs:
             --cache "$RUNNER_TEMP/usdm-curve-cache"
           (cd research_runs/usdm_curve_state/self_test && sha256sum --check SHA256SUMS.txt)
 
-      - name: Run frozen 2021-2023 source and economic screen
+      - name: Run frozen 2021-2023 official-archive economic screen
         run: |
           set -euo pipefail
           root=research/usdm_curve_state_20260726
           mkdir -p research_runs/usdm_curve_state/output
-          python "$root/run_screen.py" \
+          python "$root/run_archive_screen.py" \
             --output research_runs/usdm_curve_state/output \
             --cache "$RUNNER_TEMP/usdm-curve-cache" \
             2>&1 | tee research_runs/usdm_curve_state/screen.log
@@ -99,9 +108,14 @@ jobs:
           set -euo pipefail
           sha256sum \
             research/usdm_curve_state_20260726/preregistration.json \
+            research/usdm_curve_state_20260726/source_transport_amendment.json \
+            research/usdm_curve_state_20260726/archive_transport_source.zip \
             research/usdm_curve_state_20260726/README.md \
             research/usdm_curve_state_20260726/run_screen.py \
+            research/usdm_curve_state_20260726/archive_source.py \
+            research/usdm_curve_state_20260726/run_archive_screen.py \
             research/usdm_curve_state_20260726/test_run_screen.py \
+            research/usdm_curve_state_20260726/test_archive_source.py \
             .github/workflows/usdm-curve-state-r11.yml \
             > research_runs/usdm_curve_state/INPUT_SHA256SUMS.txt
 
