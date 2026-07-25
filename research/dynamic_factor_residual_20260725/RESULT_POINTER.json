@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_valid": true,
+  "economic_gate_passed": false,
+  "target_status": "NOT_MET",
+  "ranking_eligible": true,
+  "rank_proposal": 1,
+  "candidate": {
+    "candidate_id": "021fbab613517a31ad98",
+    "family": "rank_transition_with_flow_decay_exit",
+    "qualification_stage": "EXPLORATORY",
+    "base_cost_bps": 12,
+    "geometric_daily_growth": 0.0005709202100963,
+    "target_geometric_daily_growth": 0.01,
+    "target_gap": 0.0094290797899037,
+    "target_fraction": 0.05709202100963,
+    "total_return": 0.2316151196998135,
+    "return_at_18bps": 0.1662992295018177,
+    "return_at_24bps": 0.1118463196586374,
+    "trade_count": 194,
+    "profit_factor": 1.5019446137431731,
+    "maximum_drawdown": 0.0462986066016563,
+    "top5_positive_share": 0.3535334738895132,
+    "top10pct_removed_return": -0.2192634603906154,
+    "positive_month_fraction": 0.5833333333333334,
+    "worst_month": -0.0303701539497597,
+    "h1_return": 0.1196269046908806,
+    "h2_return": 0.1000227973619951
+  },
+  "sequential_evidence": {
+    "development_period": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "development_gate_pass_count": 0,
+    "selection_period": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "selection_scope": "Four portfolios frozen from 2023 components; no post-selection retuning.",
+    "selection_gate_pass_count": 0,
+    "least_negative_2024_portfolio_return_12bps": -0.1011378745379432,
+    "confirmation_2025_opened": false,
+    "final_2026_opened": false
+  },
+  "known_weaknesses": [
+    "Removing the top 10% of trades changes 2023 return to -21.93%.",
+    "No preregistered single-candidate development gate passed.",
+    "All four frozen 2024 portfolios lost money, showing family-level regime instability.",
+    "Actual funding and order-book queue execution are absent.",
+    "Observed daily growth is only 5.71% of the 1% target.",
+    "Comparison with the prior first place is not fully normalized for data window and execution contract."
+  ],
+  "verification": {
+    "workflow_run_id": 30160153690,
+    "workflow_head_sha": "4a36ca54115517e77955d2d6ce1e4cb58c1fe691",
+    "bundle_reconstruction": "PASS",
+    "python_compile": "PASS",
+    "causal_self_tests": "PASS",
+    "safety_and_stage_seals": "PASS"
+  },
+  "identities": {
+    "dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "dataset_artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "evaluation_contract_id": "EVAL-R4-DYNAMIC-FACTOR-RESIDUAL-20260725-V1",
+    "evaluation_contract_sha256": "23b1bef26ccb5df9a27ab63592a2ccfa7601752a966b22a64094c82260f5911d",
+    "base_code_sha256": "b29a5b01f666b1e2ba955c6f3448a936dbe837cfc7785a11256be89b45168785",
+    "extension_bundle_manifest_sha256": "79557b1b4de91cca18eeb9a6c0c8dcc4f6c158d0fc3887066fbcaf363494d400",
+    "decoded_extension_bundle_sha256": "0681abe577ef7fa13fee19d2fd78d807c6c2c65fed7d3fd900c31d85135c659e",
+    "dependency_fingerprint": "233fdd388b1f56de583ffdc9fd159faa40647595e79dc6eb371463c4f1796623"
+  },
+  "links": {
+    "pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/25",
+    "verification_workflow": "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30160153690"
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_or_live_started": false
+  }
+}
