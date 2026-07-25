@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001",
+  "provisional_result_id": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-001",
+  "frozen_before_price_or_pnl_screen": true,
+  "hypothesis": "Completed 100ms agreement between Binance USDT perpetual and Bybit spot can lead the executable Bybit USDT perpetual quote.",
+  "data": {
+    "provider": "Tardis public monthly-first-day normalized quote files",
+    "target": "bybit",
+    "leaders": ["binance-futures", "bybit-spot"],
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "clock": "local_timestamp",
+    "fit_dates": ["2023-03-01", "2023-05-01", "2023-07-01"],
+    "development_dates": ["2023-09-01", "2023-11-01", "2023-12-01"],
+    "development_opens_only_after_fit_survivor": true,
+    "2024_and_later_sealed": true,
+    "no_gap_fill": true,
+    "maximum_state_age_us": 500000
+  },
+  "signal": {
+    "completed_bucket_us": 100000,
+    "prior_basis": "segmented prior-only EWM; span 600; minimum 300; reset after unavailable joint state",
+    "observation_ms": [200, 500, 1000],
+    "leader_impulse_bps": [3.0, 5.0, 10.0],
+    "consensus_gap_bps": [5.0, 10.0, 15.0],
+    "maximum_follower_fraction": [0.25, 0.5],
+    "maximum_leader_disagreement_ratio": 0.75,
+    "maximum_target_spread_bps": 5.0
+  },
+  "execution": {
+    "entry_latency_ms": [100, 250, 500],
+    "marketable_limit_spreads": [1.0, 2.0],
+    "fixed_notional_usdt": 10000.0,
+    "one_global_slot": true,
+    "equal_timestamp_resolution": "adverse",
+    "explicit_spread_and_top_quote_impact": true,
+    "extra_roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "fixed_markouts_seconds": [1, 3, 10, 30],
+    "thirty_second_best_executable_exit_is_upper_bound_only": true
+  },
+  "candidate_count": 324,
+  "gate_each_stage": {
+    "minimum_trades": 20,
+    "oracle_18bps_mean_positive": true,
+    "oracle_18bps_median_positive": true,
+    "oracle_18bps_top10_removed_mean_positive": true,
+    "positive_calendar_day_fraction_minimum": 0.6666666666666666,
+    "fixed_10s_18bps_mean_positive": true
+  },
+  "promotion": "A survivor only authorizes development of a causal exit; it is not rank eligible and does not open 2024.",
+  "orders_submitted": false
+}
