@@ -4,10 +4,20 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
+import pytest
+
+np = pytest.importorskip("numpy", reason="full alpha-wave tests run in the pinned research workflow")
+pd = pytest.importorskip("pandas", reason="full alpha-wave tests run in the pinned research workflow")
 
 MODULE_PATH = Path(__file__).parents[1] / "research" / "alpha_wave1" / "binance_alpha_wave1.py"
+if not MODULE_PATH.exists():
+    reconstruct_path = MODULE_PATH.with_name("reconstruct_source.py")
+    reconstruct_spec = importlib.util.spec_from_file_location("alpha_wave1_reconstruct", reconstruct_path)
+    assert reconstruct_spec and reconstruct_spec.loader
+    reconstruct = importlib.util.module_from_spec(reconstruct_spec)
+    reconstruct_spec.loader.exec_module(reconstruct)
+    assert reconstruct.main() == 0
+
 spec = importlib.util.spec_from_file_location("alpha_wave1", MODULE_PATH)
 assert spec and spec.loader
 m = importlib.util.module_from_spec(spec)
