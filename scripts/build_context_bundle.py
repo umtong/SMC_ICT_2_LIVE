@@ -13,7 +13,7 @@ HOT = [
     "config/evaluation.toml",
     "config/workers.toml",
     "control/current-state.md",
-    "control/champion.json",
+    "control/ranking.json",
     "control/work-claims.csv",
     "control/result-registry.jsonl",
     "control/validation-cache.jsonl",

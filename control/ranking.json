@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "revision": 7,
+  "status": "ACTIVE",
+  "ranking_id": "STRATEGY-RANKING-20260725-R7",
+  "ranking_rule": {
+    "eligibility": "hard_valid_strategy_or_portfolio_result",
+    "primary_objective": "minimum_distance_to_full_project_objective",
+    "primary_metric": "realistic_after_cost_geometric_daily_growth_gap_to_0.01",
+    "survival_constraint": "a candidate with forced liquidation or irrecoverable account damage cannot outrank a survival-qualified candidate solely through raw return",
+    "secondary_criteria": [
+      "maximum_drawdown_and_recovery",
+      "liquidation_and_tail_loss",
+      "profit_concentration_and_top_trade_removal",
+      "effective_independent_trade_count",
+      "execution_and_cost_robustness",
+      "capital_efficiency",
+      "validation_and_comparison_confidence"
+    ],
+    "incomplete_normalization": "provisional_rank_with_disclosed_confidence",
+    "rank_does_not_determine_work_priority": true
+  },
+  "first_place": {
+    "rank": 1,
+    "first_place_id": "FIRST-20260725-HIGH-RESISTANCE-SWEEP-C232AE43",
+    "candidate_type": "STRATEGY",
+    "source_result_id": "RES-20260725-ALPHA-HYP-001",
+    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/10",
+    "qualification_stage": "EXPLORATORY",
+    "target_status": "NOT_MET",
+    "selection_reason": "Among currently comparable hard-valid strategy results, this specification has the smallest recorded gap to the 1% after-cost geometric daily-growth target. The rank is provisional and does not imply validation, deployment readiness, or research priority.",
+    "comparison_confidence": "LOW",
+    "metrics": {
+      "spec_id": "c232ae43b7a1401d",
+      "family": "high_resistance_sweep",
+      "base_cost_bps": 12,
+      "geometric_daily_growth": 0.0000245553331665,
+      "target_geometric_daily_growth": 0.01,
+      "target_gap": 0.0099754446668335,
+      "target_fraction": 0.00245553331665,
+      "target_multiple_required": 407.2435072329891,
+      "total_return": 0.0180756057390134,
+      "profit_factor": 1.089638,
+      "maximum_drawdown": 0.072774,
+      "trade_count": 55,
+      "top5_positive_share": 0.669168,
+      "return_at_18bps": -0.0064008129188801,
+      "return_at_24bps": -0.0263222544201507
+    },
+    "known_weaknesses": [
+      "No sequential selection or confirmation interval was opened because the preregistered gate failed.",
+      "Performance becomes negative at 18 and 24 bps.",
+      "The top five positive trades contribute 66.92% of positive PnL.",
+      "Only 55 trades were observed.",
+      "Daily growth is far below the 1% target.",
+      "Comparison across studies is not fully normalized for data window, market set, and cost contract."
+    ]
+  },
+  "ranked_candidates": [
+    {
+      "rank": 1,
+      "source_result_id": "RES-20260725-ALPHA-HYP-001",
+      "candidate_label": "high_resistance_sweep c232ae43b7a1401d",
+      "geometric_daily_growth": 0.0000245553331665,
+      "target_gap": 0.0099754446668335,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL"
+    },
+    {
+      "rank": 2,
+      "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
+      "candidate_label": "balance_to_imbalance best nonzero specification",
+      "geometric_daily_growth": -0.000719,
+      "target_gap": 0.010719,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
+    },
+    {
+      "rank": 3,
+      "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
+      "candidate_label": "leader-shock underreaction best recorded configuration",
+      "geometric_daily_growth": -0.01483,
+      "target_gap": 0.02483,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
+    }
+  ],
+  "unranked_results": [
+    {
+      "source_result_id": "result-20260725-001-btc-oi-crossasset-invalid",
+      "reason": "No normalized account-level geometric daily-growth metric is recorded for ranking."
+    },
+    {
+      "source_result_id": "result-20260725-002-funding-settlement-invalid",
+      "reason": "No normalized account-level geometric daily-growth metric is recorded for ranking."
+    }
+  ],
+  "component_rankings": [
+    {
+      "component": "execution_routing",
+      "rank": 1,
+      "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER",
+      "source_result_id": "RES-20260725-1510-L1-EXEC-001",
+      "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag by +0.200 bp in development, +0.199 bp in validation, and +0.149 bp in confirmation, while remaining unsuitable as a standalone strategy."
+    }
+  ],
+  "updated_at": "2026-07-25T21:30:00+09:00"
+}

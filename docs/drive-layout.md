@@ -5,7 +5,7 @@
 ├─ 00_CONTROL/
 │  ├─ 00_PROJECT_BINDING
 │  ├─ 01_PROJECT_STATE
-│  ├─ 02_CHAMPION
+│  ├─ 02_STRATEGY_RANKING
 │  ├─ 03_WORK_CLAIMS
 │  ├─ 04_DECISION_LOG
 │  ├─ 05_EVALUATION_CONTRACT
@@ -36,4 +36,4 @@
 └─ 90_ARCHIVE/
 ```
 
-Work Claim은 활성 작업 범위를 기록한다. 각 실행은 고유 Run Report를 작성한다. 공통 상태 변경 전 최신 revision과 열린 PR을 확인하고 충돌을 조정한다.
+Work Claim은 활성 작업 범위를 기록한다. 각 실행은 고유 Run Report를 작성한다. 공통 상태와 전략 순위를 변경하기 전에 최신 revision과 열린 PR을 확인하고 충돌을 조정한다.

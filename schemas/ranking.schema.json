@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Strategy ranking state",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "revision",
+    "status",
+    "ranking_id",
+    "ranking_rule",
+    "first_place",
+    "ranked_candidates",
+    "unranked_results",
+    "component_rankings",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "revision": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["EMPTY", "ACTIVE"]},
+    "ranking_id": {"type": "string", "minLength": 1},
+    "ranking_rule": {
+      "type": "object",
+      "required": [
+        "eligibility",
+        "primary_objective",
+        "primary_metric",
+        "survival_constraint",
+        "secondary_criteria",
+        "incomplete_normalization",
+        "rank_does_not_determine_work_priority"
+      ],
+      "properties": {
+        "eligibility": {"type": "string"},
+        "primary_objective": {"type": "string"},
+        "primary_metric": {"type": "string"},
+        "survival_constraint": {"type": "string"},
+        "secondary_criteria": {"type": "array", "items": {"type": "string"}},
+        "incomplete_normalization": {"type": "string"},
+        "rank_does_not_determine_work_priority": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "first_place": {
+      "type": ["object", "null"],
+      "properties": {
+        "rank": {"const": 1},
+        "first_place_id": {"type": "string"},
+        "candidate_type": {"enum": ["STRATEGY", "PORTFOLIO"]},
+        "source_result_id": {"type": "string"},
+        "source_pull_request": {"type": ["string", "null"]},
+        "qualification_stage": {"type": "string"},
+        "target_status": {"enum": ["NOT_MET", "MET"]},
+        "selection_reason": {"type": "string"},
+        "comparison_confidence": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+        "metrics": {"type": "object"},
+        "known_weaknesses": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": [
+        "rank",
+        "first_place_id",
+        "candidate_type",
+        "source_result_id",
+        "qualification_stage",
+        "target_status",
+        "selection_reason",
+        "comparison_confidence",
+        "metrics",
+        "known_weaknesses"
+      ],
+      "additionalProperties": false
+    },
+    "ranked_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rank", "source_result_id", "candidate_label", "geometric_daily_growth", "target_gap", "comparison_confidence", "comparison_status"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1},
+          "source_result_id": {"type": "string"},
+          "candidate_label": {"type": "string"},
+          "geometric_daily_growth": {"type": "number"},
+          "target_gap": {"type": "number"},
+          "comparison_confidence": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+          "comparison_status": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "unranked_results": {"type": "array", "items": {"type": "object"}},
+    "component_rankings": {"type": "array", "items": {"type": "object"}},
+    "updated_at": {"type": "string"}
+  },
+  "additionalProperties": false
+}
