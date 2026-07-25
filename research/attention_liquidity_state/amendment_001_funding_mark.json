@@ -1,0 +1,17 @@
+{
+  "amendment_id": "ATTENTION-LIQUIDITY-AMENDMENT-001",
+  "status": "PRE_OUTCOME_CAUSALITY_FIX",
+  "observed_strategy_pnl_before_fix": false,
+  "reason": "The first run stopped before candidate generation because official mark-price bars contain isolated gaps. Audit also found that using the funding bar mark close would introduce information unavailable at the funding instant.",
+  "unchanged": ["hypotheses", "parameter grids", "chronological splits", "costs", "selection gates", "position sizing", "global one-position constraint"],
+  "fixed_contract": {
+    "funding_event_price": "official mark-price 5-minute open at the funding event timestamp",
+    "fallback": "if and only if that mark open is absent, use official USD-M contract open at the identical timestamp",
+    "future_fill": "forbidden",
+    "forward_fill": "forbidden",
+    "audit": "record mark-price fallback count per symbol"
+  },
+  "known_missing_event_counts": {"BTCUSDT": 9, "ETHUSDT": 6, "SOLUSDT": 0, "XRPUSDT": 0},
+  "paper_live_authority": false,
+  "created_at": "2026-07-25T15:24:00+09:00"
+}
