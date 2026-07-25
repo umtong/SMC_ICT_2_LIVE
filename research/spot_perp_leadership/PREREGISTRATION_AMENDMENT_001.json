@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-SPOT-PERP-LEADERSHIP-001",
+  "claim_id": "CLM-20260726-0017-SPOTPERP-TAKEOVER-001",
+  "result_id_planned": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
+  "status": "PRE_OUTCOME_IMPLEMENTATION_CORRECTION",
+  "created_at": "2026-07-26T00:50:00+09:00",
+  "candidate_pnl_observed_before_amendment": false,
+  "reason": "The first official-archive execution stopped before feature construction or candidate PnL because the original loader asserted a completely continuous intersection across six one-minute price streams. A second diagnostic execution also stopped before feature construction or candidate PnL after preserving the source archives and full log. Inspection of those preserved, checksum-verified archives established source gaps and millisecond funding timestamps that require an explicit causal mapping rather than timeline compression.",
+  "diagnostic_evidence": {
+    "workflow_runs": [30163764247, 30163979038],
+    "preserved_artifact_id": 8621098277,
+    "preserved_artifact_digest": "sha256:e5a0b4c2d5c2bf297651c0d9ca5eed42385ec0753d52c082b1b4c7de6f25a813",
+    "archive_period": "2021-10 through 2022-12",
+    "regular_grid_minutes": 658080,
+    "minutes_with_any_of_six_price_streams_missing": 2891,
+    "stream_missing_minutes": {
+      "spot_klines:BTCUSDT": 0,
+      "spot_klines:ETHUSDT": 0,
+      "perp_klines:BTCUSDT": 0,
+      "perp_klines:ETHUSDT": 0,
+      "mark_klines:BTCUSDT": 2880,
+      "mark_klines:ETHUSDT": 1451
+    },
+    "funding_events_per_symbol": 1371,
+    "funding_events_with_nonzero_millisecond_offset_per_symbol": 933,
+    "maximum_funding_timestamp_offset_ms": 31,
+    "missing_containing_minute_mark_observations": {
+      "BTCUSDT": 6,
+      "ETHUSDT": 3
+    }
+  },
+  "correction": {
+    "price_time_axis": "Build the regular UTC one-minute grid over the common source bounds. Preserve each absent source observation as NaN. Never forward-fill, backfill, interpolate, synthesize OHLC, or compress time across gaps.",
+    "feature_and_order_eligibility": "All feature, signal, entry, stop, timeout and capacity paths require finite observed inputs. Entry remains the next exact contiguous USD-M one-minute open; gaps cannot create or bridge a trade.",
+    "funding_event_time": "Retain the official funding calc_time, including millisecond offsets, for inclusion only when calc_time is in (entry_time, exit_time].",
+    "funding_valuation": "Value each funding event at the official mark-price open of its containing UTC minute. Only when that exact mark observation is absent, use the exact same-minute official USD-M contract open as a disclosed fallback; never use a prior or future price.",
+    "audit": "Emit source-by-source gap counts, funding timestamp-offset counts, mark/fallback counts, and zero unvalued events before candidate results."
+  },
+  "unchanged_contract": {
+    "candidate_count": 496,
+    "families": [
+      "spot_lead_continuation",
+      "perp_overshoot_reversal",
+      "basis_convergence",
+      "leadership_state_router"
+    ],
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "development": ["2022-01-01", "2023-01-01"],
+    "conditional_selection": ["2023-01-01", "2024-01-01"],
+    "conditional_validation": ["2024-01-01", "2025-01-01"],
+    "sealed_periods": ["2025", "2026"],
+    "cost_profiles_round_trip_bps": [12, 18, 24],
+    "account": "one global slot; 0.5% planned-loss risk; 3x notional cap; 0.1% completed-signal-minute USD-M quote-volume participation",
+    "economic_gate": "At least 150 trades; positive 12/18bp geometric growth and top-10%-removed return; 12bp PF >= 1.10, MDD <= 15%, top-five positive share <= 35%, positive median trade, both half-years positive.",
+    "parameter_or_gate_retuning": false
+  },
+  "stage_seal_status_at_amendment": {
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  }
+}
