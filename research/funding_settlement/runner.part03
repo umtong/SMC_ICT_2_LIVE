@@ -1,0 +1,147 @@
+    )
+
+
+def replay_cost(out: RawOutcome, mult: float) -> float:
+    side = out.side
+    entry_fill = out.entry_raw * (1 + side * COST["entry_slippage"] * mult)
+    if out.reason == "stop":
+        exit_fill = out.exit_raw * (1 - side * COST["stop_slippage"] * mult)
+        exit_fee = COST["market_exit_fee"] * mult
+    elif out.reason == "target":
+        exit_fill = out.exit_raw
+        exit_fee = COST["target_fee"] * mult
+    else:
+        exit_fill = out.exit_raw * (1 - side * COST["market_exit_slippage"] * mult)
+        exit_fee = COST["market_exit_fee"] * mult
+    stop_fill = out.stop_raw * (1 - side * COST["stop_slippage"] * mult)
+    per_unit_loss = abs(entry_fill - stop_fill) + entry_fill * COST["entry_fee"] * mult + stop_fill * COST["market_exit_fee"] * mult
+    qty_risk = COST["risk_fraction"] / per_unit_loss
+    qty_lev = COST["max_leverage"] / entry_fill
+    qty = min(qty_risk, qty_lev)
+    gross = side * (exit_fill - entry_fill)
+    fees = entry_fill * COST["entry_fee"] * mult + exit_fill * exit_fee
+    funding = -side * out.funding_rate_crossed * out.funding_mark
+    return qty * (gross - fees + funding)
+
+
+def metrics(trades: pd.DataFrame, mult: float) -> dict[str, float]:
+    if trades.empty:
+        return {"trades":0,"multiple":1.0,"profit_factor":0.0,"win_rate":0.0,"max_drawdown":0.0,"top10_profit_share":1.0,"without_top10_multiple":1.0,"mean_return":0.0}
+    r = trades[f"ret_{mult:g}"].to_numpy(float)
+    eq = np.cumprod(1+r)
+    curve = np.r_[1.0, eq]
+    peak = np.maximum.accumulate(curve)
+    dd = curve/peak-1
+    pos = r[r>0].sum(); neg = -r[r<0].sum()
+    profits=np.sort(r[r>0])[::-1]
+    top_share=float(profits[:10].sum()/profits.sum()) if profits.sum()>0 else 1.0
+    if len(profits):
+        top_values=set(np.argsort(r)[-min(10,(r>0).sum()):].tolist())
+        r_wo=np.array([x for i,x in enumerate(r) if i not in top_values],float)
+    else:r_wo=r
+    return {
+        "trades":int(len(r)),"multiple":float(eq[-1]),"profit_factor":float(pos/neg) if neg>0 else 999.0,
+        "win_rate":float((r>0).mean()),"max_drawdown":float(dd.min()),"top10_profit_share":top_share,
+        "without_top10_multiple":float(np.prod(1+r_wo)) if len(r_wo) else 1.0,"mean_return":float(r.mean()),
+    }
+
+
+def select_events(conf: pd.DataFrame, family: str, z: float) -> pd.DataFrame:
+    x=conf.copy()
+    side=np.zeros(len(x),dtype=np.int8); score=np.zeros(len(x),float); cond=np.zeros(len(x),bool)
+    fr=x.funding_z.to_numpy(float); pr=x.premium_z.to_numpy(float); sr=x.spread_z.to_numpy(float)
+    ret=x.post_return.to_numpy(float); flow=x.post_flow.to_numpy(float); sym=x.symbol.to_numpy(str)
+    if family=="post_unwind":
+        side=(-np.sign(fr)).astype(np.int8); cond=(np.abs(fr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(fr)+np.abs(flow)
+    elif family=="post_continuation":
+        side=np.sign(fr).astype(np.int8);cond=(np.abs(fr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(fr)+np.abs(flow)
+    elif family=="premium_reversion":
+        side=(-np.sign(pr)).astype(np.int8);cond=(np.abs(pr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(pr)+np.abs(flow)
+    elif family=="premium_breakout":
+        side=np.sign(pr).astype(np.int8);cond=(np.abs(pr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(pr)+np.abs(flow)
+    elif family=="funding_flow_disagreement":
+        side=np.sign(flow).astype(np.int8);cond=(np.abs(fr)>=z)&(side==-np.sign(fr))&(np.sign(ret)==side);score=np.abs(fr)+np.abs(flow)
+    elif family=="btc_relative_convergence":
+        side=(-np.sign(sr)).astype(np.int8);cond=(sym=="BTCUSDT")&(np.abs(sr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(sr)+np.abs(flow)
+    elif family=="eth_relative_convergence":
+        side=np.sign(sr).astype(np.int8);cond=(sym=="ETHUSDT")&(np.abs(sr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(sr)+np.abs(flow)
+    elif family=="btc_relative_continuation":
+        side=np.sign(sr).astype(np.int8);cond=(sym=="BTCUSDT")&(np.abs(sr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(sr)+np.abs(flow)
+    elif family=="eth_relative_continuation":
+        side=(-np.sign(sr)).astype(np.int8);cond=(sym=="ETHUSDT")&(np.abs(sr)>=z)&(np.sign(ret)==side)&(np.sign(flow)==side);score=np.abs(sr)+np.abs(flow)
+    else:raise ValueError(family)
+    cond &= x.confirmation_ok.to_numpy(bool)&np.isfinite(score)&(side!=0)
+    y=x.loc[cond].copy();y["side"]=side[cond];y["signal_score"]=score[cond]
+    return y
+
+
+def route_candidate(selected: pd.DataFrame, panels: dict[str,pd.DataFrame], stop_atr:float,target_r:float, cache: dict) -> pd.DataFrame:
+    outcomes=[]
+    for r in selected.itertuples(index=False):
+        key=(int(r.event_id), int(r.wait_bars), int(r.side), float(stop_atr), float(target_r))
+        if key not in cache:
+            row=pd.Series(r._asdict())
+            cache[key]=simulate_raw(row,panels[str(r.symbol)],int(r.side),stop_atr,target_r,float(r.signal_score))
+        o=cache[key]
+        if o is not None:
+            if abs(o.signal_score-float(r.signal_score))>1e-12:
+                o=RawOutcome(**{**o.__dict__, "signal_score": float(r.signal_score)})
+            outcomes.append(o)
+    if not outcomes:return pd.DataFrame()
+    q=pd.DataFrame([o.__dict__ for o in outcomes]).sort_values(["entry_time","signal_score"],ascending=[True,False])
+    q=q.drop_duplicates("entry_time",keep="first")
+    rows=[];free=pd.Timestamp.min.tz_localize("UTC")
+    for r in q.itertuples(index=False):
+        if r.entry_time<free:continue
+        d=r._asdict()
+        for m in COST_MULTIPLIERS:d[f"ret_{m:g}"]=replay_cost(RawOutcome(**{k:d[k] for k in RawOutcome.__dataclass_fields__}),m)
+        rows.append(d);free=r.exit_time
+    return pd.DataFrame(rows)
+
+
+def run(root:Path,out:Path)->dict:
+    out.mkdir(parents=True,exist_ok=True)
+    end=pd.Timestamp("2024-01-01",tz="UTC")
+    panels,sources,pm=load_panels(root,end)
+    events=build_event_table(panels)
+    confs={w:add_confirmation(events,panels,w) for w in WAIT_BARS}
+    rows=[];top_trades=[]; outcome_cache={}
+    for family in FAMILIES:
+      for z in Z_LEVELS:
+       for wait in WAIT_BARS:
+        selected=select_events(confs[wait],family,z)
+        for stop in STOP_ATR:
+         for target in TARGET_R:
+          name=f"{family}_z{z:g}_w{wait}_s{stop:g}_r{target:g}"
+          trades=route_candidate(selected,panels,stop,target,outcome_cache)
+          rec={"candidate":name,"family":family,"z":z,"wait_bars":wait,"stop_atr":stop,"target_r":target}
+          for label,a,b in [("dev2022",pd.Timestamp("2022-01-01",tz="UTC"),pd.Timestamp("2023-01-01",tz="UTC")),("sel2023",pd.Timestamp("2023-01-01",tz="UTC"),pd.Timestamp("2024-01-01",tz="UTC"))]:
+           sub=trades[(trades.exit_time>=a)&(trades.exit_time<b)] if not trades.empty else trades
+           for m in COST_MULTIPLIERS:
+            met=metrics(sub,m);rec.update({f"{label}_c{m:g}_{k}":v for k,v in met.items()})
+          rec["joint_log_growth"]=math.log(max(rec["dev2022_c1_multiple"],1e-12))+math.log(max(rec["sel2023_c1_multiple"],1e-12))+math.log(max(rec["dev2022_c1.5_multiple"],1e-12))+math.log(max(rec["sel2023_c1.5_multiple"],1e-12))
+          rows.append(rec)
+          if len(trades):
+           t=trades.copy();t["candidate"]=name;top_trades.append(t)
+    screen=pd.DataFrame(rows).sort_values("joint_log_growth",ascending=False)
+    gate=(screen["dev2022_c1_trades"]>=30)&(screen["sel2023_c1_trades"]>=30)&(screen["dev2022_c1_multiple"]>1)&(screen["sel2023_c1_multiple"]>1)&(screen["dev2022_c1.5_multiple"]>1)&(screen["sel2023_c1.5_multiple"]>1)&(screen["dev2022_c1_profit_factor"]>1.05)&(screen["sel2023_c1_profit_factor"]>1.05)&(screen["dev2022_c1_top10_profit_share"]<=.5)&(screen["sel2023_c1_top10_profit_share"]<=.5)&(screen["dev2022_c1_without_top10_multiple"]>1)&(screen["sel2023_c1_without_top10_multiple"]>1)
+    eligible=screen[gate].copy()
+    screen.to_csv(out/"candidate_screen.csv",index=False);eligible.to_csv(out/"eligible.csv",index=False);screen.head(50).to_csv(out/"top50_diagnostics.csv",index=False);pd.DataFrame(sources).to_csv(out/"loaded_source_archives.csv",index=False)
+    summary={
+      "status":"INVALID" if eligible.empty else "CANDIDATE","claim_id":"claim-20260725-002-funding-settlement","base_revision":4,
+      "candidate_contract":{"families":list(FAMILIES),"z_levels":list(Z_LEVELS),"wait_bars":list(WAIT_BARS),"stop_atr":list(STOP_ATR),"target_r":list(TARGET_R),"total_candidates":len(screen)},
+      "eligible_candidates":len(eligible),"development":"2022","independent_selection":"2023","validation_2024_opened":False,"holdout_2025_opened":False,"data_end_loaded":"2023-12-31",
+      "panel_manifests":pm,"loaded_archive_count":len(sources),"cost_contract":COST,
+      "execution_contract":"completed post-settlement 5m bars; next-bar market entry; structural ATR/confirmation-window stop; strict-trade-through target; completed three-bar opposite-flow plus anchor-break invalidation; otherwise expiry after first completed bar following the next actual settlement; one global position; same raw trade paths replayed at 1.0x/1.5x/2.0x costs; actual next funding cashflow when crossed",
+      "top_diagnostics":screen.head(10)[["candidate","dev2022_c1_trades","dev2022_c1_multiple","sel2023_c1_trades","sel2023_c1_multiple","dev2022_c1.5_multiple","sel2023_c1.5_multiple","dev2022_c1_top10_profit_share","sel2023_c1_top10_profit_share","joint_log_growth"]].to_dict("records"),
+      "orders_submitted":False,"paper_live_permission":False,
+    }
+    (out/"summary.json").write_text(json.dumps(summary,indent=2,default=str)+"\n")
+    return summary
+
+
+def main()->int:
+    ap=argparse.ArgumentParser();ap.add_argument("--root",type=Path,required=True);ap.add_argument("--out",type=Path,required=True);a=ap.parse_args()
+    s=run(a.root,a.out);print(json.dumps(s,indent=2,default=str));return 0
+
+if __name__=="__main__":raise SystemExit(main())
