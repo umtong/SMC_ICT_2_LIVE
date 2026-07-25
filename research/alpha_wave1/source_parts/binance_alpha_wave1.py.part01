@@ -1,0 +1,243 @@
+        for sweep_atr in (0.0, 0.10):
+            for flow_confirm in (0.0, 0.10):
+                for horizon in (6, 12, 24):
+                    for htf in (False, True):
+                        specs.append({"family": "liquidity_sweep_reclaim", "lookback": lookback, "sweep_atr": sweep_atr, "flow_confirm": flow_confirm, "horizon": horizon, "htf": htf})
+    for lookback in (12, 48):
+        for displacement in (0.8, 1.2):
+            for flow_confirm in (0.0, 0.10):
+                for horizon in (6, 12, 24):
+                    for htf in (False, True):
+                        specs.append({"family": "liquidity_sweep_acceptance", "lookback": lookback, "displacement": displacement, "flow_confirm": flow_confirm, "horizon": horizon, "htf": htf})
+    for balance_window in (12, 24):
+        for max_range_atr in (2.0, 3.0):
+            for displacement in (0.5, 0.8):
+                for flow_confirm in (0.0, 0.10):
+                    for horizon in (6, 12, 24):
+                        for htf in (False, True):
+                            specs.append({"family": "balance_to_imbalance", "balance_window": balance_window, "max_range_atr": max_range_atr, "displacement": displacement, "flow_confirm": flow_confirm, "horizon": horizon, "htf": htf})
+    for displacement in (1.0, 1.5):
+        for flow_confirm in (0.0, 0.10):
+            for wait in (3, 6, 12):
+                for horizon in (12, 24):
+                    for htf in (False, True):
+                        specs.append({"family": "displacement_origin_retest", "displacement": displacement, "flow_confirm": flow_confirm, "wait": wait, "horizon": horizon, "htf": htf})
+    for leader_z in (2.0, 3.0):
+        for gap_z in (1.0, 1.5):
+            for leader_flow_z in (0.0, 0.5):
+                for horizon in (3, 6, 12):
+                    specs.append({"family": "cross_asset_lag", "leader_z": leader_z, "gap_z": gap_z, "leader_flow_z": leader_flow_z, "horizon": horizon})
+    for lookback in (48, 96):
+        for flow_confirm in (0.0, 0.10):
+            for horizon in (12, 24):
+                specs.append({"family": "donchian_trend_baseline", "lookback": lookback, "flow_confirm": flow_confirm, "horizon": horizon, "htf": True})
+    for spec in specs:
+        spec["candidate_id"] = spec_id(spec)
+    assert len({spec["candidate_id"] for spec in specs}) == len(specs)
+    return specs
+
+
+def htf_ok(frame: pd.DataFrame, side: np.ndarray) -> np.ndarray:
+    trend = frame["trend48"].to_numpy(float)
+    return np.isfinite(trend) & (side * trend > 0)
+
+
+def vector_signals(symbol: str, frame: pd.DataFrame, spec: dict[str, Any]) -> pd.DataFrame:
+    family = spec["family"]
+    n = len(frame)
+    side = np.zeros(n, dtype=np.int8)
+    score = np.full(n, -np.inf, dtype=float)
+    stop = np.full(n, np.nan, dtype=float)
+    atr = frame["atr20"].to_numpy(float)
+    high = frame["high"].to_numpy(float)
+    low = frame["low"].to_numpy(float)
+    close = frame["close"].to_numpy(float)
+    body_atr = frame["body_atr"].to_numpy(float)
+    flow = frame["flow"].to_numpy(float)
+    present = frame["present"].to_numpy(bool)
+
+    if family in {"liquidity_sweep_reclaim", "liquidity_sweep_acceptance", "donchian_trend_baseline"}:
+        lookback = int(spec["lookback"])
+        ph = frame[f"prior_high_{lookback}"].to_numpy(float)
+        pl = frame[f"prior_low_{lookback}"].to_numpy(float)
+
+    if family == "liquidity_sweep_reclaim":
+        sweep = float(spec["sweep_atr"])
+        fc = float(spec["flow_confirm"])
+        long_mask = present & np.isfinite(pl) & np.isfinite(atr) & (low < pl - sweep * atr) & (close > pl) & (flow <= -fc)
+        short_mask = present & np.isfinite(ph) & np.isfinite(atr) & (high > ph + sweep * atr) & (close < ph) & (flow >= fc)
+        side[long_mask] = 1
+        side[short_mask] = -1
+        score[long_mask] = (pl[long_mask] - low[long_mask]) / atr[long_mask] + np.maximum(-flow[long_mask], 0)
+        score[short_mask] = (high[short_mask] - ph[short_mask]) / atr[short_mask] + np.maximum(flow[short_mask], 0)
+        stop[long_mask] = low[long_mask] - 0.10 * atr[long_mask]
+        stop[short_mask] = high[short_mask] + 0.10 * atr[short_mask]
+    elif family == "liquidity_sweep_acceptance":
+        disp = float(spec["displacement"])
+        fc = float(spec["flow_confirm"])
+        long_mask = present & np.isfinite(ph) & np.isfinite(atr) & (close > ph) & (body_atr >= disp) & (flow >= fc)
+        short_mask = present & np.isfinite(pl) & np.isfinite(atr) & (close < pl) & (body_atr <= -disp) & (flow <= -fc)
+        side[long_mask] = 1
+        side[short_mask] = -1
+        score[long_mask] = body_atr[long_mask] + np.maximum(flow[long_mask], 0)
+        score[short_mask] = -body_atr[short_mask] + np.maximum(-flow[short_mask], 0)
+        stop[long_mask] = low[long_mask] - 0.25 * atr[long_mask]
+        stop[short_mask] = high[short_mask] + 0.25 * atr[short_mask]
+    elif family == "balance_to_imbalance":
+        w = int(spec["balance_window"])
+        max_range = float(spec["max_range_atr"])
+        disp = float(spec["displacement"])
+        fc = float(spec["flow_confirm"])
+        ph = frame[f"prior_high_{w}"].to_numpy(float)
+        pl = frame[f"prior_low_{w}"].to_numpy(float)
+        compressed = np.isfinite(ph) & np.isfinite(pl) & np.isfinite(atr) & ((ph - pl) <= max_range * atr)
+        long_mask = present & compressed & (close > ph) & (body_atr >= disp) & (flow >= fc)
+        short_mask = present & compressed & (close < pl) & (body_atr <= -disp) & (flow <= -fc)
+        side[long_mask] = 1
+        side[short_mask] = -1
+        score[long_mask] = body_atr[long_mask] + np.maximum(flow[long_mask], 0) + (close[long_mask] - ph[long_mask]) / atr[long_mask]
+        score[short_mask] = -body_atr[short_mask] + np.maximum(-flow[short_mask], 0) + (pl[short_mask] - close[short_mask]) / atr[short_mask]
+        stop[long_mask] = pl[long_mask] - 0.10 * atr[long_mask]
+        stop[short_mask] = ph[short_mask] + 0.10 * atr[short_mask]
+    elif family == "donchian_trend_baseline":
+        fc = float(spec["flow_confirm"])
+        trend = frame["trend48"].to_numpy(float)
+        long_mask = present & np.isfinite(ph) & (close > ph) & (flow >= fc) & (trend > 0)
+        short_mask = present & np.isfinite(pl) & (close < pl) & (flow <= -fc) & (trend < 0)
+        side[long_mask] = 1
+        side[short_mask] = -1
+        score[long_mask] = (close[long_mask] - ph[long_mask]) / atr[long_mask] + np.maximum(flow[long_mask], 0)
+        score[short_mask] = (pl[short_mask] - close[short_mask]) / atr[short_mask] + np.maximum(-flow[short_mask], 0)
+        stop[long_mask] = low[long_mask] - 0.25 * atr[long_mask]
+        stop[short_mask] = high[short_mask] + 0.25 * atr[short_mask]
+    else:
+        raise ValueError(f"vector_signals unsupported family {family}")
+
+    if bool(spec.get("htf")):
+        allowed = htf_ok(frame, side.astype(float))
+        side[~allowed] = 0
+        score[~allowed] = -np.inf
+        stop[~allowed] = np.nan
+    mask = (side != 0) & np.isfinite(score) & np.isfinite(stop)
+    rows = np.flatnonzero(mask)
+    return pd.DataFrame(
+        {
+            "signal_time": frame.index[rows],
+            "symbol": symbol,
+            "side": side[rows].astype(int),
+            "score": score[rows],
+            "stop": stop[rows],
+            "horizon": int(spec["horizon"]),
+            "signal_index": rows,
+        }
+    )
+
+
+def displacement_retest_signals(symbol: str, frame: pd.DataFrame, spec: dict[str, Any]) -> pd.DataFrame:
+    disp = float(spec["displacement"])
+    fc = float(spec["flow_confirm"])
+    wait = int(spec["wait"])
+    horizon = int(spec["horizon"])
+    present = frame["present"].to_numpy(bool)
+    open_ = frame["open"].to_numpy(float)
+    high = frame["high"].to_numpy(float)
+    low = frame["low"].to_numpy(float)
+    close = frame["close"].to_numpy(float)
+    atr = frame["atr20"].to_numpy(float)
+    body_atr = frame["body_atr"].to_numpy(float)
+    flow = frame["flow"].to_numpy(float)
+    ph = frame["prior_high_12"].to_numpy(float)
+    pl = frame["prior_low_12"].to_numpy(float)
+    trend = frame["trend48"].to_numpy(float)
+    setups: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+    for i in range(len(frame)):
+        if not present[i]:
+            setups.clear()
+            continue
+        next_setups: list[dict[str, Any]] = []
+        for setup in setups:
+            if i > setup["expires"]:
+                continue
+            direction = int(setup["side"])
+            invalid = close[i] < setup["zone_low"] if direction > 0 else close[i] > setup["zone_high"]
+            if invalid:
+                continue
+            touched = low[i] <= setup["zone_high"] if direction > 0 else high[i] >= setup["zone_low"]
+            confirmed = close[i] > setup["mid"] if direction > 0 else close[i] < setup["mid"]
+            flow_ok = flow[i] >= fc if direction > 0 else flow[i] <= -fc
+            htf_allowed = (direction * trend[i] > 0) if bool(spec.get("htf")) else True
+            if touched and confirmed and flow_ok and htf_allowed:
+                rows.append(
+                    {
+                        "signal_time": frame.index[i],
+                        "symbol": symbol,
+                        "side": direction,
+                        "score": float(setup["score"] + abs(flow[i])),
+                        "stop": float(setup["zone_low"] - 0.10 * atr[i] if direction > 0 else setup["zone_high"] + 0.10 * atr[i]),
+                        "horizon": horizon,
+                        "signal_index": i,
+                    }
+                )
+                continue
+            next_setups.append(setup)
+        setups = next_setups
+        if i < 6 or not np.isfinite(atr[i]):
+            continue
+        bullish = np.isfinite(ph[i]) and body_atr[i] >= disp and close[i] > ph[i] and flow[i] >= fc
+        bearish = np.isfinite(pl[i]) and body_atr[i] <= -disp and close[i] < pl[i] and flow[i] <= -fc
+        direction = 1 if bullish else -1 if bearish else 0
+        if direction == 0:
+            continue
+        origin = None
+        for j in range(i - 1, max(-1, i - 6), -1):
+            opposite = close[j] < open_[j] if direction > 0 else close[j] > open_[j]
+            if present[j] and opposite:
+                origin = j
+                break
+        if origin is None:
+            continue
+        zone_low = float(low[origin] if direction > 0 else min(open_[origin], close[origin]))
+        zone_high = float(max(open_[origin], close[origin]) if direction > 0 else high[origin])
+        if not (0 < zone_low < zone_high):
+            continue
+        setups.append(
+            {
+                "side": direction,
+                "zone_low": zone_low,
+                "zone_high": zone_high,
+                "mid": (zone_low + zone_high) / 2,
+                "expires": i + wait,
+                "score": abs(float(body_atr[i])) + abs(float(flow[i])),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def cross_asset_lag_signals(frames: dict[str, pd.DataFrame], spec: dict[str, Any]) -> pd.DataFrame:
+    btc = frames["BTCUSDT"]
+    eth = frames["ETHUSDT"]
+    index = btc.index.intersection(eth.index)
+    b = btc.reindex(index)
+    e = eth.reindex(index)
+    bz = b["ret_z"].to_numpy(float)
+    ez = e["ret_z"].to_numpy(float)
+    bf = b["flow_z"].to_numpy(float)
+    ef = e["flow_z"].to_numpy(float)
+    leader_z = float(spec["leader_z"])
+    gap_z = float(spec["gap_z"])
+    flow_z = float(spec["leader_flow_z"])
+    rows: list[dict[str, Any]] = []
+    for leader_symbol, follower_symbol, lz, fz, lf, follower in (
+        ("BTCUSDT", "ETHUSDT", bz, ez, bf, e),
+        ("ETHUSDT", "BTCUSDT", ez, bz, ef, b),
+    ):
+        direction = np.sign(lz)
+        mask = (
+            np.isfinite(lz)
+            & np.isfinite(fz)
+            & np.isfinite(lf)
+            & (np.abs(lz) >= leader_z)
+            & (direction * lf >= flow_z)
+            & (direction * (lz - fz) >= gap_z)
+            & (np.abs(fz) <= np.abs(lz))
