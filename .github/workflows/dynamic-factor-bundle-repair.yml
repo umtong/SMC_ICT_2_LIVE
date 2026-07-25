@@ -1,0 +1,101 @@
+name: Dynamic factor bundle split repair
+
+on:
+  push:
+    branches:
+      - agent/r4-dynamic-factor-residual-001
+    paths:
+      - ".github/workflows/dynamic-factor-bundle-repair.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          fetch-depth: 1
+
+      - name: Reconstruct corrected split without changing scientific content
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, shutil, tarfile
+          root = pathlib.Path('research/dynamic_factor_residual_20260725')
+          manifest = json.loads((root / 'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          item = next(x for x in manifest['parts'] if x['path'].endswith('part01a'))
+          source = root / item['path']
+          raw = source.read_bytes()
+          corrected = raw[:item['bytes']]
+          corrected_path = pathlib.Path('/tmp/extension_bundle.tar.gz.b64.part01a')
+          corrected_path.write_bytes(corrected)
+          corrected_sha = hashlib.sha256(corrected).hexdigest()
+          assert len(corrected) == item['bytes']
+          assert corrected_sha == item['sha256'], (corrected_sha, item['sha256'])
+
+          chunks = []
+          observed_parts = []
+          for part in manifest['parts']:
+              part_raw = corrected if part['path'] == item['path'] else (root / part['path']).read_bytes()
+              digest = hashlib.sha256(part_raw).hexdigest()
+              assert len(part_raw) == part['bytes'], part['path']
+              assert digest == part['sha256'], part['path']
+              chunks.append(part_raw)
+              observed_parts.append({'path': part['path'], 'bytes': len(part_raw), 'sha256': digest})
+          combined = b''.join(chunks)
+          combined_sha = hashlib.sha256(combined).hexdigest()
+          assert combined_sha == manifest['combined_base64_sha256']
+          archive = base64.b64decode(combined, validate=True)
+          archive_sha = hashlib.sha256(archive).hexdigest()
+          assert len(archive) == manifest['decoded_tar_gz_bytes']
+          assert archive_sha == manifest['decoded_tar_gz_sha256']
+
+          extract = pathlib.Path('/tmp/dynamic-extension-repaired')
+          shutil.rmtree(extract, ignore_errors=True)
+          extract.mkdir()
+          archive_path = pathlib.Path('/tmp/dynamic-extension-repaired.tar.gz')
+          archive_path.write_bytes(archive)
+          with tarfile.open(archive_path, 'r:gz') as tf:
+              tf.extractall(extract, filter='data')
+          inner_path = extract / 'MANIFEST.json'
+          inner_sha = hashlib.sha256(inner_path.read_bytes()).hexdigest()
+          assert inner_sha == manifest['content_manifest_sha256']
+          inner = json.loads(inner_path.read_text())
+          for entry in inner['files']:
+              data = (extract / entry['path']).read_bytes()
+              assert len(data) == entry['bytes'], entry['path']
+              assert hashlib.sha256(data).hexdigest() == entry['sha256'], entry['path']
+
+          report = {
+              'source_part_bytes': len(raw),
+              'source_part_sha256': hashlib.sha256(raw).hexdigest(),
+              'corrected_part_bytes': len(corrected),
+              'corrected_part_sha256': corrected_sha,
+              'combined_base64_bytes': len(combined),
+              'combined_base64_sha256': combined_sha,
+              'decoded_archive_bytes': len(archive),
+              'decoded_archive_sha256': archive_sha,
+              'content_manifest_sha256': inner_sha,
+              'content_file_count': len(inner['files']),
+              'parts': observed_parts,
+              'scientific_content_changed': False,
+          }
+          pathlib.Path('/tmp/dynamic-factor-bundle-repair-report.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
+          print(json.dumps(report, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload corrected split and proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamic-factor-bundle-repair
+          path: |
+            /tmp/extension_bundle.tar.gz.b64.part01a
+            /tmp/dynamic-factor-bundle-repair-report.json
+          if-no-files-found: error
+          retention-days: 14
