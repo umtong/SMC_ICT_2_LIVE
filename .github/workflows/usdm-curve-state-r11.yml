@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           root=research/usdm_curve_state_20260726
-          echo "378b09529573696656231ae78ef81fcbbb7a2d4b05d3c26e7777c58678d11c85  $root/archive_transport_source.zip" | sha256sum --check
+          echo "a8e2305a65ac1db699edee9e6ce183926000ba0821c16b30819cb800d48727ba  $root/archive_transport_source.zip" | sha256sum --check
           unzip -q -o "$root/archive_transport_source.zip" -d "$root"
           python -m py_compile \
             "$root/run_screen.py" \
