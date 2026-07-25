@@ -1,0 +1,104 @@
+name: Dynamic factor residual research verification
+
+on:
+  push:
+    branches:
+      - agent/r4-dynamic-factor-residual-001
+    paths:
+      - "research/dynamic_factor_residual_20260725/**"
+      - ".github/workflows/dynamic-factor-residual.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dynamic_factor_residual_20260725/**"
+      - ".github/workflows/dynamic-factor-residual.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dynamic-factor-residual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          fetch-depth: 1
+
+      - name: Install fixed verification environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "numba==0.61.0" "pytest==8.3.4"
+
+      - name: Reconstruct and verify immutable extension bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/dynamic_factor_residual_20260725
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, tarfile
+          root=pathlib.Path('research/dynamic_factor_residual_20260725')
+          manifest=json.loads((root/'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          chunks=[]
+          for item in manifest['parts']:
+              path=root/item['path']
+              raw=path.read_bytes()
+              assert len(raw)==item['bytes'], (path,len(raw),item['bytes'])
+              assert hashlib.sha256(raw).hexdigest()==item['sha256'], path
+              chunks.append(raw)
+          combined=b''.join(chunks)
+          assert hashlib.sha256(combined).hexdigest()==manifest['combined_base64_sha256']
+          archive=base64.b64decode(combined, validate=True)
+          assert len(archive)==manifest['decoded_tar_gz_bytes']
+          assert hashlib.sha256(archive).hexdigest()==manifest['decoded_tar_gz_sha256']
+          pathlib.Path('/tmp/dynamic-extension.tar.gz').write_bytes(archive)
+          with tarfile.open('/tmp/dynamic-extension.tar.gz','r:gz') as tf:
+              tf.extractall('/tmp/dynamic-extension', filter='data')
+          inner=json.loads(pathlib.Path('/tmp/dynamic-extension/MANIFEST.json').read_text())
+          assert hashlib.sha256(pathlib.Path('/tmp/dynamic-extension/MANIFEST.json').read_bytes()).hexdigest()==manifest['content_manifest_sha256']
+          expected={x['path']:(x['bytes'],x['sha256']) for x in inner['files']}
+          for rel,(size,digest) in expected.items():
+              path=pathlib.Path('/tmp/dynamic-extension')/rel
+              raw=path.read_bytes()
+              assert len(raw)==size, rel
+              assert hashlib.sha256(raw).hexdigest()==digest, rel
+          print(json.dumps({'parts':len(chunks),'files':len(expected),'archive_sha256':manifest['decoded_tar_gz_sha256']},sort_keys=True))
+          PY
+
+      - name: Compile and run causal self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/research/dynamic_factor_residual_20260725"
+          ext=/tmp/dynamic-extension
+          python -m py_compile "$root/dynamic_factor_residual.py" "$root/test_dynamic_factor_residual.py" "$ext"/*.py
+          PYTHONPATH="$root:$ext" python "$root/dynamic_factor_residual.py" --self-test
+          PYTHONPATH="$root:$ext" python "$ext/rank_rotation.py" --self-test
+          PYTHONPATH="$root:$ext" python "$ext/state_exit.py" --self-test
+          PYTHONPATH="$root:$ext" python "$ext/state_exit_portfolio.py" --self-test
+          PYTHONPATH="$root:$ext" pytest -q "$root/test_dynamic_factor_residual.py" -k 'not later_periods_sealed'
+
+      - name: Verify safety and stage seals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('research/dynamic_factor_residual_20260725')
+          comparison=json.loads((root/'revision5_champion_comparison.json').read_text())
+          result=json.loads((root/'result_summary.json').read_text())
+          assert comparison['2026_opened'] is False
+          assert comparison['orders_submitted'] is False
+          assert comparison['promotion_gate_passed'] is False
+          assert result['dataset']['later_periods_opened'] is False
+          assert result['validation']['2026_opened'] is False
+          assert result['validation']['orders_submitted'] is False
+          print('safety and stage seals passed')
+          PY
