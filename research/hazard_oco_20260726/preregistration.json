@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "frozen_before_strategy_outcomes": true,
+  "frozen_at": "2026-07-26T02:52:00+09:00",
+  "economic_hypothesis": "When short-horizon movement hazard is predictable but direction is not, a symmetric pair of conditional market entries may monetize the realized direction. The edge exists only if post-trigger continuation exceeds observed spread, market-order cost, non-atomic cancel latency and double-trigger whipsaw losses.",
+  "objective_boundary": "The final project target remains at least 1% realistic after-cost calendar-day geometric NAV growth. This public-sample fatal-edge study reports growth per observed sample day and is not eligible for the overall strategy ranking without full-day coverage and independent source reconstruction.",
+  "data": {
+    "market": "Binance USD-M BTCUSDT perpetual futures",
+    "provider": "Tardis public normalized first-day samples",
+    "streams": ["book_ticker", "trades"],
+    "timestamp_for_information_and_execution": "local_timestamp",
+    "fit_days": ["2023-01-01", "2023-07-01"],
+    "development_days": ["2024-01-01", "2024-07-01"],
+    "conditional_selection_days": ["2025-01-01", "2025-08-01"],
+    "sealed_days": ["2026-01-01", "2026-04-01"],
+    "source_identity": "research/hazard_oco_20260726/SOURCE_REUSE.json",
+    "third_party_boundary": "A positive result is exploratory until reconstructed from official Binance data or an independent second source."
+  },
+  "event_clock": {
+    "grid_ms": 100,
+    "decision_interval_seconds": 5,
+    "decision_information": "Only events with local_timestamp strictly before the decision timestamp are usable.",
+    "bbo_freshness_ms": 200,
+    "minimum_history_seconds": 60,
+    "day_boundary": "No feature, label, pending order or open position may cross a UTC sample-day boundary."
+  },
+  "hazard_label": {
+    "fit_only": true,
+    "reference": "last fresh midpoint strictly before the decision timestamp",
+    "activation_delay_ms": 100,
+    "horizon_seconds": 30,
+    "threshold_bp": 15,
+    "definition": "1 if the maximum absolute fresh midpoint move from the reference during [decision+100ms, decision+30s] is at least 15bp; otherwise 0.",
+    "overlap_note": "Overlapping fit labels are permitted for model estimation but are not counted as independent strategy trades."
+  },
+  "features": [
+    "spread_bp",
+    "absolute_microprice_skew_bp",
+    "absolute_top_of_book_imbalance",
+    "absolute_mid_return_100ms_bp",
+    "absolute_mid_return_1s_bp",
+    "absolute_mid_return_3s_bp",
+    "realized_volatility_3s_bp",
+    "realized_volatility_10s_bp",
+    "log_total_quote_1s",
+    "log_total_quote_3s",
+    "log_total_quote_10s",
+    "log_trade_count_1s",
+    "log_trade_count_3s",
+    "log_trade_count_10s",
+    "absolute_signed_quote_ratio_1s",
+    "absolute_signed_quote_ratio_3s",
+    "absolute_signed_quote_ratio_10s",
+    "book_update_count_1s_log",
+    "book_update_count_3s_log",
+    "range_compression_3s_over_30s",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "feature_boundary": "Every rolling feature ends at the last 100ms bin strictly before the decision. Missing or stale values remain unavailable; no forward fill across freshness limits, interpolation or future normalization is allowed.",
+  "models": [
+    {
+      "name": "logistic",
+      "pipeline": "median imputation fitted on fit days, StandardScaler fitted on fit days, LogisticRegression C=0.1 class_weight=balanced max_iter=1000 random_state=20260726"
+    },
+    {
+      "name": "hgbt",
+      "pipeline": "median imputation fitted on fit days, HistGradientBoostingClassifier max_depth=2 learning_rate=0.05 max_iter=120 l2_regularization=1.0 min_samples_leaf=100 random_state=20260726 with fit-label inverse-frequency sample weights"
+    }
+  ],
+  "score_thresholds": {
+    "quantiles": [0.95, 0.975, 0.99],
+    "fit_rule": "Each model's thresholds are fixed from its score distribution on fit-day decision rows before any development PnL is computed."
+  },
+  "synthetic_entry_pair": {
+    "order_type_semantics": "Two independent equal-quantity contract-price stop-market-style orders. No exchange-atomic OCO behavior is assumed.",
+    "upper_trigger": "last fresh ask before decision multiplied by 1 + entry_offset_bp/10000",
+    "lower_trigger": "last fresh bid before decision multiplied by 1 - entry_offset_bp/10000",
+    "acknowledgment_latency_ms": 100,
+    "trigger": "first 100ms bin after activation whose observed trade maximum reaches the upper trigger or observed trade minimum reaches the lower trigger",
+    "trigger_to_market_fill_latency_ms": 100,
+    "market_fill": "first fresh ask for a buy or fresh bid for a sell at or after trigger plus latency; no favorable price improvement is assumed",
+    "pending_ttl_seconds": 5,
+    "cancel_latency_profiles_ms": [100, 300],
+    "double_trigger": "After the first fill, the opposite entry remains active until first-fill time plus cancel latency. If its trigger occurs before cancellation becomes effective, the equal opposite market fill flattens the position and ends the trade. Same-bin triggers are treated as a double-trigger round trip.",
+    "one_way_position_mode": true,
+    "global_slot": "The account has one pending pair or one open position at a time. The slot releases after pending expiry, double-trigger flattening or final position exit."
+  },
+  "position_exit": {
+    "target_and_stop": "Reduce-only contract-price market triggers measured from the actual entry fill.",
+    "same_bin_ambiguity": "stop-first",
+    "trigger_to_fill_latency_ms": 100,
+    "gap_execution": "first fresh observed bid for a long exit or ask for a short exit after trigger plus latency, even when worse than the trigger",
+    "time_exit": "first fresh executable BBO after entry plus maximum_life_seconds plus 100ms",
+    "post_exit_opposite_order": "reduce-only; it cannot open a reverse position after the position is flat"
+  },
+  "candidate_grid": {
+    "model": ["logistic", "hgbt"],
+    "hazard_score_quantile": [0.95, 0.975, 0.99],
+    "entry_offset_bp": [2, 4, 6],
+    "target_bp": [15, 25, 40],
+    "stop_bp": [8, 12, 20],
+    "maximum_life_seconds": [10, 30, 60],
+    "candidate_count": 486,
+    "candidate_id": "first 20 hexadecimal characters of SHA-256 over canonical sorted candidate JSON"
+  },
+  "account_and_cost": {
+    "initial_nav": 10000,
+    "planned_loss_fraction": 0.005,
+    "notional_cap_multiple": 3,
+    "participation_cap": "0.1% of observed prior three-second traded quote volume",
+    "cost_profiles_bp_per_completed_round_trip_beyond_observed_bbo": [12, 18, 24],
+    "cost_application": "A normal target, stop, timeout or double-trigger path has two market fills and pays one registered round-trip cost. Identical market paths are replayed under every cost and cancel-latency profile.",
+    "sizing_cost_reserve": "Use the selected cost profile plus stop distance in planned-loss sizing; baseline account path is 12bp and separate 18/24bp paths are replayed from identical signals."
+  },
+  "development_gate": {
+    "minimum_trade_count": 100,
+    "positive_observed_day_geometric_growth_at_cost_bp": [12, 18],
+    "positive_top_10_percent_removed_return_at_cost_bp": [12, 18],
+    "positive_median_trade_at_cost_bp": 12,
+    "profit_factor_12bp_at_least": 1.1,
+    "maximum_drawdown_12bp_at_most": 0.15,
+    "top_five_positive_pnl_share_12bp_at_most": 0.3,
+    "both_development_days_positive_at_cost_bp": [12, 18],
+    "double_trigger_fraction_at_cancel_latency_ms_100_at_most": 0.15,
+    "positive_18bp_growth_at_cancel_latency_ms_300": true
+  },
+  "freeze_and_selection": {
+    "freeze": "If development survivors exist, freeze the single highest 18bp observed-day geometric-growth candidate per model. Ties resolve by 18bp top-10%-removed return, lower 18bp drawdown, lower 300ms double-trigger fraction and candidate_id.",
+    "selection_open_rule": "Download the 2025 selection files only after the frozen representatives and development result hashes are written.",
+    "selection_gate": "The same candidate must have positive 18/24bp growth, positive 18bp top-10%-removed return, at least 100 trades, both selection days positive at 18bp, PF at least 1.1 and 300ms double-trigger fraction at most 0.15.",
+    "2026_rule": "No 2026 file may be downloaded or opened by this claim. A selection survivor requires a new deep-validation claim and independent source reconstruction."
+  },
+  "hard_invalidations": [
+    "exchange timestamp used in place of local availability time",
+    "features include events at or after the decision timestamp",
+    "fit label or development path crosses a sample-day boundary",
+    "unregistered atomic OCO assumption",
+    "the opposite entry is canceled before the modeled cancel-effective time",
+    "same-bin target/stop ambiguity resolved favorably",
+    "signal or trade selection changed after development outcomes",
+    "selection files opened without a frozen development survivor"
+  ],
+  "orders_permitted": false
+}
