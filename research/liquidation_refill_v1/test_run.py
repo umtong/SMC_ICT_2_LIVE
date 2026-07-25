@@ -217,6 +217,7 @@ def test_global_slot_skips_overlapping_signal() -> None:
 
 def test_candidate_count_is_frozen() -> None:
     prereg = {
+        "account": {"structural_stop_buffer_bps": 2.0},
         "candidate_grid": {
             "liquidation_quantile": [0.9, 0.95, 0.98],
             "dominance_min": [0.6, 0.75],
@@ -237,3 +238,37 @@ def test_candidate_count_is_frozen() -> None:
     candidates = lr.generate_candidates(prereg)
     assert len(candidates) == 576
     assert len({c["candidate_id"] for c in candidates}) == 576
+
+
+def test_signal_is_cancelled_when_entry_has_crossed_invalidation() -> None:
+    minute = pd.Timestamp("2023-01-01T00:00:00Z")
+    features = pd.DataFrame(
+        [
+            {
+                "symbol": "BTCUSDT",
+                "minute": minute,
+                "force_direction": 1,
+                "dominant_notional": 1000.0,
+                "dominance": 1.0,
+                "acceleration": 10.0,
+                "directional_return_bps": 10.0,
+                "close_location": 1.0,
+                "entry_open_continuation": 98.0,
+                "continuation_entry_time": minute + pd.Timedelta(minutes=1),
+                "event_high_continuation": 101.0,
+                "event_low_continuation": 99.0,
+            }
+        ]
+    )
+    candidate = {
+        "candidate_id": "x",
+        "family": "continuation",
+        "liquidation_quantile": 0.9,
+        "dominance_min": 0.6,
+        "acceleration_min": 1.5,
+        "impact_min_bps": 2.0,
+        "close_location_min": 0.65,
+        "structural_stop_buffer_bps": 2.0,
+    }
+    selected = lr.select_signals(features, candidate, {0.9: {"BTCUSDT": 500.0}})
+    assert selected.empty
