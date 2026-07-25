@@ -1,23 +1,10 @@
-name: Cross-venue price-discovery tracked V5B
+name: Cross-venue price-discovery tracked V5D
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - "research/cross_venue_price_discovery_20260725/CAUSAL_EXECUTION_CORRECTION_V5.md"
-      - "research/cross_venue_price_discovery_20260725/FUNDING_BOUNDARY_CORRECTION_V5B.md"
-      - "research/cross_venue_price_discovery_20260725/SOURCE_CLOCK_VALIDATION_V5B.md"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_execution_v5.py"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_signals_v5b.py"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_execution_v5b.py"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_pilot_v5.py"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_pilot_v5b.py"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_development_v5.py"
-      - "research/cross_venue_price_discovery_20260725/cross_venue_development_v5b.py"
-      - "research/cross_venue_price_discovery_20260725/test_cross_venue_execution_v5.py"
-      - "research/cross_venue_price_discovery_20260725/test_cross_venue_execution_v5b.py"
-      - "research/cross_venue_price_discovery_20260725/test_cross_venue_development_v5b.py"
-      - "research/cross_venue_price_discovery_20260725/run_v5b_ci.sh"
+      - "research/cross_venue_price_discovery_20260725/**"
       - ".github/workflows/cross-venue-price-discovery-v5.yml"
       - ".github/workflows/cross-venue-price-discovery-v5b.yml"
   workflow_dispatch:
@@ -26,5 +13,5 @@ permissions:
   contents: read
 
 jobs:
-  authoritative-v5b:
+  authoritative-v5d:
     uses: ./.github/workflows/cross-venue-price-discovery-v5b.yml
