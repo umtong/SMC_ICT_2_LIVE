@@ -1,0 +1,52 @@
+name: Cross-asset lead-lag baseline
+
+on:
+  push:
+    branches:
+      - research/cross-asset-leadlag-baseline-20260725
+    paths:
+      - research/cross_asset_leadlag/**
+      - .github/workflows/cross-asset-leadlag-baseline.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check numpy==2.1.3 pandas==2.2.3 requests==2.32.4
+      - name: Validate project and causal engine
+        run: |
+          python scripts/validate_project.py
+          python -m research.cross_asset_leadlag.pipeline self-test
+          python -m py_compile research/cross_asset_leadlag/pipeline.py
+      - name: Download and verify official Binance USD-M data
+        run: |
+          python -m research.cross_asset_leadlag.pipeline download \
+            --start 2023-01 \
+            --end 2025-12 \
+            --destination artifacts/cross_asset_leadlag/snapshot
+      - name: Run cost-aware staged walk-forward
+        run: |
+          python -m research.cross_asset_leadlag.pipeline run \
+            --snapshot artifacts/cross_asset_leadlag/snapshot \
+            --output artifacts/cross_asset_leadlag/results
+      - name: Build immutable artifact inventory
+        shell: bash
+        run: |
+          find artifacts/cross_asset_leadlag -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/cross_asset_leadlag/FILE_MANIFEST.sha256
+          du -ah artifacts/cross_asset_leadlag | sort -h | tail -40
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cross-asset-leadlag-baseline-20260725
+          path: artifacts/cross_asset_leadlag
+          retention-days: 14
+          compression-level: 6
