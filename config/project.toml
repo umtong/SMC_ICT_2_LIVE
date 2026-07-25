@@ -1,4 +1,4 @@
-schema_version = 3
+schema_version = 4
 
 [project]
 id = "smc-ict-2-live"
@@ -29,6 +29,7 @@ archive_folder = "90_ARCHIVE"
 project_instructions_path = "instructions/project-instructions.md"
 work_prompt_path = "prompts/goal-worker.md"
 state_reconcile_prompt_path = "prompts/reconcile-state.md"
+folder_action_reference_path = "docs/folder-action-contract.md"
 hot_context_manifest = "dist/context-manifest.json"
 
 [state]
@@ -45,3 +46,9 @@ source_registry_path = "data/catalog/source-registry.jsonl"
 dataset_registry_path = "data/catalog/dataset-registry.jsonl"
 entity_registry_path = "data/catalog/entity-registry.jsonl"
 reuse_before_external_search = true
+
+[structure]
+folder_contract_paths = ["config/folder-contract.github.toml", "config/folder-contract.drive.toml"]
+action_contract_path = "config/action-contract.toml"
+folder_action_document_path = "docs/folder-action-contract.md"
+pr_template_path = ".github/PULL_REQUEST_TEMPLATE.md"
