@@ -1,0 +1,228 @@
+    return len(a & b) / max(len(a | b), 1)
+
+
+def load_market_data(cache: Path, output: Path, start: pd.Timestamp, end: pd.Timestamp) -> tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame], dict[str, Any]]:
+    one_minute: dict[str, pd.DataFrame] = {}
+    funding: dict[str, pd.DataFrame] = {}
+    manifest: dict[str, Any] = {"study_id": STUDY_ID, "start": str(start), "end": str(end), "sources": [], "symbols": {}}
+    for symbol in SYMBOLS:
+        kline_frames: list[pd.DataFrame] = []
+        funding_frames: list[pd.DataFrame] = []
+        for month in month_starts(start, end):
+            kline_path, kline_meta = download_verified(cache / symbol / "klines", archive_url(symbol, "klines", month, "1m"))
+            kline_meta.update({"symbol": symbol, "kind": "klines", "month": month.strftime("%Y-%m")})
+            manifest["sources"].append(kline_meta)
+            kline_frames.append(read_kline_zip(kline_path))
+            funding_path, funding_meta = download_verified(cache / symbol / "fundingRate", archive_url(symbol, "fundingRate", month))
+            funding_meta.update({"symbol": symbol, "kind": "fundingRate", "month": month.strftime("%Y-%m")})
+            manifest["sources"].append(funding_meta)
+            funding_frames.append(read_funding_zip(funding_path))
+        one = exact_minute_panel(kline_frames, start, end)
+        fund = pd.concat(funding_frames, ignore_index=True).sort_values("time").drop_duplicates("time", keep="last")
+        fund = fund[(fund["time"] >= start) & (fund["time"] < end)].reset_index(drop=True)
+        one_minute[symbol] = one
+        funding[symbol] = fund
+        manifest["symbols"][symbol] = {
+            "minutes": int(len(one)),
+            "present_minutes": int(one["present"].sum()),
+            "missing_minutes": int((~one["present"]).sum()),
+            "funding_events": int(len(fund)),
+            "first": str(one.index.min()),
+            "last": str(one.index.max()),
+        }
+        np.savez_compressed(
+            output / f"{symbol}_1m.npz",
+            time_ns=one.index.view("i8"),
+            open=one["open"].to_numpy(float),
+            high=one["high"].to_numpy(float),
+            low=one["low"].to_numpy(float),
+            close=one["close"].to_numpy(float),
+            quote_volume=one["quote_volume"].to_numpy(float),
+            taker_buy_quote_volume=one["taker_buy_quote_volume"].to_numpy(float),
+            count=one["count"].to_numpy(float),
+            present=one["present"].to_numpy(bool),
+        )
+        fund.to_csv(output / f"{symbol}_funding.csv.gz", index=False, compression="gzip")
+    manifest["source_manifest_sha256"] = sha256_bytes(canonical_json({k: v for k, v in manifest.items() if k != "source_manifest_sha256"}).encode("utf-8"))
+    atomic_json(output / "dataset_manifest.json", manifest)
+    return one_minute, funding, manifest
+
+
+def evaluate_specs(
+    specs: list[dict[str, Any]],
+    frames: dict[str, pd.DataFrame],
+    execution: dict[str, ExecutionPanel],
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    output: Path,
+    stage: str,
+) -> tuple[pd.DataFrame, dict[str, set[str]]]:
+    rows: list[dict[str, Any]] = []
+    events: dict[str, set[str]] = {}
+    ledgers_dir = output / "ledgers" / stage
+    ledgers_dir.mkdir(parents=True, exist_ok=True)
+    for n, spec in enumerate(specs, 1):
+        signals = candidate_signals(frames, spec)
+        record: dict[str, Any] = {
+            "candidate_id": spec["candidate_id"],
+            "family": spec["family"],
+            "spec_json": canonical_json(spec),
+            "raw_signals": int(len(signals)),
+        }
+        base_ledger: pd.DataFrame | None = None
+        for label, cost in COSTS_BPS.items():
+            ledger = run_backtest(signals, execution, cost)
+            met = metrics(ledger, start, end)
+            record.update({f"{label}_{key}": value for key, value in met.items()})
+            if label == "base":
+                base_ledger = ledger
+        record["gate"] = development_gate(record) if stage == "development" else validation_gate(record)
+        robust_components = [record.get("base_log_growth", -1), record.get("stress_log_growth", -1), record.get("base_after_top10_log_growth", -1)]
+        record["robust_score"] = min(robust_components) - 0.5 * record.get("base_max_drawdown", 1) - 0.05 * record.get("base_top10_positive_share", 1)
+        rows.append(record)
+        if base_ledger is not None:
+            events[spec["candidate_id"]] = set(base_ledger.get("event_key", pd.Series(dtype=str)).astype(str))
+            if bool(record["gate"]):
+                base_ledger.to_csv(ledgers_dir / f"{spec['candidate_id']}_base.csv.gz", index=False, compression="gzip")
+        if n % 25 == 0 or n == len(specs):
+            print(json.dumps({"stage": stage, "evaluated": n, "total": len(specs), "passes": sum(bool(row["gate"]) for row in rows)}), flush=True)
+    screen = pd.DataFrame(rows).sort_values(["gate", "robust_score", "candidate_id"], ascending=[False, False, True], kind="mergesort")
+    screen.to_csv(output / f"{stage}_screen.csv", index=False)
+    return screen, events
+
+
+def select_representatives(screen: pd.DataFrame, specs_by_id: dict[str, dict[str, Any]], events: dict[str, set[str]]) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    selected_event_sets: list[set[str]] = []
+    selected_per_family: dict[str, int] = {}
+    for row in screen[screen["gate"]].itertuples(index=False):
+        family = str(row.family)
+        if selected_per_family.get(family, 0) >= MAX_REPRESENTATIVES_PER_FAMILY:
+            continue
+        candidate_events = events.get(str(row.candidate_id), set())
+        if any(event_jaccard(candidate_events, existing) > MAX_EVENT_JACCARD for existing in selected_event_sets):
+            continue
+        spec = dict(specs_by_id[str(row.candidate_id)])
+        spec["development_robust_score"] = float(row.robust_score)
+        spec["development_base_log_growth"] = float(row.base_log_growth)
+        spec["development_stress_log_growth"] = float(row.stress_log_growth)
+        spec["development_trades"] = int(row.base_trades)
+        selected.append(spec)
+        selected_event_sets.append(candidate_events)
+        selected_per_family[family] = selected_per_family.get(family, 0) + 1
+    return selected
+
+
+def save_feature_panels(output: Path, frames: dict[str, pd.DataFrame]) -> None:
+    keep = [
+        "open", "high", "low", "close", "quote_volume", "taker_buy_quote_volume", "count", "present",
+        "atr20", "ret1", "body_atr", "range_atr", "close_location", "flow", "ret_z", "flow_z", "qv_z",
+        "prior_high_12", "prior_low_12", "prior_high_24", "prior_low_24", "prior_high_48", "prior_low_48",
+        "prior_high_96", "prior_low_96", "prior_high_288", "prior_low_288", "trend48", "trend288", "hour_utc",
+    ]
+    for symbol, frame in frames.items():
+        frame[keep].to_csv(output / f"{symbol}_5m_features.csv.gz", compression="gzip")
+
+
+def development(args: argparse.Namespace) -> int:
+    output = args.output
+    output.mkdir(parents=True, exist_ok=True)
+    one, funding, manifest = load_market_data(args.cache, output, WARMUP_START, DEVELOPMENT_END)
+    frames = {symbol: build_features(build_five_minute(panel)) for symbol, panel in one.items()}
+    save_feature_panels(output, frames)
+    execution = {symbol: make_execution_panel(one[symbol], funding[symbol]) for symbol in SYMBOLS}
+    specs = candidate_specs()
+    screen, events = evaluate_specs(specs, frames, execution, DEVELOPMENT_START, DEVELOPMENT_END, output, "development")
+    specs_by_id = {spec["candidate_id"]: spec for spec in specs}
+    selected = select_representatives(screen, specs_by_id, events)
+    hypotheses_sha = sha256_file(args.hypotheses)
+    freeze = {
+        "schema_version": 1,
+        "study_id": STUDY_ID,
+        "stage": "DEVELOPMENT_FROZEN_BEFORE_2023",
+        "development_period": [str(DEVELOPMENT_START), str(DEVELOPMENT_END)],
+        "validation_period": [str(VALIDATION_START), str(VALIDATION_END)],
+        "source_manifest_sha256": manifest["source_manifest_sha256"],
+        "script_sha256": sha256_file(Path(__file__)),
+        "hypotheses_sha256": hypotheses_sha,
+        "costs_bps": COSTS_BPS,
+        "stop_extra_bps": STOP_EXTRA_BPS,
+        "candidate_count": len(specs),
+        "development_gate_count": int(screen["gate"].sum()),
+        "selected": selected,
+        "selected_count": len(selected),
+        "validation_opened": False,
+        "orders_submitted": False,
+        "paper_or_live_enabled": False,
+    }
+    freeze["content_digest"] = sha256_bytes(canonical_json(freeze).encode("utf-8"))
+    atomic_json(output / "freeze_manifest.json", freeze)
+    result = {
+        "status": "CANDIDATES_FROZEN" if selected else "NO_DEVELOPMENT_PASS",
+        "development_gate_count": int(screen["gate"].sum()),
+        "selected_count": len(selected),
+        "validation_opened": False,
+        "target_validated": False,
+        "champion_eligible": False,
+    }
+    atomic_json(output / "development_result.json", result)
+    print(json.dumps(result, sort_keys=True), flush=True)
+    return 0
+
+
+def validation(args: argparse.Namespace) -> int:
+    output = args.output
+    output.mkdir(parents=True, exist_ok=True)
+    freeze = json.loads(args.freeze.read_text(encoding="utf-8"))
+    digest = freeze.pop("content_digest")
+    if sha256_bytes(canonical_json(freeze).encode("utf-8")) != digest:
+        raise RuntimeError("freeze manifest digest mismatch")
+    freeze["content_digest"] = digest
+    if freeze.get("stage") != "DEVELOPMENT_FROZEN_BEFORE_2023" or not freeze.get("selected"):
+        raise RuntimeError("validation cannot open without frozen selected candidates")
+    if freeze.get("script_sha256") != sha256_file(Path(__file__)):
+        raise RuntimeError("strategy script changed after development freeze")
+    if freeze.get("hypotheses_sha256") != sha256_file(args.hypotheses):
+        raise RuntimeError("hypotheses changed after development freeze")
+    warm_start = pd.Timestamp("2022-10-01", tz="UTC")
+    one, funding, manifest = load_market_data(args.cache, output, warm_start, VALIDATION_END)
+    frames = {symbol: build_features(build_five_minute(panel)) for symbol, panel in one.items()}
+    save_feature_panels(output, frames)
+    execution = {symbol: make_execution_panel(one[symbol], funding[symbol]) for symbol in SYMBOLS}
+    selected_specs = [dict(item) for item in freeze["selected"]]
+    for spec in selected_specs:
+        for key in list(spec):
+            if key.startswith("development_"):
+                spec.pop(key)
+    screen, _ = evaluate_specs(selected_specs, frames, execution, VALIDATION_START, VALIDATION_END, output, "validation")
+    passes = screen[screen["gate"]].copy()
+    result = {
+        "schema_version": 1,
+        "study_id": STUDY_ID,
+        "stage": "FROZEN_VALIDATION_2023",
+        "development_freeze_digest": digest,
+        "validation_source_manifest_sha256": manifest["source_manifest_sha256"],
+        "evaluated_candidates": len(selected_specs),
+        "validation_gate_count": int(screen["gate"].sum()),
+        "passing_candidate_ids": passes["candidate_id"].astype(str).tolist(),
+        "target_validated": False,
+        "champion_eligible": False,
+        "orders_submitted": False,
+        "paper_or_live_enabled": False,
+    }
+    result["content_digest"] = sha256_bytes(canonical_json(result).encode("utf-8"))
+    atomic_json(output / "validation_result.json", result)
+    print(json.dumps(result, sort_keys=True), flush=True)
+    return 0
+
+
+def write_checksums(output: Path) -> None:
+    lines = []
+    for path in sorted(output.rglob("*")):
+        if path.is_file() and path.name != "SHA256SUMS.txt":
+            lines.append(f"{sha256_file(path)}  {path.relative_to(output)}")
+    (output / "SHA256SUMS.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
