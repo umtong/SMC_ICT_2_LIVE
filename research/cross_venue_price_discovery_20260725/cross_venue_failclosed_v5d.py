@@ -46,6 +46,13 @@ def _first_invalid_position(frame: pd.DataFrame, start: int, stop: int) -> int |
     return None
 
 
+def _position_at_boundary(frame: pd.DataFrame, boundary_us: int) -> int:
+    index = frame.index.to_numpy(np.int64)
+    boundary_ms = boundary_us // 1_000
+    position = int(np.searchsorted(index, boundary_ms, side="right") - 1)
+    return min(max(position, 0), len(index) - 1)
+
+
 def _punitive_resolution(
     frame: pd.DataFrame,
     candidate: base.EntryCandidateV5,
@@ -123,10 +130,11 @@ def _resolve_exit_failclosed(
     exit_target_us = result.trigger_boundary_us + config.latency_ms * 1_000
     if result.exit_us - exit_target_us > MAX_DELAY_US:
         boundary = exit_target_us + MAX_DELAY_US
+        position = _position_at_boundary(frame, boundary)
         return _punitive_resolution(
             frame,
             candidate,
-            result.exit_position,
+            position,
             boundary,
             quantity,
             entry_price,
