@@ -1,0 +1,22 @@
+{
+  "period": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "source_bar_minutes": 5,
+  "aggregate_minutes": [30, 60],
+  "entry_lookbacks": [12, 24, 48, 96],
+  "exit_rule": "entry_lb//4 or entry_lb//2, minimum 3; opposite completed-close then next-open fill",
+  "failsafe_multiplier": 2.5,
+  "atr_lookback": 20,
+  "stop_atr": 2.0,
+  "modes": ["all", "after_loser", "after_winner", "turtle_failsafe"],
+  "cost_roundtrip_bps": [12, 18, 24],
+  "initial_nav_usdt": 10000,
+  "planned_risk_fraction": 0.005,
+  "max_notional_leverage": 5.0,
+  "global_slot_count": 1,
+  "same_bar_policy": "stop or adverse gap stop is executable before a later completed-channel exit; payoff follow-up resolves stop before target",
+  "forced_time_exit": false,
+  "development_gate": "24bp positive, at least 100 trades, positive top-10%-winner-removed return, both half-years positive; after-loser must improve matched all at 12/18/24bp",
+  "later_period_open_rule": "2024 only after development gate; 2025 conditional; 2026 sealed",
+  "sha256": "47323fcb652bb533deb562039b2b7f66d35b13a98bdf1aa7833d53610aecd621"
+}
