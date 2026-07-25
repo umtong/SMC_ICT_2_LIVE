@@ -1,0 +1,54 @@
+name: Spot-perpetual leadership screen
+
+on:
+  push:
+    branches:
+      - agent/r8-spot-perp-leadership-001
+    paths:
+      - research/spot_perp_leadership/**
+      - .github/workflows/spot-perp-leadership.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/spot_perp_leadership/**
+      - .github/workflows/spot-perp-leadership.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deterministic dependencies
+        run: pip install --disable-pip-version-check numpy==2.1.3 pandas==2.2.3 requests==2.32.4
+      - name: Validate project, compile, and run causal tests
+        run: |
+          python scripts/validate_project.py
+          python -m py_compile research/spot_perp_leadership/pipeline.py
+          python -m research.spot_perp_leadership.pipeline self-test
+      - name: Acquire only permitted stages and run the frozen screen
+        run: |
+          python -m research.spot_perp_leadership.pipeline staged-run \
+            --output artifacts/spot_perp_leadership
+      - name: Echo decision-ready compact result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('artifacts/spot_perp_leadership/result_summary.json').read_text())
+          print('DECISION_READY_RESULT=' + json.dumps(result, sort_keys=True, separators=(',', ':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spot-perp-leadership-20260726
+          path: artifacts/spot_perp_leadership
+          retention-days: 14
+          compression-level: 6
