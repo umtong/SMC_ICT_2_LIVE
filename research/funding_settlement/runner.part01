@@ -1,0 +1,155 @@
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import io
+import json
+import math
+import zipfile
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+SYMBOLS = ("BTCUSDT", "ETHUSDT")
+FAMILIES = (
+    "post_unwind",
+    "post_continuation",
+    "premium_reversion",
+    "premium_breakout",
+    "funding_flow_disagreement",
+    "btc_relative_convergence",
+    "eth_relative_convergence",
+    "btc_relative_continuation",
+    "eth_relative_continuation",
+)
+Z_LEVELS = (1.0, 1.5, 2.0, 2.5)
+WAIT_BARS = (1, 3)
+STOP_ATR = (1.0, 1.5)
+TARGET_R = (1.5, 2.5, 3.5)
+COST_MULTIPLIERS = (1.0, 1.5, 2.0)
+COST = {
+    "entry_fee": 0.00055,
+    "target_fee": 0.00020,
+    "market_exit_fee": 0.00055,
+    "entry_slippage": 0.00020,
+    "market_exit_slippage": 0.00020,
+    "stop_slippage": 0.00050,
+    "risk_fraction": 0.01,
+    "max_leverage": 5.0,
+}
+KLINE_COLS = [
+    "open_time", "open", "high", "low", "close", "volume", "close_time",
+    "quote_volume", "count", "taker_buy_volume", "taker_buy_quote_volume", "ignore",
+]
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def timestamp_unit(x: pd.Series) -> str:
+    v = float(pd.to_numeric(x, errors="raise").abs().median())
+    if v >= 1e17:
+        return "ns"
+    if v >= 1e14:
+        return "us"
+    if v >= 1e11:
+        return "ms"
+    return "s"
+
+
+def read_zip_csv(path: Path, kind: str) -> pd.DataFrame:
+    with zipfile.ZipFile(path) as zf:
+        members = [n for n in zf.namelist() if n.lower().endswith(".csv")]
+        if len(members) != 1:
+            raise RuntimeError(f"unexpected archive members {path}: {members}")
+        raw = zf.read(members[0])
+    if kind in {"klines", "premiumIndexKlines"}:
+        first = raw.splitlines()[0].decode("utf-8-sig", "replace").split(",")[0].strip().lower()
+        header = first in {"open_time", "open time"}
+        d = pd.read_csv(io.BytesIO(raw), header=0 if header else None, names=None if header else KLINE_COLS)
+        d.columns = [str(c).strip().lower().replace(" ", "_") for c in d.columns]
+        aliases = {
+            "number_of_trades": "count",
+            "taker_buy_quote_asset_volume": "taker_buy_quote_volume",
+            "taker_buy_base_asset_volume": "taker_buy_volume",
+            "quote_asset_volume": "quote_volume",
+        }
+        d = d.rename(columns={c: aliases.get(c, c) for c in d.columns})
+        if "open_time" not in d.columns:
+            d.columns = KLINE_COLS[: len(d.columns)]
+        unit = timestamp_unit(d["open_time"])
+        d["time"] = pd.to_datetime(pd.to_numeric(d["open_time"], errors="raise"), unit=unit, utc=True)
+        for c in ["open", "high", "low", "close", "quote_volume", "count", "taker_buy_quote_volume"]:
+            d[c] = pd.to_numeric(d[c], errors="raise")
+        return d[["time", "open", "high", "low", "close", "quote_volume", "count", "taker_buy_quote_volume"]]
+    if kind == "fundingRate":
+        d = pd.read_csv(io.BytesIO(raw))
+        d.columns = [str(c).strip().lower().replace(" ", "_") for c in d.columns]
+        unit = timestamp_unit(d["calc_time"])
+        d["calc_time"] = pd.to_datetime(pd.to_numeric(d["calc_time"], errors="raise"), unit=unit, utc=True)
+        d["funding_rate"] = pd.to_numeric(d["last_funding_rate"], errors="raise")
+        return d[["calc_time", "funding_rate"]]
+    raise ValueError(kind)
+
+
+def past_z(s: pd.Series, window: int = 270, min_periods: int = 90) -> pd.Series:
+    p = s.shift(1)
+    mean = p.rolling(window, min_periods=min_periods).mean()
+    std = p.rolling(window, min_periods=min_periods).std(ddof=0).replace(0, np.nan)
+    return (s - mean) / std
+
+
+def load_panels(root: Path, end_exclusive: pd.Timestamp) -> tuple[dict[str, pd.DataFrame], list[dict], list[dict]]:
+    manifest = json.loads((root / "manifest.json").read_text())
+    manifest_map = {(r["symbol"], r["month"], r["kind"]): r for r in manifest}
+    panels: dict[str, pd.DataFrame] = {}
+    source_records: list[dict] = []
+    panel_manifests: list[dict] = []
+
+    for symbol in SYMBOLS:
+        by_kind: dict[str, list[pd.DataFrame]] = {k: [] for k in ("klines", "premiumIndexKlines", "fundingRate")}
+        for year in range(2021, end_exclusive.year + 1):
+            for month in range(1, 13):
+                tag = f"{year:04d}-{month:02d}"
+                if pd.Timestamp(f"{tag}-01", tz="UTC") >= end_exclusive:
+                    continue
+                for kind in by_kind:
+                    name = f"{symbol}-5m-{tag}.zip" if kind != "fundingRate" else f"{symbol}-fundingRate-{tag}.zip"
+                    path = root / "raw" / symbol / kind / name
+                    rec = manifest_map[(symbol, tag, kind)]
+                    observed = sha256_file(path)
+                    if observed != rec["sha256"]:
+                        raise RuntimeError(f"manifest checksum mismatch: {path}")
+                    part = read_zip_csv(path, kind)
+                    by_kind[kind].append(part)
+                    source_records.append({"symbol": symbol, "month": tag, "kind": kind, "sha256": observed, "rows": len(part)})
+        price = pd.concat(by_kind["klines"], ignore_index=True).sort_values("time").drop_duplicates("time", keep="last")
+        price = price[price.time < end_exclusive].copy().set_index("time")
+        premium = pd.concat(by_kind["premiumIndexKlines"], ignore_index=True).sort_values("time").drop_duplicates("time", keep="last")
+        premium = premium[premium.time < end_exclusive].copy().set_index("time")
+        funding = pd.concat(by_kind["fundingRate"], ignore_index=True).sort_values("calc_time").drop_duplicates("calc_time", keep="last")
+        funding = funding[funding.calc_time < end_exclusive].copy()
+
+        p = price.join(premium[["open", "high", "low", "close"]].rename(columns=lambda c: f"premium_{c}"), how="left")
+        prev_close = p.close.shift(1)
+        tr = pd.concat([(p.high - p.low), (p.high - prev_close).abs(), (p.low - prev_close).abs()], axis=1).max(axis=1)
+        p["atr"] = tr.rolling(96, min_periods=32).mean().shift(1)
+        p["flow"] = (2.0 * p.taker_buy_quote_volume / p.quote_volume.replace(0, np.nan) - 1.0).clip(-1, 1)
+        p["bar_return"] = np.log(p.close / p.open)
+        p["gap"] = p.index.to_series().diff().ne(pd.Timedelta(minutes=5))
+        if len(p):
+            p.iloc[0, p.columns.get_loc("gap")] = False
+
+        # Funding calc is generally milliseconds after the exact settlement timestamp.
+        funding["event_time"] = funding.calc_time.dt.floor("5min")
+        funding["calc_delay_ms"] = (funding.calc_time - funding.event_time).dt.total_seconds() * 1000
+        funding = funding[funding.event_time.isin(p.index)].copy()
+        funding["funding_z"] = past_z(funding.funding_rate)
