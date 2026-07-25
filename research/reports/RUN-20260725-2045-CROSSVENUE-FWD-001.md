@@ -12,6 +12,7 @@
 - Base revision: `6`
 - Source implementation commit: `9194d734e45e83e07fa921276a1e329d1126ea3f`
 - Branch: `agent/crossvenue-forward-capture-r6`
+- Pull request: `https://github.com/umtong/SMC_ICT_2_LIVE/pull/31`
 
 ## Scope and reuse
 
@@ -29,7 +30,7 @@ Result: zero strict and zero exploratory survivors. The tested specification is 
 
 The source bundle implements observation-only Binance/Bybit public capture and Bybit private execution/order/position capture with local wall and monotonic receive timestamps, raw payload hashes, append-only chain hashes, sequence and clock checks, environment-only authentication, execId-authoritative reconciliation, exact-capture-prefix dynamic-gate versus always-taker Shadow A/B, capture-quality reporting and automatic risk-state mapping.
 
-The deterministic 36,180-byte source bundle contains 29 files and is fixed by SHA-256 `8d8bf1824a4b7560e1f31ec729d8b659ec0bf4fba7de2331e28581895fe72683`. The extracted suite passed 16 tests and compileall. It contains no order-placement path and no credentials.
+The deterministic 36,180-byte source bundle contains 29 files and is fixed by SHA-256 `ebd83c20abaf6bf3ab7c9c467e63bd1d1129db813ddad9fa2fd3fdcca5ffcaa2`. The extracted suite passed 16 tests and compileall. It contains no order-placement path and no credentials.
 
 ## Decision
 
