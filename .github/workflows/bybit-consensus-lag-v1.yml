@@ -50,6 +50,7 @@ jobs:
           python research/bybit_consensus_lag_v1/run.py self-test
           python -m json.tool research/bybit_consensus_lag_v1/WORK_CLAIM.json >/dev/null
           python -m json.tool research/bybit_consensus_lag_v1/preregistration.json >/dev/null
+          python -m json.tool research/bybit_consensus_lag_v1/PREREGISTRATION_AMENDMENT_001.json >/dev/null
       - uses: actions/cache@v4
         with:
           path: /tmp/bybit-consensus-lag-v1
@@ -88,6 +89,8 @@ jobs:
           summary = json.loads(summary_path.read_text())
           assert summary["hard_validity"] == "PASS"
           assert summary["candidate_count"] == 324
+          assert summary["result_id"] == "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002"
+          assert summary["engine_version"] == "BYBIT_CONSENSUS_LAG_V1B_COMPLETED_MESSAGE_GROUP"
           assert summary["orders_submitted"] is False
           assert summary["paper_live_enabled"] is False
           assert summary["2024_opened"] is False
