@@ -9,6 +9,7 @@ import pandas as pd
 import cross_venue_development_v2 as d2
 import cross_venue_execution_v5 as base
 import cross_venue_pilot as v1
+import cross_venue_signals_v5b as signals
 
 CAUSAL_VERSION = base.CAUSAL_VERSION
 BUCKET_US = base.BUCKET_US
@@ -81,6 +82,7 @@ def _account_metrics_frozen_contract(
 def patch_v5() -> None:
     global _GUARD_PATCHED
     base.patch_v5()
+    signals.patch()
     if not _GUARD_PATCHED:
         base._first_quote_index = _first_quote_index_cached
         base._entry_candidates = _entry_candidates_with_funding_guard
