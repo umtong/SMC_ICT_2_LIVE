@@ -18,7 +18,8 @@
     "entry": "Next one-minute contract open after the decision minute",
     "same_bar_execution": false,
     "tie_break": "Original CSV row order after local_timestamp",
-    "known_source_limitation": "Binance forceOrder became a maximum one-order-per-second snapshot stream on 2021-04-27; observed liquidation flow is a lower bound, never reconstructed as full flow."
+    "known_source_limitation": "Binance forceOrder became a maximum one-order-per-second snapshot stream on 2021-04-27; observed liquidation flow is a lower bound, never reconstructed as full flow.",
+    "simultaneous_signal_priority": "highest observed dominant liquidation notional, then symbol ascending; fixed before outcomes"
   },
   "periods": {
     "fit": {
@@ -115,7 +116,8 @@
     "primary_cost_bps": 18.0,
     "same_minute_stop_target_order": "stop_first",
     "unresolved_position_treatment": "No forced exit. Candidate is penalized and cannot pass if any selected trade is unresolved inside the downloaded price path.",
-    "structural_stop_buffer_bps": 2.0
+    "structural_stop_buffer_bps": 2.0,
+    "gap_stop_execution": "worse_of_structural_stop_and_actual_minute_open"
   },
   "development_gate": {
     "minimum_trades": 30,
