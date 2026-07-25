@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -30,53 +31,54 @@ def dataset_url(data_type: str, date: str, symbol: str) -> str:
 
 
 def probe(url: str) -> dict[str, object]:
-    # A one-byte ranged GET is more reliable than HEAD across object-storage/CDN paths.
+    # The free sample CDN rejects byte-range GETs with 403, while ordinary
+    # HEAD/GET requests are the documented access path. Avoid transferring
+    # multi-gigabyte L2 files during this feasibility pass.
     completed = subprocess.run(
         [
             "curl",
             "-L",
+            "--head",
             "--fail",
             "--silent",
             "--show-error",
-            "--range",
-            "0-0",
-            "--dump-header",
-            "-",
-            "--output",
-            "/dev/null",
+            "--max-time",
+            "180",
+            "--user-agent",
+            "SMC-ICT-2-LIVE-research/1.0",
             url,
         ],
         text=True,
         capture_output=True,
-        timeout=180,
+        timeout=210,
         check=False,
     )
+    header_blocks = re.split(r"\r?\n\r?\n", completed.stdout.strip())
+    final_block = header_blocks[-1] if header_blocks else ""
     headers: dict[str, str] = {}
-    for raw in completed.stdout.splitlines():
-        if ":" not in raw:
-            continue
-        key, value = raw.split(":", 1)
-        headers[key.strip().lower()] = value.strip()
-    content_range = headers.get("content-range", "")
+    status = None
+    for raw in final_block.splitlines():
+        if raw.startswith("HTTP/"):
+            parts = raw.split()
+            status = parts[1] if len(parts) > 1 else None
+        elif ":" in raw:
+            key, value = raw.split(":", 1)
+            headers[key.strip().lower()] = value.strip()
     total_bytes = None
-    if "/" in content_range:
-        tail = content_range.rsplit("/", 1)[-1]
-        if tail.isdigit():
-            total_bytes = int(tail)
-    if total_bytes is None:
-        value = headers.get("content-length")
-        if value and value.isdigit() and int(value) > 1:
-            total_bytes = int(value)
+    value = headers.get("content-length")
+    if value and value.isdigit():
+        total_bytes = int(value)
     return {
         "url": url,
-        "ok": completed.returncode == 0,
+        "ok": completed.returncode == 0 and status is not None and 200 <= int(status) < 400,
         "curl_returncode": completed.returncode,
-        "http_status": headers.get("x-http-status", headers.get(":status")),
+        "http_status": status,
         "content_type": headers.get("content-type"),
-        "content_range": content_range or None,
+        "content_range": headers.get("content-range"),
         "total_bytes": total_bytes,
         "etag": headers.get("etag"),
         "last_modified": headers.get("last-modified"),
+        "accept_ranges": headers.get("accept-ranges"),
         "error": completed.stderr.strip() or None,
     }
 
@@ -106,7 +108,7 @@ def main() -> int:
     (args.output / "tardis_probe.json").write_text(
         json.dumps(
             {
-                "study": "L2_MAKER_TARDIS_SAMPLE_FEASIBILITY_V1",
+                "study": "L2_MAKER_TARDIS_SAMPLE_FEASIBILITY_V2",
                 "strategy_outcomes_opened": False,
                 "orders_simulated": False,
                 "rows": rows,
