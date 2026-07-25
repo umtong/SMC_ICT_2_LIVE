@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   evaluate:
@@ -33,13 +34,35 @@ jobs:
         run: |
           python scripts/validate_project.py
           python -m py_compile research/spot_perp_leadership/pipeline.py
+          python -m py_compile research/spot_perp_leadership/gap_safe_runner.py
           python -m research.spot_perp_leadership.pipeline self-test
+          python -m research.spot_perp_leadership.gap_safe_runner self-test
+      - name: Reuse checksum-verified diagnostic archives when available
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/spot_perp_leadership /tmp/prior-spot-perp
+          gh run download 30163979038 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name spot-perp-leadership-20260726 \
+            --dir /tmp/prior-spot-perp || true
+          if [[ -d /tmp/prior-spot-perp/dataset ]]; then
+            cp -a /tmp/prior-spot-perp/dataset artifacts/spot_perp_leadership/
+            echo "REUSED_PRIOR_CHECKSUM_VERIFIED_ARCHIVES=true"
+          else
+            echo "REUSED_PRIOR_CHECKSUM_VERIFIED_ARCHIVES=false"
+          fi
       - name: Acquire only permitted stages and run the frozen screen
         shell: bash
         run: |
-          mkdir -p artifacts/spot_perp_leadership
+          mkdir -p artifacts/spot_perp_leadership/source_snapshot
+          cp research/spot_perp_leadership/pipeline.py \
+            artifacts/spot_perp_leadership/source_snapshot/pipeline.py
+          cp research/spot_perp_leadership/gap_safe_runner.py \
+            artifacts/spot_perp_leadership/source_snapshot/gap_safe_runner.py
           set +e
-          python -m research.spot_perp_leadership.pipeline staged-run \
+          python -m research.spot_perp_leadership.gap_safe_runner staged-run \
             --output artifacts/spot_perp_leadership \
             2>&1 | tee artifacts/spot_perp_leadership/run.log
           status=${PIPESTATUS[0]}
