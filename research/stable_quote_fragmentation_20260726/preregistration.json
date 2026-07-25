@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "study_id": "BINANCE_STABLE_QUOTE_FRAGMENTATION_V1",
+  "claim_id": "CLM-20260726-0553-STABLE-QUOTE-001",
+  "worker_id": "gpt-5.6-pro-20260726-0553",
+  "base_project_revision": 11,
+  "registered_at": "2026-07-26T05:53:34+09:00",
+  "status": "PREREGISTERED_BEFORE_ANY_2024_STABLE_QUOTE_OUTCOME",
+  "objective": "Test whether contemporaneously FX-normalized disagreement across Binance BTC/ETH USDT, BUSD, USDC and FDUSD spot quote markets contains causal direction or exhaustion information for a single-slot USDT perpetual account after realistic costs.",
+  "objective_fingerprint": "6f136309c8040e4d66b00a14b33e784b9054b4864ed94e6a2355cea5a79cda35",
+  "scope_fingerprint": "796857ef59638109b9426d53e58188cab9a192574d43f10e671dd5634b75f09e",
+  "markets": {
+    "signal_source": "Official Binance monthly spot archives for BTC/ETH quoted in USDT, BUSD, USDC and FDUSD, plus exact completed stablecoin-USDT conversion bars",
+    "execution_proxy": "Official Binance USD-M BTCUSDT and ETHUSDT perpetual bars and funding during initial screen; any survivor requires later Bybit-normalized replay",
+    "pairs": ["BTCUSDT", "ETHUSDT"],
+    "bar_interval": "15m",
+    "global_slot": 1
+  },
+  "causal_features": [
+    "completed-bar volume-weighted non-USDT synthetic-price dislocation versus direct USDT spot",
+    "completed-bar non-USDT versus USDT taker-flow gap",
+    "completed-bar non-USDT consensus return minus direct-USDT return",
+    "completed-bar non-USDT quote-volume-share migration",
+    "completed-bar route dispersion and stablecoin conversion flow",
+    "prior-only rolling standardization",
+    "route-composition change as a hard segment boundary"
+  ],
+  "families": [
+    "quote_consensus_catchup",
+    "usdt_isolation_reversal",
+    "quote_share_migration"
+  ],
+  "grid": {
+    "rolling_windows_bars": [96, 672],
+    "absolute_z_thresholds": [1.5, 2.0, 2.5],
+    "state_exit_levels": [0.0, 0.5, 1.0],
+    "stop_atr_multipliers": [1.5, 2.5],
+    "candidate_count": 108
+  },
+  "position_exit_contract": {
+    "no_fixed_time_exit": true,
+    "quote_consensus_catchup": "Exit at the next exact open after completed dislocation convergence, flow reversal, route-composition change, data gap or adverse stop.",
+    "usdt_isolation_reversal": "Exit at the next exact open after completed cross-quote lead closure, flow reversal, route-composition change, data gap or adverse stop.",
+    "quote_share_migration": "Exit at the next exact open after completed migration/lead state ends, flow reversal, route-composition change, data gap or adverse stop.",
+    "evaluation_boundary": "Mark to the final available perpetual close and include liquidation cost only for account NAV measurement; this is not a strategy exit rule."
+  },
+  "stages": {
+    "feature_warmup": ["2021-12-01T00:00:00Z", "2022-01-01T00:00:00Z"],
+    "development": ["2022-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "conditional_2024": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "2025_and_2026": "SEALED"
+  },
+  "execution": {
+    "signal_time": "after the complete 15-minute bar",
+    "entry": "next exact 15-minute perpetual open with no forward fill",
+    "exit": "state-defined next exact open or adverse ATR stop; stop-first within a bar",
+    "gap_stop": "adverse actual bar open",
+    "round_trip_cost_bps": [12.0, 18.0, 24.0],
+    "stop_extra_slippage_bps": 4.0,
+    "actual_funding": true,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "daily_boundary": "00:00 UTC",
+    "daily_growth_denominator": "all UTC calendar days in the evaluated interval"
+  },
+  "development_gate": {
+    "minimum_combined_trades": 100,
+    "minimum_trades_each_calendar_year": 30,
+    "positive_total_return_at_12_18_24_bps": true,
+    "minimum_geometric_daily_growth_at_18bps": 0.0005,
+    "minimum_profit_factor_at_18bps": 1.15,
+    "positive_median_trade_at_18bps": true,
+    "positive_each_calendar_year_at_18_and_24bps": true,
+    "positive_after_removing_largest_10_percent_positive_trades_at_18bps": true,
+    "maximum_top_five_positive_trade_share": 0.35,
+    "maximum_trade_ledger_drawdown": 0.15
+  },
+  "conditional_opening_rule": "Download and evaluate 2024 only if at least one preregistered candidate passes every 2022-2023 development gate. Freeze the survivor with highest 24-bps development geometric daily growth before requesting 2024.",
+  "exclusions": [
+    "generic spot-perpetual price leadership without quote-market fragmentation",
+    "stablecoin directional trading or depeg speculation as the traded asset",
+    "cross-venue propagation",
+    "funding-only settlement rules",
+    "dated-futures curve",
+    "Bybit mark/index premium",
+    "positioning metrics",
+    "options",
+    "liquidation episodes",
+    "passive L2 execution",
+    "event-tape/metaorder cadence",
+    "round-number and sweep-event rules",
+    "portfolio integration"
+  ],
+  "safety": {
+    "credentials": false,
+    "orders": false,
+    "2024_opened_before_gate": false,
+    "2025_or_2026_opened": false
+  }
+}
