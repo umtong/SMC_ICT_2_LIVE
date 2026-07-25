@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "created_at": "2026-07-26T02:08:00+09:00",
+  "status": "MANDATORY_REPRODUCIBILITY_CORRECTION",
+  "discovery": "The draft runner proposed writing the SHA-256 of FILE_MANIFEST.sha256 into result_summary.json and then rebuilding the manifest. Because result_summary.json is itself covered by the manifest, this creates a circular and stale identity.",
+  "change": "result_summary.json records only the stable manifest path. After every scientific, audit and environment file is finalized, FILE_MANIFEST.sha256 is built exactly once and its own SHA-256 is reported outside the covered files for registry and workflow use.",
+  "scientific_effect": "None. Signals, paths, PnL, costs, gates and stage seals are unchanged.",
+  "reason": "A reproducibility identity must be noncircular and recomputable from immutable covered files.",
+  "invalidated_output": "No artifact identity produced by the circular draft procedure may be registered.",
+  "orders_permitted": false
+}
