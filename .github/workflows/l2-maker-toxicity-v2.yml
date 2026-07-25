@@ -1,4 +1,4 @@
-name: L2 maker toxicity V3 causal research
+name: L2 depth and official trade alignment audit
 
 on:
   pull_request:
@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: l2-maker-toxicity-v3-${{ github.event.pull_request.number || github.ref }}
+  group: l2-maker-alignment-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  research:
+  audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 340
     env:
@@ -24,9 +24,9 @@ jobs:
       HF_HUB_DISABLE_TELEMETRY: "1"
       HF_HUB_ETAG_TIMEOUT: "120"
       HF_HUB_DOWNLOAD_TIMEOUT: "600"
-      ROOT: ${{ github.workspace }}/research_runs/l2_maker_toxicity_v3
-      SOURCE_ROOT: ${{ github.workspace }}/research_runs/l2_maker_toxicity_v3/source
-      CACHE: ${{ github.workspace }}/.cache/l2_maker_toxicity_v3
+      ROOT: ${{ github.workspace }}/research_runs/l2_maker_alignment_audit
+      SOURCE_ROOT: ${{ github.workspace }}/research_runs/l2_maker_alignment_audit/source
+      CACHE: ${{ github.workspace }}/.cache/l2_maker_alignment_audit
 
     steps:
       - uses: actions/checkout@v4
@@ -42,70 +42,45 @@ jobs:
           mkdir -p "$SOURCE_ROOT" "$ROOT" "$CACHE"
           python - <<'PY'
           from __future__ import annotations
-          import base64, gzip, hashlib, io, json, subprocess, tarfile, traceback
+          import base64, gzip, hashlib, io, json, subprocess, tarfile
           from pathlib import Path, PurePosixPath
 
           transport = Path("research/l2_maker_toxicity_v1/v3_source")
-          output = Path("research_runs/l2_maker_toxicity_v3/source")
-          diagnostics = {
+          output = Path("research_runs/l2_maker_alignment_audit/source")
+          manifest = json.loads((transport / "manifest.json").read_text(encoding="utf-8"))
+          encoded = b"".join(path.read_bytes() for path in sorted(transport.glob("source_bundle.tar.gz.b64.part*")))
+          def verify(label, payload, bytes_expected, sha_expected):
+              assert len(payload) == bytes_expected, (label, len(payload), bytes_expected)
+              assert hashlib.sha256(payload).hexdigest() == sha_expected, label
+          verify("base64", encoded, manifest["bundle"]["base64_bytes"], manifest["bundle"]["base64_sha256"])
+          compressed = base64.b64decode(encoded, validate=True)
+          verify("gzip", compressed, manifest["bundle"]["gzip_bytes"], manifest["bundle"]["gzip_sha256"])
+          tar_bytes = gzip.decompress(compressed)
+          verify("tar", tar_bytes, manifest["bundle"]["tar_bytes"], manifest["bundle"]["tar_sha256"])
+          expected_names = set(manifest["files"])
+          with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as archive:
+              members = archive.getmembers()
+              assert {m.name for m in members} == expected_names
+              for member in members:
+                  pure = PurePosixPath(member.name)
+                  assert member.isfile() and not pure.is_absolute() and ".." not in pure.parts and len(pure.parts) == 1
+                  payload = archive.extractfile(member).read()
+                  spec = manifest["files"][member.name]
+                  verify(member.name, payload, spec["bytes"], spec["sha256"])
+                  (output / member.name).write_bytes(payload)
+          compile((output / "run.py").read_bytes(), str(output / "run.py"), "exec")
+          compile((output / "test_run.py").read_bytes(), str(output / "test_run.py"), "exec")
+          payload = {
+              "status": "PASS",
               "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-              "files_present": sorted(p.name for p in transport.glob("*")),
-              "checks": [], "errors": [],
+              "bundle_manifest": manifest,
           }
-          def digest(data: bytes) -> str:
-              return hashlib.sha256(data).hexdigest()
-          def require(label: str, actual, expected) -> None:
-              ok = actual == expected
-              diagnostics["checks"].append({"label": label, "actual": actual, "expected": expected, "ok": ok})
-              if not ok:
-                  diagnostics["errors"].append({"label": label, "actual": actual, "expected": expected})
-          try:
-              manifest = json.loads((transport / "manifest.json").read_text(encoding="utf-8"))
-              part_paths = sorted(transport.glob("source_bundle.tar.gz.b64.part*"))
-              require("part_count", len(part_paths), 6)
-              encoded = b"".join(path.read_bytes() for path in part_paths)
-              require("bundle:base64_bytes", len(encoded), manifest["bundle"]["base64_bytes"])
-              require("bundle:base64_sha256", digest(encoded), manifest["bundle"]["base64_sha256"])
-              compressed = base64.b64decode(encoded, validate=True)
-              require("bundle:gzip_bytes", len(compressed), manifest["bundle"]["gzip_bytes"])
-              require("bundle:gzip_sha256", digest(compressed), manifest["bundle"]["gzip_sha256"])
-              tar_bytes = gzip.decompress(compressed)
-              require("bundle:tar_bytes", len(tar_bytes), manifest["bundle"]["tar_bytes"])
-              require("bundle:tar_sha256", digest(tar_bytes), manifest["bundle"]["tar_sha256"])
-              expected_names = set(manifest["files"])
-              with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as archive:
-                  members = archive.getmembers()
-                  names = {member.name for member in members}
-                  require("bundle:file_names", names, expected_names)
-                  for member in members:
-                      pure = PurePosixPath(member.name)
-                      if not member.isfile() or pure.is_absolute() or ".." in pure.parts or len(pure.parts) != 1:
-                          raise RuntimeError(f"unsafe bundle member {member.name!r}")
-                      payload = archive.extractfile(member).read()
-                      spec = manifest["files"][member.name]
-                      require(f"{member.name}:bytes", len(payload), spec["bytes"])
-                      require(f"{member.name}:sha256", digest(payload), spec["sha256"])
-                      (output / member.name).write_bytes(payload)
-              if diagnostics["errors"]:
-                  raise RuntimeError(f"V3 source reconstruction mismatches: {diagnostics['errors']}")
-              compile((output / "run.py").read_bytes(), str(output / "run.py"), "exec")
-              compile((output / "test_run.py").read_bytes(), str(output / "test_run.py"), "exec")
-              diagnostics["status"] = "PASS"
-          except Exception as exc:
-              diagnostics["status"] = "FAIL"
-              diagnostics["exception"] = repr(exc)
-              diagnostics["traceback"] = traceback.format_exc()
-              raise
-          finally:
-              (Path("research_runs/l2_maker_toxicity_v3") / "reconstruction_diagnostics.json").write_text(
-                  json.dumps(diagnostics, indent=2, sort_keys=True, default=str), encoding="utf-8"
-              )
-              print(json.dumps(diagnostics, sort_keys=True, default=str))
+          Path("research_runs/l2_maker_alignment_audit/reconstruction.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+          )
           PY
-          cp "$SOURCE_ROOT/preregistration.json" "$ROOT/preregistration.json"
 
-      - name: Install fixed research environment
-        shell: bash
+      - name: Install fixed audit environment
         run: |
           set -euo pipefail
           python -m pip install --upgrade "pip==25.1.1"
@@ -117,62 +92,44 @@ jobs:
             "huggingface_hub==0.27.1" \
             "hf_xet==1.1.10" \
             "pytest==8.3.4"
-          python - <<'PY'
-          import json, platform, sys
-          import numpy, pandas, pyarrow, sklearn, huggingface_hub
-          from pathlib import Path
-          payload={
-            "python":sys.version,"platform":platform.platform(),"machine":platform.machine(),
-            "numpy":numpy.__version__,"pandas":pandas.__version__,"pyarrow":pyarrow.__version__,
-            "scikit_learn":sklearn.__version__,"huggingface_hub":huggingface_hub.__version__,
-            "orders_submitted":False,"paper_live_enabled":False,"terminal_dates_opened":False,
-          }
-          Path("research_runs/l2_maker_toxicity_v3/environment.json").write_text(json.dumps(payload,indent=2,sort_keys=True))
-          PY
 
       - name: Run V3 causality and execution regression tests
-        shell: bash
         run: |
           set -euo pipefail
           pytest -q "$SOURCE_ROOT/test_run.py" 2>&1 | tee "$ROOT/unit_tests.log"
 
-      - name: Run preregistered V3 discovery and validation
-        shell: bash
+      - name: Audit fit-period L2 and official aggTrade alignment without strategy outcomes
         run: |
           set -euo pipefail
-          python "$SOURCE_ROOT/run.py" --output "$ROOT" --cache "$CACHE" 2>&1 | tee "$ROOT/run.log"
+          python research/l2_maker_toxicity_v1/audit_alignment.py \
+            --source "$SOURCE_ROOT/run.py" \
+            --output "$ROOT" \
+            --cache "$CACHE" \
+            --symbols BTCUSDT ETHUSDT \
+            --dates 2026-03-05 2026-03-09 2026-03-13 2026-03-16 \
+            2>&1 | tee "$ROOT/alignment_audit.log"
 
-      - name: Assert safety and evidence status
+      - name: Assert no outcome or live state was opened
         if: always()
-        shell: bash
         run: |
-          set -euo pipefail
           python - <<'PY'
           import json
           from pathlib import Path
-          root=Path("research_runs/l2_maker_toxicity_v3")
+          root=Path("research_runs/l2_maker_alignment_audit")
           payload={
-              "orders_submitted":False,"paper_live_enabled":False,"terminal_dates_opened":False,
-              "v1_evidence_accepted":False,"v2_market_outcome_generated":False,"champion_eligible":False,
+            "strategy_outcomes_opened":False,
+            "orders_simulated":False,
+            "terminal_dates_opened":False,
+            "orders_submitted":False,
+            "paper_live_enabled":False,
+            "alignment_audit_present":(root/"alignment_audit.json").exists(),
           }
-          summary=root/"summary.json"
-          if summary.exists():
-              value=json.loads(summary.read_text(encoding="utf-8"))
-              assert not value.get("terminal_dates_opened",False)
-              assert not value.get("orders_submitted",False)
-              assert not value.get("paper_live_enabled",False)
-              assert not value.get("champion_eligible",False)
-              payload.update({k:value.get(k) for k in (
-                  "status","candidate_count","calibration_gate_count","validation_gate_count","target_met"
-              )})
-          payload["summary_present"]=summary.exists()
           (root/"wrapper_status.json").write_text(json.dumps(payload,indent=2,sort_keys=True),encoding="utf-8")
           print(json.dumps(payload,sort_keys=True))
           PY
 
       - name: Record immutable output hashes
         if: always()
-        shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$ROOT"
@@ -181,8 +138,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: l2-maker-toxicity-v3-${{ github.sha }}
-          path: research_runs/l2_maker_toxicity_v3
+          name: l2-maker-alignment-${{ github.sha }}
+          path: research_runs/l2_maker_alignment_audit
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
