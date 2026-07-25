@@ -1,0 +1,17 @@
+{
+  "amendment_id": "ATTENTION-LIQUIDITY-AMENDMENT-002",
+  "status": "POST_RUN_INVALIDATION_AND_MECHANICAL_EXECUTION_FIX",
+  "observed_invalid_run": true,
+  "invalidated_outputs": ["development_grid.csv from the first complete 576-cell run", "summary.json from the first complete 576-cell run"],
+  "reason": "The implementation derived raw target distance from total unit loss including fees. Scaling costs therefore moved target prices and changed the economic strategy during cost stress, producing non-monotonic and non-comparable stress results.",
+  "unchanged": ["all 576 preregistered parameter cells", "signals", "stops", "chronological splits", "cost profiles", "selection and validation gates", "one-position constraint"],
+  "fixed_contract": {
+    "structural_price_risk": "absolute distance between actual entry price and structural stop before fees",
+    "raw_target": "actual entry plus side times target_r times structural_price_risk",
+    "cost_adjusted_rr": "fees and slippage are applied after the raw structural target is fixed",
+    "stress": "the same signal, stop logic and target multiple are replayed; only actual entry/exit costs change",
+    "prior_results_valid": false
+  },
+  "created_at": "2026-07-25T15:35:00+09:00",
+  "paper_live_authority": false
+}
