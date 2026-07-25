@@ -1,4 +1,4 @@
-name: L2 maker toxicity V2 direct-source causal research
+name: L2 maker toxicity V2 causal research
 
 on:
   pull_request:
@@ -25,6 +25,7 @@ jobs:
       HF_HUB_ETAG_TIMEOUT: "120"
       HF_HUB_DOWNLOAD_TIMEOUT: "600"
       ROOT: ${{ github.workspace }}/research_runs/l2_maker_toxicity_v2
+      SOURCE_ROOT: ${{ github.workspace }}/research_runs/l2_maker_toxicity_v2/source
       CACHE: ${{ github.workspace }}/.cache/l2_maker_toxicity_v2
 
     steps:
@@ -34,39 +35,76 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Bind readable research sources to checked-out commit
+      - name: Reconstruct and verify immutable research sources
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$ROOT" "$CACHE"
+          mkdir -p "$SOURCE_ROOT" "$ROOT" "$CACHE"
           python - <<'PY'
           from __future__ import annotations
-          import hashlib, json, subprocess
+          import base64, gzip, hashlib, json, subprocess, traceback
           from pathlib import Path
 
-          files = [
-            "research/l2_maker_toxicity_v1/run.py",
-            "research/l2_maker_toxicity_v1/test_run.py",
-            "research/l2_maker_toxicity_v1/preregistration.json",
-          ]
-          observed = {}
-          for name in files:
-              path = Path(name)
-              payload = path.read_bytes()
-              observed[name] = {"bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
-          compile(Path(files[0]).read_bytes(), files[0], "exec")
-          compile(Path(files[1]).read_bytes(), files[1], "exec")
-          payload = {
+          transport = Path("research/l2_maker_toxicity_v1/v2_source")
+          output = Path("research_runs/l2_maker_toxicity_v2/source")
+          diagnostics = {
               "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-              "files": observed,
-              "status": "PASS",
+              "files_present": sorted(p.name for p in transport.glob("*")),
+              "checks": [], "errors": [],
           }
-          Path("research_runs/l2_maker_toxicity_v2/source_verification.json").write_text(
-              json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
-          )
-          print(json.dumps(payload, sort_keys=True))
+          def digest(data: bytes) -> str:
+              return hashlib.sha256(data).hexdigest()
+          def require(label: str, actual, expected) -> None:
+              ok = actual == expected
+              diagnostics["checks"].append({"label": label, "actual": actual, "expected": expected, "ok": ok})
+              if not ok:
+                  diagnostics["errors"].append({"label": label, "actual": actual, "expected": expected})
+          try:
+              manifest = json.loads((transport / "manifest.json").read_text(encoding="utf-8"))
+              for logical in ("run.py", "test_run.py", "preregistration.json"):
+                  spec = manifest[logical]
+                  chunks = []
+                  local_errors_before = len(diagnostics["errors"])
+                  for part in spec["parts"]:
+                      path = transport / part["name"]
+                      require(f"{logical}:{part['name']}:exists", path.exists(), True)
+                      if not path.exists():
+                          continue
+                      payload = path.read_bytes()
+                      require(f"{logical}:{part['name']}:bytes", len(payload), part["bytes"])
+                      require(f"{logical}:{part['name']}:sha256", digest(payload), part["sha256"])
+                      chunks.append(payload)
+                  if len(diagnostics["errors"]) != local_errors_before:
+                      continue
+                  encoded = b"".join(chunks)
+                  require(f"{logical}:base64_bytes", len(encoded), spec["base64_bytes"])
+                  require(f"{logical}:base64_sha256", digest(encoded), spec["base64_sha256"])
+                  compressed = base64.b64decode(encoded, validate=True)
+                  require(f"{logical}:gzip_bytes", len(compressed), spec["gzip_bytes"])
+                  require(f"{logical}:gzip_sha256", digest(compressed), spec["gzip_sha256"])
+                  raw = gzip.decompress(compressed)
+                  require(f"{logical}:raw_bytes", len(raw), spec["raw_bytes"])
+                  require(f"{logical}:raw_sha256", digest(raw), spec["raw_sha256"])
+                  if diagnostics["errors"]:
+                      continue
+                  (output / logical).write_bytes(raw)
+              if diagnostics["errors"]:
+                  raise RuntimeError(f"source reconstruction mismatches: {diagnostics['errors']}")
+              compile((output / "run.py").read_bytes(), str(output / "run.py"), "exec")
+              compile((output / "test_run.py").read_bytes(), str(output / "test_run.py"), "exec")
+              diagnostics["status"] = "PASS"
+          except Exception as exc:
+              diagnostics["status"] = "FAIL"
+              diagnostics["exception"] = repr(exc)
+              diagnostics["traceback"] = traceback.format_exc()
+              raise
+          finally:
+              (Path("research_runs/l2_maker_toxicity_v2") / "reconstruction_diagnostics.json").write_text(
+                  json.dumps(diagnostics, indent=2, sort_keys=True), encoding="utf-8"
+              )
+              print(json.dumps(diagnostics, sort_keys=True))
           PY
-          cp research/l2_maker_toxicity_v1/preregistration.json "$ROOT/preregistration.json"
+          cp "$SOURCE_ROOT/preregistration.json" "$ROOT/preregistration.json"
 
       - name: Install fixed research environment
         shell: bash
@@ -98,13 +136,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pytest -q research/l2_maker_toxicity_v1/test_run.py 2>&1 | tee "$ROOT/unit_tests.log"
+          pytest -q "$SOURCE_ROOT/test_run.py" 2>&1 | tee "$ROOT/unit_tests.log"
 
       - name: Run preregistered discovery and validation
         shell: bash
         run: |
           set -euo pipefail
-          python research/l2_maker_toxicity_v1/run.py --output "$ROOT" --cache "$CACHE" 2>&1 | tee "$ROOT/run.log"
+          python "$SOURCE_ROOT/run.py" --output "$ROOT" --cache "$CACHE" 2>&1 | tee "$ROOT/run.log"
 
       - name: Assert safety and evidence status
         if: always()
