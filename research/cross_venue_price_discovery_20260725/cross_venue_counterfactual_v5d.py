@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+import cross_venue_basis_v5d as basis_v5d
 import cross_venue_development_v2 as d2
 import cross_venue_development_v5 as development
 import cross_venue_execution_v5d as v5d
@@ -49,6 +50,7 @@ def replay_without_events(
     removed: set[EventKey],
     cache: Path,
 ) -> float:
+    basis_v5d.patch()
     v5d.patch_v5()
     state = v5d.initial_account_state()
     with requests.Session() as session:
