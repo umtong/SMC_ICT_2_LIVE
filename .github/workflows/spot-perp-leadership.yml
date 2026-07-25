@@ -35,6 +35,7 @@ jobs:
           python scripts/validate_project.py
           python -m py_compile research/spot_perp_leadership/pipeline.py
           python -m py_compile research/spot_perp_leadership/gap_safe_runner.py
+          python -m py_compile research/spot_perp_leadership/finalize_artifact.py
           python -m research.spot_perp_leadership.pipeline self-test
           python -m research.spot_perp_leadership.gap_safe_runner self-test
           python - <<'PY'
@@ -71,6 +72,8 @@ jobs:
             artifacts/spot_perp_leadership/source_snapshot/pipeline.py
           cp research/spot_perp_leadership/gap_safe_runner.py \
             artifacts/spot_perp_leadership/source_snapshot/gap_safe_runner.py
+          cp research/spot_perp_leadership/finalize_artifact.py \
+            artifacts/spot_perp_leadership/source_snapshot/finalize_artifact.py
           cp research/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json \
             artifacts/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json
           set +e
@@ -81,8 +84,11 @@ jobs:
           tail -n 250 artifacts/spot_perp_leadership/run.log \
             > artifacts/spot_perp_leadership/run_tail.log
           exit "$status"
+      - name: Finalize gap-safe metadata and hashes
+        run: |
+          python -m research.spot_perp_leadership.finalize_artifact \
+            --output artifacts/spot_perp_leadership
       - name: Echo decision-ready compact result
-        if: success()
         run: |
           python - <<'PY'
           import json
