@@ -5,17 +5,19 @@ import hashlib
 import json
 from pathlib import Path
 
+import cross_venue_basis_v5d as basis_v5d
 import cross_venue_execution_v5d as v5d
 import cross_venue_pilot as v1
 import cross_venue_pilot_v5c as pilot_v5c
 
 
 def run(output: Path, cache: Path, days: tuple[str, ...] = v1.PILOT_DAYS) -> dict:
+    basis_v5d.patch()
     v5d.patch_v5()
     result = pilot_v5c.run(output, cache, tuple(days))
     result["causal_engine_version"] = v5d.ENGINE_VERSION
     result["source_continuity_contract"] = (
-        "complete 100ms grid; rolling signal state resets after unavailable Binance/Bybit state"
+        "complete 100ms grid; rolling signal and convergence state reset after unavailable Binance/Bybit state"
     )
     result["execution_gap_contract"] = (
         "accepted entries and exits require observable quotes within 1s and finite state throughout the position"
