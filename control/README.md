@@ -3,7 +3,7 @@
 이 디렉터리는 지속 상태의 Git mirror다. Google Drive는 라이브 문서와 대형 자료를 보관한다.
 
 - `current-state.md`: 현재 상태와 다음 정확한 작업
-- `champion.json`: 검증된 Champion 또는 명시적인 없음 상태
+- `ranking.json`: 하드 유효 전략·포트폴리오 순위와 현재 1위
 - `work-claims.csv`: 활성 작업 범위와 lease
 - `result-registry.jsonl`: 산출물·의존성 지문으로 식별한 재사용 가능한 결과
 - `validation-cache.jsonl`: 의존성이 바뀌지 않은 검증 증거
