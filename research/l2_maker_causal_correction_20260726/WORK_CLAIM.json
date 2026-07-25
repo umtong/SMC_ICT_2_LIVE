@@ -6,10 +6,16 @@
   "scope_fingerprint": "2da6c6b1a490c053e8ad26a0538c69336638e3b70e034b238a749114b40310a6",
   "base_revision": 11,
   "base_main_sha": "109a564b8d2b7043769f72c089ff95d30a165eb7",
-  "status": "RUNNING",
+  "status": "REPORTED",
   "started_at": "2026-07-26T05:01:00+09:00",
   "lease_until": "2026-07-26T13:01:00+09:00",
+  "reported_at": "2026-07-26T05:20:11+09:00",
   "branch": "agent/r11-l2-maker-causal-correction-001",
+  "pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/54",
+  "result_id": "RES-20260726-L2-MAKER-CAUSAL-001",
+  "validation_attestation_id": "VAL-20260726-L2-MAKER-CAUSAL-001",
+  "run_report": "https://docs.google.com/document/d/18IUMAP3NxgJyKSolKJX2xLnQ42f71EHqVX3iHMRR3EE/edit",
+  "artifact": "https://drive.google.com/file/d/1E4p3RgqsthnfaSFiTvP3zow_BrXTgM5g/view",
   "continues_claim": "CLM-20260725-1958-L2-MAKER-001",
   "continuation_basis": "The original L2 V4 workflow completed after the prior lease expired, but independent artifact audit found that route eligibility used the 100-ms post-decision valid_order outcome, maximum drawdown was stored with a negative sign, ACK-rejected orders retained an imagined TTL slot, and filled positions with unavailable exit quotes could disappear from PnL. The immutable workflow artifact is reusable, so this claim performs only a frozen corrective replay rather than a new strategy search.",
   "scope": "Reuse immutable GitHub Actions artifact 8621485991 and its 276352 stored decision rows; preserve symbols, dates, features, models, parameter grid, costs and stage gates; replace only decision-time eligibility and execution/account-path defects; open no new market data or strategy family.",
@@ -19,7 +25,11 @@
     "cross-sectional-positioning",
     "COIN-M-collateral-stress",
     "option-surface-skew-and-term-structure",
-    "quarter-hour-order-flow"
+    "quarter-hour-order-flow",
+    "movement-hazard-OCO",
+    "auction-profile",
+    "event-time-tape",
+    "liquidation-refill"
   ],
   "orders_permitted": false
 }
