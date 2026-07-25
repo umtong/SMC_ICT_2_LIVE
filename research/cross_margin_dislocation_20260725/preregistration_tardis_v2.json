@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260725-2120-CROSS-MARGIN-001",
+  "dataset_revision": "TARDIS_PUBLIC_NORMALIZED_SAMPLE_V1",
+  "status": "CONTINGENT_PREREGISTRATION_BEFORE_ANY_TARDIS_PRICE_OR_PNL_SCREEN",
+  "activation_rule": "Run only when research_results/r5_cross_margin_dislocation_001/STATUS_INFRASTRUCTURE_BLOCKED.txt proves that the official Binance Vision route lacks the required historical BBO or tick source.",
+  "created_at": "2026-07-25T21:35:00+09:00",
+  "unchanged_economic_hypotheses": [
+    "coinm_downside_collateral_cascade",
+    "coinm_flow_first_propagation",
+    "usdm_overreaction_fade",
+    "simultaneous_basis_snapback"
+  ],
+  "source": {
+    "provider": "Tardis.dev public normalized first-day-of-month samples",
+    "coin_m_venue_id": "binance-delivery",
+    "usd_m_venue_id": "binance-futures",
+    "coin_m_symbols": ["BTCUSD_PERP", "ETHUSD_PERP"],
+    "usd_m_symbols": ["BTCUSDT", "ETHUSDT"],
+    "data_types": ["trades", "quotes"],
+    "availability_clock": "local_timestamp",
+    "source_identity": "Canonical URL, response headers, bytes and SHA-256 per gzip; missing files or schemas fail closed.",
+    "limitation": "Public first-day samples are systematic but incomplete. Passing them requires a full independently registered tick dataset before a 1% daily target test or Champion proposal."
+  },
+  "pilot_days": ["2022-01-01", "2022-07-01", "2023-01-01", "2023-07-01"],
+  "development_days": "remaining UTC first calendar days of every month in 2022 and 2023, opened only after the pilot gate",
+  "selection_days": "UTC first calendar days of 2024, opened only after frozen development pass",
+  "confirmation_days": "UTC first calendar days of 2025, opened only after one frozen 2024 primary",
+  "causality": {
+    "event_order": "local_timestamp chronological order",
+    "bucket": "non-overlapping completed 100ms/500ms/1s local-arrival buckets, available only at bucket end",
+    "entry": "first actual USD-M quote local_timestamp at or after bucket end plus registered latency",
+    "same_time": "adverse ordering when exact order is unresolved",
+    "quote_state_max_age_ms": 1000,
+    "entry_exit_require_actual_quote": true
+  },
+  "parameters_and_gates": "Identical to preregistration.json; no fee, latency, threshold, risk, leverage or gate changes are permitted.",
+  "promotion": {
+    "public_sample_champion_eligible": false,
+    "target_test_admissible": false,
+    "full_tick_dataset_required": true
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_live_started": false,
+    "2026_opened": false
+  }
+}
