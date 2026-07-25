@@ -1,11 +1,15 @@
 from dataclasses import replace
 from decimal import Decimal
+from hashlib import sha256
+from pathlib import Path
 import hmac
+import json
 
 import pytest
 
 from research.experiments.forward_execution_capture import (
     BybitPrivateAuth,
+    CaptureRecord,
     ExactPrefixShadow,
     HashChain,
     NormalizationError,
@@ -178,3 +182,17 @@ def test_module_has_no_order_placement_api():
     names = {name.lower() for name in dir(core)}
     assert "place_order" not in names
     assert "submit_order" not in names
+
+
+def test_source_manifest_matches_readable_files():
+    root = Path(__file__).parents[1]
+    manifest = json.loads(
+        (root / "research/experiments/forward_execution_capture/SOURCE_MANIFEST.json").read_text(encoding="utf-8")
+    )
+    assert manifest["format"] == "readable_source_files"
+    assert manifest["file_count"] == len(manifest["files"])
+    for row in manifest["files"]:
+        path = root / row["path"]
+        assert path.is_file()
+        assert path.stat().st_size == row["size_bytes"]
+        assert sha256(path.read_bytes()).hexdigest() == row["sha256"]
