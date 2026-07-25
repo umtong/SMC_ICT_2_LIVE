@@ -28,6 +28,30 @@ REQUIRED = [
     "schemas/validation-attestation.schema.json",
 ]
 
+RUNTIME_FILES = [
+    "instructions/project-instructions.md",
+    "prompts/goal-worker.md",
+    "prompts/reconcile-state.md",
+    "AGENTS.md",
+    "control/current-state.md",
+]
+
+FORBIDDEN_RUNTIME_PHRASES = [
+    "동등한 독립 작업자",
+    "총괄 채팅의 배정",
+    "다른 채팅의 완료를 기다리지",
+    "모델명",
+    "구독 플랜",
+    "규칙 작성 배경",
+    "과거 대화의 해설",
+    "자료별 저장 허가",
+    "storage-permission investigation",
+    "no mandatory coordinator",
+    "fixed epoch",
+    "serial handoff",
+    "peer worker",
+]
+
 
 def fail(message: str, errors: list[str]) -> None:
     errors.append(message)
@@ -50,11 +74,10 @@ def main() -> int:
         repo = project["github"]["repository"]
         if repo.count("/") != 1:
             fail("invalid github.repository", errors)
-        chatgpt = project["chatgpt"]
-        if chatgpt.get("central_coordinator_required") is not False:
-            fail("central coordinator must not be required", errors)
-        if chatgpt.get("execution_mode") != "continuous_peer_parallel":
-            fail("unexpected chatgpt.execution_mode", errors)
+        if project["state"].get("update_protocol") != "optimistic_revision":
+            fail("unexpected state.update_protocol", errors)
+        if not project["data"].get("reuse_before_external_search"):
+            fail("data reuse must precede external search", errors)
     except Exception as exc:
         fail(f"project.toml: {exc}", errors)
 
@@ -66,11 +89,14 @@ def main() -> int:
 
     try:
         workers = tomllib.loads((ROOT / "config/workers.toml").read_text(encoding="utf-8"))
-        concurrency = workers["concurrency"]
-        if concurrency.get("central_coordinator_required") is not False:
-            fail("workers require a coordinator", errors)
-        if concurrency.get("fixed_sequence") is not False:
-            fail("workers use fixed sequence", errors)
+        work = workers["work"]
+        defaults = workers["defaults"]
+        if work.get("state_update_protocol") != "optimistic_revision":
+            fail("unexpected work state_update_protocol", errors)
+        if not defaults.get("check_active_claims"):
+            fail("active work claims must be checked", errors)
+        if not defaults.get("reuse_registered_artifacts"):
+            fail("registered artifacts must be reused", errors)
     except Exception as exc:
         fail(f"workers.toml: {exc}", errors)
 
@@ -125,6 +151,12 @@ def main() -> int:
         unique([str(row.get("attestation_id", "")) for row in attestations], "attestation_id", errors)
     except Exception as exc:
         fail(f"validation cache: {exc}", errors)
+
+    for rel in RUNTIME_FILES:
+        text = (ROOT / rel).read_text(encoding="utf-8").lower()
+        for phrase in FORBIDDEN_RUNTIME_PHRASES:
+            if phrase.lower() in text:
+                fail(f"runtime meta-commentary in {rel}: {phrase}", errors)
 
     if (ROOT / "config/project.local.toml").exists():
         fail("config/project.local.toml must not be committed", errors)
