@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0547-BYBIT-PREMIUM-DISLOCATION-001",
+  "provisional_result_id": "RES-20260726-BYBIT-PREMIUM-DISLOCATION-001",
+  "study_id": "BYBIT_NATIVE_PREMIUM_DISLOCATION_FATAL_V1",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-bybit-premium-dislocation-001",
+  "research_stage": "pre_2024_fatal_economic_screen",
+  "rank_eligibility": false,
+  "objective": "Determine whether Bybit's own completed-bar last-price, mark-price, index-price and premium-index dislocations contain a structurally large after-cost directional payoff worth deeper reconstruction, without opening 2024 or later data.",
+  "economic_mechanisms": [
+    {
+      "family": "last_mark_reversion",
+      "direction": "opposite the completed last-minus-mark dislocation",
+      "logic": "A large last-price overshoot while mark remains close to index can be a transient execution-pressure state rather than a durable fair-value move."
+    },
+    {
+      "family": "aligned_stress_continuation",
+      "direction": "with the completed mark-minus-index premium",
+      "logic": "When last, mark and premium point in the same direction and price is still moving with the dislocation, the state may represent durable leveraged demand rather than noise."
+    },
+    {
+      "family": "premium_clamp_exhaustion",
+      "direction": "against the completed mark-minus-index premium",
+      "logic": "An extreme premium whose marginal change and last-price response reverse can mark exhausted leveraged pressure and convergence toward index."
+    }
+  ],
+  "data_contract": {
+    "venue": "Bybit",
+    "execution_market": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "public_endpoints": [
+      "/v5/market/kline",
+      "/v5/market/mark-price-kline",
+      "/v5/market/index-price-kline",
+      "/v5/market/premium-index-price-kline",
+      "/v5/market/funding/history"
+    ],
+    "interval": "5 minutes",
+    "warmup_start": "2021-12-20T00:00:00Z",
+    "fit": "2022-01-01T00:00:00Z/2023-01-01T00:00:00Z",
+    "development": "2023-01-01T00:00:00Z/2024-01-01T00:00:00Z",
+    "sealed": "2024-01-01T00:00:00Z onward",
+    "integrity": "Every cached response is represented by a request-manifest hash; cached CSV bytes, source coverage and the common exact five-minute timeline are checksum-identified. Any common-timeline gap blocks economic interpretation."
+  },
+  "causal_timing": {
+    "signal_availability": "Only after the full five-minute signal bar closes.",
+    "entry": "Next exact five-minute Bybit last-price bar open.",
+    "exit": "Next bar open after the completed pricing state converges or flips, unless an adverse stop is hit first.",
+    "no_arbitrary_time_exit": true,
+    "same_bar_barrier_ordering": "Protective stop is adverse and evaluated before any close-known state exit can execute.",
+    "gap_stop": "A stop-crossing open exits at that worse open.",
+    "evaluation_boundary": "Any still-open position is realistically liquidated at the final available development close solely to mark the account at the fixed evaluation boundary."
+  },
+  "features": {
+    "last_mark_bps": "10000 * (last close / mark close - 1)",
+    "mark_index_bps": "10000 * (mark close / index close - 1)",
+    "premium_bps": "10000 * premium-index close",
+    "last_return_bps": "completed last-price close return",
+    "index_return_bps": "completed index-price close return",
+    "premium_delta_bps": "completed premium-index close change",
+    "atr_bps": "24 completed five-minute bars of last-price true range divided by close"
+  },
+  "threshold_learning": {
+    "period": "fit only",
+    "symbol_specific": true,
+    "absolute_quantiles": [0.95, 0.975, 0.99],
+    "variables": ["last_mark_bps", "mark_index_bps", "premium_bps"],
+    "development_reestimation": false
+  },
+  "frozen_candidate_grid": {
+    "families": 3,
+    "quantiles": [0.95, 0.975, 0.99],
+    "family_context_values": {
+      "last_mark_reversion": [0.25, 0.5],
+      "aligned_stress_continuation": [0.5, 1.0],
+      "premium_clamp_exhaustion": [0.5, 1.0]
+    },
+    "state_exit_fractions": [0.25, 0.5],
+    "stop_atr_multiples": [1.0, 1.5],
+    "candidate_count": 72
+  },
+  "account_and_cost_contract": {
+    "initial_nav_usdt": 10000,
+    "one_global_slot": true,
+    "planned_risk_fraction_per_trade": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "all_in_round_trip_cost_bps": [12, 18, 24],
+    "actual_historical_funding": true,
+    "risk_quantity_rule": "NAV risk budget divided by stop distance plus the selected all-in cost, capped by maximum notional leverage.",
+    "daily_growth_denominator": "all UTC calendar days in the fixed stage",
+    "top_trade_removal": "Remove the top ten percent of positive 12-bp account-PnL event keys before global slot competition and rerun the account."
+  },
+  "development_gate": {
+    "minimum_trades_at_18bps": 50,
+    "fit_18bps_total_return": "> 0",
+    "development_total_return_at_12_18_24bps": "> 0 at every cost",
+    "development_18bps_profit_factor": "> 1",
+    "development_18bps_first_and_second_half_returns": "> 0 in both halves",
+    "development_12bps_top10_positive_removed_return": "> 0",
+    "source_gap_exposure": false
+  },
+  "conditional_next_stage": {
+    "zero_survivors": "Close this exact completed-five-minute formulation and return to a structurally different information source; keep 2024-2026 sealed.",
+    "one_or_more_survivors": "Before any ranking change, add exact Bybit BBO/depth, spread and latency, intratrade marked NAV, broader pre-2024 stability and only then freeze a sequential 2024 contract."
+  },
+  "non_overlap": [
+    "Prior Binance funding-settlement and cross-sectional funding studies used Binance premium/funding states, not Bybit-native last/mark/index execution dislocations.",
+    "The active USD-M dated-futures curve study uses Binance perpetual/current-quarter/next-quarter term structure.",
+    "The active cross-venue study uses local-arrival price discovery between Binance and Bybit.",
+    "This study does not use liquidation events, option surfaces, L2 maker queues, movement-hazard OCO orders or generic bar-pattern retuning."
+  ],
+  "prohibitions": [
+    "No 2024, 2025 or 2026 request in the workflow.",
+    "No same-bar or favorable pre-signal entry.",
+    "No favorable missing-price fill or silent source-gap deletion.",
+    "No credentials, paper orders, testnet orders or live orders.",
+    "No rank promotion from this fatal screen."
+  ]
+}
