@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260725-1850-XVENUE-001",
+  "supersedes": "preregistration.json for information-availability and event-order semantics only",
+  "status": "PREREGISTERED_BEFORE_ANY_ADMISSIBLE_PRICE_OR_PNL_SCREEN",
+  "created_at": "2026-07-25T19:05:00+09:00",
+  "unchanged_surfaces": [
+    "economic families",
+    "symbols and venues",
+    "systematic pilot and development dates",
+    "parameter grid",
+    "fees and latency grid",
+    "risk and capacity limits",
+    "development, selection and confirmation gates",
+    "2026 sealing and no-order safety"
+  ],
+  "causal_corrections": {
+    "availability_clock": "local_timestamp is the sole event-availability and sequencing clock; exchange timestamp is diagnostic only",
+    "bucket_contract": "events whose local timestamps fall in [t,t+100ms) form one completed bucket that is unavailable until t+100ms",
+    "entry": "first actual Binance quote with local_timestamp >= completed-bucket availability + preregistered latency",
+    "event_order": "strict chronological decision time; score breaks ties only within identical decision time",
+    "quote_state": "a carried quote may be used for state for no more than 1000ms, but entry and exit require an actual quote event",
+    "same_timestamp": "file sequence is never used favorably; when order cannot be established, choose the strategy-adverse path",
+    "v1_status": "hard-invalid before economic interpretation"
+  },
+  "economic_families": [
+    "bybit_to_binance_propagation",
+    "binance_overshoot_fade",
+    "simultaneous_shock_basis_snapback"
+  ],
+  "pilot_days": ["2022-01-01", "2022-07-01", "2023-01-01", "2023-07-01"],
+  "development_days": "remaining UTC first calendar days of each month in 2022 and 2023 after removing pilot days",
+  "selection_days": "UTC first calendar day of each month in 2024, unopened until frozen development pass",
+  "confirmation_days": "UTC first calendar day of each month in 2025, unopened until one frozen 2024 primary",
+  "fatal_pilot_gate": {
+    "minimum_trades": 100,
+    "positive_zero_fee_mean_bps": true,
+    "positive_total_return_at_5_and_10_bps_per_side": true,
+    "positive_after_removing_top_10_percent_trades": true,
+    "minimum_positive_day_fraction": 0.5
+  },
+  "development_gate": {
+    "minimum_trades": 500,
+    "minimum_median_trades_per_day": 10,
+    "positive_total_return_at_5_7p5_10_bps_per_side": true,
+    "positive_2022_and_2023": true,
+    "minimum_positive_day_fraction": 0.60,
+    "positive_after_removing_top_10_percent_trades": true,
+    "maximum_top_five_positive_profit_share": 0.20,
+    "minimum_profit_factor_at_5bps_per_side": 1.10,
+    "maximum_drawdown": 0.20,
+    "maximum_single_symbol_positive_pnl_share": 0.70
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_live_started": false,
+    "2026_opened": false,
+    "champion_eligible_from_public_samples": false
+  }
+}
