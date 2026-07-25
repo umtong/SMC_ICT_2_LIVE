@@ -10,6 +10,7 @@ ROOT = Path(__file__).parents[1]
 def test_work_configuration_uses_conditional_efficiency_gates():
     project = tomllib.loads((ROOT / "config/project.toml").read_text(encoding="utf-8"))
     workers = tomllib.loads((ROOT / "config/workers.toml").read_text(encoding="utf-8"))
+    evaluation = tomllib.loads((ROOT / "config/evaluation.toml").read_text(encoding="utf-8"))
 
     assert project["state"]["update_protocol"] == "optimistic_revision"
     assert project["data"]["reuse_before_external_search"] is True
@@ -27,6 +28,11 @@ def test_work_configuration_uses_conditional_efficiency_gates():
     assert workers["records"]["minimal_metadata_first"] is True
     assert workers["records"]["full_run_report_for_material_checkpoint_only"] is True
     assert workers["records"]["pull_request_for_shared_or_reusable_changes_only"] is True
+
+    assert evaluation["validation"]["mode"] == "staged"
+    assert evaluation["validation"]["depth_proportional_to_economic_promise_and_decision_value"] is True
+    assert evaluation["stage"]["initial"]["purpose"] == "cheap_rejection"
+    assert evaluation["final_reporting"]["applies_to"] == "champion_challenger_or_material_final_report"
 
 
 def test_work_claim_registry_has_deduplication_fields():
