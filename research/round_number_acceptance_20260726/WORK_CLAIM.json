@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0535-ROUND-NUMBER-001",
+  "worker_id": "gpt-5.6-pro-20260726-0535",
+  "objective_fingerprint": "60099de453bccc76344ed94f11eb25ec83ea92a52b7277113eee6a942b6cb5ba",
+  "scope_fingerprint": "cecf4d62400fb2395ce35c832acbcd722b2aad305a420148ac482eaf73a80ec9",
+  "base_revision": 11,
+  "base_main_sha": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "status": "RUNNING",
+  "started_at": "2026-07-26T05:35:00+09:00",
+  "lease_until": "2026-07-26T13:35:00+09:00",
+  "branch": "agent/r11-round-number-acceptance-001",
+  "objective": "Test whether Bybit-native BTCUSDT/ETHUSDT absolute adaptive round-number crossings, conditioned on causal post-cross acceptance or rejection and aggressor flow, produce repeatable after-cost taker markouts large enough to justify broader reconstruction before any 2024 opening.",
+  "scope": "Sparse pre-2024 fatal screen using six immutable Bybit public trade dates. The state is absolute significant-digit price-grid crossing plus causally observed post-cross location and aggressor flow. Entry is the first later trade after fixed confirmation and 100 ms latency; one global slot and 12/18/24bp all-in cost replay are enforced. No BBO/depth claim, account-ranking claim, later-period opening or order path is permitted at this stage.",
+  "non_overlap": [
+    "event-tape burst segments trades by quiet-time episodes and pace; this claim starts only from absolute price-grid boundary crossings",
+    "movement-hazard OCO is direction-neutral two-sided conditional-order placement; this claim waits for a single confirmed direction and uses taker markouts",
+    "auction-profile uses prior-session volume-at-price POC/value areas; this claim uses no session profile or volume-at-price construction",
+    "liquidation-refill, cross-venue, option-surface, collateral, dated-futures and positioning states are excluded",
+    "reported L2 maker spread-capture and ordinary one-minute flow-impact dependencies are not retuned"
+  ],
+  "orders_permitted": false
+}
