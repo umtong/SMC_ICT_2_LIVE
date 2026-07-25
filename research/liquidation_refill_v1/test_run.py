@@ -120,6 +120,54 @@ def test_stop_first_when_both_barriers_touch() -> None:
     assert reason == "stop"
 
 
+def test_gap_stop_uses_adverse_actual_open() -> None:
+    frame = pd.DataFrame(
+        {
+            "minute": pd.date_range("2023-01-01T00:01:00Z", periods=3, freq="min"),
+            "open": [100.0, 95.0, 95.0],
+            "high": [100.1, 96.0, 95.1],
+            "low": [99.9, 94.0, 94.9],
+            "close": [100.0, 95.0, 95.0],
+        }
+    )
+    series = lr.PriceSeries.from_frame(frame)
+    exit_time, exit_price, reason = series.resolve_oco(
+        entry_time=pd.Timestamp("2023-01-01T00:01:00Z"),
+        path_end=pd.Timestamp("2023-01-01T00:04:00Z"),
+        direction=1,
+        stop_price=98.0,
+        target_price=102.0,
+    )
+    assert exit_time == pd.Timestamp("2023-01-01T00:02:00Z")
+    assert exit_price == 95.0
+    assert reason == "stop"
+
+
+def test_price_path_does_not_bridge_missing_minute() -> None:
+    frame = pd.DataFrame(
+        {
+            "minute": pd.to_datetime(
+                ["2023-01-01T00:01:00Z", "2023-01-01T00:03:00Z"]
+            ),
+            "open": [100.0, 100.0],
+            "high": [100.1, 103.0],
+            "low": [99.9, 99.9],
+            "close": [100.0, 102.0],
+        }
+    )
+    series = lr.PriceSeries.from_frame(frame)
+    exit_time, exit_price, reason = series.resolve_oco(
+        entry_time=pd.Timestamp("2023-01-01T00:01:00Z"),
+        path_end=pd.Timestamp("2023-01-01T00:04:00Z"),
+        direction=1,
+        stop_price=98.0,
+        target_price=102.0,
+    )
+    assert exit_time is None
+    assert exit_price is None
+    assert reason == "unresolved_source_gap"
+
+
 def test_risk_sizing_stop_loss_includes_cost() -> None:
     prices = pd.DataFrame(
         {
