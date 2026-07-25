@@ -5,7 +5,12 @@
   "decision": "Research-only fatal economic screen. No paper, testnet, or live orders.",
   "primary_market": "Binance USD-M public liquidation samples for discovery; execution economics expressed as a conservative taker model before any Bybit replication.",
   "target_market": "Bybit USDT linear perpetuals",
-  "assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "assets": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
   "global_slot_limit": 1,
   "information_boundary": {
     "event_clock": "Tardis local_timestamp capture order in UTC",
@@ -16,11 +21,34 @@
     "known_source_limitation": "Binance forceOrder became a maximum one-order-per-second snapshot stream on 2021-04-27; observed liquidation flow is a lower bound, never reconstructed as full flow."
   },
   "periods": {
-    "fit": {"from": "2021-09-01", "to": "2022-12-01", "sample_day": 1},
-    "development": {"from": "2023-01-01", "to": "2023-12-01", "sample_day": 1},
-    "validation": {"from": "2024-01-01", "to": "2024-12-01", "sample_day": 1, "open_only_after_gate": true},
-    "confirmation": {"from": "2025-01-01", "to": "2025-12-01", "sample_day": 1, "sealed": true},
-    "final_2026": {"from": "2026-01-01", "to": "2026-06-01", "sample_day": 1, "sealed": true}
+    "fit": {
+      "from": "2021-09-01",
+      "to": "2022-12-01",
+      "sample_day": 1
+    },
+    "development": {
+      "from": "2023-01-01",
+      "to": "2023-12-01",
+      "sample_day": 1
+    },
+    "validation": {
+      "from": "2024-01-01",
+      "to": "2024-12-01",
+      "sample_day": 1,
+      "open_only_after_gate": true
+    },
+    "confirmation": {
+      "from": "2025-01-01",
+      "to": "2025-12-01",
+      "sample_day": 1,
+      "sealed": true
+    },
+    "final_2026": {
+      "from": "2026-01-01",
+      "to": "2026-06-01",
+      "sample_day": 1,
+      "sealed": true
+    }
   },
   "source": {
     "liquidations_url": "https://datasets.tardis.dev/v1/binance-futures/liquidations/{YYYY}/{MM}/01/PERPETUALS.csv.gz",
@@ -29,28 +57,65 @@
     "price_days_after_signal_day": 1
   },
   "candidate_grid": {
-    "liquidation_quantile": [0.9, 0.95, 0.98],
-    "dominance_min": [0.6, 0.75],
-    "target_r": [1.0, 1.5, 2.0],
-    "min_stop_bps": [8.0, 15.0],
+    "liquidation_quantile": [
+      0.9,
+      0.95,
+      0.98
+    ],
+    "dominance_min": [
+      0.6,
+      0.75
+    ],
+    "target_r": [
+      1.0,
+      1.5,
+      2.0
+    ],
+    "min_stop_bps": [
+      8.0,
+      15.0
+    ],
     "continuation": {
-      "acceleration_min": [1.5, 3.0],
-      "impact_min_bps": [2.0, 6.0],
-      "close_location_min": [0.65, 0.8]
+      "acceleration_min": [
+        1.5,
+        3.0
+      ],
+      "impact_min_bps": [
+        2.0,
+        6.0
+      ],
+      "close_location_min": [
+        0.65,
+        0.8
+      ]
     },
     "reversal": {
-      "deceleration_max": [0.25, 0.5],
-      "recovery_min": [0.35, 0.55],
-      "event_move_min_bps": [3.0, 8.0]
+      "deceleration_max": [
+        0.25,
+        0.5
+      ],
+      "recovery_min": [
+        0.35,
+        0.55
+      ],
+      "event_move_min_bps": [
+        3.0,
+        8.0
+      ]
     }
   },
   "account": {
     "initial_nav": 10000.0,
     "risk_fraction": 0.005,
-    "cost_stress_round_trip_bps": [12.0, 18.0, 24.0],
+    "cost_stress_round_trip_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
     "primary_cost_bps": 18.0,
     "same_minute_stop_target_order": "stop_first",
-    "unresolved_position_treatment": "No forced exit. Candidate is penalized and cannot pass if any selected trade is unresolved inside the downloaded price path."
+    "unresolved_position_treatment": "No forced exit. Candidate is penalized and cannot pass if any selected trade is unresolved inside the downloaded price path.",
+    "structural_stop_buffer_bps": 2.0
   },
   "development_gate": {
     "minimum_trades": 30,
