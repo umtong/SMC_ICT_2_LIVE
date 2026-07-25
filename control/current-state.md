@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 8
+- revision: 9
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260725-DYNAMIC-STATE-021FBAB6`
 - first-place stage: `EXPLORATORY`
@@ -24,11 +24,21 @@ The current first place is dynamic state-exit candidate `021fbab613517a31ad98` f
 - return at 18 bps: `+16.7170%`
 - return at 24 bps: `+11.2649%`
 
-It is first because it has the smallest verified recorded after-cost daily-growth gap among hard-valid strategy results and is materially stronger than the prior first place in higher-cost performance, trade count, profit factor, drawdown and top-five concentration.
+It remains first because it has the smallest verified recorded after-cost daily-growth gap among hard-valid results. The rank is provisional: the registered economic gate failed, top-10%-removed return is `-21.8583%`, median per-trade return is negative, all four portfolios frozen from 2023 lost in 2024, and the exact candidate has no opened 2024 out-of-sample interval.
 
-The ranking remains provisional with low-to-moderate comparison confidence. The candidate failed the preregistered economic gate: top-10%-removed return is `-21.8583%`, median per-trade return is negative, all four portfolios frozen from 2023 lost in 2024, and the exact candidate has no opened 2024 out-of-sample interval. Historical order-book queue replay is absent.
+The current second place is `aligned_continuation 33034b092ffd271a` from `RES-20260725-ABS-FLOW-001` / PR #35.
 
-The prior `high_resistance_sweep c232ae43b7a1401d` is now rank 2.
+- approximately 15 bps round-trip geometric daily growth: `0.0227977%`
+- target gap: `0.9772023 percentage points per trading day`
+- total return: `+15.6276%`
+- maximum drawdown: `6.4718%`
+- trades: `184`
+- profit factor: `1.3065`
+- top-five positive-trade share: `18.00%`
+- approximately 30 bps total return: `+7.8715%`
+- approximately 30 bps geometric daily growth: `0.0118956%`
+
+It is hard-valid but failed the preregistered yearly robustness gate. No sequential 2024 or 2025H1 interval was opened, and the approximately 30 bps path becomes negative after removing the top five winners. The former `high_resistance_sweep c232ae43b7a1401d` is rank 3.
 
 The current execution-routing component first place remains `RES-20260725-1510-L1-EXEC-001`, which improved modeled execution drag but has negative standalone expectancy.
 
@@ -44,18 +54,18 @@ The current execution-routing component first place remains `RES-20260725-1510-L
 
 ## Active work
 
-Material active claims include spot/perpetual price discovery and flow-size/impact-efficiency state research. The dynamic-factor dependency family is now reported and should not receive adjacent-threshold tuning.
+Material active claims include spot/perpetual price discovery, flow-size/impact-efficiency state research, L2 maker toxicity, cross-venue forward capture and multi-asset positioning states. Dynamic-factor and ordinary absorption/activity-clock families are reported and should not receive adjacent-threshold tuning.
 
-Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants and the current dynamic-factor family for practical promotion under their tested dependencies. These negative results remain reusable evidence.
+Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants, ordinary five-minute absorption and prior-volume dollar-clock absorption under their tested dependencies.
 
 ## Current objective
 
-Continue the highest-value unresolved strategy, execution and account-path research independently of rank. Reuse active spot-perp and flow-size outputs. If they do not produce a decision-ready challenger, move to a non-overlapping information source such as COIN-M collateral-stress transmission or sub-minute cross-exchange price discovery.
+Finish and reuse decision-ready outputs from active claims. If none materially closes the target gap, open a non-overlapping information-source claim rather than retuning reported families. Highest-value unclaimed directions are official COIN-M versus USD-M collateral-stress transmission and sub-minute cross-exchange price discovery/liquidation replenishment.
 
 ## Current blockers
 
-The first place remains far below the 1% target, depends on upper-tail trades, is concentrated in SOL/XRP and lacks exact-candidate sequential out-of-sample evidence and historical queue execution. No candidate has survived sequential selection with robust cost, concentration and regime behavior.
+The first two ranks remain far below the 1% target and both depend on upper-tail trades. Neither has robust sequential OOS evidence. Capital velocity remains low, and historical queue/depth execution is incomplete. No candidate has survived sequential selection with robust cost, concentration and regime behavior.
 
 ## Next exact action
 
-Finish and register active spot-perp and flow-size-impact claims. Do not retune the dynamic-factor dependency family. Search active claims before opening the next non-overlapping Work Claim; prefer official COIN-M versus USD-M collateral-stress transmission or sub-minute cross-exchange price discovery if those scopes remain unclaimed.
+Reconcile and consume active spot-perp, flow-size, L2 maker, cross-venue and positioning results. Do not retune dynamic-factor or ordinary absorption dependencies. Claim the highest-value non-overlapping information source only after those active scopes are checked.
