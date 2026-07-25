@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "study_id": "FIXED_STRATEGY_PORTFOLIO_V1",
+  "claim_id": "CLM-20260726-0100-FIXED-PORTFOLIO-001",
+  "base_project_revision": 8,
+  "registered_at": "2026-07-26T01:03:00+09:00",
+  "status": "PREREGISTERED_BEFORE_2024_COMPONENT_OR_PORTFOLIO_OUTCOMES",
+  "objective": "Test whether two frozen, economically distinct hard-valid strategy specifications improve account-level after-cost geometric growth and reduce positive-trade concentration when their raw eligible signals are replayed in one four-asset account with one global slot.",
+  "portfolio_hypothesis": "The dynamic factor rank-transition state-exit strategy earns from cross-sectional idiosyncratic trend transfer, while aligned displacement/flow continuation earns from high-activity information acceptance. If their event clocks and symbol contributions are sufficiently independent, a deterministic one-slot router may admit more distinct positive-expectancy events and reduce dependence on the largest residual-trend trades without fitted weights or concurrent leverage.",
+  "components": [
+    {
+      "component_id": "DYNAMIC_STATE_021FBAB613517A31",
+      "result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+      "candidate_id": "021fbab613517a31ad98",
+      "scientific_source_ref": "agent/r4-dynamic-factor-residual-001@4a36ca54115517e77955d2d6ce1e4cb58c1fe691",
+      "entry_id": "transition_r20_f05_t12",
+      "frozen_exit": {"mode": "flow_decay", "minimum_hold_bars": 1, "maximum_hold_bars": 96, "signed_flow_exit_threshold": -0.5, "stop_atr": 2.5},
+      "signal_and_exit_rule": "Use the exact reconstructed state_exit.py and base dynamic_factor_residual.py definitions. No feature, entry, exit or parameter change is allowed.",
+      "development_period": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+      "known_2024_exposure": "Four multi-component portfolios containing this candidate or related frozen arms were previously evaluated in 2024 and all lost. The exact single candidate and the cross-family portfolio in this study were not previously evaluated. Therefore 2024 is a one-shot fixed integration comparison but not pristine at the dynamic-family level."
+    },
+    {
+      "component_id": "ABSORPTION_ALIGNED_33034B092FFD271A",
+      "result_id": "RES-20260725-ABS-FLOW-001",
+      "spec_id": "33034b092ffd271a",
+      "candidate_id": "aligned_continuation|h48|z3-inf|t3|f0.1|e0.45|hold0.7|buf0.5|rr4|life720|xidiosyncratic",
+      "scientific_source_ref": "agent/absorption-flow-benchmark-r7-final-20260725@dccf6dbd47c1beac54f4bc514f8a129c334c3813",
+      "signal_and_exit_rule": "Use the exact reconstructed absorption-flow source for the registered candidate. No feature, event-clock, entry, target, stop, maximum-lifetime or parameter change is allowed.",
+      "development_period": ["2022-04-03T00:00:00Z", "2024-01-01T00:00:00Z"],
+      "known_2024_exposure": "No sequential 2024 selection was opened for this exact specification because its registered yearly gate failed."
+    }
+  ],
+  "source_reconstruction": {
+    "dynamic_source": "Verify the SHA-registered dynamic-factor verified source set and reproduce its 2023 candidate metrics before any 2024 evaluation.",
+    "absorption_source": "Reconstruct the SHA-registered source.part bundle from the frozen branch and reproduce its registered 2022-2023 candidate metrics before any 2024 evaluation.",
+    "failure_rule": "If either component cannot reproduce its registered development result within floating-point tolerance, no 2024 portfolio outcome is admissible."
+  },
+  "evaluation_data": {
+    "market": "Official Binance Vision USD-M BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT one-minute bars, aggregated to exact complete five-minute bars where required.",
+    "mark_and_funding": "Official mark-price open and actual fundingRate calc_time. Use exact mark open at settlement and exact contract open only as a documented fallback.",
+    "period": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "2025_plus": "prohibited",
+    "no_gap_fill": true,
+    "data_availability": "Every component receives only completed observations available under its original contract."
+  },
+  "accounts": [
+    "DYNAMIC_ONLY",
+    "ABSORPTION_ONLY",
+    "FIXED_ONE_SLOT_PORTFOLIO"
+  ],
+  "router": {
+    "raw_signal_requirement": "Regenerate every eligible component signal before the component's own position suppression. Executed component ledgers may be used only for equivalence audits and never as the portfolio signal source.",
+    "global_slot": "A pending order or open position from either component blocks all other new entries until actual exit.",
+    "entry_order": "Chronological intended entry time after each component's causal delay.",
+    "simultaneous_conflict": "DYNAMIC_STATE_021FBAB613517A31 first, then ABSORPTION_ALIGNED_33034B092FFD271A. This priority is fixed because the dynamic specification is the current project first place before the integration result; no 2024 score or return is used.",
+    "same_timestamp_reentry": false,
+    "position_management": "After entry, only the owning frozen component manages its stop, state/target exit and maximum lifetime. The other component cannot modify, add to or reverse the position."
+  },
+  "common_account_contract": {
+    "initial_equity": 10000.0,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "maximum_prior_quote_volume_participation": 0.001,
+    "round_trip_cost_bps": [18.0, 24.0, 30.0],
+    "stop_extra_slippage_bps": 4.0,
+    "funding": "Actual settlements in (entry, exit] valued with exact mark open and documented exact contract-open fallback only.",
+    "same_bar_ambiguity": "protective stop first",
+    "gap_stop": "adverse actual open",
+    "daily_boundary": "00:00 UTC",
+    "daily_growth_denominator": "all UTC calendar days in 2024, including non-trading days",
+    "mark_to_liquidation_nav": "Required at every UTC day end for any candidate that is positive at 18bp."
+  },
+  "evaluation_metrics": [
+    "total return and geometric daily growth at 18/24/30bp",
+    "trades and trades per day",
+    "profit factor and median account return",
+    "bar-level marked-to-liquidation maximum drawdown and recovery duration",
+    "top 1%, 5% and 10% positive-trade share",
+    "return after removing the largest 1%, 5% and 10% positive trades",
+    "component, symbol, direction, month and quarter contributions",
+    "accepted, blocked and simultaneous signals by component",
+    "funding and modeled execution cost contribution",
+    "maximum leverage and prior-volume participation"
+  ],
+  "portfolio_gate": {
+    "minimum_trades": 100,
+    "positive_total_return_at_18_24_30_bps": true,
+    "minimum_geometric_daily_growth_at_18bps": 0.0005,
+    "minimum_profit_factor_at_18bps": 1.2,
+    "maximum_marked_to_liquidation_drawdown": 0.15,
+    "positive_median_trade_at_18bps": true,
+    "positive_after_removing_largest_10_percent_positive_trades": true,
+    "maximum_top5_positive_share": 0.30,
+    "minimum_positive_quarters": 3,
+    "minimum_positive_month_fraction": 0.58,
+    "maximum_single_component_pnl_share": 0.75,
+    "maximum_single_symbol_trade_share": 0.65,
+    "maximum_direction_share": 0.75,
+    "must_outperform_both_component_only_accounts_at_24bps_on_geometric_daily_growth": true
+  },
+  "comparison_policy": {
+    "current_first_place": "RES-20260725-DYNAMIC-FACTOR-001",
+    "rank_only_if_hard_valid": true,
+    "normalization": "Compare the three accounts on the identical 2024 dataset, costs, funding, risk, capacity and NAV contract. Do not compare raw historical development metrics as though they were normalized.",
+    "2024_interpretation": "Because the dynamic family has prior 2024 portfolio exposure, any positive result is provisional integration evidence, not pristine sequential OOS validation."
+  },
+  "prohibitions": [
+    "No component parameter or signal change.",
+    "No portfolio weight, priority or threshold fitting from 2024.",
+    "No executed-ledger summation as a substitute for raw signal regeneration.",
+    "No 2025 or 2026 access.",
+    "No target-return, risk or leverage fitting.",
+    "No paper, testnet or live orders."
+  ],
+  "safety": {
+    "2024_component_outcomes_opened": false,
+    "2024_portfolio_outcome_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  }
+}
