@@ -1,4 +1,4 @@
-schema_version = 2
+schema_version = 3
 
 [project]
 id = "smc-ict-2-live"
@@ -26,11 +26,8 @@ snapshots_folder = "05_SNAPSHOTS"
 archive_folder = "90_ARCHIVE"
 
 [chatgpt]
-execution_mode = "continuous_peer_parallel"
-central_coordinator_required = false
-fixed_sequence = false
 project_instructions_path = "instructions/project-instructions.md"
-worker_prompt_path = "prompts/goal-worker.md"
+work_prompt_path = "prompts/goal-worker.md"
 state_reconcile_prompt_path = "prompts/reconcile-state.md"
 hot_context_manifest = "dist/context-manifest.json"
 
@@ -41,7 +38,7 @@ work_claims_path = "control/work-claims.csv"
 result_registry_path = "control/result-registry.jsonl"
 validation_cache_path = "control/validation-cache.jsonl"
 decision_log_path = "control/decisions.md"
-state_update_protocol = "optimistic_revision"
+update_protocol = "optimistic_revision"
 
 [data]
 source_registry_path = "data/catalog/source-registry.jsonl"

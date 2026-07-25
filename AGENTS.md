@@ -1,15 +1,14 @@
 # Agent operating rules
 
-1. Read `config/project.toml`, project instructions, current state, active work claims, result registries, source/data registries, and relevant open PRs before changing anything.
-2. Every chat is an independent goal worker. Do not wait for a coordinator, fixed epoch, or another chat when useful work can proceed.
-3. Claim a high-value unclaimed scope before substantial work. If overlap is intentional, record the distinct method or independent-replication purpose.
-4. Reuse registered sources, datasets, artifacts, charts, code, results, and validation evidence. Do not repeat unchanged search, reconstruction, or audits.
-5. Validate the changed surface and new hypothesis. Re-run unchanged validation only when the evidence is incomplete or independent replication has material decision value.
-6. Use a unique branch and append-only Run Report. Any worker may propose or merge state changes after checking the latest revision and reconciling conflicts.
-7. Publicly accessible information and materials may be used and retained for research. Do not create a separate storage-permission investigation; register materials actually used and preserve reproducibility.
-8. Raw and large files belong in configured Drive folders. Git stores instructions, code, schemas, metadata, checksums, dependency fingerprints, reproducible transforms, and concise evidence.
-9. Do not silently compare results produced with different data, cost, execution, or evaluation contracts.
-10. Invalid results remain traceable with an invalidation reason; fix or discard the approach and return immediately to alpha discovery.
-11. Never commit credentials, secrets, private account identifiers, or private Drive bindings to the public repository.
-12. Main changes arrive through validated pull requests. Do not force push.
-13. Keep runtime instructions free of model names, subscription names, historical rationale, and user-conversation commentary.
+1. 작업 전 `config/project.toml`, 프로젝트 실행 규칙, 현재 상태, 활성 Work Claim, Result Registry, Validation Cache, Source·Dataset·Entity Registry와 관련 열린 PR을 읽는다.
+2. 목표 달성 가능성과 정보가치가 가장 높은 미해결 범위를 선점하고 즉시 실행한다.
+3. 동일 범위의 활성 작업이나 재사용 가능한 결과가 있으면 기존 산출물을 활용하고 미해결 부분으로 이동한다.
+4. 등록된 자료, 데이터, 차트, 코드, 결과와 검증 증거를 재사용한다. 의존성이 바뀌지 않은 검색·재구성·백테스트·감사를 반복하지 않는다.
+5. 변경된 부분과 새로운 가설의 주요 취약점을 검증한다.
+6. 고유 브랜치와 append-only Run Report를 사용한다. 상태 변경 전 최신 revision과 열린 PR을 다시 확인한다.
+7. 공개된 정보와 자료를 자유롭게 사용한다. 작업에 사용하거나 재사용 가치가 높은 자료는 한 번 등록하고 재현 가능하게 보존한다.
+8. 대형 원본과 데이터는 Drive에 저장하고, Git에는 규칙·코드·스키마·메타데이터·체크섬·의존성 지문·재현 스크립트와 간결한 증거를 저장한다.
+9. 데이터·비용·체결·평가 계약이 다른 결과를 조용히 합치거나 직접 순위 비교하지 않는다.
+10. 무효 결과는 원인과 함께 보존하고 수정 또는 폐기한 뒤 수익성 탐색으로 복귀한다.
+11. 자격증명, 비밀정보, 개인 계정 식별자와 비공개 Drive binding을 공개 저장소에 커밋하지 않는다.
+12. main 변경은 검증된 PR로 반영하고 force push하지 않는다.
