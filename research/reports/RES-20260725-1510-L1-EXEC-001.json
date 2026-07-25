@@ -1,0 +1,90 @@
+{
+  "champion_effect": "NONE",
+  "claim_id": "CLM-20260725-1510-L1-EXEC-001",
+  "dataset_audit": [
+    {
+      "agg_sha256": "cb55d99606e018e41b5f938c4586e0a60c8aa96dd227067a8bf85f5d35f8f116",
+      "agg_trades": 1066829,
+      "availability": "exchange event time only; no local receive time; research-only",
+      "book_events": 4494018,
+      "book_sha256": "1e51fcd332f9c901490a6e384dcd9b21943c04240180bda4903593a37bfc6262",
+      "panel_end_utc": "2023-05-16T21:44:00+00:00",
+      "panel_seconds": 35654,
+      "panel_start_utc": "2023-05-16T11:49:47+00:00",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "agg_sha256": "6a1a79ac91bd47177e05c587c6c34d5c4f7f02c4510e3dc9a94d961adafa64c8",
+      "agg_trades": 694531,
+      "availability": "exchange event time only; no local receive time; research-only",
+      "book_events": 3664305,
+      "book_sha256": "f91dd302188bff3337b0b168743401d76620fc05e933807a5ec36c7f212de29c",
+      "panel_end_utc": "2023-05-16T21:44:00+00:00",
+      "panel_seconds": 35654,
+      "panel_start_utc": "2023-05-16T11:49:47+00:00",
+      "symbol": "ETHUSDT"
+    }
+  ],
+  "decision": {
+    "execution_component": "RETAIN_DYNAMIC_GATE_FOR_SHADOW",
+    "next_required_evidence": [
+      "30+ days forward local receive timestamps",
+      "private order/execution/position events",
+      "actual account fee schedule",
+      "observed queue position and partial fills",
+      "shadow comparison against always-taker benchmark"
+    ],
+    "reason": "The selected causal gate reduced mean 5-second round-trip execution drag by 0.20 bps in development, 0.20 bps in validation and 0.11 bps in confirmation at base costs, but remained deeply negative without external alpha. Exact queue and local-receive-time evidence are absent.",
+    "standalone_alpha": "REJECTED"
+  },
+  "limitations": [
+    "Raw event data cover only one partial bookTicker day per symbol.",
+    "All timestamps are exchange timestamps; local receive time and private executions are absent.",
+    "Queue position is modeled from displayed L1 quantity fractions and trade-through, not observed account queue position.",
+    "The 10-second multi-day sample supports state validation but not exact queue fill reconstruction.",
+    "This benchmark can improve an external alpha's execution cost; it is not a standalone directional alpha claim."
+  ],
+  "micro10s_selected_state": {
+    "by_split": [
+      {"flow_min": -0.25, "horizon_10s_bars": 3, "imbalance_min": 0.5, "maker_proxy_mean_bps": -7.574895593251329, "maker_proxy_trim10_bps": -7.599199071370156, "n": 12265, "side": 1, "split": "dev", "toxicity_mean_bps": 0.4462230782514964},
+      {"flow_min": -0.25, "horizon_10s_bars": 3, "imbalance_min": 0.5, "maker_proxy_mean_bps": -7.531047574089328, "maker_proxy_trim10_bps": -7.580756060166602, "n": 11755, "side": 1, "split": "val", "toxicity_mean_bps": 0.4938088255586508},
+      {"flow_min": -0.25, "horizon_10s_bars": 3, "imbalance_min": 0.5, "maker_proxy_mean_bps": -7.538508003010544, "maker_proxy_trim10_bps": -7.579663213490653, "n": 12365, "side": 1, "split": "conf", "toxicity_mean_bps": 0.4790382323058798}
+    ],
+    "state": {"flow_min": -0.25, "horizon_10s_bars": 3, "imbalance_min": 0.5, "side": 1}
+  },
+  "objective": "L1 maker toxicity, taker Slippage-at-Risk, and dynamic maker/taker routing",
+  "raw_filled_markout_range_5s_bps": {"best_mean": -0.5673005690481097, "worst_mean": -1.1100281195574229},
+  "raw_route_fill_rates": [
+    {"fill_rate": 0.17635440180586903, "route_id": "M_Q0.25_T1_O0.05", "split": "conf"},
+    {"fill_rate": 0.2422360248447205, "route_id": "M_Q0.25_T1_O0.05", "split": "dev"},
+    {"fill_rate": 0.20960451977401123, "route_id": "M_Q0.25_T1_O0.05", "split": "val"},
+    {"fill_rate": 0.13741534988713316, "route_id": "M_Q0.5_T1_O0.05", "split": "conf"},
+    {"fill_rate": 0.19381705251270465, "route_id": "M_Q0.5_T1_O0.05", "split": "dev"},
+    {"fill_rate": 0.1621468926553672, "route_id": "M_Q0.5_T1_O0.05", "split": "val"},
+    {"fill_rate": 0.28273137697516926, "route_id": "M_Q0.5_T3_O0.05", "split": "conf"},
+    {"fill_rate": 0.36589497459062675, "route_id": "M_Q0.5_T3_O0.05", "split": "dev"},
+    {"fill_rate": 0.32514124293785307, "route_id": "M_Q0.5_T3_O0.05", "split": "val"},
+    {"fill_rate": 0.20485327313769752, "route_id": "M_Q1_T3_O0.05", "split": "conf"},
+    {"fill_rate": 0.2739977413890457, "route_id": "M_Q1_T3_O0.05", "split": "dev"},
+    {"fill_rate": 0.238135593220339, "route_id": "M_Q1_T3_O0.05", "split": "val"}
+  ],
+  "schema_version": 1,
+  "selected_gate": {"flow_min": -0.25, "micro_min": 0.0, "route_id": "M_Q0.5_T3_O0.05", "update_cap": 4.0},
+  "selected_gate_cost_stress": [
+    {"always_taker_mean_bps": -12.023197275408135, "cost_multiplier": 1.0, "fill_rate_when_maker": 0.16003249390739235, "improvement_bps": 0.19955242371999482, "maker_share": 0.34754376058723885, "n": 7084, "routed_mean_bps": -11.82364485168814, "routed_median_bps": -12.018557213745662, "routed_trim10_bps": -11.837413240229319, "split": "dev"},
+    {"always_taker_mean_bps": -18.023197275408133, "cost_multiplier": 1.5, "fill_rate_when_maker": 0.16003249390739235, "improvement_bps": 0.3107890132174518, "maker_share": 0.34754376058723885, "n": 7084, "routed_mean_bps": -17.71240826219068, "routed_median_bps": -18.018553219910956, "routed_trim10_bps": -17.727900121349673, "split": "dev"},
+    {"always_taker_mean_bps": -24.023197275408137, "cost_multiplier": 2.0, "fill_rate_when_maker": 0.16003249390739235, "improvement_bps": 0.42202560271491407, "maker_share": 0.34754376058723885, "n": 7084, "routed_mean_bps": -23.601171672693223, "routed_median_bps": -24.018553047802516, "routed_trim10_bps": -23.618786195415723, "split": "dev"},
+    {"always_taker_mean_bps": -12.023012374300619, "cost_multiplier": 1.0, "fill_rate_when_maker": 0.13122529644268774, "improvement_bps": 0.19883410020979042, "maker_share": 0.3573446327683616, "n": 3540, "routed_mean_bps": -11.824178274090828, "routed_median_bps": -12.018546578808287, "routed_trim10_bps": -11.846615187992755, "split": "val"},
+    {"always_taker_mean_bps": -18.02301237430062, "cost_multiplier": 1.5, "fill_rate_when_maker": 0.13122529644268774, "improvement_bps": 0.29261941094425836, "maker_share": 0.3573446327683616, "n": 3540, "routed_mean_bps": -17.730392963356362, "routed_median_bps": -18.018543827412508, "routed_trim10_bps": -17.75765113151933, "split": "val"},
+    {"always_taker_mean_bps": -24.023012374300624, "cost_multiplier": 2.0, "fill_rate_when_maker": 0.13122529644268774, "improvement_bps": 0.3864047216787192, "maker_share": 0.3573446327683616, "n": 3540, "routed_mean_bps": -23.636607652621905, "routed_median_bps": -24.018543827412508, "routed_trim10_bps": -23.669265862397513, "split": "val"},
+    {"always_taker_mean_bps": -12.023332157226209, "cost_multiplier": 1.0, "fill_rate_when_maker": 0.10801963993453355, "improvement_bps": 0.14905022198495743, "maker_share": 0.3448081264108352, "n": 3544, "routed_mean_bps": -11.874281935241251, "routed_median_bps": -12.027375210104875, "routed_trim10_bps": -11.894100559900833, "split": "conf"},
+    {"always_taker_mean_bps": -18.023332157226207, "cost_multiplier": 1.5, "fill_rate_when_maker": 0.10801963993453355, "improvement_bps": 0.22354232130775387, "maker_share": 0.3448081264108352, "n": 3544, "routed_mean_bps": -17.799789835918453, "routed_median_bps": -18.027373786315454, "routed_trim10_bps": -17.824838115542722, "split": "conf"},
+    {"always_taker_mean_bps": -24.023332157226207, "cost_multiplier": 2.0, "fill_rate_when_maker": 0.10801963993453355, "improvement_bps": 0.2980344206305503, "maker_share": 0.3448081264108352, "n": 3544, "routed_mean_bps": -23.725297736595657, "routed_median_bps": -24.027373737301246, "routed_trim10_bps": -23.755794538859078, "split": "conf"}
+  ],
+  "status": "GOAL_NOT_MET_EXECUTION_LAYER_RETAINED",
+  "taker_sar_250ms": [
+    {"mean_cost_bps": 6.02318672967938, "sar95_bps": 6.032340875385229, "sar99_bps": 6.965699781404482, "split": "conf"},
+    {"mean_cost_bps": 6.023343644705101, "sar95_bps": 6.217059128858333, "sar99_bps": 7.157597388416251, "split": "dev"},
+    {"mean_cost_bps": 6.0230071625496215, "sar95_bps": 6.045953400680671, "sar99_bps": 6.936188857268511, "split": "val"}
+  ]
+}
