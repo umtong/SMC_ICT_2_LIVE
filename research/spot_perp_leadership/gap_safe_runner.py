@@ -9,7 +9,7 @@ import pandas as pd
 
 from . import pipeline as p
 
-GAP_AUDIT_SCHEMA_VERSION = 1
+GAP_AUDIT_SCHEMA_VERSION = 2
 
 
 def _regular_grid(streams: dict[tuple[str, str], pd.DataFrame]) -> np.ndarray:
@@ -37,16 +37,51 @@ def _map_column(frame: pd.DataFrame, grid: np.ndarray, column: str) -> tuple[np.
     return output, int(len(positions))
 
 
+def _funding_mark_values(
+    event_times: np.ndarray,
+    grid: np.ndarray,
+    mark_open: np.ndarray,
+    contract_open: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    containing_minute = (event_times // p.BAR_MS) * p.BAR_MS
+    positions = ((containing_minute - grid[0]) // p.BAR_MS).astype(np.int64)
+    if np.any(positions < 0) or np.any(positions >= len(grid)):
+        raise AssertionError("funding event outside the regular source grid")
+    if not np.all(grid[positions] == containing_minute):
+        raise AssertionError("funding containing-minute mapping failed")
+    exact_mark = mark_open[positions]
+    exact_contract = contract_open[positions]
+    use_fallback = ~np.isfinite(exact_mark)
+    values = np.where(use_fallback, exact_contract, exact_mark)
+    if not np.isfinite(values).all():
+        raise AssertionError("funding event lacks both containing-minute mark and contract open")
+    sources = np.where(use_fallback, "exact_contract_open_fallback", "containing_minute_mark_open")
+    return values.astype(float), sources.astype(str), positions
+
+
 def _write_gap_audit(root: Path, record: dict) -> None:
     path = root / "GAP_AUDIT.json"
     if path.exists():
         payload = json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("schema_version") != GAP_AUDIT_SCHEMA_VERSION:
+            payload = {
+                "schema_version": GAP_AUDIT_SCHEMA_VERSION,
+                "policy": (
+                    "regular UTC minute grid; source absences remain NaN; no forward fill, "
+                    "backfill, interpolation, synthetic OHLC or timeline compression; funding keeps "
+                    "actual calc_time and uses the containing-minute official mark open, with exact "
+                    "same-minute USD-M contract open only when that mark observation is absent"
+                ),
+                "loads": [],
+            }
     else:
         payload = {
             "schema_version": GAP_AUDIT_SCHEMA_VERSION,
             "policy": (
                 "regular UTC minute grid; source absences remain NaN; no forward fill, "
-                "backfill, interpolation, synthetic OHLC or timeline compression"
+                "backfill, interpolation, synthetic OHLC or timeline compression; funding keeps "
+                "actual calc_time and uses the containing-minute official mark open, with exact "
+                "same-minute USD-M contract open only when that mark observation is absent"
             ),
             "loads": [],
         }
@@ -104,26 +139,28 @@ def load_panel_gap_safe(root: Path, start: str, end: str) -> p.Panel:
     funding_audit: dict[str, dict] = {}
     for si, symbol in enumerate(p.SYMBOLS):
         frame = p._concat_funding(root, symbol, start, end)
-        times = frame.time_ms.to_numpy(np.int64)
-        inside = (times >= grid[0]) & (times <= grid[-1])
+        event_times = frame.time_ms.to_numpy(np.int64)
+        containing_minute = (event_times // p.BAR_MS) * p.BAR_MS
+        inside = (containing_minute >= grid[0]) & (containing_minute <= grid[-1])
         frame = frame.loc[inside].copy().reset_index(drop=True)
-        times = frame.time_ms.to_numpy(np.int64)
-        positions = ((times - grid[0]) // p.BAR_MS).astype(np.int64)
-        exact = grid[positions] == times
-        if not exact.all():
-            raise AssertionError(f"{symbol}: funding timestamp is not on the regular minute grid")
-        frame["mark_price"] = fields["mark_open"][si, positions]
-        missing_mark = ~np.isfinite(frame.mark_price.to_numpy(float))
-        if missing_mark.any():
-            missing_times = frame.loc[missing_mark, "time_ms"].astype(int).tolist()
-            raise AssertionError(
-                f"{symbol}: {len(missing_times)} funding events lack an exact official mark open: "
-                f"{missing_times[:8]}"
-            )
+        event_times = frame.time_ms.to_numpy(np.int64)
+        mark_values, mark_sources, _ = _funding_mark_values(
+            event_times,
+            grid,
+            fields["mark_open"][si],
+            fields["perp_open"][si],
+        )
+        frame["mark_price"] = mark_values
+        frame["mark_source"] = mark_sources
         funding[symbol] = frame
+        offsets = event_times % p.BAR_MS
         funding_audit[symbol] = {
             "event_count": int(len(frame)),
-            "missing_exact_mark_count": int(missing_mark.sum()),
+            "nonzero_calc_time_offset_count": int((offsets != 0).sum()),
+            "maximum_calc_time_offset_ms": int(offsets.max()) if len(offsets) else 0,
+            "containing_minute_mark_open_count": int((mark_sources == "containing_minute_mark_open").sum()),
+            "exact_contract_open_fallback_count": int((mark_sources == "exact_contract_open_fallback").sum()),
+            "unvalued_event_count": 0,
         }
 
     fully_observed = np.ones(len(grid), dtype=bool)
@@ -165,6 +202,14 @@ def self_test() -> None:
     }
     regular = _regular_grid(streams)
     assert np.array_equal(regular, grid)
+    mark = np.array([100.0, np.nan, 102.0, 103.0])
+    contract = np.array([99.0, 101.0, 102.0, 103.0])
+    values, sources, positions = _funding_mark_values(
+        np.array([grid[0] + 6, grid[1] + 31], dtype=np.int64), grid, mark, contract
+    )
+    assert np.array_equal(positions, np.array([0, 1]))
+    assert np.allclose(values, np.array([100.0, 101.0]))
+    assert sources.tolist() == ["containing_minute_mark_open", "exact_contract_open_fallback"]
     print("GAP_SAFE_SELF_TEST_PASS")
 
 
