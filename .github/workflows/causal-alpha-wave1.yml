@@ -1,0 +1,173 @@
+name: Causal Alpha Wave 1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/alpha_wave1/**'
+      - 'tests/test_alpha_wave1.py'
+      - '.github/workflows/causal-alpha-wave1.yml'
+      - 'control/work-claims.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: causal-alpha-wave1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      PYTHONUNBUFFERED: '1'
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      NUMEXPR_NUM_THREADS: '1'
+      CACHE: ${{ github.workspace }}/.cache/alpha-wave1
+      ROOT: ${{ github.workspace }}/research/alpha_wave1
+      DEVELOPMENT: ${{ github.workspace }}/research_runs/alpha_wave1/development
+      VALIDATION: ${{ github.workspace }}/research_runs/alpha_wave1/validation
+      EVIDENCE: ${{ github.workspace }}/research_runs/alpha_wave1/evidence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/causal-alpha-wave1-20260725
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/alpha_wave1/requirements-lock.txt
+
+      - uses: actions/cache@v4
+        with:
+          path: .cache/alpha-wave1
+          key: causal-alpha-wave1-binance-vision-v1
+
+      - name: Install fixed research environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install -r "$ROOT/requirements-lock.txt"
+          mkdir -p "$DEVELOPMENT" "$VALIDATION" "$EVIDENCE"
+          python - <<'PY'
+          import json, platform, sys
+          import numpy, pandas, pytest
+          from pathlib import Path
+          out=Path('research_runs/alpha_wave1/evidence')
+          payload={
+              'python':sys.version,
+              'platform':platform.platform(),
+              'numpy':numpy.__version__,
+              'pandas':pandas.__version__,
+              'pytest':pytest.__version__,
+              'orders_submitted':False,
+              'paper_or_live_started':False,
+              '2024_or_later_opened':False,
+          }
+          (out/'environment.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+
+      - name: Run causal and execution regression tests
+        run: |
+          set -euo pipefail
+          pytest -q tests/test_alpha_wave1.py 2>&1 | tee "$EVIDENCE/tests.log"
+          python -m py_compile "$ROOT/binance_alpha_wave1.py"
+
+      - name: Run 2022 development screen and freeze before 2023
+        run: |
+          set -euo pipefail
+          python "$ROOT/binance_alpha_wave1.py" \
+            --stage development \
+            --cache "$CACHE" \
+            --output "$DEVELOPMENT" \
+            --hypotheses "$ROOT/hypotheses.jsonl" \
+            2>&1 | tee "$EVIDENCE/development.log"
+
+      - name: Open frozen 2023 validation only after development gate
+        run: |
+          set -euo pipefail
+          selected=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research_runs/alpha_wave1/development/freeze_manifest.json').read_text())
+          print(int(p['selected_count']))
+          PY
+          )
+          echo "selected_count=$selected" | tee "$EVIDENCE/validation_gate.txt"
+          if [ "$selected" -gt 0 ]; then
+            python "$ROOT/binance_alpha_wave1.py" \
+              --stage validation \
+              --cache "$CACHE" \
+              --output "$VALIDATION" \
+              --hypotheses "$ROOT/hypotheses.jsonl" \
+              --freeze "$DEVELOPMENT/freeze_manifest.json" \
+              2>&1 | tee "$EVIDENCE/validation.log"
+          else
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('research_runs/alpha_wave1/validation')
+          out.mkdir(parents=True,exist_ok=True)
+          payload={
+              'study_id':'SMC_ICT_2_LIVE_CAUSAL_ALPHA_WAVE1_20260725',
+              'validation_opened':False,
+              'reason':'NO_DEVELOPMENT_PASS',
+              'target_validated':False,
+              'orders_submitted':False,
+              'paper_or_live_enabled':False,
+          }
+          (out/'validation_not_opened.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+
+      - name: Build run summary and immutable checksums
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE"
+          cp "$ROOT/README.md" "$EVIDENCE/"
+          cp "$ROOT/hypotheses.jsonl" "$EVIDENCE/"
+          cp "$ROOT/binance_alpha_wave1.py" "$EVIDENCE/"
+          cp "$ROOT/requirements-lock.txt" "$EVIDENCE/"
+          cp tests/test_alpha_wave1.py "$EVIDENCE/"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/alpha_wave1')
+          def load(name):
+              p=root/name
+              return json.loads(p.read_text()) if p.exists() else None
+          payload={
+              'study_id':'SMC_ICT_2_LIVE_CAUSAL_ALPHA_WAVE1_20260725',
+              'development':load('development/development_result.json'),
+              'development_freeze':load('development/freeze_manifest.json'),
+              'validation':load('validation/validation_result.json'),
+              'validation_not_opened':load('validation/validation_not_opened.json'),
+              'target_validated':False,
+              'champion_eligible':False,
+              'orders_submitted':False,
+              'paper_or_live_enabled':False,
+          }
+          (root/'run_summary.json').write_text(json.dumps(payload,indent=2,sort_keys=True,default=str)+'\n')
+          print(json.dumps(payload,sort_keys=True,default=str))
+          PY
+          find research_runs/alpha_wave1 -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > research_runs/alpha_wave1/OUTPUT_SHA256SUMS.txt
+
+      - name: Upload scientific evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: causal-alpha-wave1-${{ github.run_id }}
+          path: research_runs/alpha_wave1
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
