@@ -32,6 +32,9 @@ env:
   PRELIM_SUMMARY_SHA256: 1bca1b19ca0bf0ee2caf5592ab9def83497e2578d263c619b88940aaea4e971b
   FULL_5M_SOURCE_SHA256: a50075e4b6b236ae7b70002952c234e233b12f22dd05177cd589dc6639b0fe65
   FULL_5M_TEST_SHA256: 61786d423b7807feddddeff89a9bf3770089a9bd728bc4f170dc226f52d4bdc1
+  COUNT_ALIAS_PATCH_SHA256: a58586d055cff4e58f68318bf7c85ab9126ebd37b000503b00ff61bcc0f5e341
+  COUNT_ALIAS_TEST_SHA256: 105c3a885f52efb41b24aa10addaaa0768526c81d89c001826fc32c0465125a7
+  PATCHED_5M_SOURCE_SHA256: 97a3d04b39b657e38a90f7687e6b2cfff89d74b3cb61e5d21e9c9eeb1390bba7
 
 jobs:
   screen:
@@ -64,8 +67,12 @@ jobs:
           printf '%s  %s\n' "$PRELIM_SUMMARY_SHA256" "$src/artifacts/run_summary.json" | sha256sum --check --strict
           printf '%s  %s\n' "$FULL_5M_SOURCE_SHA256" "$src/src/liquidity_state_5m.py" | sha256sum --check --strict
           printf '%s  %s\n' "$FULL_5M_TEST_SHA256" "$src/tests/test_liquidity_state_5m.py" | sha256sum --check --strict
-          python -m py_compile "$src/src"/*.py "$src/tests"/*.py
-          sha256sum "${pfx}00" "${pfx}01" "${pfx}02" "${pfx}03" > "$root/input_part_sha256.txt"
+          printf '%s  %s\n' "$COUNT_ALIAS_PATCH_SHA256" research/alpha_hypothesis_screen_20260725/patch_count_alias.py | sha256sum --check --strict
+          printf '%s  %s\n' "$COUNT_ALIAS_TEST_SHA256" research/alpha_hypothesis_screen_20260725/test_binance_count_alias.py | sha256sum --check --strict
+          python research/alpha_hypothesis_screen_20260725/patch_count_alias.py "$src/src/liquidity_state_5m.py"
+          printf '%s  %s\n' "$PATCHED_5M_SOURCE_SHA256" "$src/src/liquidity_state_5m.py" | sha256sum --check --strict
+          python -m py_compile "$src/src"/*.py "$src/tests"/*.py research/alpha_hypothesis_screen_20260725/test_binance_count_alias.py
+          sha256sum "${pfx}00" "${pfx}01" "${pfx}02" "${pfx}03" research/alpha_hypothesis_screen_20260725/patch_count_alias.py research/alpha_hypothesis_screen_20260725/test_binance_count_alias.py > "$root/input_part_sha256.txt"
 
       - name: Install fixed research environment
         shell: bash
@@ -99,7 +106,7 @@ jobs:
           (root/'environment.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n',encoding='utf-8')
           PY
 
-      - name: Run causal and stage-boundary tests
+      - name: Run causal, schema and stage-boundary tests
         shell: bash
         run: |
           set -euo pipefail
@@ -108,6 +115,7 @@ jobs:
           PYTHONPATH="$src/src" pytest -q --import-mode=importlib \
             "$src/tests/test_transcript_alpha_screen.py" \
             "$src/tests/test_liquidity_state_5m.py" \
+            research/alpha_hypothesis_screen_20260725/test_binance_count_alias.py \
             2>&1 | tee "$root/unit_tests.log"
 
       - name: Run checksum-verified official Binance USD-M 5m sequential screen
