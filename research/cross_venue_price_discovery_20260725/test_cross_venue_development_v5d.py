@@ -6,10 +6,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import cross_venue_basis_v5d as basis_v5d
 import cross_venue_counterfactual_v5d as counterfactual
 import cross_venue_development_v5d as development
 import cross_venue_execution_v5d as v5d
+import cross_venue_failclosed_v5d as failclosed_v5d
 import cross_venue_pilot as v1
 import test_cross_venue_execution_v5d as fixtures
 
@@ -23,7 +23,7 @@ def write_pilot(path: Path, **overrides) -> Path:
         "funding_boundary_contract": "prospective settlement exclusion",
         "protective_stop_contract": "adverse stop fill",
         "source_continuity_contract": "segmented state",
-        "execution_gap_contract": "bounded observable quotes",
+        "execution_gap_contract": "bounded entry and punitive post-entry gaps",
         "exit_floor_contract": "no economic price floor",
         "drawdown_contract": "one chronological marked path",
         "pilot_day_denominator": "all preregistered pilot dates including zero-trade dates",
@@ -99,8 +99,7 @@ def test_winner_keys_use_stable_event_identity() -> None:
 
 
 def test_event_exclusion_releases_global_slot() -> None:
-    basis_v5d.patch()
-    v5d.patch_v5()
+    failclosed_v5d.patch()
     day = "synthetic"
     frames = {
         (day, "A"): fixtures.execution_frame(),
