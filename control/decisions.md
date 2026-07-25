@@ -14,6 +14,15 @@
 - 독립 재현은 기존 작업과 다른 방법 또는 확인 가치를 기록한다.
 - 자료, 데이터, 차트, 코드, 백테스트, 결과와 검증 증거는 stable ID와 dependency fingerprint로 재사용한다.
 
+## Folder and action lifecycle
+
+- 지속 폴더와 반복 행동은 목적·입력·산출물·소비자·사용 조건·완료 조건·정리 규칙을 가져야 한다.
+- 역할이 중복되면 하나의 canonical path로 통합한다.
+- 생산자나 소비자가 없는 폴더·스크립트·템플릿은 제거하거나 역할을 다시 정의한다.
+- 가설의 canonical Drive 위치는 `03_RESEARCH/10_HYPOTHESES`다.
+- 임시 inbox·download staging·quarantine은 장기 보관소로 사용하지 않는다.
+- Result Registry와 Validation Cache를 사용하지 않는 PR은 해당 없음의 이유를 기록한다.
+
 ## Data
 
 - 공개된 모든 정보와 자료를 자유롭게 사용한다.
@@ -35,6 +44,6 @@
 
 ## Current milestone
 
-- revision: 3
-- GitHub main commit: bfa362937a506cd7626a229b60168cca2ca34f4c
+- revision: 4
+- Folder·Action Contract: active
 - Champion: none
