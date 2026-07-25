@@ -1,0 +1,49 @@
+name: Cross-venue durable status sentinel
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-venue-price-discovery-001
+    paths:
+      - ".github/workflows/cross-venue-price-discovery-status-sentinel.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5-cross-venue-status-sentinel-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sentinel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-venue-price-discovery-001
+          fetch-depth: 1
+
+      - name: Materialize status-named immutable pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          result=research_results/r5_cross_venue_price_discovery_001/result.json
+          summary=research_results/r5_cross_venue_price_discovery_001/SUMMARY.json
+          test -f "$result" -a -f "$summary"
+          status=$(python - <<'PY'
+          import json
+          print(json.load(open('research_results/r5_cross_venue_price_discovery_001/SUMMARY.json'))['status'])
+          PY
+          )
+          root=research_results/r5_cross_venue_price_discovery_001
+          rm -f "$root"/STATUS_*.txt
+          cp "$summary" "$root/STATUS_${status}.txt"
+          sha256sum "$result" "$summary" "$root/STATUS_${status}.txt" > "$root/STATUS_SHA256SUMS.txt"
+          git config user.name "smc-ict-research-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$root"
+          if ! git diff --cached --quiet; then
+            git commit -m "Materialize cross-venue durable status ${status}"
+            git push origin HEAD:agent/r5-cross-venue-price-discovery-001
+          fi

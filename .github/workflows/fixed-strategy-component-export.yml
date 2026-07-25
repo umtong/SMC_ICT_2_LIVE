@@ -1,0 +1,99 @@
+name: Fixed strategy component source export
+
+on:
+  push:
+    branches:
+      - "agent/r8-fixed-strategy-portfolio-*"
+    paths:
+      - "research/fixed_strategy_portfolio_20260726/**"
+      - ".github/workflows/fixed-strategy-component-export.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/fixed_strategy_portfolio_20260726/**"
+      - ".github/workflows/fixed-strategy-component-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout portfolio head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: portfolio
+          fetch-depth: 1
+      - name: Checkout frozen dynamic component branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          path: dynamic
+          fetch-depth: 1
+      - name: Checkout frozen absorption component branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/absorption-flow-benchmark-r7-final-20260725
+          path: absorption
+          fetch-depth: 1
+      - name: Reconstruct exact frozen sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, shutil, tarfile
+          root=pathlib.Path('dynamic/research/dynamic_factor_residual_20260725')
+          manifest=json.loads((root/'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          chunks=[]
+          for item in manifest['parts']:
+              raw=(root/item['path']).read_bytes()
+              assert len(raw)==item['bytes']
+              assert hashlib.sha256(raw).hexdigest()==item['sha256']
+              chunks.append(raw)
+          combined=b''.join(chunks)
+          assert hashlib.sha256(combined).hexdigest()==manifest['combined_base64_sha256']
+          archive=base64.b64decode(combined,validate=True)
+          assert len(archive)==manifest['decoded_tar_gz_bytes']
+          assert hashlib.sha256(archive).hexdigest()==manifest['decoded_tar_gz_sha256']
+          out=pathlib.Path('dynamic_verified')
+          shutil.rmtree(out,ignore_errors=True);out.mkdir()
+          with tarfile.open(fileobj=__import__('io').BytesIO(archive),mode='r:gz') as tf:
+              tf.extractall(out,filter='data')
+          assert hashlib.sha256((out/'MANIFEST.json').read_bytes()).hexdigest()==manifest['content_manifest_sha256']
+          inner=json.loads((out/'MANIFEST.json').read_text())
+          for item in inner['files']:
+              raw=(out/item['path']).read_bytes()
+              assert len(raw)==item['bytes']
+              assert hashlib.sha256(raw).hexdigest()==item['sha256']
+          shutil.copy2(root/'dynamic_factor_residual.py',out/'dynamic_factor_residual.py')
+          shutil.copy2(root/'preregistration.json',out/'dynamic_preregistration.json')
+          shutil.copy2(root/'result_summary.json',out/'dynamic_result_summary.json')
+          PY
+          python absorption/research/absorption_flow_benchmark_r7/reconstruct.py
+          mkdir -p absorption_verified
+          cp -a absorption/research/absorption_flow_benchmark_r7/reconstructed/. absorption_verified/
+          cp absorption/research/absorption_flow_benchmark_r7/{RESULT.json,EVALUATION_CONTRACT.json,SOURCE_HASHES.json,BUNDLE_MANIFEST.json} absorption_verified/
+      - name: Verify source identities and export
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' python_files < <(find dynamic_verified absorption_verified -type f -name '*.py' -print0 | sort -z)
+          test ${#python_files[@]} -gt 0
+          python -m py_compile "${python_files[@]}"
+          mkdir -p /tmp/fixed-component-sources/dynamic /tmp/fixed-component-sources/absorption /tmp/fixed-component-sources/portfolio
+          cp -a dynamic_verified/. /tmp/fixed-component-sources/dynamic/
+          cp -a absorption_verified/. /tmp/fixed-component-sources/absorption/
+          if [ -f portfolio/research/fixed_strategy_portfolio_20260726/preregistration.json ]; then
+            cp portfolio/research/fixed_strategy_portfolio_20260726/preregistration.json /tmp/fixed-component-sources/portfolio/
+          fi
+          (cd /tmp/fixed-component-sources && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fixed-strategy-component-sources
+          path: /tmp/fixed-component-sources
+          if-no-files-found: error
+          retention-days: 14

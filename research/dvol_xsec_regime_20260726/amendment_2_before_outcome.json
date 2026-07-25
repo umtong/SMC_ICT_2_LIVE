@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "study_id": "DVOL_XSEC_REGIME_ROUTER_V1",
+  "claim_id": "CLM-20260726-0005-DVOL-XSEC-001",
+  "amended_at": "2026-07-26T00:15:00+09:00",
+  "status": "AMENDED_BEFORE_ANY_SIGNAL_OR_PNL_OUTPUT",
+  "clarifications": {
+    "monthly_attribution": "Attribute each realized account return to its actual exit UTC calendar month. All calendar months in the evaluation interval remain in the denominator; zero-return months are not positive.",
+    "half_attribution": "Assign each trade to the half containing its entry timestamp.",
+    "profit_factor": "Sum positive account-currency PnL divided by the absolute sum of negative account-currency PnL.",
+    "maximum_drawdown": "Initial registered screen uses the one-global-slot realized-equity curve at trade exits. Any candidate passing the development economic gate must receive bar-level marked-to-liquidation NAV drawdown before selection opens.",
+    "minimum_traded_symbols": "Count symbols with at least one realized trade.",
+    "state_exit_precedence": "Protective stop is evaluated first within every bar. A completed-bar state exit is then scheduled for the next exact open. The maximum-lifetime exit is last.",
+    "missing_bar_policy": "Reject a trade if any signal-to-exit price bar is missing or if the next exact entry/exit open is absent. Do not shorten a trade to the last available bar.",
+    "candidate_ids": "Hash the complete family, feature and execution parameter tuple; identical signal paths under different maximum-hold or stop parameters remain distinct candidates."
+  },
+  "unchanged": [
+    "all scientific hypotheses",
+    "all data periods and seals",
+    "all parameter values",
+    "all cost and risk assumptions",
+    "all economic gates"
+  ],
+  "safety": {
+    "development_outcomes_seen": false,
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  }
+}

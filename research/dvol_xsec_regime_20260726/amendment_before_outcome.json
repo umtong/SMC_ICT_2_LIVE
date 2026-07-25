@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "study_id": "DVOL_XSEC_REGIME_ROUTER_V1",
+  "claim_id": "CLM-20260726-0005-DVOL-XSEC-001",
+  "amended_at": "2026-07-26T00:12:00+09:00",
+  "status": "AMENDED_BEFORE_ANY_SIGNAL_OR_PNL_OUTPUT",
+  "reason": "Resolve implementation details that were intentionally described semantically in the preregistration. No outcome, candidate count by profitability, trade ledger or later-period value was inspected before this amendment.",
+  "clarifications": {
+    "five_minute_prior_z_window": {
+      "window_bars": 8640,
+      "minimum_bars": 2016,
+      "current_observation_excluded": true
+    },
+    "hourly_dvol_state_window": {
+      "window_hours": 1440,
+      "minimum_hours": 336,
+      "current_observation_excluded": true
+    },
+    "realized_volatility": {
+      "lookback_hours": 720,
+      "annualization_factor": 8760,
+      "inputs": "completed BTC and ETH hourly log returns only",
+      "current_hour_excluded": true
+    },
+    "dvol_shock": "Current completed-hour change in common DVOL standardized against prior completed hourly changes.",
+    "event_clock": "A candidate signal is emitted only on the first completed 5m bar on which its complete family mask changes from false to true. The mask must become false before a new event of the same candidate and asset can be emitted.",
+    "four_asset_clock": "Use the exact intersection of completed BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT five-minute opens. Any missing observation invalidates all rolling windows that include it; no forward fill, backfill or interpolation.",
+    "development_start": "2022-04-04T00:00:00Z, after the registered four-asset gap boundary.",
+    "tie_break": "For signals sharing one entry timestamp, choose the highest registered score, then BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT.",
+    "top_trade_removal": "Remove the largest ceil(10% of N) positive account-return trades. If fewer positive trades exist, remove all positive trades; never remove losing trades in their place.",
+    "funding_valuation": "At each actual funding calc_time in (entry, exit], use exact same-timestamp mark-price open. Use exact contract open only when that mark open is absent and record each fallback.",
+    "daily_metric": "Geometric daily growth uses all UTC calendar days in the evaluation interval, including non-trading days.",
+    "score_definitions": {
+      "HIGH_VRP_RESIDUAL_FADE": "abs(residual_z)+max(common_vrp_z,0)+max(-sign(residual_z)*flow_z,0)",
+      "LOW_VRP_RESIDUAL_CONTINUATION": "abs(residual_z)+max(-common_vrp_z,0)+max(sign(residual_z)*flow_z,0)",
+      "RELATIVE_IV_GROUP_CONTINUATION": "abs(residual_z)+abs(relative_iv_z)+max(sign(residual_z)*flow_z,0)",
+      "RELATIVE_IV_DISCONFIRMATION_FADE": "abs(residual_z)+abs(relative_iv_z)+max(-sign(residual_z)*flow_z,0)",
+      "IV_SHOCK_DISPERSION_CONTINUATION": "abs(residual_z)+max(common_dvol_shock_z,0)+max(dispersion_z,0)+max(sign(residual_z)*flow_z,0)"
+    }
+  },
+  "unchanged": [
+    "data periods and stage seals",
+    "five economic families",
+    "960 registered parameter combinations",
+    "next-open one-global-slot execution",
+    "risk, leverage, participation and cost assumptions",
+    "development and selection gates",
+    "prohibition on 2025/2026 and all orders"
+  ],
+  "safety": {
+    "development_outcomes_seen": false,
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  }
+}

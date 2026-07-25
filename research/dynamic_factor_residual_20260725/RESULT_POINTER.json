@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_valid": true,
+  "hard_validity_status": "PASS_AFTER_REPAIR_AND_ACTUAL_FUNDING_AUDIT",
+  "economic_gate_passed": false,
+  "economic_status": "BASIC_COST_POSITIVE_STRICT_CONCENTRATION_GATE_FAILED",
+  "target_status": "NOT_MET",
+  "ranking_eligible": true,
+  "rank_proposal": 1,
+  "candidate": {
+    "candidate_id": "021fbab613517a31ad98",
+    "family": "rank_transition_with_flow_decay_exit",
+    "qualification_stage": "EXPLORATORY",
+    "base_cost_bps": 12,
+    "geometric_daily_growth": 0.0005730774040979547,
+    "target_geometric_daily_growth": 0.01,
+    "target_gap": 0.009426922595902045,
+    "target_fraction": 0.05730774040979547,
+    "total_return": 0.23258469071784216,
+    "return_at_18bps": 0.16717016419382946,
+    "return_at_24bps": 0.1126493999740854,
+    "trade_count": 194,
+    "profit_factor": 1.504104514971923,
+    "maximum_drawdown": 0.04617359906457541,
+    "top5_positive_share": 0.35350035699014853,
+    "top10pct_removed_return": -0.21858317166515617,
+    "positive_month_fraction": 0.5833333333333334,
+    "worst_month": -0.030262841878915592,
+    "median_account_return_bps": -11.753199657443606,
+    "mean_account_return_bps": 11.237817237453536,
+    "funding_included": true,
+    "funding_event_count": 100,
+    "total_funding_pnl": 8.383383949678517,
+    "symbol_trade_counts": {
+      "BTCUSDT": 9,
+      "ETHUSDT": 6,
+      "SOLUSDT": 113,
+      "XRPUSDT": 66
+    }
+  },
+  "sequential_evidence": {
+    "development_period": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "development_gate_pass_count": 0,
+    "selection_period": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "selection_scope": "Four portfolios frozen from 2023 components; no post-selection retuning.",
+    "selection_gate_pass_count": 0,
+    "least_negative_2024_portfolio_return_12bps": -0.1011378745379432,
+    "exact_single_candidate_2024_opened": false,
+    "confirmation_2025_opened": false,
+    "final_2026_opened": false
+  },
+  "known_weaknesses": [
+    "Removing the top 10% of trades changes the actual-funding 2023 return to -21.86%.",
+    "Median account return per trade is negative at 12, 18 and 24 bps.",
+    "No preregistered single-candidate development gate passed.",
+    "All four frozen 2024 portfolios lost money, showing family-level regime instability.",
+    "The exact single candidate has no preregistered 2024 out-of-sample result.",
+    "Historical order-book queue execution is absent; execution uses next exact five-minute open plus aggregate cost stress.",
+    "SOL and XRP contribute 179 of 194 trades.",
+    "Observed daily growth is only 5.73% of the 1% target.",
+    "Comparison with the prior first place is not fully normalized for data window and execution contract."
+  ],
+  "verification": {
+    "workflow_run_id": 30160153690,
+    "workflow_head_sha": "4a36ca54115517e77955d2d6ce1e4cb58c1fe691",
+    "bundle_reconstruction": "PASS",
+    "python_compile": "PASS",
+    "causal_self_tests": "PASS",
+    "safety_and_stage_seals": "PASS",
+    "actual_funding_audit": "PASS",
+    "actual_funding_no_funding_reproduction_max_abs_error": 6.661338147750939e-16,
+    "official_funding_and_mark_archives_verified": 96,
+    "audit_bundle_sha256": "e2b83969c61daea1bd1fe74b0dcd4382ad1da097f468c57b4d648289bf4d21b6"
+  },
+  "identities": {
+    "market_dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "market_dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "market_dataset_artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "funding_dataset_id": "DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1",
+    "funding_parent_tar_sha256": "614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f",
+    "funding_parent_manifest_sha256": "26cd583f4dd32b201d03d15b95600440251c777b89838ddc9ab0342d90730d48",
+    "evaluation_contract_id": "EVAL-R4-DYNAMIC-FACTOR-ACTUAL-FUNDING-20260725-V1",
+    "evaluation_contract_path": "research/dynamic_factor_residual_20260725/actual_funding_evaluation_contract.json",
+    "evaluation_contract_sha256": "4cbeb57c1d910f9f2837fb5ccd270651ee52be0318dcfe2f55d21820c7a84d64",
+    "base_code_sha256": "b29a5b01f666b1e2ba955c6f3448a936dbe837cfc7785a11256be89b45168785",
+    "decoded_extension_bundle_sha256": "0681abe577ef7fa13fee19d2fd78d807c6c2c65fed7d3fd900c31d85135c659e",
+    "dependency_fingerprint": "7dcce21901d8ee6e6a55316da98edc5c44ffce79a148dea25f6a9b470ad49046"
+  },
+  "ranking_decision": {
+    "proposed_first_place_id": "FIRST-20260725-DYNAMIC-STATE-021FBAB6",
+    "decision": "PROPOSE_PROVISIONAL_FIRST_PLACE",
+    "comparison_confidence": "LOW_TO_MODERATE",
+    "reason": "Actual funding leaves the candidate positive at 12, 18 and 24 bps. It has a materially smaller target gap, more trades, higher profit factor, lower drawdown and lower top-five concentration than the current first place. Concentration and 2024 family failure remain separate disqualifiers for practical use, not hard-invalidity."
+  },
+  "links": {
+    "pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/25",
+    "verification_workflow": "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30160153690"
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_or_live_started": false
+  }
+}

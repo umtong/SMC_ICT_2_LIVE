@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "study_id": "DVOL_XSEC_REGIME_ROUTER_V1",
+  "claim_id": "CLM-20260726-0005-DVOL-XSEC-001",
+  "base_project_revision": 8,
+  "registered_at": "2026-07-26T00:08:00+09:00",
+  "status": "PREREGISTERED_BEFORE_OUTCOME",
+  "objective": "Test whether completed Deribit BTC/ETH 30-day implied-volatility common and relative states causally route four-asset Binance USD-M factor-neutral residuals into cost-robust continuation or reversion with broad trade distribution.",
+  "economic_hypothesis": "DVOL is a 30-day forward-looking volatility state rather than a directional label. A high positive implied-versus-realized volatility premium should identify option-priced uncertainty in which unsupported idiosyncratic residuals are more likely to normalize. A low or negative premium, a common implied-volatility shock, or an extreme ETH-versus-BTC implied-volatility spread should identify underpriced or asset-group-specific information transmission in which flow-confirmed factor-neutral residuals are more likely to continue. The new information source is the causal options-implied state; it is not an adjacent threshold retune of the reported dynamic-factor family or a repetition of direct DVOL directional shocks.",
+  "non_overlap": {
+    "material_change": "Adds completed Deribit BTC/ETH implied-volatility common, relative and implied-versus-realized state to a four-asset factor-neutral router.",
+    "prior_negative_evidence_reused": [
+      "WAVE89_DVOL_STATE_TRANSFER_V1 direct price-direction/DVOL-shock families",
+      "RES-20260725-DYNAMIC-FACTOR-001 unconditioned factor-residual family"
+    ],
+    "excluded_active_scopes": [
+      "spot-perpetual price discovery",
+      "single-asset flow-size and price-impact efficiency",
+      "multi-asset positioning metrics",
+      "COIN-M collateral-stress transmission",
+      "L2 maker fill/toxicity",
+      "cross-venue price discovery"
+    ]
+  },
+  "data": {
+    "dvol": {
+      "source": "Deribit public/get_volatility_index_data",
+      "currencies": ["BTC", "ETH"],
+      "resolution": "1h",
+      "availability": "A DVOL candle with open_time t becomes usable only at t+1h.",
+      "snapshot": "/mnt/data/deribit-dvol-bundle.zip"
+    },
+    "market": {
+      "source": "Binance Vision official USD-M monthly archives retained in binance-usdm-research-data-20260723.zip",
+      "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+      "inputs": ["5m klines", "5m markPriceKlines", "fundingRate"],
+      "no_gap_fill": true
+    },
+    "warmup": ["2021-12-01T00:00:00Z", "2022-04-04T00:00:00Z"],
+    "development": ["2022-04-04T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "selection": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "conditional_2024": "Only development representatives passing every gate may open 2023. 2024 stays sealed unless the same frozen representative also passes 2023.",
+    "2025_plus": "prohibited"
+  },
+  "causal_features": {
+    "factor": "At each completed 5m bar, each target uses the median contemporaneous return of the other three completed bars.",
+    "rolling_beta": "Prior-only rolling covariance/variance; the current bar is excluded.",
+    "residual": "Target cumulative completed-bar return minus prior beta times the cumulative leave-one-out factor return.",
+    "residual_z": "Standardized against prior completed residual history only.",
+    "flow_z": "Target signed taker-quote flow over the same horizon, standardized on prior completed history only.",
+    "dvol_common": "Mean of completed BTC and ETH DVOL levels.",
+    "dvol_relative": "log(ETH_DVOL/BTC_DVOL), standardized on prior completed hourly values.",
+    "common_vrp": "Completed common DVOL minus prior 30-day annualized realized volatility of BTC and ETH, standardized on prior completed hourly observations.",
+    "dispersion": "Cross-sectional standard deviation of factor-neutral residual z-scores, standardized on prior completed history.",
+    "prefix_invariance": "All development features and signals must be identical when later rows are removed."
+  },
+  "families": {
+    "HIGH_VRP_RESIDUAL_FADE": "When common VRP is high, fade the largest extreme residual whose target flow is weak or opposite.",
+    "LOW_VRP_RESIDUAL_CONTINUATION": "When common VRP is low/negative, follow the largest extreme residual whose target flow confirms.",
+    "RELATIVE_IV_GROUP_CONTINUATION": "When ETH-versus-BTC implied volatility is extreme, follow a flow-confirmed residual in the higher-implied-volatility group: ETH/SOL/XRP for positive relative IV, BTC for negative relative IV.",
+    "RELATIVE_IV_DISCONFIRMATION_FADE": "In the same higher-implied-volatility group, fade an extreme residual not supported by target flow.",
+    "IV_SHOCK_DISPERSION_CONTINUATION": "After a common DVOL shock and factor-neutral dispersion expansion, follow the strongest flow-confirmed residual."
+  },
+  "parameter_grid": {
+    "beta_window_bars": [2016, 4032],
+    "residual_horizon_bars": [12, 48],
+    "residual_z_threshold": [1.5, 2.0, 2.5],
+    "flow_threshold": [0.5, 1.0],
+    "state_threshold": [0.5, 1.0],
+    "maximum_hold_bars": [12, 48],
+    "stop_atr": [1.5, 2.5],
+    "registered_candidate_count": 960
+  },
+  "execution": {
+    "signal": "completed 5m bar with the latest already-completed DVOL state",
+    "entry": "next exact 5m open",
+    "one_global_open_or_pending_slot": true,
+    "same_timestamp_tie_break": "highest preregistered score, then BTC, ETH, SOL, XRP",
+    "stop": "signal-bar prior ATR multiple from actual entry; entry-bar and gap stops included; stop first on same-bar ambiguity",
+    "state_exit_fades": "after at least 3 bars, exit at next open when absolute residual z <= 0.5 or position-aligned flow z < 0",
+    "state_exit_continuations": "after at least 3 bars, exit at next open when position-aligned residual z <= 0.5 or position-aligned flow z < 0",
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "maximum_prior_quote_volume_participation": 0.001,
+    "round_trip_cost_bps": [12.0, 18.0, 24.0],
+    "stop_extra_slippage_bps": 4.0,
+    "funding": "Actual funding settlements in (entry, exit], valued at exact mark-price open when available and exact contract open only as a documented fallback."
+  },
+  "development_gate": {
+    "minimum_trades": 100,
+    "positive_total_return_at_12_18_24_bps": true,
+    "minimum_profit_factor_at_12bps": 1.15,
+    "maximum_drawdown_at_12bps": 0.15,
+    "positive_median_trade_at_12bps": true,
+    "positive_after_removing_top_10_percent_trades": true,
+    "maximum_top5_positive_share": 0.30,
+    "minimum_positive_month_fraction": 0.60,
+    "positive_both_halves_at_18bps": true,
+    "minimum_traded_symbols": 3,
+    "maximum_single_symbol_trade_share": 0.65,
+    "maximum_direction_share": 0.75,
+    "representative_cap": 12
+  },
+  "selection_gate": "The identical frozen candidate and execution path must pass the same gate on 2023 before 2024 may be opened.",
+  "prohibitions": [
+    "No target-return, leverage or risk fitting.",
+    "No 2023 access before the development screen and representative manifest are frozen.",
+    "No 2024 access before a frozen candidate passes 2023.",
+    "No 2025 or 2026 access.",
+    "No parameter change after seeing selection results.",
+    "No paper, testnet or live orders."
+  ],
+  "safety": {
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  }
+}
