@@ -6,11 +6,19 @@ on:
     paths:
       - 'research/absorption_flow_benchmark_r7/**'
       - '.github/workflows/absorption-flow-benchmark-r7.yml'
+      - 'control/result-registry.jsonl'
+      - 'control/validation-cache.jsonl'
+      - 'control/ranking.json'
+      - 'control/current-state.md'
   pull_request:
     branches: [main]
     paths:
       - 'research/absorption_flow_benchmark_r7/**'
       - '.github/workflows/absorption-flow-benchmark-r7.yml'
+      - 'control/result-registry.jsonl'
+      - 'control/validation-cache.jsonl'
+      - 'control/ranking.json'
+      - 'control/current-state.md'
   workflow_dispatch:
 
 permissions:
@@ -54,14 +62,18 @@ jobs:
           root=pathlib.Path('research/absorption_flow_benchmark_r7')
           result=json.loads((root/'RESULT.json').read_text())
           validation=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          ranking=json.loads(pathlib.Path('control/ranking.json').read_text())
           assert result['status']=='VALID'
           assert result['baseline_screen']['candidate_count']==216
           assert result['dollar_bar_screen']['candidate_count']==324
-          assert result['proposed_rank_candidate']['base']['trades']==184
-          assert result['proposed_rank_candidate']['stress_2x']['trades']==183
+          assert result['ranking_candidate']['base']['trades']==184
+          assert result['ranking_candidate']['stress_2x']['trades']==183
+          assert result['ranking_decision']['rank']==2
+          assert ranking['first_place']['source_result_id']=='RES-20260725-DYNAMIC-FACTOR-001'
+          assert ranking['ranked_candidates'][1]['source_result_id']=='RES-20260725-ABS-FLOW-001'
           assert validation['status']=='PASS'
           assert not result['orders_submitted'] and not result['paper_or_live_started']
-          print('registered-result checks passed')
+          print('registered-result and revision-8 ranking checks passed')
           PY
       - name: Validate repository contracts
         run: |
