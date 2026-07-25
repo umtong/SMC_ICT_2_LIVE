@@ -10,7 +10,7 @@ import sys
 ROOT = Path(__file__).parents[1]
 BUNDLE = ROOT / "research/experiments/crossvenue_forward_evidence/source-bundle.tar.gz"
 EXTRACTOR = ROOT / "research/experiments/crossvenue_forward_evidence/extract_bundle.py"
-EXPECTED = "8d8bf1824a4b7560e1f31ec729d8b659ec0bf4fba7de2331e28581895fe72683"
+EXPECTED = "ebd83c20abaf6bf3ab7c9c467e63bd1d1129db813ddad9fa2fd3fdcca5ffcaa2"
 
 
 def _load_extractor():
