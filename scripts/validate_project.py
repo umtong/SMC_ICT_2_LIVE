@@ -7,6 +7,7 @@ import tomllib
 
 from common import ROOT, read_jsonl
 
+
 REQUIRED = [
     "README.md",
     "AGENTS.md",
@@ -73,6 +74,8 @@ FORBIDDEN_RUNTIME_PHRASES = [
     "any chat may",
     "별도 총괄",
     "작업 시작 시 최신 project state, champion, 활성 work claim",
+    "현 champion과 재현 조건을 보존한 뒤",
+    "champion을 교체하거나 전략을 크게 변경하기 전에는 기존 champion",
 ]
 
 EFFICIENCY_REQUIREMENTS = {
@@ -84,6 +87,9 @@ EFFICIENCY_REQUIREMENTS = {
         "공용·재사용 가능한 코드",
         "완전한 run report는 목표 달성, 시간제한",
         "champion은 목표 달성 인증이나 실사용 승인 상태가 아니라",
+        "champion 지위는 연구 우선권",
+        "다음 작업은 champion 주변의 개선 여부가 아니라",
+        "champion 교체나 접근 전환 때 이미 기록된 결과를 다시 백업·복제·재검증하지 않는다",
         "목표 달성 여부나 최종 검증 통과를 기다려 champion 선정을 미루지 않는다",
     ],
     "prompts/goal-worker.md": [
@@ -92,6 +98,8 @@ EFFICIENCY_REQUIREMENTS = {
         "검증 깊이를 후보의 경제적 가능성과 의사결정 중요도에 맞춘다",
         "공용·재사용 가능한 저장소 변경에만",
         "champion은 최종 목표 달성 인증이 아니라",
+        "champion 지위는 작업 우선순위",
+        "이미 기록된 결과를 다시 백업·복제·재검증하지 않는다",
     ],
 }
 
@@ -139,16 +147,28 @@ def main() -> int:
         for stage in ["initial", "promising", "deep_validation"]:
             if not evaluation.get("stage", {}).get(stage, {}).get("required"):
                 fail(f"evaluation stage missing requirements: {stage}", errors)
+        if evaluation.get("stage", {}).get("deep_validation", {}).get("entry_condition") != "material_strategy_account_or_practical_use_decision":
+            fail("deep validation must follow material decision value, not Champion status", errors)
         champion_policy = evaluation.get("champion", {})
         if champion_policy.get("definition") != "current_best_hard_valid_strategy_or_portfolio_candidate":
             fail("Champion definition must be current-best hard-valid candidate", errors)
+        if champion_policy.get("role") != "rank_pointer_to_registered_result":
+            fail("Champion role must be a rank pointer to a registered result", errors)
         if champion_policy.get("target_attainment_required") is not False:
             fail("Champion selection must not require target attainment", errors)
         if champion_policy.get("full_validation_required") is not False:
             fail("Champion selection must not require full validation", errors)
         if not champion_policy.get("select_when_any_comparable_hard_valid_candidate_exists"):
             fail("Champion must be selected when a comparable hard-valid candidate exists", errors)
-        if evaluation.get("final_reporting", {}).get("applies_to") != "current_champion_challenger_or_material_final_report":
+        if champion_policy.get("grants_research_priority") is not False:
+            fail("Champion must not grant research priority", errors)
+        if champion_policy.get("default_improvement_target") is not False:
+            fail("Champion must not become the default improvement target", errors)
+        if champion_policy.get("extra_preservation_on_switch_required") is not False:
+            fail("Champion switch must not require repeated preservation work", errors)
+        if champion_policy.get("work_selection_criterion") != "objective_impact_and_information_value":
+            fail("work selection must be independent of Champion status", errors)
+        if evaluation.get("final_reporting", {}).get("applies_to") != "material_strategy_portfolio_or_practical_use_decision":
             fail("final reporting scope is not materiality-gated", errors)
     except Exception as exc:
         fail(f"evaluation.toml: {exc}", errors)
@@ -216,6 +236,10 @@ def main() -> int:
                 fail(f"Champion missing field: {key}", errors)
         if champion.get("target_status") != "NOT_MET":
             fail("current Champion target status must remain NOT_MET", errors)
+        if "current-rank pointer only" not in champion.get("selection_reason", ""):
+            fail("current Champion record must state rank-pointer-only semantics", errors)
+        if "Champion status grants no research priority" not in state_text:
+            fail("current state must prevent Champion from anchoring work selection", errors)
     except Exception as exc:
         fail(f"champion.json: {exc}", errors)
 
@@ -268,7 +292,7 @@ def main() -> int:
         text = (ROOT / rel).read_text(encoding="utf-8").lower()
         for phrase in FORBIDDEN_RUNTIME_PHRASES:
             if phrase.lower() in text:
-                fail(f"AI-facing meta-commentary in {rel}: {phrase}", errors)
+                fail(f"AI-facing meta-commentary or Champion fixation in {rel}: {phrase}", errors)
 
     for rel, fragments in EFFICIENCY_REQUIREMENTS.items():
         text = (ROOT / rel).read_text(encoding="utf-8").lower()

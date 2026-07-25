@@ -1,4 +1,4 @@
-schema_version = 3
+schema_version = 4
 
 [objective]
 metric = "account_nav_geometric_daily_growth"
@@ -15,6 +15,7 @@ invalid_if_violated = true
 
 [champion]
 definition = "current_best_hard_valid_strategy_or_portfolio_candidate"
+role = "rank_pointer_to_registered_result"
 select_when_any_comparable_hard_valid_candidate_exists = true
 target_attainment_required = false
 full_validation_required = false
@@ -22,6 +23,10 @@ hard_invalid_candidates_excluded = true
 economic_gate_failure_is_not_hard_invalidity = true
 allow_provisional_selection_when_comparison_is_incomplete = true
 component_leaders_recorded_separately = true
+grants_research_priority = false
+default_improvement_target = false
+extra_preservation_on_switch_required = false
+work_selection_criterion = "objective_impact_and_information_value"
 required_record_fields = [
   "selection_reason",
   "qualification_stage",
@@ -56,7 +61,7 @@ required = [
 ]
 
 [stage.deep_validation]
-entry_condition = "material_challenge_to_current_champion_or_practical_use"
+entry_condition = "material_strategy_account_or_practical_use_decision"
 required = [
   "account_nav_paths",
   "max_drawdown_and_recovery",
@@ -73,7 +78,7 @@ require_non_concentrated_profit = true
 require_many_repeatable_positive_expectancy_trades = true
 
 [final_reporting]
-applies_to = "current_champion_challenger_or_material_final_report"
+applies_to = "material_strategy_portfolio_or_practical_use_decision"
 metrics = [
   "geometric_daily_growth",
   "ending_nav_multiple",
