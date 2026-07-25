@@ -33,8 +33,7 @@
 ├─ 03_RESEARCH/
 ├─ 04_ARTIFACTS/
 ├─ 05_SNAPSHOTS/
-├─ 90_ARCHIVE/
-└─ 99_LEGACY_BOOTSTRAP_<DATE>/
+└─ 90_ARCHIVE/
 ```
 
-Every chat is a goal worker. Workers append unique Run Reports and use leased Work Claims. Any worker may update shared control documents after reading the latest revision and reconciling concurrent changes. A dedicated coordinator is optional, not required.
+Work Claim은 활성 작업 범위를 기록한다. 각 실행은 고유 Run Report를 작성한다. 공통 상태 변경 전 최신 revision과 열린 PR을 확인하고 충돌을 조정한다.
