@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-L2-MAKER-CAUSAL-001",
+  "claim_id": "CLM-20260726-0501-L2-CAUSAL-CORRECTION-001",
+  "continues_claim": "CLM-20260725-1958-L2-MAKER-001",
+  "worker_id": "gpt-5.6-pro-20260726-0501",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "COMPONENT_NEGATIVE_NOT_RANKED",
+  "evaluation_contract_sha256": "4a279c5ba924dc1c906ab26ce22943afe34cd9c94c6e81f1ecd9ae7cf89f24a3",
+  "dependency_fingerprint": "d76e4a2973155e56f4cef11067fa58c52a0ed0fe25ad43bb2eb1e1fd9dc277a6",
+  "correction_script_sha256": "2e392f5e28bc9b718ac3bbc59a3ac47583186a597f57a1098fa031e20e421709",
+  "original_artifact": {
+    "workflow_run_id": 30165425239,
+    "artifact_id": 8621485991,
+    "artifact_sha256": "ebd885b469c0391a5d164c8a6e540f5958ac34b39ee03a1e5a54748a7e6a1b46",
+    "decision_frame_sha256": "148501fad341a5bcca2eb4252b7749eb3a25b36fbddc3d0d555b1f276e5c885f",
+    "source_sha256": "99c459ef6e45fbd5e5482807ce8785c248326034ed8d34fc50ff7956f1808064",
+    "manifest_files_verified": 15
+  },
+  "corrected_artifact": {
+    "producing_commit": "977bfcdb1a88a3112428e05fc06f584d73368ca0",
+    "workflow_run_id": 30172833204,
+    "artifact_id": 8623408004,
+    "artifact_sha256": "0118bbcc767cefba347b9baa6ee9215ab109b71c9e53fdef060ccff22f7ed501",
+    "correction_result_sha256": "7ea733e358c7e472ba69acc5c07972bdbb081bb1028cce35c92711076cb03caf",
+    "candidate_results_sha256": "85697498451db655e6d7a1b78a35ec9722e71efbdcefdfe21f3282f365a37cd9"
+  },
+  "causal_correction": {
+    "decision_rows": 276352,
+    "decision_time_valid_rows": 256752,
+    "original_post_ack_valid_rows": 237244,
+    "decision_valid_but_post_ack_rejected_rows": 19666,
+    "decision_valid_but_post_ack_rejected_share": 0.07659531376581293,
+    "post_ack_valid_but_decision_invalid_rows": 158,
+    "original_future_information_defect": "Route eligibility and same-timestamp side competition used valid_order, which is known only after the 100 ms acknowledgement.",
+    "account_path_corrections": [
+      "ACK-rejected submissions release the global slot at acknowledgement.",
+      "Accepted but unfilled submissions retain the original TTL.",
+      "Filled positions retain the slot through their exit horizon.",
+      "A filled position with an unavailable sampled exit is hard-invalidated rather than deleted from PnL.",
+      "Maximum drawdown is reported as a positive magnitude."
+    ],
+    "raw_filled_unvalued_counts": {
+      "q1_h3": 1538,
+      "q1_h10": 1626,
+      "q1_h30": 1734,
+      "q2_h3": 912,
+      "q2_h10": 970,
+      "q2_h30": 1081,
+      "q3_h3": 652,
+      "q3_h10": 731,
+      "q3_h30": 813
+    }
+  },
+  "screen": {
+    "candidate_count": 648,
+    "calibration_gate_count": 0,
+    "validation_gate_count": 0,
+    "positive_9bp_candidate_count": 0,
+    "positive_17bp_candidate_count": 0,
+    "maximum_calibration_trade_count": 8,
+    "validation_opened_for_survivor": false,
+    "component_daily_target_met": false
+  },
+  "best_nonzero_candidate_at_9bp": {
+    "q": 2,
+    "ttl_seconds": 3,
+    "horizon_seconds": 30,
+    "mark_model": "ridge",
+    "route": "unrestricted",
+    "quantile": 0.975,
+    "order_decisions": 113,
+    "ack_rejections": 93,
+    "accepted_unfilled": 16,
+    "trades": 4,
+    "mean_trade_bps": -7.995688166153472,
+    "multiple": 0.9968041973368332,
+    "total_return": -0.003195802663166769,
+    "profit_factor": 0.08695045712986763,
+    "maximum_drawdown": 0.0034993112404511084,
+    "after_top10_multiple": 1.0,
+    "stress_17bp": {
+      "trades": 4,
+      "mean_trade_bps": -15.995688166153471,
+      "multiple": 0.9936157010562877,
+      "total_return": -0.0063842989437122855,
+      "maximum_drawdown": 0.0063842989437122855
+    }
+  },
+  "independent_reproduction": {
+    "fingerprint": "8af008af3f41b6c29dc0d97402e1ad657b16583558b9978a89d06f62a11d7780",
+    "local_environment": {
+      "python": "3.13.5",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scikit_learn": "1.8.0"
+    },
+    "candidate_keys_identical": true,
+    "gate_counts_identical": true,
+    "positive_candidate_counts_identical": true,
+    "maximum_trade_count_identical": true,
+    "maximum_threshold_absolute_difference": 5.209790931992586e-12,
+    "maximum_account_metric_absolute_difference": 3.3306690738754696e-16
+  },
+  "ranking_decision": {
+    "ranking_changed": false,
+    "reason": "This is a one-symbol, third-party first-day-sample execution component with zero positive candidates even at 9bp and zero calibration survivors. It supplies reusable negative evidence but no strategy-level account path eligible for the project ranking."
+  },
+  "summary": "A frozen causal replay corrected the completed L2 maker V4 artifact without changing dates, features, models or its 648-cell economic grid. The original implementation had used a 100-ms post-decision acknowledgement outcome to screen signals and slot competition. After removing that future filter, correcting ACK and filled-position state, prohibiting deletion of unvalued fills and fixing MDD sign, zero candidate was positive at 9bp or 17bp, zero passed calibration, and the maximum calibration trade count was eight. The best nonzero policy lost 0.3196% over four trades at 9bp and 0.6384% at 17bp. The passive L2 maker family is closed as hard-valid negative component evidence under this dependency fingerprint; current strategy rank and live-order permission do not change.",
+  "orders_submitted": false,
+  "paper_or_live_started": false,
+  "created_at": "2026-07-26T05:10:00+09:00"
+}
