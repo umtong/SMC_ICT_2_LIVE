@@ -32,6 +32,14 @@ def test_work_claim_registry_has_deduplication_fields():
     assert required.issubset(header)
 
 
-def test_reuse_registries_are_parseable():
-    assert read_jsonl(ROOT / "control/result-registry.jsonl") == []
-    assert read_jsonl(ROOT / "control/validation-cache.jsonl") == []
+def test_reuse_registries_are_parseable_and_uniquely_identified():
+    results = read_jsonl(ROOT / "control/result-registry.jsonl")
+    attestations = read_jsonl(ROOT / "control/validation-cache.jsonl")
+
+    result_ids = [str(row.get("result_id", "")) for row in results]
+    attestation_ids = [str(row.get("attestation_id", "")) for row in attestations]
+
+    assert all(result_ids)
+    assert all(attestation_ids)
+    assert len(result_ids) == len(set(result_ids))
+    assert len(attestation_ids) == len(set(attestation_ids))
