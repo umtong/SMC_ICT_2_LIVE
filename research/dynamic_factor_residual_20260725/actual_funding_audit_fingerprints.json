@@ -1,0 +1,33 @@
+{
+  "dependency_components": {
+    "audit_summary": "d04734c4e16a727df63ed5d505136c87839e9cabb3a00bdc3af1bafa31b8c8e0",
+    "dataset_manifest": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "evaluation_contract": "c3cdae15a5435fb2282cfbfd91905af880356289b85772e3f36d9ac4ff083953",
+    "extension_manifest": "f81239f928f702a120a8764036c5377c16cfd1f87ce074bc538870751abcfaf3",
+    "funding_tar": "614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f"
+  },
+  "dependency_fingerprint": "7dcce21901d8ee6e6a55316da98edc5c44ffce79a148dea25f6a9b470ad49046",
+  "evaluation_contract": {
+    "candidate": {
+      "dispersion_exit_threshold": null,
+      "entry_index": 1,
+      "exit_mode": "flow_decay",
+      "maximum_hold_bars": 96,
+      "minimum_hold_bars": 1,
+      "rank_exit_threshold": null,
+      "signed_flow_exit_threshold": -0.5,
+      "stop_atr": 2.5
+    },
+    "candidate_id": "021fbab613517a31ad98",
+    "concentration": "top 10 percent positive trade removal",
+    "cost_bps": [12, 18, 24],
+    "entry": "next exact 5m open",
+    "funding_rule": "official fundingRate at calc_time in (entry, exit]; -side*quantity*exact mark open*rate; exact contract-open fallback only when official mark archive lacks the settlement bar",
+    "gap_stop": "adverse open",
+    "global_slot": 1,
+    "period": "2023-01-01/2024-01-01",
+    "position_sizing": "0.5% planned loss, 3x notional cap, 0.1% prior quote-volume cap",
+    "same_bar": "stop first"
+  },
+  "evaluation_contract_sha256": "c3cdae15a5435fb2282cfbfd91905af880356289b85772e3f36d9ac4ff083953"
+}

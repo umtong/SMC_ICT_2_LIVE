@@ -1,0 +1,92 @@
+{
+  "best_preregistered_rank": {
+    "candidate_id": "4854ea1c5d711755ba96",
+    "family": "dispersion_breakout",
+    "gmean_daily": 0.0013552648813384,
+    "h1_return": 0.1937063016034068,
+    "h2_return": 0.3733785137412664,
+    "max_drawdown": 0.2038190778675954,
+    "n": 377,
+    "params": {
+      "beta_window": 2016,
+      "compression_z_max": 0,
+      "dispersion_z_min": 1,
+      "efficiency_max": null,
+      "family": "dispersion_breakout",
+      "flow_threshold": 0,
+      "hold_bars": 48,
+      "residual_horizon": 12,
+      "residual_z_threshold": 3,
+      "stop_atr": 2.5
+    },
+    "positive_month_fraction": 0.5,
+    "profit_factor": 1.362699243562233,
+    "return_12bps": 0.6394105863396689,
+    "return_18bps": 0.355701810844766,
+    "return_24bps": 0.1437440260503255,
+    "top10pct_removed_return": -0.579279652706757,
+    "top5_positive_share": 0.4557677361024143,
+    "worst_month": -0.0642573430859728
+  },
+  "best_raw_return": {
+    "candidate_id": "611d658dce782807d2ef",
+    "family": "dispersion_breakout",
+    "gmean_daily": 0.0019332087280494,
+    "h1_return": 0.0740769280985806,
+    "h2_return": 0.884153005209118,
+    "max_drawdown": 0.066726328375789,
+    "n": 98,
+    "params": {
+      "beta_window": 2016,
+      "compression_z_max": -0.5,
+      "dispersion_z_min": 1,
+      "efficiency_max": null,
+      "family": "dispersion_breakout",
+      "flow_threshold": 1,
+      "hold_bars": 48,
+      "residual_horizon": 48,
+      "residual_z_threshold": 3,
+      "stop_atr": 1.5
+    },
+    "profit_factor": 3.256776922754469,
+    "return_12bps": 1.0237252719027192,
+    "return_18bps": 0.7833460958628227,
+    "return_24bps": 0.6146018060424119,
+    "top10pct_removed_return": -0.1824525362787064,
+    "top5_positive_share": 0.8439306745515253
+  },
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "dataset": {
+    "artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "bars": 105120,
+    "dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "development": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "later_periods_opened": false,
+    "manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4"
+  },
+  "decision": "Reject registered dynamic-factor residual families under this dependency fingerprint; 2024/2025 stayed sealed.",
+  "evaluation": {
+    "all_costs_and_halves_positive": 269,
+    "all_costs_positive": 1042,
+    "both_halves_positive": 412,
+    "candidate_count": 11664,
+    "gate_pass_count": 0,
+    "positive_12bps": 2493,
+    "positive_18bps": 1546,
+    "positive_24bps": 1042,
+    "top10pct_removed_positive": 8
+  },
+  "failure_principle": "Dispersion-breakout residuals create rare large idiosyncratic trends, but the family loses after removing the largest trades. Mean-reversion, continuation and absorption variants do not repair the concentration under stressed costs.",
+  "schema_version": 1,
+  "status": "INVALID",
+  "validation": {
+    "2026_opened": false,
+    "champion_eligible": false,
+    "funding_included": false,
+    "next_open_and_gap_stop_tested": true,
+    "orders_submitted": false,
+    "rolling_beta_current_bar_excluded": true,
+    "source_hashes_verified": true,
+    "tests_passed": 4
+  }
+}

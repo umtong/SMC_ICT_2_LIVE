@@ -6,8 +6,10 @@
   "status": "TESTED_BELOW_GATE",
   "hard_validity_status": "PASS",
   "economic_status": "BASIC_COST_POSITIVE",
-  "summary": "Four-asset leave-one-out dynamic common-factor residual challenger 021fbab613517a31ad98. In 2023 it produced 194 one-global-slot trades and, after exact official funding cashflows, +23.2585%/+16.7170%/+11.2649% at 12/18/24bp, 0.0573077% geometric daily growth, PF 1.504 and MDD 4.617%. It is ranking-eligible by target proximity but fails the strict concentration gate: top-10%-removed return -21.8583%; all four frozen 2024 family portfolios lost and later holdouts remain sealed.",
-  "source_ids": ["SRC-BINANCE-PUBLIC-DATA-USD-M-20260725"],
+  "summary": "Four-asset leave-one-out common-factor residual study. The strongest hard-valid exploratory state-exit candidate 021fbab613517a31ad98 produced 194 one-global-slot trades in 2023. After exact official funding cashflows it returned +23.2585%, +16.7170% and +11.2649% at 12/18/24 bps; 12-bps geometric daily growth was 0.0573077%, PF 1.504 and MDD 4.617%. It is closer to the 1% target than the prior first place and is ranking-eligible, but the registered economic gate failed: removing the largest 10% trades changes return to -21.8583%, median trade is negative, and all four frozen 2024 family portfolios lost. No later holdout or order permission was opened.",
+  "source_ids": [
+    "SRC-BINANCE-PUBLIC-DATA-USD-M-20260725"
+  ],
   "dataset_ids": [
     "DS-BINANCE-USDM-5M-2023-2025-R1",
     "DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1"
@@ -16,6 +18,16 @@
   "evaluation_contract_sha256": "c3cdae15a5435fb2282cfbfd91905af880356289b85772e3f36d9ac4ff083953",
   "artifact_fingerprint": "e2b83969c61daea1bd1fe74b0dcd4382ad1da097f468c57b4d648289bf4d21b6",
   "dependency_fingerprint": "7dcce21901d8ee6e6a55316da98edc5c44ffce79a148dea25f6a9b470ad49046",
+  "artifacts": [
+    {
+      "path": "research/dynamic_factor_residual_20260725/actual_funding_audit_summary.json",
+      "sha256": "d04734c4e16a727df63ed5d505136c87839e9cabb3a00bdc3af1bafa31b8c8e0"
+    },
+    {
+      "path": "artifact://PR25_dynamic_factor_actual_funding_audit_20260725.zip",
+      "sha256": "e2b83969c61daea1bd1fe74b0dcd4382ad1da097f468c57b4d648289bf4d21b6"
+    }
+  ],
   "artifact_links": [
     "https://github.com/umtong/SMC_ICT_2_LIVE/pull/25",
     "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30160153690"

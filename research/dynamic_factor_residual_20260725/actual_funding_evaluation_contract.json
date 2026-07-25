@@ -1,0 +1,66 @@
+{
+  "base_contract": "EVAL-R4-DYNAMIC-FACTOR-RESIDUAL-20260725-V1",
+  "candidate_id": "021fbab613517a31ad98",
+  "changed_surface": "Replace the preregistered no-funding rejection-screen assumption with exact official Binance USD-M fundingRate cashflows and official mark-open settlement prices; all signals, trades, stops, exits, costs and stage boundaries remain unchanged.",
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "contract_id": "EVAL-R4-DYNAMIC-FACTOR-ACTUAL-FUNDING-20260725-V1",
+  "execution": {
+    "entry": "next five-minute open",
+    "gap_stop": "actual adverse open",
+    "historical_order_book_queue_replay": false,
+    "maximum_notional_leverage": 3.0,
+    "maximum_prior_quote_volume_participation": 0.001,
+    "one_global_slot": true,
+    "risk_fraction": 0.005,
+    "round_trip_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
+    "same_bar_policy": "protective stop first"
+  },
+  "funding_accounting": {
+    "cashflow": "-side * quantity * settlement_price * funding_rate",
+    "eligible_events": "Official fundingRate calc_time in (entry_time, exit_time].",
+    "entry_at_settlement": "A position entered at calc_time does not participate in that settlement.",
+    "event_count_base": 100,
+    "settlement_price": "Exact official mark-price open at calc_time; exact official contract open only when the mark archive lacks the settlement bar."
+  },
+  "funding_dataset": {
+    "dataset_id": "DS-BINANCE-USDM-4ASSET-FUNDING-MARK-2023-R1",
+    "official_archives_verified": 96,
+    "parent_manifest_sha256": "26cd583f4dd32b201d03d15b95600440251c777b89838ddc9ab0342d90730d48",
+    "parent_tar_sha256": "614b2029a073aaedf78675889d831d6aefc74f24e9fbd75c1be5e57bf034219f"
+  },
+  "market_dataset": {
+    "artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4"
+  },
+  "promotion": {
+    "deployment_eligible": false,
+    "economic_gate": "FAIL",
+    "hard_validity": "PASS_AFTER_REPAIR_AND_ACTUAL_FUNDING_AUDIT",
+    "ranking_eligible": true,
+    "target_status": "NOT_MET"
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_or_live_started": false
+  },
+  "schema_version": 1,
+  "stage_seals": {
+    "2025_opened": false,
+    "2026_opened": false,
+    "development": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "exact_candidate_2024_opened": false,
+    "frozen_portfolio_selection": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ]
+  }
+}
