@@ -1,3 +1,9 @@
 # Reports
 
-Reports summarize verified comparisons. Raw external claims and in-sample discoveries are not reported as validated performance.
+`03_RESEARCH/30_REPORTS`는 비교 가능한 조건으로 검증된 결과와 의사결정을 요약한다.
+
+- 입력: 등록된 results, validation attestations, 동일하거나 정규화된 데이터·비용·체결·평가 조건
+- 산출물: 비교표, 선택·보류·폐기 근거, Champion 변경 제안
+- 완료: 사용한 result ID와 조건 차이가 명시되고 다음 결정이 분명함
+
+외부 주장, 단일 인샘플 발견 또는 조건이 다른 수치를 검증 성과로 표현하지 않는다. 원시 출력은 이 폴더에 복제하지 않는다.
