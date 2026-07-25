@@ -52,3 +52,13 @@
 - 최대낙폭 <= 20%
 
 이 스크린은 PRE-LIVE 완료 판정이 아니다. 통과 후보는 1분 봉내 실행 감사, 비용·지연·용량 스트레스, 반복 워크포워드와 별도 봉인 OOS로 이동한다.
+
+## 로컬 재현
+
+```bash
+python research/alpha_wave1/reconstruct_source.py
+python -m pip install -r research/alpha_wave1/requirements-lock.txt
+pytest -q tests/test_alpha_wave1.py
+```
+
+`SOURCE_MANIFEST.json`은 분할 보관된 가독 가능한 Python source fragment와 재구성된 전체 파일의 SHA-256을 고정한다.
