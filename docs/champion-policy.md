@@ -2,7 +2,7 @@
 
 ## Definition
 
-Champion is the current best hard-valid strategy or strategy-portfolio candidate available to the project. It is a moving research benchmark, not a statement that the final target has been met or that the strategy is ready for practical use.
+Champion is the current best hard-valid strategy or strategy-portfolio candidate available to the project. It is a moving rank pointer to an already registered result, not a statement that the final target has been met or that the strategy is ready for practical use.
 
 ## Selection rule
 
@@ -14,6 +14,14 @@ Use `NONE` only when:
 - every available candidate is hard-invalid because of future information, calculation or data error, impossible execution, or another basic validity failure.
 
 Economic gate failure is not hard invalidity. A method-valid but economically weak result is retained as a tested-below-gate result and may remain the current research benchmark until a better candidate exists.
+
+## Operational effect
+
+Champion status has no effect on research priority, validation budget, protection level, or default next-step selection. Work is chosen by expected contribution to the project objective and information value. A completely different market, signal, data source, timeframe, execution method, or portfolio structure should be preferred whenever it offers a stronger path to the objective.
+
+Champion is not a default improvement target. It does not need to be refined, defended, revalidated, copied, or separately backed up merely because it is Champion. Every material result is recorded through the ordinary Result Registry, code commit, data snapshot, and evaluation/cost/execution contract. When the ranking changes, update the Champion pointer; do not repeat preservation work already completed by normal versioning.
+
+Only unrecorded artifacts at risk of being overwritten or deleted require ordinary state-loss protection. That rule applies to all reusable work, not specifically to the Champion.
 
 ## Required separation
 
@@ -31,15 +39,17 @@ A Champion can therefore have `target_status = NOT_MET` and `qualification_stage
 
 ## Comparison
 
-Every material strategy result is compared with the current Champion. Prefer normalized comparisons under the same data, cost, execution, and evaluation contract. When full normalization is not possible, retain a provisional Champion and explicitly lower comparison confidence rather than leaving the project without a benchmark.
+Every material strategy result is compared with the current Champion as a ranking operation. Prefer normalized comparisons under the same data, cost, execution, and evaluation contract. When full normalization is not possible, retain a provisional Champion and explicitly lower comparison confidence rather than leaving the project without a benchmark.
 
 Rank on account-level net growth together with drawdown, liquidation and tail risk, concentration, sample size, execution sensitivity, and capital efficiency. A single metric does not silently replace the project objective.
+
+The comparison does not determine research priority. After ranking, choose the next work independently from Champion status using target contribution and information value.
 
 ## Component leaders
 
 Execution routing, data, feature, or portfolio-construction components may have separate leaders. A positive component result does not become the overall Champion unless it is embedded in a complete strategy or portfolio candidate.
 
-## Current selection at revision 5
+## Current selection at revision 6
 
 Current research Champion:
 
@@ -49,7 +59,7 @@ Current research Champion:
 - stage: `EXPLORATORY`
 - target status: `NOT_MET`
 
-Selection basis: it is the only completed causally valid strategy specification currently recorded with positive growth at its declared base-cost case.
+Selection basis: it is the only completed causally valid strategy specification currently recorded with positive growth at its declared base-cost case. This is a rank pointer only and does not allocate research resources to the family.
 
 Critical weaknesses:
 
