@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "source_artifact": {
+    "workflow_run_id": 30165425239,
+    "artifact_id": 8621485991,
+    "artifact_name": "L2_MAKER_TOXICITY_V4_INDEPENDENT_TICK_20260725",
+    "artifact_sha256": "6fd25a47340c35ebf6cde4de1cb56d137712003f510f36c09900344438ebad64",
+    "source_record_count": 24,
+    "reuse_boundary": "Only the exact SHA-identified BTCUSDT book_ticker and trades URLs and parser concepts are reused. No passive-order labels, model choices, candidate outcomes or economic conclusions are reused."
+  },
+  "records": [
+    {"stage":"fit","date":"2023-01-01","data_type":"book_ticker","url":"https://datasets.tardis.dev/v1/binance-futures/book_ticker/2023/01/01/BTCUSDT.csv.gz","compressed_bytes":42667993,"sha256":"86dcf66923b56c30e692c426c9147a90cbad37a8c93b804f54834fe127fd971b"},
+    {"stage":"fit","date":"2023-01-01","data_type":"trades","url":"https://datasets.tardis.dev/v1/binance-futures/trades/2023/01/01/BTCUSDT.csv.gz","compressed_bytes":6633989,"sha256":"944d10d83ec82764c8c6f53f5ba648a7274128c2932dace44b21e7ffdb13e270"},
+    {"stage":"fit","date":"2023-07-01","data_type":"book_ticker","url":"https://datasets.tardis.dev/v1/binance-futures/book_ticker/2023/07/01/BTCUSDT.csv.gz","compressed_bytes":87841805,"sha256":"2442487ba2ff248cab7af6babfb8e0d80a26086057bf816633c4c7470086b3b5"},
+    {"stage":"fit","date":"2023-07-01","data_type":"trades","url":"https://datasets.tardis.dev/v1/binance-futures/trades/2023/07/01/BTCUSDT.csv.gz","compressed_bytes":15938714,"sha256":"1fdee2c6db9ac7aaf3b663ef39e25ad9504b610df8d169622f371e6ea68c125b"},
+    {"stage":"development","date":"2024-01-01","data_type":"book_ticker","url":"https://datasets.tardis.dev/v1/binance-futures/book_ticker/2024/01/01/BTCUSDT.csv.gz","compressed_bytes":99994147,"sha256":"d2c8ca4f104a4950b9cbd9d335ffeeb081ce9a9acc0f407da6da330077c79b43"},
+    {"stage":"development","date":"2024-01-01","data_type":"trades","url":"https://datasets.tardis.dev/v1/binance-futures/trades/2024/01/01/BTCUSDT.csv.gz","compressed_bytes":20848659,"sha256":"8387c9d605f986bb6bde754735f5f9c2440ec76908f0d143af1b9282cefe981a"},
+    {"stage":"development","date":"2024-07-01","data_type":"book_ticker","url":"https://datasets.tardis.dev/v1/binance-futures/book_ticker/2024/07/01/BTCUSDT.csv.gz","compressed_bytes":108405849,"sha256":"16be32e8562f02e92804a20525d1bba57d9b4b3b62d124d8d8065fe86d3f6fbd"},
+    {"stage":"development","date":"2024-07-01","data_type":"trades","url":"https://datasets.tardis.dev/v1/binance-futures/trades/2024/07/01/BTCUSDT.csv.gz","compressed_bytes":21281017,"sha256":"58f06d337fae55be7fa1019ca4f62383ea2381bf69bc7a7e58497d96e34a0d0c"},
+    {"stage":"selection","date":"2025-01-01","data_type":"book_ticker","url":"https://datasets.tardis.dev/v1/binance-futures/book_ticker/2025/01/01/BTCUSDT.csv.gz","compressed_bytes":77206823,"sha256":"6d26d5f1b77c33afa5c376a8539925ab24c3166e3a182a1cb4bb68fb72a1d763"},
+    {"stage":"selection","date":"2025-01-01","data_type":"trades","url":"https://datasets.tardis.dev/v1/binance-futures/trades/2025/01/01/BTCUSDT.csv.gz","compressed_bytes":16993821,"sha256":"99132fafe2f92430c22cc5dd55120495db29a421b33e39651e2efcbae942f549"},
+    {"stage":"selection","date":"2025-08-01","data_type":"book_ticker","url":"https://datasets.tardis.dev/v1/binance-futures/book_ticker/2025/08/01/BTCUSDT.csv.gz","compressed_bytes":306836306,"sha256":"a81a66e2cfc932e09ebf9c96a9654d4f931b87e90e8157c2c060f1f6baf7f79e"},
+    {"stage":"selection","date":"2025-08-01","data_type":"trades","url":"https://datasets.tardis.dev/v1/binance-futures/trades/2025/08/01/BTCUSDT.csv.gz","compressed_bytes":41533876,"sha256":"ddcb7f05779c0a3a94bdce8decdd9d25c9ecf60c810b0424588174ca414fc81d"}
+  ],
+  "physical_stage_rule": "Fit and development files may be acquired immediately. Selection files may be acquired only after at least one frozen development survivor is written. No 2026 source may be acquired by this claim.",
+  "causal_availability": "Features and simulated orders use Tardis local_timestamp. Exchange timestamps are diagnostic only. The source is third-party normalized and cannot support practical-use promotion without official or independent reconstruction.",
+  "orders_permitted": false
+}
