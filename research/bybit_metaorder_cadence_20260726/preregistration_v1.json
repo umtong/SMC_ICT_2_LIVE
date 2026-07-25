@@ -1,0 +1,68 @@
+{
+  "claim_id": "CLM-20260726-0501-METAORDER-CADENCE-001",
+  "created_at": "2026-07-26T05:22:01+09:00",
+  "base_revision": 11,
+  "purpose": "Fatal pre-2024 validation of a Bybit-native latent parent-order exhaustion signal before any 2024 official evaluation data are opened.",
+  "unopened_validation_dates": [
+    "2023-03-01",
+    "2023-06-01",
+    "2023-09-01",
+    "2023-12-01"
+  ],
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "venue": "Bybit USDT linear perpetual public trades",
+  "data_url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+  "event_reconstruction": {
+    "child_cluster": "Contiguous public trades with identical exchange timestamp and identical taker side are aggregated into one aggressive child cluster.",
+    "pre_key_filter_min_notional_usdt": 10000,
+    "fingerprint": "round(cluster_notional_usdt / 2500) using nearest-integer rounding",
+    "fingerprint_increment_usdt": 2500,
+    "same_side_required": true
+  },
+  "schedule_detection": {
+    "events_required": 4,
+    "minimum_notional_each_event_usdt": 25000,
+    "period_seconds_min": 1,
+    "period_seconds_max": 600,
+    "period_estimator": "median of the three completed inter-event gaps",
+    "maximum_relative_gap_deviation": 0.10,
+    "episode_suppression_cycles": 4,
+    "causality": "The schedule is recognized only after the fourth child cluster is fully observed."
+  },
+  "state_filters": {
+    "sequence_signed_move_bps_min": 0,
+    "sequence_move_measurement": "Taker-side-signed price change from the first child timestamp plus 100 ms to the fourth child timestamp plus 100 ms.",
+    "miss_rule": "No same-side, same-fingerprint child has arrived by forecast_time + max(100 ms, 10% of inferred period).",
+    "post_detection_signed_move_bps_max": 0,
+    "post_detection_measurement": "Taker-side-signed price change from fourth-child time plus 100 ms to the causal miss decision; non-positive means relaxation has begun.",
+    "prior_trend_window_seconds": 3600,
+    "prior_trend_measurement_end": "Immediately before the first child cluster of the recognized four-child sequence.",
+    "prior_trend_filter": "schedule_side * prior_1h_return_bps <= -20",
+    "economic_interpretation": "The scheduled metaorder temporarily pushes against an established one-hour trend; after its expected next child fails to arrive and price starts relaxing, trade for resumption of the prior trend."
+  },
+  "execution": {
+    "decision_to_fill_latency_ms": 100,
+    "entry": "Opposite the detected schedule side at the first public trade at or after the causal miss decision plus latency.",
+    "exit": "First public trade at or after entry plus 3600 seconds.",
+    "holding_period_seconds": 3600,
+    "global_slot": "At most one BTCUSDT or ETHUSDT position. Simultaneous eligible signals are ranked by completed schedule regularity and observed notional only.",
+    "roundtrip_cost_stress_bps": [12, 18, 24],
+    "funding": "This is a fatal alpha screen. Any survivor must subsequently be replayed with exact historical Bybit funding and bid/ask execution; no 2024 result may be ranked before that replay."
+  },
+  "selection_history": {
+    "discovery_dates": ["2023-01-01", "2023-04-01"],
+    "development_dates": ["2023-07-01", "2023-10-01"],
+    "independent_selection_dates": ["2023-02-01", "2023-05-01", "2023-08-01", "2023-11-01"],
+    "reason_for_prior_trend_filter": "The unfiltered rule remained positive on mean at high cost but failed top-trade removal. A rounded 20 bp countertrend threshold was chosen from the causal mechanism and a broad neighboring threshold plateau, not from the unopened validation dates."
+  },
+  "fatal_validation_gate": {
+    "minimum_completed_global_slot_trades": 10,
+    "net_mean_positive_at_24bp": true,
+    "top_10_percent_trade_removed_net_mean_positive_at_12bp": true,
+    "minimum_positive_dates_at_12bp": 3,
+    "required_positive_dates_denominator": 4,
+    "median_net_positive_at_12bp": true,
+    "maximum_single_trade_share_of_positive_gross_pnl": 0.50
+  },
+  "next_action": "Open only the four listed 2023 validation dates. If the gate fails, do not open 2024 for this rule and return to alpha search."
+}
