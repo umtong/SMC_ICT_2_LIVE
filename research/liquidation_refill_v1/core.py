@@ -101,6 +101,8 @@ class PriceSeries:
         i1 = int(np.searchsorted(self.timestamps, end, side="left"))
         if i0 >= i1:
             return None, None, "unresolved_missing_path"
+        timestamps = self.timestamps[i0:i1]
+        opens = self.opens[i0:i1]
         highs = self.highs[i0:i1]
         lows = self.lows[i0:i1]
         if direction > 0:
@@ -109,15 +111,29 @@ class PriceSeries:
         else:
             stop_hits = highs >= stop_price
             target_hits = lows <= target_price
-        any_hits = stop_hits | target_hits
+
+        # Never bridge an unavailable minute. A barrier reached after the first
+        # source gap is unknowable and therefore cannot resolve the position.
+        usable = len(timestamps)
+        if len(timestamps) > 1:
+            discontinuities = np.flatnonzero(np.diff(timestamps) != np.timedelta64(1, "m"))
+            if len(discontinuities):
+                usable = int(discontinuities[0]) + 1
+        any_hits = (stop_hits | target_hits)[:usable]
         if not bool(np.any(any_hits)):
+            if usable < len(timestamps):
+                return None, None, "unresolved_source_gap"
             return None, None, "unresolved_no_barrier"
         rel = int(np.flatnonzero(any_hits)[0])
         idx = i0 + rel
         # Conservative convention: if both barriers are touched in one minute, stop first.
+        # A protective stop that gaps through its trigger fills at the adverse observed open.
         if bool(stop_hits[rel]):
             reason = "stop"
-            price = stop_price
+            if direction > 0:
+                price = min(stop_price, float(opens[rel]))
+            else:
+                price = max(stop_price, float(opens[rel]))
         else:
             reason = "target"
             price = target_price
