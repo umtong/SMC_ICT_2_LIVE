@@ -10,11 +10,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: coinm-collateral-stress-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   research:
@@ -70,6 +70,38 @@ jobs:
             --output "$root/results" \
             2>&1 | tee "$root/results/run.log"
 
+      - name: Build compact development decision extract
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/coinm_collateral_stress/results
+          if [[ -f "$root/development_results.json" ]]; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/coinm_collateral_stress/results')
+          rows=json.loads((root/'development_results.json').read_text())
+          def score(r):
+              a=r['development_a']['base']; b=r['development_b']['base']
+              return (
+                  min(a.get('geo_daily') or -1, b.get('geo_daily') or -1),
+                  (a.get('total_return') or -1)+(b.get('total_return') or -1),
+                  min(a.get('n') or 0,b.get('n') or 0),
+              )
+          ordered=sorted(rows,key=score,reverse=True)
+          payload={
+              'schema_version':1,
+              'policy_count':len(rows),
+              'development_gate_count':sum(bool(x.get('development_gate')) for x in rows),
+              'top10':ordered[:10],
+              'selection_values_included':False,
+              'validation_values_included':False,
+          }
+          (root/'development_top10.json').write_text(json.dumps(payload,indent=2,sort_keys=True,default=str)+'\n')
+          PY
+          fi
+
       - name: Print decision summary
         if: always()
         shell: bash
@@ -80,9 +112,9 @@ jobs:
             echo '--- summary.json ---'
             cat "$root/summary.json"
           fi
-          if [[ -f "$root/development_grid.csv" ]]; then
-            echo '--- development_grid.csv head ---'
-            head -n 12 "$root/development_grid.csv"
+          if [[ -f "$root/development_top10.json" ]]; then
+            echo '--- development_top10.json ---'
+            cat "$root/development_top10.json"
           fi
 
       - name: Inventory results
@@ -96,6 +128,25 @@ jobs:
             | sort -z | xargs -0 sha256sum \
             > "$root/results/FILE_SHA256SUMS.txt"
           cat "$root/results/FILE_SHA256SUMS.txt"
+
+      - name: Commit compact decision result to research branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/coinm_collateral_stress/results
+          files=()
+          [[ -f "$root/summary.json" ]] && files+=("$root/summary.json")
+          [[ -f "$root/development_top10.json" ]] && files+=("$root/development_top10.json")
+          [[ -f "$root/source_manifest_development.json" ]] && files+=("$root/source_manifest_development.json")
+          [[ -f "$root/FILE_SHA256SUMS.txt" ]] && files+=("$root/FILE_SHA256SUMS.txt")
+          if [[ ${#files[@]} -eq 0 ]]; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "${files[@]}"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m '[skip ci] Record COIN-M collateral-stress decision result'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - uses: actions/upload-artifact@v4
         if: always()
