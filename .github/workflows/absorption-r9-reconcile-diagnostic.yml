@@ -25,6 +25,8 @@ jobs:
         run: |
           set -u
           mkdir -p /tmp/r9-diagnostics
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           cp control/current-state.md /tmp/r9-current-state.md
           cp control/ranking.json /tmp/r9-ranking.json
           git fetch origin main > /tmp/r9-diagnostics/fetch.log 2>&1
@@ -79,8 +81,6 @@ jobs:
           printf 'merge_rc=%s\nunion_rc=%s\nvalidator_rc=%s\npytest_rc=%s\ncontext_rc=%s\n' "$merge_rc" "$union_rc" "$validator_rc" "$pytest_rc" "$context_rc" > /tmp/r9-diagnostics/return-codes.txt
           remaining=$(cat /tmp/r9-diagnostics/unmerged.txt)
           if [ -z "$remaining" ] && [ "$union_rc" -eq 0 ] && [ "$validator_rc" -eq 0 ] && [ "$pytest_rc" -eq 0 ] && [ "$context_rc" -eq 0 ]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git rm -f .github/absorption-r9-main-reconcile.trigger .github/workflows/absorption-r9-main-reconcile.yml .github/absorption-r9-reconcile-diagnostic.trigger .github/workflows/absorption-r9-reconcile-diagnostic.yml
             git commit -m 'Merge latest main into revision-9 absorption result'
             git push origin HEAD:agent/r9-absorption-register-20260726
