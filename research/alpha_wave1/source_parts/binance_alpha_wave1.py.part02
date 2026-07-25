@@ -1,0 +1,273 @@
+            & follower["present"].to_numpy(bool)
+        )
+        idx = np.flatnonzero(mask)
+        atr = follower["atr20"].to_numpy(float)
+        low = follower["low"].to_numpy(float)
+        high = follower["high"].to_numpy(float)
+        for i in idx:
+            side = int(direction[i])
+            if side == 0 or not np.isfinite(atr[i]):
+                continue
+            rows.append(
+                {
+                    "signal_time": index[i],
+                    "symbol": follower_symbol,
+                    "side": side,
+                    "score": float(abs(lz[i]) + direction[i] * (lz[i] - fz[i]) + max(direction[i] * lf[i], 0)),
+                    "stop": float(low[i] - 0.25 * atr[i] if side > 0 else high[i] + 0.25 * atr[i]),
+                    "horizon": int(spec["horizon"]),
+                    "signal_index": i,
+                    "leader": leader_symbol,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def candidate_signals(frames: dict[str, pd.DataFrame], spec: dict[str, Any]) -> pd.DataFrame:
+    family = spec["family"]
+    if family == "cross_asset_lag":
+        signals = cross_asset_lag_signals(frames, spec)
+    else:
+        parts: list[pd.DataFrame] = []
+        for symbol, frame in frames.items():
+            if family == "displacement_origin_retest":
+                parts.append(displacement_retest_signals(symbol, frame, spec))
+            else:
+                parts.append(vector_signals(symbol, frame, spec))
+        signals = pd.concat([part for part in parts if not part.empty], ignore_index=True) if any(not part.empty for part in parts) else pd.DataFrame()
+    if signals.empty:
+        return signals
+    signals = signals.sort_values(["signal_time", "score", "symbol"], ascending=[True, False, True], kind="mergesort")
+    signals = signals.drop_duplicates("signal_time", keep="first").reset_index(drop=True)
+    signals["candidate_id"] = spec["candidate_id"]
+    signals["family"] = family
+    return signals
+
+
+@dataclass
+class ExecutionPanel:
+    index: pd.DatetimeIndex
+    open: np.ndarray
+    high: np.ndarray
+    low: np.ndarray
+    close: np.ndarray
+    present: np.ndarray
+    funding_times: np.ndarray
+    funding_rates: np.ndarray
+
+
+def make_execution_panel(one: pd.DataFrame, funding: pd.DataFrame) -> ExecutionPanel:
+    return ExecutionPanel(
+        index=one.index,
+        open=one["open"].to_numpy(float),
+        high=one["high"].to_numpy(float),
+        low=one["low"].to_numpy(float),
+        close=one["close"].to_numpy(float),
+        present=one["present"].to_numpy(bool),
+        funding_times=funding["time"].to_numpy(dtype="datetime64[ns]"),
+        funding_rates=funding["rate"].to_numpy(float),
+    )
+
+
+def funding_sum(panel: ExecutionPanel, entry: pd.Timestamp, exit_: pd.Timestamp) -> float:
+    if len(panel.funding_times) == 0:
+        return 0.0
+    a = int(np.searchsorted(panel.funding_times, np.datetime64(entry.tz_convert(None)), side="right"))
+    b = int(np.searchsorted(panel.funding_times, np.datetime64(exit_.tz_convert(None)), side="right"))
+    return float(panel.funding_rates[a:b].sum())
+
+
+def run_backtest(signals: pd.DataFrame, execution: dict[str, ExecutionPanel], cost_bps: float) -> pd.DataFrame:
+    if signals.empty:
+        return pd.DataFrame()
+    records: list[dict[str, Any]] = []
+    free_time = pd.Timestamp.min.tz_localize("UTC")
+    invalid_paths = 0
+    for signal in signals.itertuples(index=False):
+        known_time = pd.Timestamp(signal.signal_time) + pd.Timedelta(minutes=5)
+        if known_time < free_time:
+            continue
+        panel = execution[str(signal.symbol)]
+        entry_i = int(panel.index.searchsorted(known_time, side="left"))
+        if entry_i >= len(panel.index) or panel.index[entry_i] != known_time or not panel.present[entry_i]:
+            invalid_paths += 1
+            continue
+        entry_price = float(panel.open[entry_i])
+        planned_exit_time = known_time + pd.Timedelta(minutes=5 * int(signal.horizon))
+        exit_i = int(panel.index.searchsorted(planned_exit_time, side="left"))
+        if exit_i >= len(panel.index) or panel.index[exit_i] != planned_exit_time:
+            invalid_paths += 1
+            continue
+        path_present = panel.present[entry_i : exit_i + 1]
+        if len(path_present) != exit_i - entry_i + 1 or not bool(path_present.all()):
+            invalid_paths += 1
+            continue
+        side = int(signal.side)
+        stop = float(signal.stop)
+        if side > 0 and not (0 < stop < entry_price):
+            continue
+        if side < 0 and not (stop > entry_price):
+            continue
+        exit_price = float(panel.open[exit_i])
+        exit_time = panel.index[exit_i]
+        reason = "alpha_horizon"
+        for j in range(entry_i, exit_i):
+            minute_open = float(panel.open[j])
+            if side > 0:
+                if minute_open <= stop:
+                    exit_price, exit_time, reason = minute_open, panel.index[j], "gap_stop"
+                    break
+                if float(panel.low[j]) <= stop:
+                    exit_price, exit_time, reason = stop, panel.index[j], "protective_stop"
+                    break
+            else:
+                if minute_open >= stop:
+                    exit_price, exit_time, reason = minute_open, panel.index[j], "gap_stop"
+                    break
+                if float(panel.high[j]) >= stop:
+                    exit_price, exit_time, reason = stop, panel.index[j], "protective_stop"
+                    break
+        gross_log = side * math.log(exit_price / entry_price)
+        funding = funding_sum(panel, known_time, exit_time)
+        net_log = gross_log - cost_bps / 1e4 - side * funding
+        if reason in {"gap_stop", "protective_stop"}:
+            net_log -= STOP_EXTRA_BPS / 1e4
+        records.append(
+            {
+                "candidate_id": signal.candidate_id,
+                "family": signal.family,
+                "signal_time": signal.signal_time,
+                "entry_time": known_time,
+                "exit_time": exit_time,
+                "symbol": signal.symbol,
+                "side": side,
+                "score": float(signal.score),
+                "entry": entry_price,
+                "exit": exit_price,
+                "stop": stop,
+                "exit_reason": reason,
+                "gross_log": gross_log,
+                "funding_log": -side * funding,
+                "cost_bps": cost_bps + (STOP_EXTRA_BPS if reason in {"gap_stop", "protective_stop"} else 0.0),
+                "net_log": net_log,
+                "event_key": f"{pd.Timestamp(signal.signal_time).isoformat()}|{signal.symbol}|{side}",
+                "invalid_paths_before": invalid_paths,
+            }
+        )
+        free_time = exit_time + pd.Timedelta(minutes=1)
+    return pd.DataFrame(records)
+
+
+def metrics(ledger: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> dict[str, Any]:
+    days = int((end - start) / pd.Timedelta(days=1))
+    if ledger.empty:
+        return {
+            "trades": 0,
+            "log_growth": 0.0,
+            "account_multiple": 1.0,
+            "gmean_daily": 0.0,
+            "mean_bps": math.nan,
+            "median_bps": math.nan,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "positive_quarters": 0,
+            "top10_positive_share": 1.0,
+            "after_top10_log_growth": -1.0,
+            "top1pct_removed_log_growth": -1.0,
+            "top5pct_removed_log_growth": -1.0,
+            "top10pct_removed_log_growth": -1.0,
+            "max_symbol_share": 1.0,
+            "max_direction_share": 1.0,
+        }
+    values = ledger["net_log"].to_numpy(float)
+    simple = np.expm1(values)
+    positive = simple[simple > 0]
+    negative = -simple[simple < 0]
+    curve = np.exp(np.r_[0.0, np.cumsum(values)])
+    peak = np.maximum.accumulate(curve)
+    drawdown = 1.0 - curve / peak
+    quarters = pd.PeriodIndex(pd.to_datetime(ledger["exit_time"], utc=True), freq="Q")
+    quarter_sum = pd.Series(values).groupby(quarters).sum()
+    sorted_positive = np.sort(positive)[::-1]
+    top10_share = float(sorted_positive[:10].sum() / positive.sum()) if positive.sum() > 0 else 1.0
+    positive_indices = np.flatnonzero(values > 0)
+    positive_order = positive_indices[np.argsort(values[positive_indices])[::-1]]
+    keep_top10 = np.ones(len(values), dtype=bool)
+    keep_top10[positive_order[: min(10, len(positive_order))]] = False
+
+    def removed(frac: float) -> float:
+        # Concentration stress removes only the largest profitable trades.
+        # Losing trades are never deleted by a “top winner removal” audit.
+        if len(positive_order) == 0:
+            return float(values.sum())
+        n = max(1, int(math.ceil(len(values) * frac)))
+        keep = np.ones(len(values), dtype=bool)
+        keep[positive_order[: min(n, len(positive_order))]] = False
+        return float(values[keep].sum())
+
+    symbol_share = float(ledger["symbol"].value_counts(normalize=True).max())
+    direction_share = float(ledger["side"].value_counts(normalize=True).max())
+    total_log = float(values.sum())
+    return {
+        "trades": int(len(values)),
+        "log_growth": total_log,
+        "account_multiple": float(math.exp(total_log)),
+        "gmean_daily": float(math.exp(total_log / max(days, 1)) - 1.0),
+        "mean_bps": float(values.mean() * 1e4),
+        "median_bps": float(np.median(values) * 1e4),
+        "win_rate": float((values > 0).mean()),
+        "profit_factor": float(positive.sum() / negative.sum()) if negative.sum() > 0 else (999.0 if positive.sum() > 0 else 0.0),
+        "max_drawdown": float(drawdown.max()),
+        "positive_quarters": int((quarter_sum > 0).sum()),
+        "worst_quarter_log_growth": float(quarter_sum.min()) if len(quarter_sum) else math.nan,
+        "top10_positive_share": top10_share,
+        "after_top10_log_growth": float(values[keep_top10].sum()),
+        "top1pct_removed_log_growth": removed(0.01),
+        "top5pct_removed_log_growth": removed(0.05),
+        "top10pct_removed_log_growth": removed(0.10),
+        "max_symbol_share": symbol_share,
+        "max_direction_share": direction_share,
+        "long_trades": int((ledger["side"] > 0).sum()),
+        "short_trades": int((ledger["side"] < 0).sum()),
+        "btc_trades": int((ledger["symbol"] == "BTCUSDT").sum()),
+        "eth_trades": int((ledger["symbol"] == "ETHUSDT").sum()),
+        "stop_fraction": float(ledger["exit_reason"].isin(["gap_stop", "protective_stop"]).mean()),
+        "funding_log_sum": float(ledger["funding_log"].sum()),
+    }
+
+
+def development_gate(row: dict[str, Any]) -> bool:
+    return bool(
+        row.get("base_trades", 0) >= 80
+        and row.get("base_log_growth", -1) > 0
+        and row.get("stress_log_growth", -1) > 0
+        and row.get("base_profit_factor", 0) >= 1.10
+        and row.get("base_median_bps", -1) > 0
+        and row.get("base_positive_quarters", 0) >= 3
+        and row.get("base_top10_positive_share", 1) <= 0.35
+        and row.get("base_after_top10_log_growth", -1) > 0
+        and row.get("base_max_drawdown", 1) <= 0.15
+        and row.get("base_max_symbol_share", 1) <= 0.80
+        and row.get("base_max_direction_share", 1) <= 0.85
+    )
+
+
+def validation_gate(row: dict[str, Any]) -> bool:
+    return bool(
+        row.get("base_trades", 0) >= 60
+        and row.get("base_log_growth", -1) > 0
+        and row.get("stress_log_growth", -1) > 0
+        and row.get("base_profit_factor", 0) >= 1.05
+        and row.get("base_median_bps", -1) > 0
+        and row.get("base_positive_quarters", 0) >= 3
+        and row.get("base_top10_positive_share", 1) <= 0.40
+        and row.get("base_after_top10_log_growth", -1) > 0
+        and row.get("base_max_drawdown", 1) <= 0.20
+        and row.get("base_max_symbol_share", 1) <= 0.85
+        and row.get("base_max_direction_share", 1) <= 0.90
+    )
+
+
+def event_jaccard(a: set[str], b: set[str]) -> float:
+    if not a and not b:
+        return 1.0
