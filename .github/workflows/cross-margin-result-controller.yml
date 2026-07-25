@@ -1,0 +1,162 @@
+name: Cross-margin staged result controller
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-margin-dislocation-001
+    paths:
+      - "research_results/r5_cross_margin_dislocation_001/STATUS_*.txt"
+      - ".github/workflows/cross-margin-result-controller.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: r5-cross-margin-result-controller-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-margin-dislocation-001
+          fetch-depth: 1
+
+      - name: Refresh branch and consolidate authoritative state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/r5-cross-margin-dislocation-001
+          git reset --hard origin/agent/r5-cross-margin-dislocation-001
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root=pathlib.Path('research_results/r5_cross_margin_dislocation_001')
+          root.mkdir(parents=True,exist_ok=True)
+          def read(name):
+              p=root/name
+              return json.loads(p.read_text()) if p.exists() else None
+          official=read('source_result.json')
+          tardis_source=read('tardis_source_result.json')
+          pilot=read('tardis_pilot_result.json')
+          development=read('tardis_development_result.json')
+          selection=read('tardis_selection_result.json')
+          confirmation=read('tardis_confirmation_result.json')
+          status='IN_PROGRESS'
+          rationale='Staged evidence is still incomplete.'
+          terminal=False
+          if official and official.get('status')=='SOURCE_USABLE':
+              status='SOURCE_USABLE_RESEARCH_PENDING'
+              rationale='Official tick and BBO source is usable; an official-source strategy stage remains to be implemented before economic interpretation.'
+          elif official and official.get('status')=='INFRASTRUCTURE_BLOCKED':
+              if tardis_source and tardis_source.get('status')=='TARDIS_SOURCE_UNAVAILABLE':
+                  status='INFRASTRUCTURE_BLOCKED'
+                  rationale='Neither the official historical BBO route nor the preregistered normalized fallback supplied all required COIN-M and USD-M trades and quotes.'
+                  terminal=True
+              elif tardis_source and tardis_source.get('status')=='TARDIS_SOURCE_USABLE':
+                  if pilot and pilot.get('status')=='TARDIS_PILOT_NO_EDGE':
+                      status='INVALID'
+                      rationale='No preregistered COIN-M collateral-stress family passed the causal zero-fee plus 5/10bp fatal-edge sample pilot.'
+                      terminal=True
+                  elif pilot and pilot.get('status')=='TARDIS_PILOT_INFRA_FAILURE':
+                      status='INFRASTRUCTURE_BLOCKED'
+                      rationale='Fallback tick sources passed schema validation but the fatal-edge pilot failed operationally before an admissible result.'
+                      terminal=True
+                  elif pilot and pilot.get('status')=='TARDIS_PILOT_PASS':
+                      if development and development.get('status')=='DEVELOPMENT_NO_EDGE':
+                          status='TESTED_BELOW_GATE'
+                          rationale='Pilot representatives failed the risk-based 2022-2023 systematic-sample development gate.'
+                          terminal=True
+                      elif development and development.get('status')=='DEVELOPMENT_INFRA_FAILURE':
+                          status='INFRASTRUCTURE_BLOCKED'
+                          rationale='Risk-based development failed operationally before an admissible economic result.'
+                          terminal=True
+                      elif development and development.get('status')=='DEVELOPMENT_PASS':
+                          if selection and selection.get('status')=='SELECTION_NO_EDGE':
+                              status='TESTED_BELOW_GATE'
+                              rationale='Frozen development representatives failed the 2024 sample selection gate.'
+                              terminal=True
+                          elif selection and selection.get('status')=='SELECTION_INFRA_FAILURE':
+                              status='INFRASTRUCTURE_BLOCKED'
+                              rationale='Frozen selection failed operationally before an admissible result.'
+                              terminal=True
+                          elif selection and selection.get('status')=='SELECTION_PASS':
+                              if confirmation and confirmation.get('status')=='SAMPLE_CONFIRMATION_NO_EDGE':
+                                  status='TESTED_BELOW_GATE'
+                                  rationale='The frozen primary failed 2025 systematic-sample confirmation.'
+                                  terminal=True
+                              elif confirmation and confirmation.get('status')=='CONFIRMATION_INFRA_FAILURE':
+                                  status='INFRASTRUCTURE_BLOCKED'
+                                  rationale='Sample confirmation failed operationally before an admissible result.'
+                                  terminal=True
+                              elif confirmation and confirmation.get('status')=='SAMPLE_CONFIRMATION_PASS':
+                                  status='VALIDATED_COMPONENT_ONLY'
+                                  rationale='The frozen primary passed systematic monthly sample gates, but a full every-operable-day tick dataset is required before the 1% daily target test or Champion eligibility.'
+                                  terminal=True
+          result={
+              'schema_version':2,
+              'result_id':'RES-20260725-CROSS-MARGIN-001',
+              'claim_id':'CLM-20260725-2120-CROSS-MARGIN-001',
+              'status':status,
+              'rationale':rationale,
+              'terminal':terminal,
+              'official_source':official,
+              'tardis_source':tardis_source,
+              'pilot':pilot,
+              'development':development,
+              'selection':selection,
+              'confirmation':confirmation,
+              'target_1pct_daily_test_admissible':False,
+              'target_1pct_daily_pass':False,
+              'champion_eligible':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+              'paper_live_started':False,
+          }
+          path=root/'result.json'
+          path.write_text(json.dumps(result,indent=2,sort_keys=True,default=str)+'\n')
+          (root/'result.sha256').write_text(hashlib.sha256(path.read_bytes()).hexdigest()+'  result.json\n')
+          summary={
+              'result_id':result['result_id'],
+              'status':status,
+              'rationale':rationale,
+              'terminal':terminal,
+              'official_source_status':None if not official else official.get('status'),
+              'tardis_source_status':None if not tardis_source else tardis_source.get('status'),
+              'pilot_status':None if not pilot else pilot.get('status'),
+              'development_status':None if not development else development.get('status'),
+              'selection_status':None if not selection else selection.get('status'),
+              'confirmation_status':None if not confirmation else confirmation.get('status'),
+              'target_1pct_daily_pass':False,
+              'champion_eligible':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+          }
+          (root/'SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+          for old in root.glob('FINAL_STATUS_*.txt'):
+              old.unlink()
+          (root/f'FINAL_STATUS_{status}.txt').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+          PY
+          find research_results/r5_cross_margin_dislocation_001 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > research_results/r5_cross_margin_dislocation_001/SHA256SUMS.txt
+          git config user.name "smc-ict-research-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add research_results/r5_cross_margin_dislocation_001
+          if ! git diff --cached --quiet; then
+            git commit -m "Consolidate cross-margin staged result"
+            git push origin HEAD:agent/r5-cross-margin-dislocation-001
+          fi
+
+      - name: Comment current durable state on draft PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr list --repo umtong/SMC_ICT_2_LIVE --head agent/r5-cross-margin-dislocation-001 --json number --jq '.[0].number')
+          if [[ -n "$pr" ]]; then
+            summary=$(cat research_results/r5_cross_margin_dislocation_001/SUMMARY.json)
+            gh pr comment "$pr" --repo umtong/SMC_ICT_2_LIVE --body "Durable staged state updated.\n\n\`\`\`json\n${summary}\n\`\`\`\n\nNo 1% daily target test, Champion promotion, 2026 access or orders are admissible from this sample study."
+          fi
