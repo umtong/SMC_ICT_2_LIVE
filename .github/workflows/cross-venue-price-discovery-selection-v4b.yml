@@ -1,0 +1,148 @@
+name: Cross-venue price-discovery frozen selection V4B
+
+on:
+  push:
+    branches:
+      - agent/r5-cross-venue-price-discovery-001
+    paths:
+      - "research/cross_venue_price_discovery_20260725/cross_venue_selection_v4b.py"
+      - ".github/workflows/cross-venue-price-discovery-selection-v4b.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: r5-cross-venue-selection-v4b-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  selection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r5-cross-venue-price-discovery-001
+          fetch-depth: 1
+
+      - name: Install fixed environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
+          mkdir -p research_runs/cross_venue_price_discovery_20260725/selection_v4b
+
+      - name: Recover latest successful authoritative predecessor
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id=""
+          for attempt in $(seq 1 120); do
+            run_id=$(gh run list \
+              --repo umtong/SMC_ICT_2_LIVE \
+              --workflow cross-venue-price-discovery-authoritative-v4b.yml \
+              --branch agent/r5-cross-venue-price-discovery-001 \
+              --limit 20 \
+              --json databaseId,conclusion,status \
+              --jq '[.[] | select(.status=="completed" and .conclusion=="success")][0].databaseId // ""')
+            if [[ -n "$run_id" ]]; then break; fi
+            sleep 10
+          done
+          if [[ -z "$run_id" ]]; then
+            echo "No successful authoritative predecessor" >&2
+            exit 1
+          fi
+          echo "$run_id" > research_runs/cross_venue_price_discovery_20260725/selection_v4b/PREDECESSOR_RUN_ID.txt
+          mkdir -p "$RUNNER_TEMP/predecessor-download"
+          gh run download "$run_id" \
+            --repo umtong/SMC_ICT_2_LIVE \
+            --dir "$RUNNER_TEMP/predecessor-download"
+          find "$RUNNER_TEMP/predecessor-download" -type f -print | sort > research_runs/cross_venue_price_discovery_20260725/selection_v4b/PREDECESSOR_FILES.txt
+          auth=$(find "$RUNNER_TEMP/predecessor-download" -name AUTHORITATIVE_RESULT.json -print -quit)
+          if [[ -z "$auth" ]]; then
+            echo "AUTHORITATIVE_RESULT.json missing" >&2
+            exit 1
+          fi
+          cp "$auth" research_runs/cross_venue_price_discovery_20260725/selection_v4b/PREDECESSOR_AUTHORITATIVE_RESULT.json
+          dev=$(find "$RUNNER_TEMP/predecessor-download" -name DEVELOPMENT_RESULT.json -print -quit)
+          if [[ -n "$dev" ]]; then
+            mkdir -p "$RUNNER_TEMP/predecessor"
+            cp "$dev" "$RUNNER_TEMP/predecessor/DEVELOPMENT_RESULT.json"
+            grid=$(find "$(dirname "$dev")" -name DEVELOPMENT_GRID.csv -print -quit)
+            frozen=$(find "$(dirname "$dev")" -name FROZEN_PILOT_REPRESENTATIVES.json -print -quit)
+            [[ -n "$grid" ]] && cp "$grid" "$RUNNER_TEMP/predecessor/DEVELOPMENT_GRID.csv"
+            [[ -n "$frozen" ]] && cp "$frozen" "$RUNNER_TEMP/predecessor/FROZEN_PILOT_REPRESENTATIVES.json"
+          fi
+
+      - name: Verify source and conditionally open 2024 selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/cross_venue_price_discovery_20260725
+          runroot=research_runs/cross_venue_price_discovery_20260725/selection_v4b
+          python -m py_compile \
+            "$root/cross_venue_pilot.py" "$root/cross_venue_pilot_v2.py" \
+            "$root/cross_venue_development_v2.py" "$root/cross_venue_development_v3.py" \
+            "$root/cross_venue_development_v4.py" "$root/cross_venue_development_v4b.py" \
+            "$root/cross_venue_selection_v4b.py"
+          sha256sum "$root/cross_venue_selection_v4b.py" > "$runroot/SELECTION_SOURCE_SHA256.txt"
+          count=$(python - <<'PY'
+          import json
+          item=json.load(open('research_runs/cross_venue_price_discovery_20260725/selection_v4b/PREDECESSOR_AUTHORITATIVE_RESULT.json'))
+          print(int(item.get('development_gate_pass_count',0)))
+          PY
+          )
+          if [[ "$count" -le 0 ]]; then
+            python - <<'PY'
+          import json, pathlib
+          root=pathlib.Path('research_runs/cross_venue_price_discovery_20260725/selection_v4b')
+          predecessor=json.loads((root/'PREDECESSOR_AUTHORITATIVE_RESULT.json').read_text())
+          payload={
+              'schema_version':1,
+              'claim_id':'CLM-20260725-1850-XVENUE-001',
+              'stage':'SELECTION_BLOCKED_BY_DEVELOPMENT_GATE',
+              'predecessor_stage':predecessor.get('stage'),
+              'development_gate_pass_count':int(predecessor.get('development_gate_pass_count',0)),
+              'selection_opened':False,
+              'confirmation_opened':False,
+              '2026_opened':False,
+              'orders_submitted':False,
+              'paper_live_started':False,
+              'champion_eligible':False,
+          }
+          (root/'SELECTION_RESULT.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+            exit 0
+          fi
+          if [[ ! -f "$RUNNER_TEMP/predecessor/DEVELOPMENT_RESULT.json" ]]; then
+            echo "Development gate passed but predecessor development result missing" >&2
+            exit 1
+          fi
+          PYTHONPATH="$root" python "$root/cross_venue_selection_v4b.py" \
+            --predecessor "$RUNNER_TEMP/predecessor" \
+            --output "$runroot/result" \
+            --cache "$RUNNER_TEMP/xvenue-selection-cache" \
+            2>&1 | tee "$runroot/selection.log"
+          cp "$runroot/result/SELECTION_RESULT.json" "$runroot/SELECTION_RESULT.json"
+
+      - name: Record immutable checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/cross_venue_price_discovery_20260725/selection_v4b
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-venue-price-discovery-selection-v4b-${{ github.sha }}
+          path: research_runs/cross_venue_price_discovery_20260725/selection_v4b
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
