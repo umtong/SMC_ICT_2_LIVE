@@ -1,0 +1,40 @@
+name: Crossvenue forward evidence clean
+
+on:
+  push:
+    branches:
+      - agent/r8-crossvenue-forward-evidence-clean-001
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/crossvenue-forward-evidence-clean.yml'
+      - 'research/experiments/forward_execution_capture/**'
+      - 'research/reports/CROSSVENUE_RECOVERY_DATA_MANIFEST.json'
+      - 'research/reports/RES-20260725-2045-CROSSVENUE-*.json'
+      - 'research/reports/VAL-20260725-2045-CROSSVENUE-*.json'
+      - 'research/reports/RUN-20260725-2045-CROSSVENUE-FWD-001.md'
+      - 'tests/test_forward_execution_capture.py'
+      - 'control/**'
+      - 'data/catalog/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Validate project structure
+        run: python scripts/validate_project.py
+      - name: Run repository and component tests
+        run: python -m pytest -q
+      - name: Compile readable forward source
+        run: python -m compileall -q research/experiments/forward_execution_capture tests/test_forward_execution_capture.py
