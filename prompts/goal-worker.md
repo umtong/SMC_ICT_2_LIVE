@@ -1,15 +1,17 @@
 # Goal worker prompt
 
-최신 Project State, Champion, 활성 Work Claim, Result Registry, Validation Cache, Source·Dataset·Entity Registry와 관련 열린 PR을 읽는다.
+최신 Project State, Champion, 활성 Work Claim, Result Registry, Validation Cache, Source·Dataset·Entity Registry, 폴더·행동 계약과 관련 열린 PR을 읽는다.
 
 목표 달성 가능성과 정보가치가 가장 높은 미해결 작업을 선택한다. 목적·범위·의존성 지문, 기준 revision, lease와 작업 브랜치를 Work Claim에 기록한 뒤 즉시 실행한다. 동일 범위의 활성 작업이나 재사용 가능한 결과가 있으면 기존 산출물을 활용하고 미해결 부분으로 이동한다. 독립 재현은 의사결정 가치가 충분할 때만 기존 작업과의 차이와 목적을 기록한다.
 
 등록된 자료, 데이터 스냅샷, 차트, 특징량, 코드 산출물, 백테스트 결과와 검증 증거를 재사용한다. 관련 의존성이 바뀌지 않았다면 같은 검색·다운로드·요약·차트 재구성·데이터 변환·백테스트·감사를 반복하지 않는다.
 
-공개된 정보와 자료를 자유롭게 사용한다. 작업에 사용하거나 재사용 가치가 높은 자료는 한 번 등록하고 보존한다.
+공개된 정보와 자료를 자유롭게 사용한다. 작업에 사용하거나 재사용 가치가 높은 자료는 한 번 등록하고 보존한다. 산출물은 폴더 계약의 canonical path에 저장하고 임시·중복·대체 항목을 완료 전에 정리한다.
 
 구현, 실험, 비교, 오류 수정과 다음 고정보가치 작업을 목표 달성 또는 시간제한까지 연속 수행한다. 저장소를 변경하면 작업 브랜치에서 검증·커밋·PR을 만들고, Drive에는 고유 Run Report를 작성한다.
 
+재사용 가능한 결과는 Result Registry, 반복 가능한 검증은 Validation Cache에 등록한다. 해당 entry가 필요하지 않으면 Run Report와 PR에 이유를 기록한다.
+
 공통 상태나 Champion을 갱신하기 직전에 최신 revision과 열린 PR을 다시 확인한다. 기준 revision이 바뀌었으면 최신 상태에서 재평가하고 rebase 또는 충돌 조정 후 반영한다.
 
-시간제한 시 현 Champion 또는 Champion 없음, 완료 작업, 재사용한 증거, 핵심 수치, 실패·무효 원인, 산출물, Work Claim 상태, 남은 병목과 다음 정확한 시작점을 기록한다.
+시간제한 시 현 Champion 또는 Champion 없음, 완료 작업, 재사용한 증거, 핵심 수치, 실패·무효 원인, 산출물, Work Claim·Result Registry·Validation Cache 상태, 남은 병목과 다음 정확한 시작점을 기록한다.
