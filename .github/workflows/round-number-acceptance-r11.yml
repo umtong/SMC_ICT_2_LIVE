@@ -42,8 +42,10 @@ jobs:
 
       - name: Compile and run causal self-tests
         run: |
-          python -m py_compile research/round_number_acceptance_20260726/run_screen.py
-          python research/round_number_acceptance_20260726/run_screen.py self-test
+          python -m py_compile \
+            research/round_number_acceptance_20260726/run_screen.py \
+            research/round_number_acceptance_20260726/run_screen_v2.py
+          python research/round_number_acceptance_20260726/run_screen_v2.py self-test
 
       - name: Cache immutable public Bybit archives
         uses: actions/cache@v4
@@ -80,8 +82,9 @@ jobs:
 
       - name: Run frozen 576-candidate fatal screen
         run: |
+          rm -rf research_runs/round_number_acceptance/output
           mkdir -p research_runs/round_number_acceptance/output
-          python research/round_number_acceptance_20260726/run_screen.py run \
+          python research/round_number_acceptance_20260726/run_screen_v2.py run \
             --cache research_runs/round_number_acceptance/cache \
             --output research_runs/round_number_acceptance/output \
             2>&1 | tee research_runs/round_number_acceptance/run.log
@@ -89,6 +92,7 @@ jobs:
       - name: Attach exact source and preregistration to evidence bundle
         run: |
           cp research/round_number_acceptance_20260726/run_screen.py research_runs/round_number_acceptance/output/RUN_SCREEN.py
+          cp research/round_number_acceptance_20260726/run_screen_v2.py research_runs/round_number_acceptance/output/RUN_SCREEN_V2.py
           cp research/round_number_acceptance_20260726/preregistration.json research_runs/round_number_acceptance/output/PREREGISTRATION.json
           cp research/round_number_acceptance_20260726/WORK_CLAIM.json research_runs/round_number_acceptance/output/WORK_CLAIM.json
           cp research/round_number_acceptance_20260726/README.md research_runs/round_number_acceptance/output/README.md
