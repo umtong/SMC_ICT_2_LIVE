@@ -17,7 +17,6 @@ HOT = [
     "control/work-claims.csv",
     "control/result-registry.jsonl",
     "control/validation-cache.jsonl",
-    "control/decisions.md",
     "data/README.md",
     "prompts/goal-worker.md",
 ]
