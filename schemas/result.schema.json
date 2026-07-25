@@ -19,7 +19,28 @@
     "result_id": {"type": "string", "minLength": 1},
     "claim_id": {"type": "string", "minLength": 1},
     "worker_id": {"type": "string", "minLength": 1},
-    "status": {"enum": ["VALID", "CANDIDATE", "INVALID", "SUPERSEDED"]},
+    "status": {
+      "enum": [
+        "VALID",
+        "CANDIDATE",
+        "TESTED_BELOW_GATE",
+        "VALIDATED_COMPONENT_ONLY",
+        "HARD_INVALID",
+        "INVALID",
+        "SUPERSEDED"
+      ]
+    },
+    "hard_validity_status": {"enum": ["PASS", "FAIL", "UNKNOWN"]},
+    "economic_status": {
+      "enum": [
+        "UNSCREENED",
+        "BELOW_GATE",
+        "BASIC_COST_POSITIVE",
+        "OUT_OF_SAMPLE_POSITIVE",
+        "VALIDATED",
+        "NOT_APPLICABLE"
+      ]
+    },
     "summary": {"type": "string", "minLength": 1},
     "source_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "dataset_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
@@ -39,6 +60,7 @@
         "additionalProperties": false
       }
     },
+    "artifact_links": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "created_at": {"type": "string"}
   },
   "additionalProperties": false
