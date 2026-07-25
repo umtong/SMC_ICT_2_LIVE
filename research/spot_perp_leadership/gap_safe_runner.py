@@ -185,7 +185,8 @@ def load_panel_gap_safe(root: Path, start: str, end: str) -> p.Panel:
 
 
 def self_test() -> None:
-    grid = np.arange(1_600_000_000_000, 1_600_000_240_000, p.BAR_MS, dtype=np.int64)
+    aligned_start = (1_600_000_000_000 // p.BAR_MS) * p.BAR_MS
+    grid = np.arange(aligned_start, aligned_start + 4 * p.BAR_MS, p.BAR_MS, dtype=np.int64)
     frame = pd.DataFrame(
         {
             "open_time_ms": [grid[0], grid[1], grid[3]],
