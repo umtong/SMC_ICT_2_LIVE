@@ -21,7 +21,9 @@ def next_event_entry_index(touch_index: int, bar_count: int) -> int | None:
 
 def target_crossed(side: Side, bar: Bar, target: float, trade_through_bps: float) -> bool:
     offset = trade_through_bps / 10_000
-    return bar.high > target * (1 + offset) if side == 1 else bar.low < target * (1 - offset)
+    threshold = target * (1 + side * offset)
+    tolerance = max(abs(target), 1.0) * 1e-12
+    return bar.high > threshold + tolerance if side == 1 else bar.low < threshold - tolerance
 
 
 def stop_crossed(side: Side, bar: Bar, stop: float) -> bool:
