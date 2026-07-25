@@ -1,4 +1,4 @@
-name: L2 depth and official trade alignment audit
+name: L2 independent tick sample integrity
 
 on:
   pull_request:
@@ -12,134 +12,116 @@ permissions:
   contents: read
 
 concurrency:
-  group: l2-maker-alignment-${{ github.event.pull_request.number || github.ref }}
+  group: l2-maker-independent-sample-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  audit:
+  sample:
     runs-on: ubuntu-24.04
-    timeout-minutes: 340
+    timeout-minutes: 90
     env:
-      PYTHONUNBUFFERED: "1"
-      HF_HUB_DISABLE_TELEMETRY: "1"
-      HF_HUB_ETAG_TIMEOUT: "120"
-      HF_HUB_DOWNLOAD_TIMEOUT: "600"
-      ROOT: ${{ github.workspace }}/research_runs/l2_maker_alignment_audit
-      SOURCE_ROOT: ${{ github.workspace }}/research_runs/l2_maker_alignment_audit/source
-      CACHE: ${{ github.workspace }}/.cache/l2_maker_alignment_audit
-
+      OUT: ${{ github.workspace }}/research_runs/l2_independent_sample_v1
+      RAW: ${{ runner.temp }}/tardis_sample
+      BASE: https://datasets.tardis.dev/v1/binance-futures
+      DATE_PATH: 2025/08/01
+      DATE_ISO: 2025-08-01
+      SYMBOL: BTCUSDT
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Reconstruct and verify immutable V3 source bundle
-        shell: bash
+      - name: Download independent normalized BBO, trades and top-five depth
         run: |
           set -euo pipefail
-          mkdir -p "$SOURCE_ROOT" "$ROOT" "$CACHE"
-          python - <<'PY'
-          from __future__ import annotations
-          import base64, gzip, hashlib, io, json, subprocess, tarfile
-          from pathlib import Path, PurePosixPath
+          mkdir -p "$OUT" "$RAW"
+          printf 'data_type,compressed_bytes,row_count,elapsed_seconds\n' > "$OUT/sample_metrics.csv"
+          : > "$OUT/SOURCE_SHA256SUMS.txt"
+          for kind in book_ticker trades book_snapshot_5; do
+            url="$BASE/$kind/$DATE_PATH/$SYMBOL.csv.gz"
+            file="$RAW/${SYMBOL}_${kind}_${DATE_ISO}.csv.gz"
+            start=$(date +%s)
+            echo "DOWNLOAD $url"
+            curl -L --fail --silent --show-error \
+              --retry 3 --retry-all-errors --connect-timeout 30 --max-time 3600 \
+              --user-agent 'SMC-ICT-2-LIVE-research/1.0' \
+              --max-filesize 8589934592 \
+              --output "$file" "$url"
+            elapsed=$(( $(date +%s) - start ))
+            gzip -t "$file"
+            sha256sum "$file" >> "$OUT/SOURCE_SHA256SUMS.txt"
+            bytes=$(stat --printf='%s' "$file")
+            rows=$(gzip -cd "$file" | wc -l)
+            printf '%s,%s,%s,%s\n' "$kind" "$bytes" "$rows" "$elapsed" >> "$OUT/sample_metrics.csv"
+            gzip -cd "$file" | sed -n '1,6p' > "$OUT/${kind}_head.csv"
+            df -h "$RAW" | tee -a "$OUT/disk_usage.log"
+          done
 
-          transport = Path("research/l2_maker_toxicity_v1/v3_source")
-          output = Path("research_runs/l2_maker_alignment_audit/source")
-          manifest = json.loads((transport / "manifest.json").read_text(encoding="utf-8"))
-          encoded = b"".join(path.read_bytes() for path in sorted(transport.glob("source_bundle.tar.gz.b64.part*")))
-          def verify(label, payload, bytes_expected, sha_expected):
-              assert len(payload) == bytes_expected, (label, len(payload), bytes_expected)
-              assert hashlib.sha256(payload).hexdigest() == sha_expected, label
-          verify("base64", encoded, manifest["bundle"]["base64_bytes"], manifest["bundle"]["base64_sha256"])
-          compressed = base64.b64decode(encoded, validate=True)
-          verify("gzip", compressed, manifest["bundle"]["gzip_bytes"], manifest["bundle"]["gzip_sha256"])
-          tar_bytes = gzip.decompress(compressed)
-          verify("tar", tar_bytes, manifest["bundle"]["tar_bytes"], manifest["bundle"]["tar_sha256"])
-          expected_names = set(manifest["files"])
-          with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as archive:
-              members = archive.getmembers()
-              assert {m.name for m in members} == expected_names
-              for member in members:
-                  pure = PurePosixPath(member.name)
-                  assert member.isfile() and not pure.is_absolute() and ".." not in pure.parts and len(pure.parts) == 1
-                  payload = archive.extractfile(member).read()
-                  spec = manifest["files"][member.name]
-                  verify(member.name, payload, spec["bytes"], spec["sha256"])
-                  (output / member.name).write_bytes(payload)
-          compile((output / "run.py").read_bytes(), str(output / "run.py"), "exec")
-          compile((output / "test_run.py").read_bytes(), str(output / "test_run.py"), "exec")
-          payload = {
-              "status": "PASS",
-              "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-              "bundle_manifest": manifest,
+      - name: Build immutable sample manifest
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+          out=Path(os.environ['OUT'])
+          metrics={r['data_type']:r for r in csv.DictReader((out/'sample_metrics.csv').open())}
+          sha={}
+          for line in (out/'SOURCE_SHA256SUMS.txt').read_text().splitlines():
+              digest, path=line.split(maxsplit=1)
+              name=Path(path).name
+              for kind in ('book_ticker','trades','book_snapshot_5'):
+                  if f'_{kind}_' in name: sha[kind]=digest
+          rows=[]
+          for kind in ('book_ticker','trades','book_snapshot_5'):
+              m=metrics[kind]
+              rows.append({
+                  'exchange':'binance-futures','symbol':'BTCUSDT','date':'2025-08-01',
+                  'data_type':kind,'compressed_bytes':int(m['compressed_bytes']),
+                  'row_count':int(m['row_count']),'download_seconds':int(m['elapsed_seconds']),
+                  'sha256':sha[kind],
+                  'url':f'https://datasets.tardis.dev/v1/binance-futures/{kind}/2025/08/01/BTCUSDT.csv.gz',
+              })
+          payload={
+              'study':'L2_INDEPENDENT_SINGLE_SAMPLE_INTEGRITY_V1',
+              'source':'Tardis normalized tick CSV exported from captured exchange WebSocket feeds',
+              'event_order_contract':'CSV row order is original capture order; local_timestamp is availability clock',
+              'strategy_outcomes_opened':False,'orders_simulated':False,
+              'rows':rows,
           }
-          Path("research_runs/l2_maker_alignment_audit/reconstruction.json").write_text(
-              json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
-          )
+          (out/'manifest.json').write_text(json.dumps(payload,indent=2,sort_keys=True),encoding='utf-8')
+          summary={'available_count':len(rows),'total_compressed_bytes':sum(x['compressed_bytes'] for x in rows),
+                   'total_rows':sum(x['row_count'] for x in rows),
+                   'strategy_outcomes_opened':False,'orders_simulated':False}
+          (out/'summary.json').write_text(json.dumps(summary,indent=2,sort_keys=True),encoding='utf-8')
+          print(json.dumps(summary,sort_keys=True))
           PY
 
-      - name: Install fixed audit environment
-        run: |
-          set -euo pipefail
-          python -m pip install --upgrade "pip==25.1.1"
-          python -m pip install \
-            "numpy==2.1.3" \
-            "pandas==2.2.3" \
-            "pyarrow==18.1.0" \
-            "scikit-learn==1.6.1" \
-            "huggingface_hub==0.27.1" \
-            "hf_xet==1.1.10" \
-            "pytest==8.3.4"
-
-      - name: Run V3 causality and execution regression tests
-        run: |
-          set -euo pipefail
-          pytest -q "$SOURCE_ROOT/test_run.py" 2>&1 | tee "$ROOT/unit_tests.log"
-
-      - name: Audit fit-period L2 and official aggTrade alignment without strategy outcomes
-        run: |
-          set -euo pipefail
-          python research/l2_maker_toxicity_v1/audit_alignment.py \
-            --source "$SOURCE_ROOT/run.py" \
-            --output "$ROOT" \
-            --cache "$CACHE" \
-            --symbols BTCUSDT ETHUSDT \
-            --dates 2026-03-05 2026-03-09 2026-03-13 2026-03-16 \
-            2>&1 | tee "$ROOT/alignment_audit.log"
-
-      - name: Assert no outcome or live state was opened
+      - name: Assert research-only state
         if: always()
         run: |
+          set -euo pipefail
           python - <<'PY'
-          import json
+          import json, os
           from pathlib import Path
-          root=Path("research_runs/l2_maker_alignment_audit")
-          payload={
-            "strategy_outcomes_opened":False,
-            "orders_simulated":False,
-            "terminal_dates_opened":False,
-            "orders_submitted":False,
-            "paper_live_enabled":False,
-            "alignment_audit_present":(root/"alignment_audit.json").exists(),
-          }
-          (root/"wrapper_status.json").write_text(json.dumps(payload,indent=2,sort_keys=True),encoding="utf-8")
-          print(json.dumps(payload,sort_keys=True))
+          out=Path(os.environ['OUT']); out.mkdir(parents=True,exist_ok=True)
+          status={'strategy_outcomes_opened':False,'orders_simulated':False,'terminal_dates_opened':False,
+                  'orders_submitted':False,'paper_live_enabled':False,'champion_eligible':False}
+          if (out/'summary.json').exists(): status.update(json.loads((out/'summary.json').read_text()))
+          assert not status['strategy_outcomes_opened'] and not status['orders_simulated']
+          (out/'wrapper_status.json').write_text(json.dumps(status,indent=2,sort_keys=True))
+          print(json.dumps(status,sort_keys=True))
           PY
 
       - name: Record immutable output hashes
         if: always()
         run: |
           set -euo pipefail
-          mkdir -p "$ROOT"
-          find "$ROOT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$ROOT/OUTPUT_SHA256SUMS.txt"
+          mkdir -p "$OUT"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: l2-maker-alignment-${{ github.sha }}
-          path: research_runs/l2_maker_alignment_audit
+          name: l2-independent-sample-${{ github.sha }}
+          path: research_runs/l2_independent_sample_v1
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
