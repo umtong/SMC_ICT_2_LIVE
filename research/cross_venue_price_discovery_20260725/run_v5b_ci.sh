@@ -39,11 +39,13 @@ python -m py_compile \
   "$root/cross_venue_development_v5.py" \
   "$root/cross_venue_development_v5b.py" \
   "$root/test_cross_venue_execution_v5.py" \
-  "$root/test_cross_venue_execution_v5b.py"
+  "$root/test_cross_venue_execution_v5b.py" \
+  "$root/test_cross_venue_development_v5b.py"
 
 PYTHONPATH="$root" pytest -q \
   "$root/test_cross_venue_execution_v5.py" \
   "$root/test_cross_venue_execution_v5b.py" \
+  "$root/test_cross_venue_development_v5b.py" \
   2>&1 | tee "$runroot/tests.log"
 PYTHONPATH="$root" python "$root/source_probe_v2.py" --self-test \
   --output "$runroot" 2>&1 | tee "$runroot/probe_self_test.log"
@@ -61,6 +63,7 @@ sha256sum \
   "$root/cross_venue_development_v5b.py" \
   "$root/test_cross_venue_execution_v5.py" \
   "$root/test_cross_venue_execution_v5b.py" \
+  "$root/test_cross_venue_development_v5b.py" \
   "$root/run_v5b_ci.sh" \
   > "$runroot/INPUT_SHA256SUMS.txt"
 
