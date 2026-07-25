@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260725-2232-XSEC-FUNDING-001",
+  "base_revision": 7,
+  "symbols": [
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT",
+    "SOLUSDT", "DOGEUSDT", "LTCUSDT", "LINKUSDT", "BCHUSDT"
+  ],
+  "archive_start": "2021-01",
+  "archive_end": "2024-12",
+  "warmup_start": "2021-01-01T00:00:00Z",
+  "development": ["2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+  "selection": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+  "validation": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+  "families": [
+    "funding_level_reversal",
+    "funding_level_continuation",
+    "funding_change_reversal",
+    "funding_change_continuation",
+    "aligned_crowding_reversal",
+    "aligned_crowding_continuation",
+    "disagreement_continuation",
+    "disagreement_reversal"
+  ],
+  "basket_sizes": [1, 2],
+  "holding_hours": [3, 6],
+  "min_abs_scores": [0.25, 0.5, 0.75],
+  "cost_bps": [12, 18, 24],
+  "min_prior_24h_quote_volume": 50000000.0,
+  "min_cross_section": 6,
+  "entry_delay_hours": 1,
+  "initial_gate": {
+    "minimum_events": 180,
+    "minimum_leg_trades": 720,
+    "require_positive_growth_at_bps": [12, 18],
+    "require_positive_top10_removed_at_bps": 12
+  },
+  "selection_gate": {
+    "minimum_events": 180,
+    "require_positive_growth_at_bps": [12, 18],
+    "require_positive_top10_removed_at_bps": 12
+  },
+  "portfolio": {
+    "gross_notional": 1.0,
+    "long_gross": 0.5,
+    "short_gross": 0.5,
+    "account_nav_start": 1.0,
+    "orders_submitted": false
+  }
+}

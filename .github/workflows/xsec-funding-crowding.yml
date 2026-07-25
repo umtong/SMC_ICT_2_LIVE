@@ -1,0 +1,100 @@
+name: Cross-sectional funding crowding research
+
+on:
+  push:
+    branches:
+      - agent/r7-xsec-funding-crowding-001
+    paths:
+      - "research/xsec_funding_crowding_20260725/**"
+      - ".github/workflows/xsec-funding-crowding.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/xsec_funding_crowding_20260725/**"
+      - ".github/workflows/xsec-funding-crowding.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xsec-funding-crowding-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r7-xsec-funding-crowding-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed research environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "pytest==8.3.4"
+
+      - name: Restore immutable runner and validate causal invariants
+        run: |
+          set -euo pipefail
+          python research/xsec_funding_crowding_20260725/restore_runner.py
+          python scripts/validate_project.py
+          python research/xsec_funding_crowding_20260725/test_causality.py
+          python -m py_compile \
+            research/xsec_funding_crowding_20260725/download_data.py \
+            research/xsec_funding_crowding_20260725/run_research.py
+
+      - name: Download checksum-verified official archives
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/xsec-funding
+          python research/xsec_funding_crowding_20260725/download_data.py \
+            --root /tmp/xsec-funding \
+            --config research/xsec_funding_crowding_20260725/config.json \
+            --workers 12 | tee /tmp/xsec-funding/download.log
+
+      - name: Run staged market-neutral research
+        run: |
+          set -euo pipefail
+          python research/xsec_funding_crowding_20260725/run_research.py \
+            --root /tmp/xsec-funding \
+            --config research/xsec_funding_crowding_20260725/config.json \
+            --output /tmp/xsec-funding/outputs | tee /tmp/xsec-funding/research.log
+
+      - name: Verify output inventory
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, pathlib
+          out = pathlib.Path('/tmp/xsec-funding/outputs')
+          inventory = json.loads((out / 'artifact_inventory.json').read_text())
+          observed = {}
+          for path in out.iterdir():
+              if path.is_file() and path.name != 'artifact_inventory.json':
+                  observed[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+          registered = {row['path']: row['sha256'] for row in inventory if row['path'] != 'artifact_inventory.json'}
+          assert observed == registered, (set(observed), set(registered))
+          compact = json.loads((out / 'compact_result.json').read_text())
+          assert compact['hard_valid'] is True
+          assert compact['orders_submitted'] is False
+          print(json.dumps(compact, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload immutable evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xsec-funding-crowding-evidence
+          path: |
+            /tmp/xsec-funding/manifest.json
+            /tmp/xsec-funding/download.log
+            /tmp/xsec-funding/research.log
+            /tmp/xsec-funding/outputs/**
+          if-no-files-found: error
+          retention-days: 14
