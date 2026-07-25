@@ -27,8 +27,21 @@ python research/event_tape_burst_20260726/run_screen.py run \
   --output artifacts/event_tape_burst
 ```
 
-The run downloads only the preregistered 2023 BTCUSDT/ETHUSDT daily archives. It writes source hashes, fit thresholds, development diagnostics, all candidate metrics, a compact result summary and an artifact inventory. The checked-in transport reconstructs `run_screen.py` only after verifying the base64, gzip and raw-source SHA-256 values.
+The run downloads only the preregistered 2023 BTCUSDT/ETHUSDT daily archives. It writes source hashes, fit thresholds, development diagnostics, all candidate metrics, a compact result summary and an artifact inventory. The checked-in transport verifies the original base64, gzip and raw-source SHA-256 values, applies one checksum-verified correction to the absorption threshold key, and verifies the final executable source hash.
 
-## Interpretation
+## Result
 
-A zero-survivor result closes this exact event-time pace/control formulation without opening 2024. A survivor is still not deployable: it must first be reconstructed on broader 2023 coverage, frozen before 2024, converted from markouts into structural entries/exits, and tested with exact Bybit BBO/depth, costs, funding, risk sizing and account NAV.
+`RES-20260726-EVENT-TAPE-FATAL-001` is a hard-valid negative result:
+
+- 28,141 labeled development events and 256 frozen candidates;
+- zero development-gate survivors;
+- zero positive total-return candidates at 12, 18 or 24 bp;
+- the best candidate with at least 60 accepted trades had 64 trades and lost 6.9762%, 10.4855% and 13.8645% at 12, 18 and 24 bp respectively;
+- at 18 bp that candidate averaged -17.2837 bp per trade, had zero positive symbol-date segments and lost 11.1916% after removing the largest 10% of positive trades;
+- all official 2024-2026 periods remained unopened and no order was submitted.
+
+The successful CI run is `30173874538`; the evidence artifact is `8623675977` with SHA-256 `00bde8111a31838a05cb58f25e3b448ebb9918b5bf0600fd694e884035a76f13`. Exact machine-readable evidence is in `RESULT.json` and `CI_ATTESTATION.json`.
+
+## Decision
+
+Close this exact event-time pace/control continuation and absorption-reversal formulation. It did not produce a positive after-cost candidate even at 12 bp, so broadening the reconstruction, opening 2024 or refining execution would be low information value. The project-wide first place and live permission are unchanged.
