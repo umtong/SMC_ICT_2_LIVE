@@ -100,9 +100,45 @@ jobs:
           find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%P\0' | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           sha256sum --check SHA256SUMS.txt
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload compact scientific evidence
+        uses: actions/upload-artifact@v4
         with:
-          name: round-number-acceptance-${{ github.sha }}
-          path: research_runs/round_number_acceptance
+          name: round-number-evidence-${{ github.sha }}
+          path: |
+            research_runs/round_number_acceptance/output
+            research_runs/round_number_acceptance/run.log
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload raw BTC archive chunk A
+        uses: actions/upload-artifact@v4
+        with:
+          name: round-number-raw-btc-a-${{ github.sha }}
+          path: |
+            research_runs/round_number_acceptance/cache/BTCUSDT/BTCUSDT2023-01-15.csv.gz
+            research_runs/round_number_acceptance/cache/BTCUSDT/BTCUSDT2023-03-19.csv.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload raw BTC archive chunk B
+        uses: actions/upload-artifact@v4
+        with:
+          name: round-number-raw-btc-b-${{ github.sha }}
+          path: |
+            research_runs/round_number_acceptance/cache/BTCUSDT/BTCUSDT2023-05-21.csv.gz
+            research_runs/round_number_acceptance/cache/BTCUSDT/BTCUSDT2023-07-16.csv.gz
+            research_runs/round_number_acceptance/cache/BTCUSDT/BTCUSDT2023-09-17.csv.gz
+            research_runs/round_number_acceptance/cache/BTCUSDT/BTCUSDT2023-11-19.csv.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload raw ETH archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: round-number-raw-eth-${{ github.sha }}
+          path: research_runs/round_number_acceptance/cache/ETHUSDT/*.csv.gz
+          if-no-files-found: error
+          compression-level: 0
           retention-days: 30
