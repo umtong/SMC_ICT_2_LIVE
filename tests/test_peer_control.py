@@ -7,13 +7,14 @@ from scripts.common import read_jsonl
 ROOT = Path(__file__).parents[1]
 
 
-def test_peer_parallel_mode_has_no_mandatory_coordinator():
+def test_work_configuration_uses_claims_and_revision_checks():
     project = tomllib.loads((ROOT / "config/project.toml").read_text(encoding="utf-8"))
     workers = tomllib.loads((ROOT / "config/workers.toml").read_text(encoding="utf-8"))
-    assert project["chatgpt"]["execution_mode"] == "continuous_peer_parallel"
-    assert project["chatgpt"]["central_coordinator_required"] is False
-    assert workers["concurrency"]["fixed_sequence"] is False
-    assert workers["concurrency"]["central_coordinator_required"] is False
+    assert project["state"]["update_protocol"] == "optimistic_revision"
+    assert project["data"]["reuse_before_external_search"] is True
+    assert workers["work"]["state_update_protocol"] == "optimistic_revision"
+    assert workers["defaults"]["check_active_claims"] is True
+    assert workers["defaults"]["reuse_registered_artifacts"] is True
 
 
 def test_work_claim_registry_has_deduplication_fields():
