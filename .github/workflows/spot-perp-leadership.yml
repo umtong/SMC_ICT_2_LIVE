@@ -37,6 +37,16 @@ jobs:
           python -m py_compile research/spot_perp_leadership/gap_safe_runner.py
           python -m research.spot_perp_leadership.pipeline self-test
           python -m research.spot_perp_leadership.gap_safe_runner self-test
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          amendment = json.loads(Path('research/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json').read_text())
+          assert amendment['candidate_pnl_observed_before_amendment'] is False
+          assert amendment['unchanged_contract']['candidate_count'] == 496
+          assert amendment['unchanged_contract']['parameter_or_gate_retuning'] is False
+          assert not any(amendment['stage_seal_status_at_amendment'].values())
+          print('PREREGISTRATION_AMENDMENT_PASS')
+          PY
       - name: Reuse checksum-verified diagnostic archives when available
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,6 +71,8 @@ jobs:
             artifacts/spot_perp_leadership/source_snapshot/pipeline.py
           cp research/spot_perp_leadership/gap_safe_runner.py \
             artifacts/spot_perp_leadership/source_snapshot/gap_safe_runner.py
+          cp research/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json \
+            artifacts/spot_perp_leadership/PREREGISTRATION_AMENDMENT_001.json
           set +e
           python -m research.spot_perp_leadership.gap_safe_runner staged-run \
             --output artifacts/spot_perp_leadership \
