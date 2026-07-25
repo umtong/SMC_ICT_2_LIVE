@@ -1,0 +1,54 @@
+{
+  "amendment_id": "AMD-20260726-BYBIT-CONSENSUS-LAG-001",
+  "candidate_pnl_observed_before_amendment": true,
+  "claim_id": "CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001",
+  "corrected_result_id": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002",
+  "correction": {
+    "execution_state": "Unchanged: exact entry and exit inside an equal-local-timestamp group are resolved against the requested side.",
+    "new_engine_version": "BYBIT_CONSENSUS_LAG_V1B_COMPLETED_MESSAGE_GROUP",
+    "signal_state": "At a completed 100ms bucket boundary, consume every quote row with local_timestamp strictly less than the boundary and use the final row of the latest timestamp group."
+  },
+  "observed_diagnostic": {
+    "artifact_id": 8624154724,
+    "artifact_sha256": "16ecb1a2446160b3abc475ab8caf16242049b7d3a2ffb73dcd103c43727516c2",
+    "best_fixed_10s_18bps_mean_bps": -20.64338026033809,
+    "best_oracle_30s_18bps_mean_bps": 8.326983029845302,
+    "best_oracle_30s_18bps_trades": 1,
+    "fit_event_outcome_rows": 10,
+    "fit_survivor_count": 0
+  },
+  "official_source_contract": {
+    "data_faq": "A local order-book state becomes consistent only after all rows sharing a message local_timestamp have been processed.",
+    "downloadable_csv_docs": "Row order reflects original capture order; quotes are reconstructed top-of-book records from L2 updates.",
+    "urls": [
+      "https://docs.tardis.dev/downloadable-csv-files",
+      "https://docs.tardis.dev/faq/data"
+    ]
+  },
+  "root_cause": "The first engine selected the final reconstructed quote row before each completed bucket boundary but then invalidated that state whenever the preceding row had the same local_timestamp. Tardis quotes are reconstructed BBO rows, CSV row order preserves original capture order, and multiple rows can belong to one captured WebSocket message. Once the entire same-local-timestamp group is before the bucket boundary, its final row is the completed causal message state. The extra invalidation discarded almost all active quote states and did not implement the intended data contract.",
+  "schema_version": 1,
+  "supersedes_diagnostic_result_id": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-001",
+  "unchanged_contract": {
+    "candidate_count": 324,
+    "candidate_parameters": true,
+    "costs": true,
+    "development_dates": [
+      "2023-09-01",
+      "2023-11-01",
+      "2023-12-01"
+    ],
+    "entry_latencies": true,
+    "fit_dates": [
+      "2023-03-01",
+      "2023-05-01",
+      "2023-07-01"
+    ],
+    "global_slot": true,
+    "notional_and_impact": true,
+    "official_2024_2026_opened": false,
+    "parameter_or_gate_retuning": false,
+    "stage_gates": true,
+    "symbols_and_venues": true
+  },
+  "validity_decision": "The first diagnostic is preserved but hard-invalid for deciding the intended family. Re-run the exact frozen candidate/gate contract after the source-semantic correction. No official-period data may open from the invalidated run."
+}
