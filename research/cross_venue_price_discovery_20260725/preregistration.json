@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260725-1850-XVENUE-001",
+  "status": "PREREGISTERED_BEFORE_ANY_PRICE_OR_PNL_SCREEN",
+  "created_at": "2026-07-25T18:50:00+09:00",
+  "objective": "Test whether exchange-specific informed-flow shocks and transient fair-value disagreement create executable single-leg Binance USD-M BTCUSDT/ETHUSDT alpha after actual quote, latency, fee and impact costs.",
+  "economic_logic": {
+    "smc_ict_translation": "An external-liquidity run is accepted only when the initiating venue shows aggressive-flow persistence and quote depletion; a sweep/rejection is accepted only after the initiating flow decays or reverses and the target venue replenishes against the move. Fair value is cross-venue and point-in-time, not a retrospectively painted chart level.",
+    "microstructure": "Perpetual markets share the same underlying but receive information and forced inventory asynchronously. The target venue can briefly lag a price-discovering venue, or overshoot after consuming local liquidity. The edge must exceed the target venue's observed spread, fee, latency and size-dependent impact.",
+    "why_distinct": "This is tick/quote cross-exchange propagation, not Binance spot-perp leadership, five-minute cross-asset lead-lag, exact funding settlement, OI, single-venue L1 routing or candlestick pattern research."
+  },
+  "sources": {
+    "development_provider": "Tardis.dev public first-day-of-month normalized samples",
+    "venues": ["binance-futures", "bybit"],
+    "data_types": ["trades", "quotes"],
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "source_identity": "Every downloaded gzip is recorded by canonical URL, response headers, bytes and SHA-256. Missing or schema-incompatible files cause a closed failure, not imputation.",
+    "upgrade_rule": "A passing sample study must be reproduced on official venue archives or a separately registered full tick dataset before promotion."
+  },
+  "time_splits": {
+    "development_days": "UTC first calendar day of every month from 2022-01 through 2023-12",
+    "selection_days": "UTC first calendar day of every month in 2024, physically unopened until the development gate passes",
+    "confirmation_days": "UTC first calendar day of every month in 2025, physically unopened until a single frozen 2024 primary passes",
+    "2026_opened": false
+  },
+  "information_availability": {
+    "event_clock": "exchange timestamp with local timestamp used only for latency diagnostics",
+    "signal": "only trades and quotes observed at or before decision timestamp",
+    "entry": "first Binance quote at or after decision timestamp plus preregistered latency",
+    "exit": "first Binance quote satisfying a causal exit condition or the first quote at/after maximum horizon",
+    "no_future_fill": true,
+    "simultaneous_timestamp_policy": "target quote must have an exchange timestamp no earlier than the final signal event; ties are resolved by file sequence and then adverse execution"
+  },
+  "families": {
+    "bybit_to_binance_propagation": "Bybit aggressive-flow and mid-price impulse persists while Binance has realized only a bounded fraction of the cross-venue move and its own flow does not contradict it; trade Binance toward the Bybit-implied fair value.",
+    "binance_overshoot_fade": "Binance moves beyond the contemporaneous Bybit fair-value response after Binance flow decays or flips; trade Binance back toward the cross-venue fair value.",
+    "simultaneous_shock_basis_snapback": "Both venues move in one direction but the Binance-Bybit executable basis becomes extreme; enter only after the basis has begun to contract and local flow no longer supports widening."
+  },
+  "parameter_grid": {
+    "observation_ms": [250, 1000, 3000],
+    "minimum_leader_displacement_spreads": [2.0, 4.0, 8.0],
+    "minimum_aggressive_notional_imbalance": [0.60, 0.75],
+    "maximum_follower_response_fraction": [0.25, 0.50],
+    "latency_ms": [100, 250, 500],
+    "maximum_holding_ms": [1000, 3000, 10000],
+    "protective_stop_spreads": [4.0, 8.0],
+    "basis_z_threshold": [2.0, 3.0]
+  },
+  "portfolio_and_execution": {
+    "target_venue": "Binance USD-M",
+    "one_global_open_or_pending_slot": true,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "maximum_observed_top_quote_participation": 0.05,
+    "entry_and_exit": "marketable using observed bid/ask plus size-dependent adverse impact; no mid-price fills",
+    "fee_bps_per_side": [5.0, 7.5, 10.0],
+    "ambiguous_event_order": "adverse to the strategy",
+    "gap_or_quote_jump": "actual first observable adverse quote",
+    "funding": "not material for ten-second maximum holds; any settlement timestamp collision blocks entry rather than assuming favorable ordering"
+  },
+  "development_gate": {
+    "minimum_trades": 500,
+    "minimum_trades_per_sample_day_median": 10,
+    "positive_total_return_at_all_fee_levels": true,
+    "positive_2022_and_2023": true,
+    "minimum_positive_day_fraction": 0.60,
+    "positive_after_removing_top_10_percent_trades": true,
+    "maximum_top_five_positive_profit_share": 0.20,
+    "minimum_profit_factor_at_5bps_per_side": 1.10,
+    "maximum_drawdown": 0.20,
+    "maximum_single_symbol_positive_pnl_share": 0.70,
+    "representative_cap": 12,
+    "diversity_before_rank": "preserve one representative per family and latency bucket before filling by robust score"
+  },
+  "selection_gate": {
+    "minimum_trades": 200,
+    "positive_total_return_at_all_fee_levels": true,
+    "minimum_positive_day_fraction": 0.58,
+    "positive_after_removing_top_10_percent_trades": true,
+    "minimum_profit_factor_at_5bps_per_side": 1.05,
+    "maximum_drawdown": 0.20
+  },
+  "confirmation_gate": {
+    "minimum_trades": 200,
+    "positive_total_return_at_all_fee_levels": true,
+    "minimum_positive_day_fraction": 0.58,
+    "positive_after_removing_top_10_percent_trades": true,
+    "minimum_profit_factor_at_5bps_per_side": 1.05,
+    "maximum_drawdown": 0.20,
+    "target_test_after_everything_frozen": "external-cashflow-adjusted net geometric daily NAV return >= 0.01"
+  },
+  "prohibitions": [
+    "No selection or confirmation URL request before its preceding frozen gate passes.",
+    "No target-return, leverage, latency or fee fitting.",
+    "No favorable use of same-timestamp event ordering.",
+    "No paper, testnet or live orders.",
+    "No Champion proposal from public sample days alone."
+  ]
+}
