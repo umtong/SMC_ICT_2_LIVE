@@ -18,6 +18,7 @@ HOT = [
     "control/result-registry.jsonl",
     "control/validation-cache.jsonl",
     "data/README.md",
+    "docs/folder-action-contract.md",
     "prompts/goal-worker.md",
 ]
 
