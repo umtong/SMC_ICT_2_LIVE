@@ -24,13 +24,16 @@ def generate_candidates(prereg: Mapping[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     continuation_grid = dict(common)
     continuation_grid.update(grid["continuation"])
+    stop_buffer_bps = float(prereg["account"]["structural_stop_buffer_bps"])
     for params in product_grid(continuation_grid):
+        params["structural_stop_buffer_bps"] = stop_buffer_bps
         params["family"] = "continuation"
         params["candidate_id"] = candidate_id(params)
         candidates.append(params)
     reversal_grid = dict(common)
     reversal_grid.update(grid["reversal"])
     for params in product_grid(reversal_grid):
+        params["structural_stop_buffer_bps"] = stop_buffer_bps
         params["family"] = "reversal"
         params["candidate_id"] = candidate_id(params)
         candidates.append(params)
@@ -51,9 +54,18 @@ def select_signals(
         & (frame["dominant_notional"] >= frame["threshold"])
         & (frame["dominance"] >= float(candidate["dominance_min"]))
     )
+    stop_buffer_bps = float(candidate.get("structural_stop_buffer_bps", 2.0))
     if candidate["family"] == "continuation":
+        entry = frame["entry_open_continuation"]
+        buffer = entry * stop_buffer_bps * 1e-4
+        entry_not_invalidated = np.where(
+            frame["force_direction"] > 0,
+            entry > frame["event_low_continuation"] - buffer,
+            entry < frame["event_high_continuation"] + buffer,
+        )
         mask = (
             base
+            & entry_not_invalidated
             & (frame["acceleration"] >= float(candidate["acceleration_min"]))
             & (frame["directional_return_bps"] >= float(candidate["impact_min_bps"]))
             & (frame["close_location"] >= float(candidate["close_location_min"]))
@@ -66,8 +78,17 @@ def select_signals(
         out["event_low"] = out["event_low_continuation"]
         out["decision_time"] = out["minute"]
     else:
+        entry = frame["entry_open_reversal"]
+        buffer = entry * stop_buffer_bps * 1e-4
+        # Reversal direction is opposite the forced-flow direction.
+        entry_not_invalidated = np.where(
+            frame["force_direction"] > 0,
+            entry < frame["event_high_reversal"] + buffer,
+            entry > frame["event_low_reversal"] - buffer,
+        )
         mask = (
             base
+            & entry_not_invalidated
             & (frame["directional_return_bps"] >= float(candidate["event_move_min_bps"]))
             & (frame["deceleration"] <= float(candidate["deceleration_max"]))
             & (frame["recovery"] >= float(candidate["recovery_min"]))
@@ -119,7 +140,7 @@ def resolve_signal(
             resolved=False,
         )
     direction = int(row["direction"])
-    buffer = entry * 2.0e-4
+    buffer = entry * float(candidate.get("structural_stop_buffer_bps", 2.0)) * 1e-4
     if direction > 0:
         raw_stop = float(row["event_low"]) - buffer
         minimum_stop = entry * float(candidate["min_stop_bps"]) * 1e-4
@@ -128,6 +149,8 @@ def resolve_signal(
         raw_stop = float(row["event_high"]) + buffer
         minimum_stop = entry * float(candidate["min_stop_bps"]) * 1e-4
         stop = max(raw_stop, entry + minimum_stop)
+    if (direction > 0 and entry <= raw_stop) or (direction < 0 and entry >= raw_stop):
+        raise ResearchError(f"entry crossed structural invalidation for {signal_id}")
     distance = abs(entry - stop)
     if not math.isfinite(distance) or distance <= 0:
         raise ResearchError(f"invalid stop distance for {signal_id}")
