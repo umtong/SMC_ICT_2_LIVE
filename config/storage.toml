@@ -1,4 +1,4 @@
-schema_version = 2
+schema_version = 3
 
 [policy]
 raw_files_immutable = true
@@ -6,16 +6,15 @@ processed_files_versioned = true
 deduplicate_by = ["canonical_url", "sha256"]
 large_file_threshold_mb = 10
 public_repo_contains_private_drive_ids = false
-public_information_may_be_used = true
-storage_permission_classification_required = false
-store_materials_used_in_research = true
+public_information_and_materials_usable = true
+register_research_used_material = true
 
 [efficiency]
 registry_lookup_before_external_search = true
 reuse_existing_raw_and_processed_material = true
-full_video_default = "do_not_store_unless_it_adds_unique_research_value"
-transcript_default = "store_when_used"
-paper_default = "store_or_link_whichever_best_supports_reuse"
+full_video_default = "store_only_when_uniquely_useful"
+transcript_default = "store_when_used_or_reusable"
+paper_default = "store_or_link_for_fast_reuse"
 unchanged_artifacts_are_not_rebuilt = true
 
 [github]
@@ -38,7 +37,7 @@ exclude = [
 
 [google_drive]
 store = [
-  "research-used public sources",
+  "research-used sources",
   "transcripts and source notes",
   "papers and technical materials",
   "market datasets",

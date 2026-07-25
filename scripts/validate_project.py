@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import tomllib
 
 from common import ROOT, read_jsonl
@@ -28,12 +29,20 @@ REQUIRED = [
     "schemas/validation-attestation.schema.json",
 ]
 
-RUNTIME_FILES = [
+AI_FACING_FILES = [
     "instructions/project-instructions.md",
     "prompts/goal-worker.md",
     "prompts/reconcile-state.md",
     "AGENTS.md",
+    "README.md",
+    "config/storage.toml",
     "control/current-state.md",
+    "control/decisions.md",
+    "data/README.md",
+    "docs/architecture.md",
+    "docs/data-retention.md",
+    "docs/drive-layout.md",
+    "docs/operating-playbook.md",
 ]
 
 FORBIDDEN_RUNTIME_PHRASES = [
@@ -50,6 +59,16 @@ FORBIDDEN_RUNTIME_PHRASES = [
     "fixed epoch",
     "serial handoff",
     "peer worker",
+    "central_coordinator_required",
+    "fixed_sequence",
+    "mandatory_coordinator",
+    "fixed_epoch",
+    "storage_permission_classification_required",
+    "every chat is an independent goal worker",
+    "all chats are peer workers",
+    "no chat waits",
+    "any chat may",
+    "별도 총괄",
 ]
 
 
@@ -104,6 +123,12 @@ def main() -> int:
         champion = json.loads((ROOT / "control/champion.json").read_text(encoding="utf-8"))
         if champion.get("schema_version") != 1:
             fail("champion schema_version", errors)
+        state_text = (ROOT / "control/current-state.md").read_text(encoding="utf-8")
+        match = re.search(r"(?m)^- revision:\s*(\d+)\s*$", state_text)
+        if not match:
+            fail("current state revision missing", errors)
+        elif champion.get("revision") != int(match.group(1)):
+            fail("Champion revision does not match current state", errors)
     except Exception as exc:
         fail(f"champion.json: {exc}", errors)
 
@@ -152,11 +177,11 @@ def main() -> int:
     except Exception as exc:
         fail(f"validation cache: {exc}", errors)
 
-    for rel in RUNTIME_FILES:
+    for rel in AI_FACING_FILES:
         text = (ROOT / rel).read_text(encoding="utf-8").lower()
         for phrase in FORBIDDEN_RUNTIME_PHRASES:
             if phrase.lower() in text:
-                fail(f"runtime meta-commentary in {rel}: {phrase}", errors)
+                fail(f"AI-facing meta-commentary in {rel}: {phrase}", errors)
 
     if (ROOT / "config/project.local.toml").exists():
         fail("config/project.local.toml must not be committed", errors)
