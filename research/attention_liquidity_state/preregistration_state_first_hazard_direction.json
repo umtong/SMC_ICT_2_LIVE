@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "HYP-20260725-STATE-FIRST-HAZARD-DIRECTION",
+  "parent_claim": "CLAIM-20260725-001-ATTENTION-LIQUIDITY",
+  "registered_at": "2026-07-25T16:00:00+09:00",
+  "pivot_reason": "All preregistered OHLCV attention mechanisms and the breadth switch failed. The next experiment changes both data and model structure rather than refining thresholds.",
+  "economic_hypothesis": "Depth depletion, VPIN and Hawkes intensity identify when a move large enough to pay costs is likely, while direction must be estimated separately from price, taker flow and book imbalance. Trading is allowed only when both opportunity hazard and direction confidence agree.",
+  "data": {
+    "discovery_state_panel": "/mnt/data/v76_btc_depth_data/BTCUSDT_depth_state_future_free_2023_2024.parquet",
+    "discovery_state_sha256": "18fddab1b7e5dc4a547f703a734e79d21e62326ded57d70f9ccd45a1d464a638",
+    "official_execution_panel": "official Binance Vision BTCUSDT USD-M 5-minute klines",
+    "official_execution_sha256": "8484a654e86a56e457bc8b63098a604f5a9b0b6a52bfd8c2325ecb77646e8e1f",
+    "restriction": "The derived state panel is discovery-only. Every survivor must be reconstructed from checksum-verified official Binance archives before Champion or Paper/Live consideration.",
+    "future_columns": "physically absent from the state input"
+  },
+  "information_contract": {
+    "state_known_at": "bar_time plus five minutes",
+    "oi_and_positioning": "delayed one additional completed five-minute bar",
+    "labels": "future path is used only as a training target after the entire horizon has elapsed",
+    "entry": "next five-minute official contract open",
+    "same_bar": "stop first",
+    "end_of_period": "no forced close",
+    "global_position": 1
+  },
+  "labels": {
+    "horizons_bars": [6, 12],
+    "hazard_barrier_return": 0.004,
+    "hazard": "either upward or downward official excursion from next open reaches 40bp within the horizon",
+    "direction": "the side whose official excursion reaches the larger magnitude; trained only on hazard-positive resolved examples"
+  },
+  "models": {
+    "families": ["LOGISTIC", "LIGHTGBM"],
+    "feature_sets": ["BASE", "FULL"],
+    "refit": "UTC month start",
+    "training_window_days": 180,
+    "minimum_training_rows": 20000,
+    "lightgbm": {"n_estimators": 120, "learning_rate": 0.03, "num_leaves": 7, "max_depth": 3, "min_child_samples": 300, "reg_lambda": 20.0, "random_state": 20260725},
+    "logistic": {"C": 0.1, "max_iter": 1000}
+  },
+  "feature_contract": {
+    "base": ["official returns", "official realized volatility", "official taker flow", "trade count", "average trade size", "RSI"],
+    "full_additions": ["depth imbalance", "VPIN", "VPIN bucket imbalance", "Hawkes buy/sell/net", "lagged OI change", "lagged long-short ratios"],
+    "rolling_normalization": "prior-only one-day and seven-day z scores"
+  },
+  "policy_grid": {
+    "hazard_probability_min": [0.55, 0.65, 0.75],
+    "direction_probability_distance_min": [0.05, 0.10],
+    "stop_lookback_bars": [6, 12],
+    "target_r": [1.5, 2.5, 3.5]
+  },
+  "chronology": {
+    "warmup_and_training": ["2023-01-01T00:00:00Z", "2023-07-01T00:00:00Z"],
+    "development_a": ["2023-07-01T00:00:00Z", "2023-10-01T00:00:00Z"],
+    "development_b": ["2023-10-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "validation": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"]
+  },
+  "execution": {
+    "base_cost": {"entry_fee_bp": 5.0, "exit_fee_bp": 5.0, "entry_slippage_bp": 2.0, "target_slippage_bp": 1.0, "stop_slippage_bp": 3.0},
+    "stress_multiplier": 1.5,
+    "risk_fraction": 0.01,
+    "max_notional_leverage": 10.0
+  },
+  "gates": {
+    "development_each": {"trades_min": 40, "pf_min": 1.10, "sum_r_positive": true, "stress_sum_r_positive": true, "top5_share_max": 0.50, "positive_month_fraction_min": 0.50},
+    "validation": {"trades_min": 150, "pf_min": 1.15, "sum_r_positive": true, "stress_sum_r_positive": true, "top5_share_max": 0.40, "positive_month_fraction_min": 0.50},
+    "promotion": "prohibited until official raw feature reconstruction and independent asset validation"
+  },
+  "search_count": 288,
+  "paper_live_authority": false
+}

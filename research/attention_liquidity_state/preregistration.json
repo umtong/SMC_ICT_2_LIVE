@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLAIM-20260725-001-ATTENTION-LIQUIDITY",
+  "registered_at": "2026-07-25T15:12:00+09:00",
+  "base_revision": 3,
+  "objective": "Discover a causal, cost-surviving four-asset intraday strategy whose account NAV geometric daily growth can reach at least 1% without liquidation or jackpot concentration.",
+  "hypothesis_origin": {
+    "registered_sources": "Twenty user-provided Korean YouTube transcripts",
+    "extracted_principles": [
+      "prefer the asset receiving abnormal attention and liquidity now rather than a permanently fixed symbol",
+      "distinguish genuine liquidity consumption from failed breakouts that trap aggressive participants",
+      "treat large aggressive flow with little price progress as absorption and require opposite-flow reacceptance"
+    ]
+  },
+  "datasets": {
+    "market": "Official Binance Vision USD-M completed 5-minute klines for BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT",
+    "mark": "Official Binance Vision USD-M completed 5-minute mark-price klines",
+    "funding": "Official Binance Vision USD-M historical funding-rate events",
+    "common_start": "2022-04-03T00:00:00Z",
+    "end_exclusive": "2026-01-01T00:00:00Z",
+    "sha256": {
+      "BTCUSDT_klines_5m": "8484a654e86a56e457bc8b63098a604f5a9b0b6a52bfd8c2325ecb77646e8e1f",
+      "ETHUSDT_klines_5m": "69656769106a76f8bbc7df4ea56e1273c2080d4e323073c1efa60b03a1c508e5",
+      "SOLUSDT_klines_5m": "3c69759b0b9f68e1d725ed9e30b97cc43f6cd87c386682c37ee801b9f10c5f21",
+      "XRPUSDT_klines_5m": "fcd31b0d5ee3bc25810c49d0afeaa60873db2f74b8651eeb8f45496b4c36de6f",
+      "BTCUSDT_mark_5m": "5b5107a7b55d899f913ef3ed6103ea20809541a9a2cfe3da27406c09e473c3c0",
+      "ETHUSDT_mark_5m": "270a37ae6da803b67ad29c104c87df7aadba0177c09d8fc2639b731d55f023f9",
+      "SOLUSDT_mark_5m": "b5290c0194126154d208e328201681cf439d6bcadd0b12bf8ed61df013471e9d",
+      "XRPUSDT_mark_5m": "be880037457d4eef920de86081ccb91c8fb06145bf2e8d8030a4a3d8c6af15c0",
+      "BTCUSDT_funding": "a018afba28c4599c1ddbb842899efabdb4d134241caff5c2608e37749ca5ffe5",
+      "ETHUSDT_funding": "7c218eaabcbaa8c70eb080a68aae2aee9e607b862761a931cd88a42b97935d73",
+      "SOLUSDT_funding": "cc9e2e7fcca6a45eb326bf6737e34e242e7f6ff449f47cbb237fbe1313a620bf",
+      "XRPUSDT_funding": "615ebde7c780fc2db67a6a28a778fd587d30ec0d425d314729025c2a0817fbbd"
+    }
+  },
+  "information_contract": {
+    "decision_time": "completed 5-minute bar close",
+    "entry_time": "next 5-minute bar open",
+    "rolling_features": "current observation excluded from every baseline and external-liquidity range",
+    "funding": "only unambiguous funding events strictly after entry bar and before exit bar are applied",
+    "same_bar": "stop wins stop/target ambiguity",
+    "gap_stop": "actual adverse open plus slippage",
+    "end_of_period": "no forced liquidation; unresolved state is reported and blocks later entries",
+    "global_state": "at most one position across all four symbols"
+  },
+  "mechanisms": {
+    "ATTENTION_BREAKOUT": {
+      "description": "cross-sectional abnormal quote-volume attention plus aligned breakout, close location and taker flow",
+      "grid": {
+        "attention_z": [1.0, 1.75],
+        "attention_top_k": [1, 2],
+        "range_lookback_bars": [12, 48],
+        "body_atr_min": [0.1, 0.25],
+        "aligned_flow_min": [0.1, 0.3],
+        "stop_lookback_bars": [6, 12],
+        "target_r": [1.5, 2.5, 3.5]
+      }
+    },
+    "ATTENTION_TRAP_REVERSAL": {
+      "description": "abnormal-attention external-liquidity sweep, close back inside, sweep-direction aggressive flow and opposite delivery",
+      "grid": {
+        "attention_z": [1.0, 1.75],
+        "attention_top_k": [1, 2],
+        "range_lookback_bars": [12, 48],
+        "sweep_depth_atr_min": [0.0, 0.1],
+        "directional_clv_min": [0.55, 0.65],
+        "sweep_flow_abs_min": [0.1, 0.3],
+        "target_r_cap": [1.5, 2.5, 3.5]
+      }
+    },
+    "ATTENTION_ABSORPTION_REACCEPTANCE": {
+      "description": "abnormal-attention aggressive-flow event with low price progress followed by opposite body and flow reacceptance",
+      "grid": {
+        "attention_z": [1.0, 1.75],
+        "attention_top_k": [1, 2],
+        "event_flow_abs_min": [0.3, 0.5],
+        "event_impact_atr_max": [0.25, 0.5],
+        "confirm_body_atr_min": [0.1, 0.25],
+        "confirm_flow_min": [0.0, 0.15],
+        "target_r": [1.5, 2.5, 3.5]
+      }
+    }
+  },
+  "execution": {
+    "base": {"entry_fee_bp": 5.0, "exit_fee_bp": 5.0, "entry_slippage_bp": 2.0, "target_slippage_bp": 1.0, "stop_slippage_bp": 3.0},
+    "stress_multiplier": 1.5,
+    "risk_fraction_for_selection": 0.01,
+    "max_notional_leverage": 10.0,
+    "minimum_net_reward_risk": 1.10
+  },
+  "chronology": {
+    "development_a": ["2022-05-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "development_b": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "validation": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "sealed_confirmation": ["2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z"]
+  },
+  "gates": {
+    "development_each": {"minimum_closed_trades": 30, "sum_r_positive": true, "profit_factor_min": 1.10, "stress_sum_r_positive": true, "top5_positive_r_share_max": 0.50, "positive_month_fraction_min": 0.50},
+    "validation": {"minimum_closed_trades": 40, "sum_r_positive": true, "profit_factor_min": 1.15, "stress_sum_r_positive": true, "top5_positive_r_share_max": 0.50, "positive_month_fraction_min": 0.50},
+    "sealed_confirmation_open_condition": "the development-selected frozen rule passes every validation gate without parameter changes",
+    "promotion": {"net_geometric_daily_growth_min": 0.01, "no_forced_liquidation": true, "non_concentrated": true, "cost_stress_positive": true}
+  },
+  "selection": "Rank within each mechanism using development periods only; select at most one frozen rule per mechanism, then compare their frozen validation results. Never select using validation or confirmation outcomes.",
+  "paper_live_authority": false
+}
