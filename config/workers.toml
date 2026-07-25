@@ -1,10 +1,6 @@
-schema_version = 1
+schema_version = 2
 
-[concurrency]
-mode = "continuous_peer_parallel"
-central_coordinator_required = false
-fixed_sequence = false
-shared_objective = true
+[work]
 state_update_protocol = "optimistic_revision"
 work_claims_path = "control/work-claims.csv"
 result_registry_path = "control/result-registry.jsonl"
@@ -13,16 +9,13 @@ claim_lease_hours = 8
 intentional_replication_requires_reason = true
 scope_fingerprint_required = true
 
-[worker_defaults]
-goal_directed = true
-scope_is_advisory = true
-can_change_focus = true
-can_update_shared_state = true
-must_check_registries = true
-must_check_active_claims = true
-must_check_open_pull_requests = true
-must_write_run_report = true
-must_use_own_branch_for_repository_changes = true
+[defaults]
+select_highest_value_unresolved_work = true
+reuse_registered_artifacts = true
+check_active_claims = true
+check_open_pull_requests = true
+write_run_report = true
+use_own_branch_for_repository_changes = true
 
 [[focus_profile]]
 id = "ALPHA_DISCOVERY"
@@ -41,5 +34,5 @@ id = "PORTFOLIO_AND_ACCOUNT_PATH"
 hint = "combine independent alpha and optimize account growth, drawdown, liquidation safety, and capital efficiency"
 
 [[focus_profile]]
-id = "TARGETED_RED_TEAM"
-hint = "attack only material changed surfaces or high-value assumptions, fix defects, then return to profitable search"
+id = "TARGETED_VALIDATION"
+hint = "test changed surfaces and high-value assumptions, fix defects, and return to alpha discovery"
