@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0145-FLOW-IMPACT-TAKEOVER-001",
+  "created_at": "2026-07-26T01:50:00+09:00",
+  "timing": "Committed after source-identity and schema inspection but before computing any candidate trade path, PnL, ranking or economic metric.",
+  "clarifications": {
+    "one_minute_return": "log(close_t / close_t-1)",
+    "prior_volatility": "population standard deviation of one-minute log returns over 1,440 completed minutes, minimum 720, shifted by one bar",
+    "atr": "mean true range over 60 completed minutes, minimum 30, shifted by one bar",
+    "lag_aggregation": "return is close_t versus close_t-lag; quote volume, trade count, taker-buy quote and signed quote are rolling sums over exactly lag completed bars including t",
+    "activity_transform": "trade_count_z is the prior z-score of log1p(lag trade count); average_trade_size_z is the prior z-score of log(lag quote volume / max(lag trade count, 1))",
+    "standardization": "population standard deviation over a 10,080-minute rolling history, minimum 4,320 observations, shifted by one completed bar; no clipping or winsorization",
+    "impact_efficiency": "sign(flow) * lag log return / (prior_volatility * sqrt(lag) * max(abs(flow), 0.05))",
+    "flow_activity_z": "prior z-score of abs(lag signed taker flow ratio)",
+    "impact_z": "prior z-score of impact efficiency",
+    "previous_block": "the same lag feature shifted exactly lag bars; state-transition families require the current and previous lag flows to have the same nonzero sign",
+    "impact_delta": "current impact_z minus previous-block impact_z",
+    "signal_score": {
+      "aligned_high_impact_continuation": "flow_activity_z + abs(impact_z)",
+      "flow_absorption_reversal": "flow_activity_z + abs(impact_z)",
+      "large_trade_aligned_continuation": "average_trade_size_z + impact_z",
+      "fragmented_flow_reversal": "trade_count_z - average_trade_size_z + abs(impact_z)",
+      "impact_decay_reversal": "abs(previous impact_z) + abs(impact_delta)",
+      "impact_reacceleration_continuation": "abs(previous impact_z) + abs(impact_delta)"
+    },
+    "event_tie_break": "signal time, descending score, then BTCUSDT before ETHUSDT",
+    "development_days": "365 calendar days from 2022-01-01T00:00:00Z through 2023-01-01T00:00:00Z",
+    "funding_cashflow": "-side * quantity * contemporaneous valuation price * funding rate for events with entry_time < calc_time <= exit_time",
+    "top_trade_removal": "set the largest ceil(10% of trade account returns) to zero and compound the remaining path in original order",
+    "half_year_split": "2022-07-02T12:00:00Z, the exact midpoint of the registered development interval"
+  },
+  "scientific_grid_changed": false,
+  "orders_permitted": false
+}
