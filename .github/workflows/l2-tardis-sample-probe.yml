@@ -1,0 +1,72 @@
+name: L2 Tardis sample feasibility probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/l2_maker_toxicity_v1/probe_tardis_samples.py"
+      - ".github/workflows/l2-tardis-sample-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l2-tardis-probe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OUT: ${{ github.workspace }}/research_runs/l2_tardis_probe_v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile probe
+        run: |
+          set -euo pipefail
+          python -m py_compile research/l2_maker_toxicity_v1/probe_tardis_samples.py
+
+      - name: Probe free monthly sample availability and compressed sizes
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python research/l2_maker_toxicity_v1/probe_tardis_samples.py --output "$OUT" 2>&1 | tee "$OUT/run.log"
+
+      - name: Assert research-only state
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/l2_tardis_probe_v1')
+          status={'strategy_outcomes_opened':False,'orders_simulated':False,'paper_live_enabled':False}
+          if (root/'summary.json').exists():
+              status.update(json.loads((root/'summary.json').read_text()))
+          assert not status['strategy_outcomes_opened']
+          assert not status['orders_simulated']
+          (root/'wrapper_status.json').write_text(json.dumps(status,indent=2,sort_keys=True))
+          print(json.dumps(status,sort_keys=True))
+          PY
+
+      - name: Record immutable output hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l2-tardis-probe-${{ github.sha }}
+          path: research_runs/l2_tardis_probe_v1
+          if-no-files-found: error
+          retention-days: 30
