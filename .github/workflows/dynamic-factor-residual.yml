@@ -153,6 +153,8 @@ jobs:
           set -euo pipefail
           root="$GITHUB_WORKSPACE/research/dynamic_factor_residual_20260725"
           ext=/tmp/dynamic-extension
+          cp "$root/dynamic_factor_residual.py" "$ext/dynamic_factor_residual.py"
+          cmp --silent "$root/dynamic_factor_residual.py" "$ext/dynamic_factor_residual.py"
           python -m py_compile "$root/dynamic_factor_residual.py" "$root/test_dynamic_factor_residual.py" "$ext"/*.py
           PYTHONPATH="$root:$ext" python "$root/dynamic_factor_residual.py" --self-test
           PYTHONPATH="$root:$ext" python "$ext/rank_rotation.py" --self-test
