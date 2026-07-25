@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 7,
+  "revision": 8,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260725-R7",
+  "ranking_id": "STRATEGY-RANKING-20260725-R8",
   "ranking_rule": {
     "eligibility": "hard_valid_strategy_or_portfolio_result",
     "primary_objective": "minimum_distance_to_full_project_objective",
@@ -22,52 +22,68 @@
   },
   "first_place": {
     "rank": 1,
-    "first_place_id": "FIRST-20260725-HIGH-RESISTANCE-SWEEP-C232AE43",
+    "first_place_id": "FIRST-20260725-ALIGNED-CONTINUATION-33034B092FFD271A",
     "candidate_type": "STRATEGY",
-    "source_result_id": "RES-20260725-ALPHA-HYP-001",
-    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/10",
+    "source_result_id": "RES-20260725-ABS-FLOW-001",
+    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/35",
     "qualification_stage": "EXPLORATORY",
     "target_status": "NOT_MET",
-    "selection_reason": "Among currently ranked hard-valid strategy results, this specification has the smallest recorded gap to the 1% after-cost geometric daily-growth target. A closer dynamic-factor candidate remains outside the ranking until its failed scientific verification workflow is repaired.",
+    "selection_reason": "Among currently verified hard-valid strategy results, this aligned-continuation specification has the smallest recorded after-cost geometric daily-growth gap to 1% under disclosed incomplete normalization. It remains only a provisional rank pointer: the preregistered yearly robustness gate failed and sequential OOS was not opened. PR #25 remains outside the ranking pending immutable-bundle verification and would rank above this result if verified.",
     "comparison_confidence": "LOW",
     "metrics": {
-      "spec_id": "c232ae43b7a1401d",
-      "family": "high_resistance_sweep",
-      "base_cost_bps": 12,
-      "geometric_daily_growth": 0.0000245553331665,
+      "spec_id": "33034b092ffd271a",
+      "family": "aligned_continuation",
+      "base_cost_round_trip_approx_bps": 15.0,
+      "geometric_daily_growth": 0.00022797677403052496,
       "target_geometric_daily_growth": 0.01,
-      "target_gap": 0.0099754446668335,
-      "target_fraction": 0.00245553331665,
-      "target_multiple_required": 407.2435072329891,
-      "total_return": 0.0180756057390134,
-      "profit_factor": 1.089638,
-      "maximum_drawdown": 0.072774,
-      "trade_count": 55,
-      "top5_positive_share": 0.669168,
-      "return_at_18bps": -0.0064008129188801,
-      "return_at_24bps": -0.0263222544201507
+      "target_gap": 0.009772023225969475,
+      "target_fraction": 0.022797677403052496,
+      "target_multiple_required": 43.864117485323526,
+      "total_return": 0.15627618264978582,
+      "profit_factor": 1.3064535362764598,
+      "maximum_drawdown": 0.06471777689847658,
+      "trade_count": 184,
+      "top5_positive_share": 0.18000555384825304,
+      "return_without_top5": 0.036351651104802984,
+      "stress_2x_round_trip_approx_bps": 30.0,
+      "stress_2x_geometric_daily_growth": 0.00011895579553655722,
+      "stress_2x_total_return": 0.07871480287147903,
+      "stress_2x_profit_factor": 1.1597236117511798,
+      "stress_2x_maximum_drawdown": 0.07839518106404919,
+      "stress_2x_top5_positive_share": 0.19735048500323263,
+      "stress_2x_return_without_top5": -0.03407763603606184,
+      "median_holding_minutes": 588.0
     },
     "known_weaknesses": [
-      "No sequential selection or confirmation interval was opened because the preregistered gate failed.",
-      "Performance becomes negative at 18 and 24 bps.",
-      "The top five positive trades contribute 66.92% of positive PnL.",
-      "Only 55 trades were observed.",
-      "Daily growth is far below the 1% target.",
-      "Comparison across studies is not fully normalized for data window, market set, and cost contract."
+      "No sequential 2024 selection or 2025H1 confirmation interval was opened because the preregistered yearly gate failed.",
+      "The 2023 2x-cost slice has profit factor about 1.026 and return after removing its top five winners below -5%.",
+      "The combined 2x-cost result becomes negative after removing the top five winners.",
+      "Median holding time is 588 to 683 minutes, limiting capital velocity.",
+      "Observed daily growth is only 2.2798% of the 1% target.",
+      "Comparison across studies is not fully normalized for data window, symbols and exact cost contract."
     ]
   },
   "ranked_candidates": [
     {
       "rank": 1,
+      "source_result_id": "RES-20260725-ABS-FLOW-001",
+      "candidate_label": "aligned_continuation 33034b092ffd271a",
+      "geometric_daily_growth": 0.00022797677403052496,
+      "target_gap": 0.009772023225969475,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
+    },
+    {
+      "rank": 2,
       "source_result_id": "RES-20260725-ALPHA-HYP-001",
       "candidate_label": "high_resistance_sweep c232ae43b7a1401d",
       "geometric_daily_growth": 0.0000245553331665,
       "target_gap": 0.0099754446668335,
       "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL"
+      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 2,
+      "rank": 3,
       "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
       "candidate_label": "balance_to_imbalance best nonzero specification",
       "geometric_daily_growth": -0.000719,
@@ -76,7 +92,7 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 3,
+      "rank": 4,
       "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
       "candidate_label": "leader-shock underreaction best recorded configuration",
       "geometric_daily_growth": -0.01483,
@@ -117,5 +133,5 @@
       "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag by +0.200 bp in development, +0.199 bp in validation, and +0.149 bp in confirmation, while remaining unsuitable as a standalone strategy."
     }
   ],
-  "updated_at": "2026-07-25T22:00:00+09:00"
+  "updated_at": "2026-07-25T23:15:00+09:00"
 }
