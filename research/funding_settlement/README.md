@@ -32,14 +32,20 @@ No Champion, Paper, Live, risk, leverage or account-allocation change.
 
 ## Reproduction
 
-The source is stored in three readable fragments to keep connector writes deterministic. Reconstruct and run it with:
+Rebuild the retained public-data bundle directly from official monthly Binance Vision URLs and adjacent SHA-256 files, reconstruct the runner, then execute the screen:
 
 ```bash
+python research/funding_settlement/download_bundle.py \
+  --root data/funding_settlement \
+  --start 2021-01 --end 2025-12 \
+  --symbols BTCUSDT ETHUSDT
 python research/funding_settlement/restore_runner.py
 python research/funding_settlement/runner.py \
-  --root /path/to/checksum_verified_bundle \
+  --root data/funding_settlement \
   --out artifacts/funding_settlement
 ```
+
+The runner is stored in three readable, hash-registered fragments so connector writes remain deterministic. The initial gate internally stops loading source rows at the start of 2024; later archives are retained only for conditional follow-up reproduction.
 
 ## Fingerprints
 
