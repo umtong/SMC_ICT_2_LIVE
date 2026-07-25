@@ -8,26 +8,26 @@
 2. `instructions/project-instructions.md`
 3. `control/current-state.md`
 4. `control/champion.json`
-5. `control/work-claims.csv`
-6. `control/result-registry.jsonl`
-7. Source·Dataset·Entity Registry
-8. `prompts/goal-worker.md`
+5. 수행하려는 범위와 관련된 Work Claim·Result·Validation·Source·Dataset·Entity·Run Report·열린 PR
+6. `prompts/goal-worker.md`
 
 ## 작업 흐름
 
-1. 최신 상태, Work Claim, 결과·검증·자료 레지스트리와 열린 PR을 확인한다.
-2. 가장 고정보가치인 미해결 범위를 선점한다.
-3. 기존 자료·데이터·차트·코드·결과·검증 증거를 재사용한다.
-4. 작업 브랜치에서 구현·실험·검증하고 append-only Run Report를 작성한다.
-5. 상태 변경 전 최신 revision을 다시 확인하고 검증된 PR로 반영한다.
+1. Project State와 Champion을 읽고 수행할 범위를 정한다.
+2. 관련된 기존 작업과 산출물만 검색한다.
+3. 중복 비용이 크거나 재사용 가치가 높은 작업에만 Work Claim을 만든다.
+4. 기존 자료·데이터·차트·코드·결과·검증 증거를 재사용한다.
+5. 후보 가치에 비례해 단계형 검증을 적용한다.
+6. 공용·재사용 가능한 변경은 브랜치·검증·PR로 반영하고, 중요한 체크포인트는 Run Report로 남긴다.
+7. 상태 변경 전 최신 revision과 열린 PR을 다시 확인한다.
 
 ## 저장 위치
 
-- **GitHub:** 실행 규칙, 설정, 코드, 스키마, 스크립트, 작은 manifest, 의존성 지문, 재현 가능한 요약과 버전 기록
-- **Google Drive:** 라이브 제어 문서, Work Claim, 원시·대형 자료, 자막, 논문과 기술 자료, 시장 데이터, 실행 산출물, 검증 증거와 snapshot
-- **ChatGPT Project:** 활성 작업 채팅과 작은 hot context
+- **GitHub:** 실행 규칙, 설정, 코드, 스키마, 스크립트, 작은 manifest, 의존성 지문, 재현 가능한 요약과 milestone 상태
+- **Google Drive:** 라이브 Work Claim·Run Report, 원시·대형 자료, 시장 데이터, 실행 산출물과 검증 증거
+- **ChatGPT Project:** 현재 작업에 필요한 작은 hot context
 
-공개된 정보와 자료를 자유롭게 사용한다. 작업에 사용하거나 재사용 가치가 높은 자료는 한 번 등록하고 재사용 가능하게 보존한다. 전체 영상은 영상 자체가 고유한 연구 가치를 제공할 때만 저장한다.
+공개된 정보와 자료를 자유롭게 사용한다. 실제 작업에 사용했거나 다시 찾을 가능성이 높은 자료만 등록하고 재사용 가능하게 보존한다. 전체 영상은 영상 자체가 고유한 연구 가치를 제공할 때만 저장한다.
 
 ## 검사
 
@@ -51,4 +51,4 @@ python scripts/init_project.py \
 
 ## 현재 상태
 
-`ACTIVE_RESEARCH / revision 3`: 자료·결과·검증 재사용과 revision 기반 상태 갱신이 활성화되어 있으며, 유효한 Champion은 아직 없다.
+`ACTIVE_RESEARCH / revision 4`: 관련 기록 검색, 조건부 Work Claim, 단계형 검증과 중요도 기반 산출물 기록이 적용되어 있으며, 유효한 Champion은 아직 없다.
