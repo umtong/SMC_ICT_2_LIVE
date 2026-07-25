@@ -35,10 +35,19 @@ jobs:
           python -m py_compile research/spot_perp_leadership/pipeline.py
           python -m research.spot_perp_leadership.pipeline self-test
       - name: Acquire only permitted stages and run the frozen screen
+        shell: bash
         run: |
+          mkdir -p artifacts/spot_perp_leadership
+          set +e
           python -m research.spot_perp_leadership.pipeline staged-run \
-            --output artifacts/spot_perp_leadership
+            --output artifacts/spot_perp_leadership \
+            2>&1 | tee artifacts/spot_perp_leadership/run.log
+          status=${PIPESTATUS[0]}
+          tail -n 250 artifacts/spot_perp_leadership/run.log \
+            > artifacts/spot_perp_leadership/run_tail.log
+          exit "$status"
       - name: Echo decision-ready compact result
+        if: success()
         run: |
           python - <<'PY'
           import json
@@ -47,8 +56,10 @@ jobs:
           print('DECISION_READY_RESULT=' + json.dumps(result, sort_keys=True, separators=(',', ':')))
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: spot-perp-leadership-20260726
           path: artifacts/spot_perp_leadership
+          if-no-files-found: error
           retention-days: 14
           compression-level: 6
