@@ -2,6 +2,8 @@
 
 This claim changes the information source rather than retuning an existing candlestick, funding or cross-venue rule. It measures how Bybit's own executable last price departs from its mark and index prices, and whether the premium-index state says that departure is transient, persistent or exhausted.
 
+The first GitHub-hosted probe was blocked by Bybit's documented US-IP restriction before any economic data were opened. A checksum-identified transport amendment therefore retains the same endpoints and parameters while adding only Bybit's official regional mainnet hosts; no hypothesis, candidate, date, cost, risk or execution rule changed.
+
 The workflow tests three frozen mechanisms on BTCUSDT and ETHUSDT:
 
 1. **Transient last/mark reversion** — fade an extreme completed last-minus-mark gap when mark remains comparatively close to index.
