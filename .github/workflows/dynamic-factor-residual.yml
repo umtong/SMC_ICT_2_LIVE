@@ -43,33 +43,52 @@ jobs:
           set -euo pipefail
           root=research/dynamic_factor_residual_20260725
           python - <<'PY'
-          import base64, hashlib, json, pathlib, tarfile
+          import base64, hashlib, json, pathlib, shutil, tarfile
           root=pathlib.Path('research/dynamic_factor_residual_20260725')
           manifest=json.loads((root/'EXTENSION_BUNDLE_MANIFEST.json').read_text())
           chunks=[]
           for item in manifest['parts']:
               path=root/item['path']
               raw=path.read_bytes()
-              assert len(raw)==item['bytes'], (path,len(raw),item['bytes'])
-              assert hashlib.sha256(raw).hexdigest()==item['sha256'], path
+              observed=hashlib.sha256(raw).hexdigest()
+              print(json.dumps({'part':str(path),'observed_bytes':len(raw),'expected_bytes':item['bytes'],'observed_sha256':observed,'expected_sha256':item['sha256']}),flush=True)
+              if len(raw)!=item['bytes']:
+                  raise AssertionError(f'part size mismatch: {path}: {len(raw)} != {item["bytes"]}')
+              if observed!=item['sha256']:
+                  raise AssertionError(f'part sha mismatch: {path}: {observed} != {item["sha256"]}')
               chunks.append(raw)
           combined=b''.join(chunks)
-          assert hashlib.sha256(combined).hexdigest()==manifest['combined_base64_sha256']
+          combined_sha=hashlib.sha256(combined).hexdigest()
+          print(json.dumps({'combined_bytes':len(combined),'observed_combined_sha256':combined_sha,'expected_combined_sha256':manifest['combined_base64_sha256']}),flush=True)
+          if combined_sha!=manifest['combined_base64_sha256']:
+              raise AssertionError('combined Base64 checksum mismatch')
           archive=base64.b64decode(combined, validate=True)
-          assert len(archive)==manifest['decoded_tar_gz_bytes']
-          assert hashlib.sha256(archive).hexdigest()==manifest['decoded_tar_gz_sha256']
+          archive_sha=hashlib.sha256(archive).hexdigest()
+          print(json.dumps({'archive_bytes':len(archive),'expected_archive_bytes':manifest['decoded_tar_gz_bytes'],'observed_archive_sha256':archive_sha,'expected_archive_sha256':manifest['decoded_tar_gz_sha256']}),flush=True)
+          if len(archive)!=manifest['decoded_tar_gz_bytes']:
+              raise AssertionError('archive size mismatch')
+          if archive_sha!=manifest['decoded_tar_gz_sha256']:
+              raise AssertionError('archive checksum mismatch')
           pathlib.Path('/tmp/dynamic-extension.tar.gz').write_bytes(archive)
+          shutil.rmtree('/tmp/dynamic-extension',ignore_errors=True)
+          pathlib.Path('/tmp/dynamic-extension').mkdir()
           with tarfile.open('/tmp/dynamic-extension.tar.gz','r:gz') as tf:
               tf.extractall('/tmp/dynamic-extension', filter='data')
-          inner=json.loads(pathlib.Path('/tmp/dynamic-extension/MANIFEST.json').read_text())
-          assert hashlib.sha256(pathlib.Path('/tmp/dynamic-extension/MANIFEST.json').read_bytes()).hexdigest()==manifest['content_manifest_sha256']
+          manifest_path=pathlib.Path('/tmp/dynamic-extension/MANIFEST.json')
+          inner_sha=hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+          print(json.dumps({'observed_content_manifest_sha256':inner_sha,'expected_content_manifest_sha256':manifest['content_manifest_sha256']}),flush=True)
+          if inner_sha!=manifest['content_manifest_sha256']:
+              raise AssertionError('content manifest checksum mismatch')
+          inner=json.loads(manifest_path.read_text())
           expected={x['path']:(x['bytes'],x['sha256']) for x in inner['files']}
           for rel,(size,digest) in expected.items():
               path=pathlib.Path('/tmp/dynamic-extension')/rel
               raw=path.read_bytes()
-              assert len(raw)==size, rel
-              assert hashlib.sha256(raw).hexdigest()==digest, rel
-          print(json.dumps({'parts':len(chunks),'files':len(expected),'archive_sha256':manifest['decoded_tar_gz_sha256']},sort_keys=True))
+              observed=hashlib.sha256(raw).hexdigest()
+              print(json.dumps({'file':rel,'observed_bytes':len(raw),'expected_bytes':size,'observed_sha256':observed,'expected_sha256':digest}),flush=True)
+              if len(raw)!=size or observed!=digest:
+                  raise AssertionError(f'content mismatch: {rel}')
+          print(json.dumps({'parts':len(chunks),'files':len(expected),'archive_sha256':archive_sha},sort_keys=True),flush=True)
           PY
 
       - name: Compile and run causal self-tests
