@@ -44,6 +44,7 @@ python -m py_compile \
   "$root/cross_venue_signals_v5d.py" \
   "$root/cross_venue_basis_v5d.py" \
   "$root/cross_venue_execution_v5d.py" \
+  "$root/cross_venue_failclosed_v5d.py" \
   "$root/cross_venue_pilot_v5d.py" \
   "$root/cross_venue_counterfactual_v5d.py" \
   "$root/cross_venue_development_v5d.py" \
@@ -85,6 +86,7 @@ sha256sum \
   "$root/cross_venue_signals_v5d.py" \
   "$root/cross_venue_basis_v5d.py" \
   "$root/cross_venue_execution_v5d.py" \
+  "$root/cross_venue_failclosed_v5d.py" \
   "$root/cross_venue_pilot_v5d.py" \
   "$root/cross_venue_counterfactual_v5d.py" \
   "$root/cross_venue_development_v5d.py" \
