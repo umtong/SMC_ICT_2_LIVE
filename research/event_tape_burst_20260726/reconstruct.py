@@ -9,10 +9,10 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "run_screen.py.gz.b64"
 TARGET = ROOT / "run_screen.py"
 EXPECTED = {
-    "base64_sha256": "57612a3d896a2f2a93661e0cbd4f44463930453f2f4ae5009ff1439509ec735f",
-    "gzip_sha256": "d2077e001df581224cb524593cc11007c24ae26139d5810b42262fe5501be0bd",
-    "raw_sha256": "3f80f36fb1e6e177341733f79a6bbf5da94180da04d42a7a4f3f45de3532b95d",
-    "raw_bytes": 35264,
+    "base64_sha256": "59024216d64101fe993e0a6b558136ef323da5350899c8c0b776425a14ca78eb",
+    "gzip_sha256": "024c1d21b04469fc3b6b2116ede173535cd874a105041243daf3e4ba15658efb",
+    "raw_sha256": "4224ee77d04f8cd648dfcc93e46d54a597c43685aa2eb99604396c5c1878b675",
+    "raw_bytes": 36252,
 }
 
 
