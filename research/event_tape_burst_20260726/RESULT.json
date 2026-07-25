@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-EVENT-TAPE-FATAL-001",
+  "claim_id": "CLM-20260726-0459-EVENT-TAPE-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE",
+  "rank_eligible": false,
+  "screen_qualification": "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE",
+  "result_generating_commit": "3ec19a1b1e3ae657961cb856caaaa09c0b936da8",
+  "evaluation_contract_sha256": "5cce5f6753db0391e672a15878f846aef0f0ae5217e4c43469f515c8f7f8688c",
+  "implementation_sha256": "9844142fed8460382d2baeeff1a530204fdef8e10899a483e211577dd3c1922e",
+  "dataset_fingerprint": "b30736735efb9e852aafb329f694b66321c16b82052d69cf7a9980b04fd23340",
+  "source_archive_count": 12,
+  "fit_dates": [
+    "2023-01-15",
+    "2023-03-19",
+    "2023-05-21"
+  ],
+  "development_dates": [
+    "2023-07-16",
+    "2023-09-17",
+    "2023-11-19"
+  ],
+  "labeled_development_events": 28141,
+  "candidate_count": 256,
+  "development_gate_pass_count": 0,
+  "positive_total_return_candidate_count": {
+    "12": 0,
+    "18": 0,
+    "24": 0
+  },
+  "best_raw_candidate": {
+    "candidate_id": "a99df34a7b93db5a35fc",
+    "specification": {
+      "efficiency_q": 0.1,
+      "family": "absorption_reversal",
+      "horizon": 30,
+      "imbalance": 0.85,
+      "notional_q": 0.97,
+      "segmentation": "q100_cap1000",
+      "speed_q": 0.9
+    },
+    "raw_eligible_event_count": 2,
+    "accepted_event_count": 2,
+    "cost_metrics": {
+      "12": {
+        "trade_count": 2,
+        "mean_net_bps": -6.292125765761313,
+        "median_net_bps": -6.292125765761313,
+        "total_return": -0.0012580297815619756,
+        "maximum_drawdown": 0.0012580297815619756,
+        "profit_factor": 0.0,
+        "top_10_percent_removed_return": -0.0012580297815619756,
+        "top_five_positive_share": null,
+        "positive_day_fraction": 0.0
+      },
+      "18": {
+        "trade_count": 2,
+        "mean_net_bps": -12.292125765761314,
+        "median_net_bps": -12.292125765761314,
+        "total_return": -0.0024569147264701385,
+        "maximum_drawdown": 0.0024569147264701385,
+        "profit_factor": 0.0,
+        "top_10_percent_removed_return": -0.0024569147264701385,
+        "top_five_positive_share": null,
+        "positive_day_fraction": 0.0
+      },
+      "24": {
+        "trade_count": 2,
+        "mean_net_bps": -18.292125765761313,
+        "median_net_bps": -18.292125765761313,
+        "total_return": -0.0036550796713781253,
+        "maximum_drawdown": 0.0036550796713781253,
+        "profit_factor": 0.0,
+        "top_10_percent_removed_return": -0.0036550796713781253,
+        "top_five_positive_share": null,
+        "positive_day_fraction": 0.0
+      }
+    },
+    "gate_reasons": [
+      "trade_count_lt_60",
+      "mean_18bp_not_positive",
+      "median_12bp_not_positive",
+      "total_24bp_not_positive",
+      "top10_removed_18bp_not_positive",
+      "positive_day_fraction_lt_two_thirds",
+      "top_five_share_gt_50pct"
+    ]
+  },
+  "best_minimum_sample_candidate": {
+    "selection_rule": "maximum 18bp total return among candidates with at least 60 accepted trades",
+    "candidate_id": "1ac7af51dcd74e7412a3",
+    "specification": {
+      "efficiency_q": 0.9,
+      "family": "continuation",
+      "horizon": 300,
+      "imbalance": 0.7,
+      "notional_q": 0.97,
+      "segmentation": "q100_cap1000",
+      "speed_q": 0.9
+    },
+    "raw_eligible_event_count": 77,
+    "accepted_event_count": 64,
+    "cost_metrics": {
+      "12": {
+        "trade_count": 64,
+        "mean_net_bps": -11.283657323457929,
+        "median_net_bps": -12.908040495962712,
+        "total_return": -0.06976209406350586,
+        "maximum_drawdown": 0.07356205495171686,
+        "profit_factor": 0.13663241725926997,
+        "top_10_percent_removed_return": -0.08031878764726808,
+        "top_five_positive_share": 0.9441021490600049,
+        "positive_day_fraction": 0.16666666666666666
+      },
+      "18": {
+        "trade_count": 64,
+        "mean_net_bps": -17.28365732345793,
+        "median_net_bps": -18.908040495962712,
+        "total_return": -0.10485531286537508,
+        "maximum_drawdown": 0.10744336190935422,
+        "profit_factor": 0.0668814314217097,
+        "top_10_percent_removed_return": -0.11191583631255941,
+        "top_five_positive_share": 1.0,
+        "positive_day_fraction": 0.0
+      },
+      "24": {
+        "trade_count": 64,
+        "mean_net_bps": -23.283657323457927,
+        "median_net_bps": -24.908040495962712,
+        "total_return": -0.13864455497406403,
+        "maximum_drawdown": 0.1401048393043809,
+        "profit_factor": 0.03577224424467206,
+        "top_10_percent_removed_return": -0.14338860316157365,
+        "top_five_positive_share": 1.0,
+        "positive_day_fraction": 0.0
+      }
+    },
+    "gate_reasons": [
+      "mean_18bp_not_positive",
+      "median_12bp_not_positive",
+      "total_24bp_not_positive",
+      "top10_removed_18bp_not_positive",
+      "positive_day_fraction_lt_two_thirds",
+      "top_five_share_gt_50pct"
+    ]
+  },
+  "causal_and_safety_checks": {
+    "entry_latency_ms": 100,
+    "one_global_slot_enforced": true,
+    "official_periods_opened": {
+      "2024": false,
+      "2025": false,
+      "2026": false
+    },
+    "orders_submitted": false,
+    "same_gross_paths_replayed_at_costs_bps": [
+      12.0,
+      18.0,
+      24.0
+    ]
+  },
+  "decision": "Close this exact event-time pace/control continuation and absorption-reversal formulation. It produced no positive after-cost candidate even at 12bp and no development survivor; do not broaden 2023 or open 2024.",
+  "known_limits": [
+    "Sparse six-day pre-2024 fatal screen, not an account-level strategy result.",
+    "Entry and horizon marks use the next observed trade, with explicit all-in cost stress but no historical BBO replay.",
+    "A passing family requires broader 2023 reconstruction and frozen 2024 sequential selection before ranking."
+  ],
+  "ci_evidence": {
+    "workflow_run_id": 30173874538,
+    "artifact_id": 8623675977,
+    "artifact_digest_sha256": "00bde8111a31838a05cb58f25e3b448ebb9918b5bf0600fd694e884035a76f13",
+    "result_summary_sha256": "7d23d2611925d58e3dbfba18ea6341ea72001b3730c470e628c5d98fb73a28d0",
+    "candidate_results_sha256": "43732d65aaaf6de77032875e8e3feeed7156f861e9630d1890b1dbea799aa0ae",
+    "source_manifest_sha256": "d03877510a181eb10862a611f6fd7e943ecf91c1a83959698901e5735c8a7c4d"
+  }
+}
