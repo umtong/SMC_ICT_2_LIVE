@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0535-ROUND-NUMBER-001",
+  "screen_id": "ROUND-NUMBER-ACCEPTANCE-FATAL-SCREEN-20260726-V1",
+  "provisional_result_id": "RES-20260726-ROUND-NUMBER-FATAL-001",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-round-number-acceptance-001",
+  "research_stage": "sparse_pre_2024_fatal_alpha_screen",
+  "rank_eligibility": false,
+  "objective": "Determine whether absolute adaptive round-number crossings contain conditional continuation after destination-side acceptance or reversal after prompt rejection, with enough cost-adjusted persistence and trade independence to justify exact BBO/depth reconstruction.",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "source_concept_contract": {
+    "used_pre_cutoff_sources": [
+      {
+        "title": "Price clustering in Bitcoin",
+        "authors": "Andrew Urquhart",
+        "published": "2017",
+        "doi": "10.1016/j.econlet.2017.07.035",
+        "role": "round-number clustering is real, but unconditional post-round returns are not significant; directional rules therefore require causal acceptance or rejection conditioning"
+      },
+      {
+        "title": "Intraday price behavior of cryptocurrencies",
+        "authors": "Bill Hu, Thomas McInish, Jonathan Miller, Li Zeng",
+        "published": "2019",
+        "doi": "10.1016/j.frl.2018.06.002",
+        "role": "intraday trades cluster at round numbers and immediately adjacent prices, supporting an absolute-grid and strategic-pricing state"
+      },
+      {
+        "title": "Intraday patterns of price clustering in Bitcoin",
+        "authors": "Donglian Ma, Hisashi Tanizaki",
+        "published": "2022-01-01",
+        "doi": "10.1186/s40854-021-00307-4",
+        "role": "tick-level BTC prices cluster most at 00 and also at 99/01; clustering varies intraday and with transaction activity"
+      },
+      {
+        "title": "Evidence for round number effects in cryptocurrencies prices",
+        "authors": "Raquel Quiroga-Garcia, Natalia Pariente-Martinez, Mar Arenas-Parra",
+        "published": "2022",
+        "doi": "10.1016/j.frl.2022.102811",
+        "role": "high-frequency ETH/Ripple/Litecoin prices and traded volume cluster at round levels, supporting a cross-asset but dimensionless grid formulation"
+      }
+    ],
+    "translation_to_testable_variables": {
+      "adaptive_base_grid": "10^(floor(log10(first observed UTC-day price))-2), fixed for the rest of that symbol-day",
+      "round_levels": "integer multiples of 0.5x, 1x or 2x the adaptive base grid",
+      "acceptance": "after a boundary crossing, the last observed confirmation-window trade remains on the destination side by a frozen fraction of the grid, aligned aggressor flow is nonnegative or strongly positive, and destination-side notional dominates",
+      "rejection": "the crossed level was reached, but the last observed confirmation-window trade returns to the origin side by a frozen grid fraction while aggressor flow and traded-notional location point back toward the origin",
+      "direction": "crossing direction for acceptance-continuation; opposite crossing direction for rejection-reversal"
+    },
+    "post_cutoff_material_not_used_to_define_historical_rules": true
+  },
+  "data_contract": {
+    "venue": "Bybit",
+    "market": "USDT linear perpetual public historical trades",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "base_url": "https://public.bybit.com/trading",
+    "fit_replay_dates": ["2023-01-15", "2023-03-19", "2023-05-21"],
+    "independent_development_dates": ["2023-07-16", "2023-09-17", "2023-11-19"],
+    "fit_role": "mechanism and feasibility evidence only; the dimensionless 576-cell rule grid below is already frozen and no runtime threshold is learned from PnL",
+    "later_periods_opened": false,
+    "required_fields": ["timestamp", "symbol", "side", "size", "price"],
+    "integrity": "downloaded gzip bytes, CSV header, row count, nondecreasing timestamps and SHA-256 are recorded"
+  },
+  "causal_event_contract": {
+    "boundary_event": "a trade price crosses one or more frozen round-grid multiples relative to the immediately preceding trade",
+    "same_level_cooldown_seconds": 30,
+    "confirmation_windows_seconds": [1, 3, 10],
+    "minimum_confirmation_trades": 5,
+    "entry_latency_ms": 100,
+    "entry_mark": "first observed trade at or after crossing time plus confirmation window plus latency",
+    "markout_horizons_seconds": [120, 300, 900, 1800],
+    "one_global_slot": "enforced independently for every candidate and horizon across BTCUSDT and ETHUSDT; the slot remains occupied through the first observed exit trade at or after the horizon",
+    "same_timestamp_tie_break": "entry timestamp, then stable symbol, then deterministic event ID",
+    "missing_exit": "the event is unavailable to that horizon and is never favorably filled"
+  },
+  "frozen_candidate_grid": {
+    "grid_multipliers": [0.5, 1, 2],
+    "confirmation_windows_seconds": [1, 3, 10],
+    "families": ["acceptance_continuation", "rejection_reversal"],
+    "minimum_close_or_rejection_fraction_of_grid": [0.005, 0.02],
+    "minimum_aligned_or_opposite_aggressor_flow": [0, 0.3],
+    "minimum_destination_or_origin_notional_fraction": [0.6, 0.7],
+    "markout_horizons_seconds": [120, 300, 900, 1800],
+    "candidate_count": 576,
+    "runtime_parameter_learning": false
+  },
+  "cost_and_execution_screen": {
+    "all_in_round_trip_cost_bps": [12, 18, 24],
+    "same_gross_path_replay": true,
+    "historical_bbo_replay": false,
+    "funding": "not separately modeled over 2-30 minute diagnostic markouts; any survivor must receive exact funding and structural-exit NAV replay",
+    "qualification": "fatal alpha screen only; public trade marks can reject the family but cannot promote it into the cumulative strategy ranking"
+  },
+  "development_gate": {
+    "minimum_trades_at_18bp": 60,
+    "mean_net_markout_at_18bp": "> 0",
+    "median_net_markout_at_12bp": "> 0",
+    "total_return_at_24bp": "> 0",
+    "top_10_percent_removed_return_at_18bp": "> 0",
+    "positive_date_fraction_at_18bp": ">= 2/3",
+    "positive_symbol_date_fraction_at_18bp": ">= 1/2",
+    "top_five_positive_trade_share_at_18bp": "<= 50%"
+  },
+  "conditional_next_stage": {
+    "if_zero_survivors": "register reusable negative evidence, keep 2024-2026 sealed and move to a materially different information source or payoff",
+    "if_one_or_more_survivors": "freeze one survivor without retuning, reconstruct exact Bybit BBO/depth and structural exits on broader pre-2024 data, then decide whether a sequential 2024 opening is warranted"
+  },
+  "prohibitions": [
+    "no 2024, 2025 or 2026 download",
+    "no unconditional round-number direction rule",
+    "no same-trade, pre-confirmation or pre-latency entry",
+    "no favorable missing-price fill",
+    "no use of session profile, liquidation, cross-venue, options, positioning or future acknowledgement state",
+    "no live credentials or orders",
+    "no cumulative strategy-rank promotion from this sparse screen"
+  ]
+}
