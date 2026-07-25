@@ -1,0 +1,115 @@
+{
+  "claim_id": "CLM-20260726-0542-MATCH-SWEEP-001",
+  "created_at": "2026-07-26T05:52:44+09:00",
+  "base_revision": 11,
+  "purpose": "Independent pre-2024 confirmation of a frozen Bybit-native atomic matching-event sweep model before any 2024 partition is opened.",
+  "information_unit": "Completed same-exchange-timestamp, same-taker-side public-trade groups that execute across multiple distinct prices.",
+  "economic_hypothesis": "A single marketable order that fans out across several resting price levels exposes queue-depletion topology unavailable in ordinary bars. The completed topology plus the first causal second of response may distinguish persistent liquidity-vacuum continuation from terminal rejection reversal.",
+  "venue": "Bybit USDT linear perpetual public trades",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "data_url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+  "frozen_confirmation_dates": [
+    "2023-02-15",
+    "2023-04-15",
+    "2023-06-15",
+    "2023-08-15",
+    "2023-10-15",
+    "2023-12-15"
+  ],
+  "event_reconstruction": {
+    "group_key": "exact exchange timestamp plus taker side",
+    "minimum_distinct_executed_price_levels": 5,
+    "minimum_taker_signed_price_span_bps": 1.0,
+    "exclude_timestamp_if_both_taker_sides_are_present": true,
+    "minimum_completed_prior_60_second_trade_count": 20,
+    "same_symbol_event_suppression_seconds": 5,
+    "suppression_rule": "After the first eligible completed event, later eligible events in the same symbol are ignored for five seconds. No future score is used to replace the first event."
+  },
+  "causal_feature_time": {
+    "event_is_complete": "Only after every public fill carrying the exact event timestamp has been observed.",
+    "response_confirmation_seconds": 1.0,
+    "decision_to_fill_latency_milliseconds": 100,
+    "entry": "First public trade at or after event timestamp plus 1.1 seconds.",
+    "unavailable_path_rule": "Signals without a complete one-hour exit inside the source partition are unavailable and cannot enter training or evaluation."
+  },
+  "features": [
+    "taker side and symbol indicator",
+    "log distinct price-level count",
+    "log fill count",
+    "log taker-signed span basis points",
+    "log event notional",
+    "notional share at the aggressive extreme",
+    "largest price-level notional share",
+    "price-level entropy divided by log(level count)",
+    "log event notional relative to completed prior 60-second and 300-second notional rates",
+    "taker-side-signed completed prior 60-second and 300-second returns",
+    "taker-side-signed response from event extreme and VWAP at 0.1, 0.25, 0.5 and 1.0 seconds",
+    "response acceleration from 0.25 to 1.0 seconds and 0.1 to 0.5 seconds",
+    "UTC hour sine and cosine"
+  ],
+  "model": {
+    "library": "scikit-learn HistGradientBoostingRegressor",
+    "loss": "squared_error",
+    "learning_rate": 0.05,
+    "max_iter": 160,
+    "max_depth": 2,
+    "min_samples_leaf": 50,
+    "l2_regularization": 10.0,
+    "early_stopping": true,
+    "validation_fraction": 0.15,
+    "n_iter_no_change": 20,
+    "random_state": 123,
+    "target": "taker-side-signed return from the causal entry price to the first public trade at or after entry plus 3600 seconds",
+    "target_clip_bps": [-300, 300],
+    "training_partitions": [
+      "BTCUSDT and ETHUSDT 2023-01-01",
+      "BTCUSDT and ETHUSDT 2023-02-01",
+      "BTCUSDT and ETHUSDT 2023-03-01",
+      "BTCUSDT and ETHUSDT 2023-04-01",
+      "BTCUSDT and ETHUSDT 2023-05-01",
+      "BTCUSDT and ETHUSDT 2023-06-01"
+    ],
+    "training_source_sha256": {
+      "BTCUSDT2023-01-01.csv.gz": "5eb1a636033b103d2e57d53f59f56a0cdff155373ef454a35c53a15f24fc5783",
+      "BTCUSDT2023-02-01.csv.gz": "f5db0928e81cfc3e413a3bc1a0491a2e1bf4534541ebba7065e3ed6a01db6d6c",
+      "BTCUSDT2023-03-01.csv.gz": "c504cad21fff3056f713ebff0fef27e9af1338d53c30a8848728d0e63016e0f6",
+      "BTCUSDT2023-04-01.csv.gz": "c38c6b05c0e7a073caeae877df7b686746d2d5a0aa4ae8fd826899a774b35431",
+      "BTCUSDT2023-05-01.csv.gz": "f31a2d2efe2abf4b5fc2c29635bd1916077cd5b35555587bf4cbcd87d596b6b3",
+      "BTCUSDT2023-06-01.csv.gz": "95b0e9a341e55b9e03c309022afa96064b8117945cce9a3abf15a45c6df19596",
+      "ETHUSDT2023-01-01.csv.gz": "ace82aa1b393d8037dc2e52c71b7c5205972fb1be65623ff581e77596a0d983a",
+      "ETHUSDT2023-02-01.csv.gz": "d8cf9a032478956e50087197f399e13cb538025619cee0869e187e9e3847d457",
+      "ETHUSDT2023-03-01.csv.gz": "b914c64e7e737a95243565e3df59bb22eaced50e739b63d996cb3e29ea1f2cf4",
+      "ETHUSDT2023-04-01.csv.gz": "b4f6d424400b5163ae8b81829b460047c1ba6cd51c17529067c1d1525898be80",
+      "ETHUSDT2023-05-01.csv.gz": "e3db413a1bc38338e332fd309bc49ac51e902d8dc3eb8cf20a16ce9bc02784fe",
+      "ETHUSDT2023-06-01.csv.gz": "e62738b4d18f54551d38f6a3d932e9ff1cdb3d3d0bedd82d6652ebff6911ff13"
+    }
+  },
+  "selection_history": {
+    "calibration_partitions": ["2023-07-01", "2023-08-01"],
+    "exposed_test_partitions": ["2023-09-01", "2023-10-01", "2023-11-01", "2023-12-01"],
+    "absolute_prediction_threshold_bps": 23.81534927035741,
+    "threshold_origin": "90th percentile of absolute predictions on the frozen July-August calibration partitions.",
+    "observed_calibration_global_slot": "13 trades; 12bp net mean +0.814647bp; top-10%-removed 12bp net mean -10.664801bp.",
+    "observed_exposed_test_global_slot": "39 trades; 12bp net mean +4.553826bp; top-10%-removed 12bp net mean -7.040825bp.",
+    "reason_for_new_confirmation": "Mean expectancy was positive in both blocks but sample and winner-removal gates failed. The six listed mid-month dates were not used in feature, model, threshold or payoff selection and are opened only to decide whether concentration was a small-sample artifact."
+  },
+  "trading_rule": {
+    "direction": "Trade in the sign of the model forecast relative to the sweep taker side: positive forecast follows the sweep; negative forecast reverses it.",
+    "minimum_absolute_prediction_bps": 23.81534927035741,
+    "holding_period_seconds": 3600,
+    "exit": "First public trade at or after entry plus 3600 seconds.",
+    "global_slot": "At most one BTCUSDT or ETHUSDT position. While flat, take the earliest eligible causal entry; exact simultaneous entries are ranked by absolute frozen model forecast only.",
+    "roundtrip_cost_stress_bps": [12, 18, 24],
+    "funding": "The one-hour fatal confirmation records whether a historical funding timestamp is crossed but does not claim full account certification. A survivor must be replayed with exact Bybit funding, bid/ask and sizing before any 2024 ranking evaluation."
+  },
+  "fatal_confirmation_gate": {
+    "minimum_global_slot_trades": 40,
+    "net_mean_positive_at_18bp": true,
+    "net_median_positive_at_12bp": true,
+    "top_10_percent_trade_removed_net_mean_positive_at_12bp": true,
+    "minimum_positive_dates_at_12bp": 4,
+    "required_positive_dates_denominator": 6,
+    "maximum_largest_winner_share_of_positive_gross_pnl": 0.35
+  },
+  "stage_boundary": "If any fatal gate fails, do not tune the model, threshold, event filters or holding period on these confirmation dates and do not open 2024. If every gate passes, freeze the complete implementation and proceed to sequential 2024H1 Bybit replay under the official project contract."
+}
