@@ -27,21 +27,21 @@ def _frame(symbol: str, delayed_until_ms: int | None = None) -> pd.DataFrame:
     frame["bn_first_event_ms"] = (first_us // 1_000).astype(float)
     fields = {
         "bn_first_bid": 99.9,
-        "bn_first_bid_amount": 100.0,
+        "bn_first_bid_amount": 1_000.0,
         "bn_first_bid_ask": 100.1,
-        "bn_first_bid_ask_amount": 100.0,
+        "bn_first_bid_ask_amount": 1_000.0,
         "bn_first_ask_bid": 99.9,
-        "bn_first_ask_bid_amount": 100.0,
+        "bn_first_ask_bid_amount": 1_000.0,
         "bn_first_ask": 100.1,
-        "bn_first_ask_amount": 100.0,
+        "bn_first_ask_amount": 1_000.0,
         "bn_low_bid": 99.9,
-        "bn_low_bid_amount": 100.0,
+        "bn_low_bid_amount": 1_000.0,
         "bn_low_bid_ask": 100.1,
-        "bn_low_bid_ask_amount": 100.0,
+        "bn_low_bid_ask_amount": 1_000.0,
         "bn_high_ask_bid": 99.9,
-        "bn_high_ask_bid_amount": 100.0,
+        "bn_high_ask_bid_amount": 1_000.0,
         "bn_high_ask": 100.1,
-        "bn_high_ask_amount": 100.0,
+        "bn_high_ask_amount": 1_000.0,
     }
     for name, value in fields.items():
         frame[name] = value
