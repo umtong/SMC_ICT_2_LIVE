@@ -10,7 +10,7 @@ on:
     paths:
       - '.github/workflows/crossvenue-forward-evidence.yml'
       - 'research/experiments/crossvenue_forward_evidence/**'
-      - 'tests/test_crossvenue_forward_bundle.py'
+      - 'tests/test_crossvenue_forward_evidence_bundle.py'
       - 'control/**'
       - 'data/catalog/**'
       - 'research/reports/**'
@@ -62,6 +62,13 @@ jobs:
         with:
           name: crossvenue-forward-diagnostics
           path: /tmp/crossvenue-diagnostics
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crossvenue-forward-stored-bundle
+          path: research/experiments/crossvenue_forward_evidence/source-bundle.tar.gz
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@v4
