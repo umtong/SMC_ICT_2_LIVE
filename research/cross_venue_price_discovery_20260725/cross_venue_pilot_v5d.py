@@ -15,7 +15,11 @@ def run(output: Path, cache: Path, days: tuple[str, ...] = v1.PILOT_DAYS) -> dic
     basis_v5d.patch()
     v5d.patch_v5()
     result = pilot_v5c.run(output, cache, tuple(days))
+    result["stage"] = "MICROSECOND_LOCAL_ARRIVAL_FATAL_EDGE_PILOT_V5D"
     result["causal_engine_version"] = v5d.ENGINE_VERSION
+    result["funding_boundary_contract"] = (
+        "exclude any entry whose maximum hold, exit latency and bounded bucket rounding can cross an 8h settlement"
+    )
     result["source_continuity_contract"] = (
         "complete 100ms grid; rolling signal and convergence state reset after unavailable Binance/Bybit state"
     )
