@@ -1,0 +1,183 @@
+{
+  "base_project_revision": 4,
+  "causal_features": {
+    "bar_availability": "All price, flow and volume inputs use the completed signal bar or earlier.",
+    "common_factor": "For each target and bar, the median contemporaneous return of the other three completed bars.",
+    "entry": "First open after the completed five-minute signal bar.",
+    "flow": "True target taker-buy quote from official kline fields, aggregated causally over completed bars.",
+    "later_period_prohibition": "No development ranking, threshold or family decision may use 2024 or 2025 values.",
+    "normalization": "Rolling means and standard deviations are shifted one bar; the current observation is never in its own normalization history.",
+    "residual": "Target completed-bar return minus prior-estimated beta times the current completed leave-one-out factor return.",
+    "rolling_beta": "Target-versus-leave-one-out-factor covariance divided by factor variance, estimated only from bars strictly before the signal bar."
+  },
+  "claim_id": "CLM-20260725-1738-DYNAMIC-FACTOR-001",
+  "confirmation_gate": {
+    "maximum_drawdown_at_12bps": 0.2,
+    "maximum_top5_positive_share": 0.6,
+    "minimum_profit_factor_at_12bps": 1.05,
+    "minimum_trades": 30,
+    "positive_total_return_at_12_18_24_bps": true,
+    "target_test_after_all_settings_frozen": "net geometric daily return >= 0.01"
+  },
+  "created_at": "2026-07-25T17:38:27+09:00",
+  "dataset": {
+    "artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "interval": "5m",
+    "manifest_fingerprint": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "no_gap_fill": true,
+    "source": "official Binance Vision monthly USD-M archives, adjacent CHECKSUM verified by the reused snapshot",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ]
+  },
+  "development_gate": {
+    "diversity_before_rank": "Preserve at least one representative per passing family before filling by robust score.",
+    "maximum_drawdown_at_12bps": 0.2,
+    "maximum_single_symbol_trade_share": 0.8,
+    "maximum_top5_positive_share": 0.4,
+    "minimum_positive_month_fraction": 0.55,
+    "minimum_profit_factor_at_12bps": 1.1,
+    "minimum_traded_symbols": 2,
+    "minimum_trades": 60,
+    "minimum_worst_month_return": -0.05,
+    "positive_2023_h1_and_h2": true,
+    "positive_after_removing_top_10_percent_trades": true,
+    "positive_total_return_at_12_18_24_bps": true,
+    "representative_cap": 12
+  },
+  "economic_hypothesis": "BTC, ETH, SOL and XRP share a time-varying crypto factor, but temporary asset-specific inventory, information and liquidity shocks create residual moves. Residuals unsupported by target taker flow should mean-revert; residuals supported by target flow and a dispersion expansion should continue. A separate compression-to-dispersion arm tests whether unusually low cross-sectional dispersion followed by a factor-neutral breakout predicts continuation, while a low-efficiency high-flow residual tests absorption reversal.",
+  "execution": {
+    "ambiguous_ordering": "protective stop has priority",
+    "entry": "next five-minute open",
+    "funding": "not available in this reused snapshot; this is a rejection screen and is never Champion-eligible",
+    "horizon_exit": "first eligible open after the fixed hold",
+    "maximum_notional_leverage": 3.0,
+    "maximum_prior_quote_volume_participation": 0.001,
+    "one_global_open_or_pending_slot": true,
+    "risk_fraction": 0.005,
+    "round_trip_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
+    "stop": "signal-bar ATR multiple from actual entry; entry-bar and gap stops included"
+  },
+  "families": {
+    "dispersion_absorption": "Trade opposite an extreme residual when aggressive target flow is large but residual path efficiency is low.",
+    "dispersion_breakout": "After prior cross-sectional compression, trade the largest factor-neutral residual in its direction when dispersion and flow expand.",
+    "residual_flow_continuation": "Trade with an extreme residual when target taker flow and activity confirm the move.",
+    "residual_mean_reversion": "Trade opposite an extreme cumulative residual when target flow does not confirm the residual move."
+  },
+  "initial_dependency_fingerprint": "475720eac864b5c29e8321dbcec30932f8ff27790e8fbbc83fa9b5d5f539cebf",
+  "non_overlap": {
+    "distinguishing_feature": "Every target uses a leave-one-out median factor of the other three assets and a causally estimated rolling beta; no asset is permanently designated leader or follower.",
+    "excluded_scopes": [
+      "fixed BTC/ETH or four-asset leader-lagger thresholds",
+      "spot-perpetual leadership",
+      "exact funding-settlement reactions",
+      "open-interest state",
+      "L1 maker/taker routing",
+      "single-asset flow-size-impact claim",
+      "candlestick, engulfing and first-touch pattern families"
+    ]
+  },
+  "objective": "Test whether dynamic four-asset common-factor residual states contain cost-robust single-leg alpha that is not captured by fixed leader-lagger rules.",
+  "objective_fingerprint": "e8a344eeba283347b453f70df8035075dd8c06fdb4c33ee1ce457d9b837984ab",
+  "parameter_grid": {
+    "beta_window_bars": [
+      2016,
+      8640
+    ],
+    "compression_z_max": [
+      -0.5,
+      0.0
+    ],
+    "continuation_signed_flow_min": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "dispersion_z_min": [
+      0.0,
+      1.0,
+      2.0
+    ],
+    "efficiency_max": [
+      0.3,
+      0.5
+    ],
+    "hold_bars": [
+      3,
+      12,
+      48
+    ],
+    "mean_reversion_signed_flow_max": [
+      -0.5,
+      0.0,
+      0.5
+    ],
+    "residual_horizon_bars": [
+      3,
+      12,
+      48
+    ],
+    "residual_z_threshold": [
+      1.5,
+      2.0,
+      2.5,
+      3.0
+    ],
+    "stop_atr": [
+      1.5,
+      2.5,
+      4.0
+    ]
+  },
+  "prohibitions": [
+    "No target-return, leverage or risk fitting.",
+    "No 2024 access before the frozen development gate and representative manifest.",
+    "No 2025 access before a single frozen selection primary.",
+    "No 2026 access.",
+    "No paper, testnet or live orders.",
+    "No Champion proposal from this screen because actual funding and order-book execution are absent."
+  ],
+  "ranking": [
+    "descending minimum of H1 return, H2 return, 18bp return and 24bp return",
+    "descending top-10-percent-removed growth",
+    "ascending maximum drawdown",
+    "ascending top-five concentration",
+    "stable candidate id"
+  ],
+  "schema_version": 1,
+  "scope_fingerprint": "828f1fe3626cf704a4c0f8331f0d2c883fe537946ff27b6fa3cc12e4c5c8406f",
+  "selection_gate": {
+    "maximum_drawdown_at_12bps": 0.2,
+    "maximum_top5_positive_share": 0.6,
+    "minimum_positive_month_fraction": 0.5,
+    "minimum_profit_factor_at_12bps": 1.05,
+    "minimum_trades": 30,
+    "positive_total_return_at_12_18_24_bps": true
+  },
+  "status": "PREREGISTERED_BEFORE_DEVELOPMENT_RESULT",
+  "time_splits": {
+    "2026_opened": false,
+    "confirmation": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "confirmation_open_rule": "Only a single frozen 2024 primary may open 2025.",
+    "development": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "selection": [
+      "2024-01-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "selection_open_rule": "Only frozen development representatives may open 2024."
+  }
+}
