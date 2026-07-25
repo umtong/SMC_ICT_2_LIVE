@@ -138,6 +138,7 @@ jobs:
           PY
 
       - name: Upload immutable evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xsec-positioning-metrics-evidence
@@ -145,5 +146,5 @@ jobs:
             /tmp/xsec-positioning/manifest.json
             /tmp/xsec-positioning/*.log
             /tmp/xsec-positioning/outputs/**
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
