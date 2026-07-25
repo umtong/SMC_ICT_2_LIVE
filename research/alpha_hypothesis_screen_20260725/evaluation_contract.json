@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "contract_id": "EVAL-ALPHA-HYP-5M-20260725-V1",
+  "purpose": "Sequential rejection screen for transcript-derived liquidity-state hypotheses on official Binance USD-M continuous five-minute data.",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "bar_interval": "5m",
+  "mechanism_families": [
+    "low_resistance_run",
+    "high_resistance_sweep",
+    "breaker_first_retest",
+    "fakeout_first_retest",
+    "po3_session_delivery"
+  ],
+  "time_splits": {
+    "development": ["2021-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "selection": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "confirmation": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "availability": {
+    "signal_inputs": "completed five-minute bars only",
+    "entry": "next five-minute open",
+    "future_mutation_prefix_invariant": true,
+    "selection_data_cannot_change_candidate_grid": true,
+    "confirmation_download_allowed_only_after_selection_pass": true
+  },
+  "portfolio": {
+    "global_open_or_pending_slot": 1,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "maximum_prior_quote_volume_participation": 0.001
+  },
+  "execution": {
+    "ambiguous_bar_policy": "protective stop before target",
+    "gap_stop": "actual adverse open",
+    "round_trip_cost_bps": [12.0, 18.0, 24.0],
+    "funding_proxy": "1 bp per completed eight-hour interval",
+    "screen_only": true
+  },
+  "development_gate": {
+    "minimum_trades": 50,
+    "returns_positive_at_all_costs": true,
+    "minimum_profit_factor_at_12bps": 1.1,
+    "maximum_top5_positive_share": 0.45
+  },
+  "later_gate": {
+    "minimum_trades": 20,
+    "returns_positive_at_all_costs": true,
+    "minimum_profit_factor_at_12bps": 1.05,
+    "maximum_top5_positive_share": 0.6
+  },
+  "promotion": {
+    "champion_eligible": false,
+    "reason": "This screen lacks actual funding, account-level mark-to-market accounting, order-book queue simulation and a later independent final interval."
+  },
+  "safety": {
+    "credentials_used": false,
+    "orders_submitted": false,
+    "paper_or_live_started": false
+  }
+}
