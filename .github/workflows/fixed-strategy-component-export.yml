@@ -81,7 +81,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile dynamic_verified/*.py absorption_verified/*.py
+          mapfile -d '' python_files < <(find dynamic_verified absorption_verified -type f -name '*.py' -print0 | sort -z)
+          test ${#python_files[@]} -gt 0
+          python -m py_compile "${python_files[@]}"
           mkdir -p /tmp/fixed-component-sources/dynamic /tmp/fixed-component-sources/absorption /tmp/fixed-component-sources/portfolio
           cp -a dynamic_verified/. /tmp/fixed-component-sources/dynamic/
           cp -a absorption_verified/. /tmp/fixed-component-sources/absorption/
