@@ -281,8 +281,13 @@ def build_features(
             price_day = symbol_prices.loc[
                 (symbol_prices["minute"] >= start) & (symbol_prices["minute"] < end)
             ].copy()
-            if len(price_day) < 1400:
-                raise ResearchError(f"incomplete one-minute price day: {symbol} {d}: {len(price_day)}")
+            expected_minutes = pd.date_range(start, periods=1440, freq="min")
+            actual_minutes = pd.DatetimeIndex(price_day["minute"])
+            if len(price_day) != 1440 or not actual_minutes.equals(expected_minutes):
+                raise ResearchError(
+                    f"incomplete or non-contiguous one-minute price day: {symbol} {d}: "
+                    f"rows={len(price_day)}"
+                )
             liq_day = symbol_liq.loc[
                 (symbol_liq["minute"] >= start) & (symbol_liq["minute"] < end)
             ].copy()
