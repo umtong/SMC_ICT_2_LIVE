@@ -1,0 +1,52 @@
+name: Absorption Flow Benchmark V1 CI
+
+on:
+  push:
+    branches: [agent/absorption-flow-benchmark-20260725]
+    paths:
+      - '.github/workflows/absorption-flow-benchmark-v1.yml'
+      - 'research/absorption_flow_benchmark_v1/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/absorption-flow-benchmark-v1.yml'
+      - 'research/absorption_flow_benchmark_v1/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  causal-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: research/absorption_flow_benchmark_v1/requirements.txt
+      - name: Install fixed research dependencies
+        run: python -m pip install -r research/absorption_flow_benchmark_v1/requirements.txt
+      - name: Reconstruct and verify exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/absorption_flow_benchmark_v1/reconstruct.py
+          echo 'e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py' | sha256sum -c -
+          python -m py_compile research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
+      - name: Run causal and execution contract tests
+        run: pytest -q research/absorption_flow_benchmark_v1/test_absorption_flow.py
+      - name: Freeze source evidence
+        shell: bash
+        run: |
+          mkdir -p ci-evidence
+          sha256sum research/absorption_flow_benchmark_v1/* > ci-evidence/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: absorption-flow-benchmark-v1-ci-${{ github.run_id }}
+          path: ci-evidence
+          if-no-files-found: warn
+          retention-days: 30
