@@ -1,0 +1,172 @@
+{
+  "aggregate": {
+    "compressed_bytes": 209945454,
+    "development_rows": 1872598,
+    "fit_rows": 3773897,
+    "generated_source_manifest_sha256": "bb3fb2c3bc4d01bb49b29d6d121f479cf27ddbf27d63f74842b86391dca751bf",
+    "partition_count": 12,
+    "rows": 5646495
+  },
+  "causal_availability": "Each trade becomes usable only at its exchange timestamp. The UTC-day adaptive grid is fixed from the first observed trade; decisions wait for the fixed confirmation window and an additional 100 ms; entry is the first later trade. No 2024-or-later partition was opened.",
+  "dataset_id": "DS-BYBIT-BTCETH-PUBLIC-TRADES-ROUND-NUMBER-2023-R1",
+  "limitations": [
+    "Public trade prints do not provide executable BBO/depth.",
+    "Six non-contiguous 2023 dates only.",
+    "No imputation or cross-date interpolation."
+  ],
+  "market": "USDT linear perpetual futures",
+  "orders_submitted": false,
+  "partition_role": {
+    "fit_mechanism": [
+      "2023-01-15",
+      "2023-03-19",
+      "2023-05-21"
+    ],
+    "independent_development": [
+      "2023-07-16",
+      "2023-09-17",
+      "2023-11-19"
+    ]
+  },
+  "partitions": [
+    {
+      "compressed_bytes": 24810187,
+      "date": "2023-01-15",
+      "first_timestamp": 1673740801.4791,
+      "last_timestamp": 1673827198.0751,
+      "rows": 707723,
+      "sha256": "f96b1ba637c47496c263c3871835325e4bc5fa0e5613ff35961f67d6584b3a7b",
+      "stage": "fit",
+      "symbol": "BTCUSDT",
+      "url": "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2023-01-15.csv.gz"
+    },
+    {
+      "compressed_bytes": 14977628,
+      "date": "2023-01-15",
+      "first_timestamp": 1673740801.1734,
+      "last_timestamp": 1673827199.4821,
+      "rows": 427716,
+      "sha256": "7535316371881bed6f82d23f51efe2749b40b7060891e47178b8a95150eaddb3",
+      "stage": "fit",
+      "symbol": "ETHUSDT",
+      "url": "https://public.bybit.com/trading/ETHUSDT/ETHUSDT2023-01-15.csv.gz"
+    },
+    {
+      "compressed_bytes": 54996492,
+      "date": "2023-03-19",
+      "first_timestamp": 1679184001.3501,
+      "last_timestamp": 1679270399.8707,
+      "rows": 1440607,
+      "sha256": "372eebac52e8e316549be927a0d5e18ad68089e56a22b1242808e83856304ba8",
+      "stage": "fit",
+      "symbol": "BTCUSDT",
+      "url": "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2023-03-19.csv.gz"
+    },
+    {
+      "compressed_bytes": 19419206,
+      "date": "2023-03-19",
+      "first_timestamp": 1679184000.8642,
+      "last_timestamp": 1679270399.9342,
+      "rows": 491064,
+      "sha256": "077ff6e8c9e62f465cbbb94279f362b30f659f3798a8c5abc1d5e99f6c995de0",
+      "stage": "fit",
+      "symbol": "ETHUSDT",
+      "url": "https://public.bybit.com/trading/ETHUSDT/ETHUSDT2023-03-19.csv.gz"
+    },
+    {
+      "compressed_bytes": 20642699,
+      "date": "2023-05-21",
+      "first_timestamp": 1684627201.2194,
+      "last_timestamp": 1684713599.1112,
+      "rows": 566825,
+      "sha256": "c84a1e2ef67b6a3ccf3c68957beb2affa62f4ae2494edd9207253bdb7c3a2f1a",
+      "stage": "fit",
+      "symbol": "BTCUSDT",
+      "url": "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2023-05-21.csv.gz"
+    },
+    {
+      "compressed_bytes": 5449465,
+      "date": "2023-05-21",
+      "first_timestamp": 1684627201.3038,
+      "last_timestamp": 1684713595.8709,
+      "rows": 139962,
+      "sha256": "147d50f55e643abe43a0d5338695b7561f89a6456278662a9f4b329446e29a7b",
+      "stage": "fit",
+      "symbol": "ETHUSDT",
+      "url": "https://public.bybit.com/trading/ETHUSDT/ETHUSDT2023-05-21.csv.gz"
+    },
+    {
+      "compressed_bytes": 12295740,
+      "date": "2023-07-16",
+      "first_timestamp": 1689465601.0619,
+      "last_timestamp": 1689551993.8729,
+      "rows": 341102,
+      "sha256": "b919ec4bdf48dfde2e52fa49972df195ac53b755825f4c54d665e4eb1849abae",
+      "stage": "development",
+      "symbol": "BTCUSDT",
+      "url": "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2023-07-16.csv.gz"
+    },
+    {
+      "compressed_bytes": 6133694,
+      "date": "2023-07-16",
+      "first_timestamp": 1689465600.6655,
+      "last_timestamp": 1689551983.3501,
+      "rows": 165163,
+      "sha256": "c2d90022212ad5df43c7158a04d08bc4ae41aaf48bd6af6df863a5a9308972a1",
+      "stage": "development",
+      "symbol": "ETHUSDT",
+      "url": "https://public.bybit.com/trading/ETHUSDT/ETHUSDT2023-07-16.csv.gz"
+    },
+    {
+      "compressed_bytes": 13908045,
+      "date": "2023-09-17",
+      "first_timestamp": 1694908801.1289,
+      "last_timestamp": 1694995196.3003,
+      "rows": 409540,
+      "sha256": "804a4d5d935e4f6409bd7972f0ae886851884475f066df081593c227cf7cf0cc",
+      "stage": "development",
+      "symbol": "BTCUSDT",
+      "url": "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2023-09-17.csv.gz"
+    },
+    {
+      "compressed_bytes": 4240105,
+      "date": "2023-09-17",
+      "first_timestamp": 1694908800.6025,
+      "last_timestamp": 1694995195.8432,
+      "rows": 107986,
+      "sha256": "289c69df0cc287684973e88022bd4efba465b377b5aabd1f8ffea34770ca46f1",
+      "stage": "development",
+      "symbol": "ETHUSDT",
+      "url": "https://public.bybit.com/trading/ETHUSDT/ETHUSDT2023-09-17.csv.gz"
+    },
+    {
+      "compressed_bytes": 20385002,
+      "date": "2023-11-19",
+      "first_timestamp": 1700352000.3412,
+      "last_timestamp": 1700438399.8677,
+      "rows": 527764,
+      "sha256": "e60fd6997d772d9ecd6e64a0fd390a5e42a8caaf8b5a35777c5f58490360b3d0",
+      "stage": "development",
+      "symbol": "BTCUSDT",
+      "url": "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2023-11-19.csv.gz"
+    },
+    {
+      "compressed_bytes": 12687191,
+      "date": "2023-11-19",
+      "first_timestamp": 1700352000.5802,
+      "last_timestamp": 1700438399.3904,
+      "rows": 321043,
+      "sha256": "41a3daafcc13403d0c1800975d16db427e26be32b49b3eab05f5d5d126e3f596",
+      "stage": "development",
+      "symbol": "ETHUSDT",
+      "url": "https://public.bybit.com/trading/ETHUSDT/ETHUSDT2023-11-19.csv.gz"
+    }
+  ],
+  "provider": "Bybit official public trading archive",
+  "schema_version": 1,
+  "source_id": "exchange:bybit:public-trading-archive",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ]
+}
