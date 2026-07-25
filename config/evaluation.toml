@@ -1,4 +1,4 @@
-schema_version = 1
+schema_version = 2
 
 [objective]
 metric = "account_nav_geometric_daily_growth"
@@ -13,13 +13,48 @@ calculation_accuracy = true
 overfitting_controls = true
 invalid_if_violated = true
 
+[validation]
+mode = "staged"
+depth_proportional_to_economic_promise_and_decision_value = true
+
+[stage.initial]
+purpose = "cheap_rejection"
+required = [
+  "causal_boundary",
+  "calculation_smoke_test",
+  "basic_cost_after_expectancy",
+  "minimum_sample_and_trade_count",
+  "basic_profit_concentration",
+]
+
+[stage.promising]
+entry_condition = "positive_after_basic_cost_with_sufficient_sample"
+required = [
+  "sequential_out_of_sample",
+  "parameter_neighborhood",
+  "period_and_symbol_breakdown",
+  "basic_execution_sensitivity",
+]
+
+[stage.champion]
+entry_condition = "material_champion_challenge_or_practical_use"
+required = [
+  "account_nav_paths",
+  "max_drawdown_and_recovery",
+  "liquidation_and_tail_loss",
+  "top_1_5_10pct_trade_removal",
+  "latency_partial_fill_liquidity_capacity_stress",
+  "independent_replication_when_material",
+]
+
 [account_quality]
 require_no_forced_liquidation = true
 require_recoverable_drawdown = true
 require_non_concentrated_profit = true
 require_many_repeatable_positive_expectancy_trades = true
 
-[mandatory_reporting]
+[final_reporting]
+applies_to = "champion_challenger_or_material_final_report"
 metrics = [
   "geometric_daily_growth",
   "ending_nav_multiple",
