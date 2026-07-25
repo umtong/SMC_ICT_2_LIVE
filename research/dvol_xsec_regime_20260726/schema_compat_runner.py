@@ -20,15 +20,19 @@ KLINE_COLUMNS = [
 FUNDING_COLUMNS = ["calc_time", "funding_interval_hours", "last_funding_rate"]
 
 
-def read_nested_csv_compat(raw_zip: bytes, kind: str) -> pd.DataFrame:
+def read_nested_csv_compat(raw_zip: bytes, kind: str | None = None) -> pd.DataFrame:
     with zipfile.ZipFile(io.BytesIO(raw_zip)) as inner:
         names = [name for name in inner.namelist() if name.endswith(".csv")]
         if len(names) != 1:
             raise ValueError(f"expected one CSV, got {names}")
         raw = inner.read(names[0])
+    first_line = raw.splitlines()[0].decode(errors="replace")
+    first_fields = first_line.split(",")
+    if kind is None:
+        kind = "fundingRate" if len(first_fields) == len(FUNDING_COLUMNS) else "klines"
     columns = FUNDING_COLUMNS if kind == "fundingRate" else KLINE_COLUMNS
     expected_header = columns[0]
-    first_field = raw.splitlines()[0].decode(errors="replace").split(",")[0]
+    first_field = first_fields[0]
     has_header = first_field == expected_header
     frame = pd.read_csv(
         io.BytesIO(raw),
