@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260725-2120-CROSS-MARGIN-001",
+  "status": "PREREGISTERED_BEFORE_SOURCE_OR_PRICE_SCREEN",
+  "created_at": "2026-07-25T21:20:00+09:00",
+  "objective": "Test whether forced inventory and collateral stress in Binance COIN-M inverse perpetuals predicts executable single-leg USD-M BTCUSDT and ETHUSDT returns after actual BBO, latency, fees and impact.",
+  "economic_logic": {
+    "asymmetry": "In an inverse coin-margined long, a downside move can combine position loss with a decline in the USD value of collateral. The resulting margin demand can make aggressive COIN-M selling and quote depletion lead USD-M price adjustment. This downside mechanism is tested separately from symmetric information flow.",
+    "smc_ict_translation": "A liquidity run requires persistent COIN-M aggressive flow and BBO depletion followed by incomplete USD-M response. A sweep/rejection requires the COIN-M impulse to decay and USD-M executable basis to begin reverting. No historical candle is retroactively labelled.",
+    "execution": "Only one Binance USD-M position is opened. COIN-M is an observed signal market, never a simultaneous hedge."
+  },
+  "routes": {
+    "BTC": {"coin_m": "BTCUSD_PERP", "usd_m": "BTCUSDT"},
+    "ETH": {"coin_m": "ETHUSD_PERP", "usd_m": "ETHUSDT"}
+  },
+  "families": {
+    "coinm_downside_collateral_cascade": "COIN-M downside price and aggressive-flow shock with local quote depletion while USD-M has incompletely responded; short USD-M.",
+    "coinm_flow_first_propagation": "Either-direction COIN-M aggressive-flow and mid-price impulse precedes the same-direction USD-M adjustment.",
+    "usdm_overreaction_fade": "USD-M executable move exceeds the contemporaneous COIN-M response while COIN-M flow does not confirm; fade USD-M toward cross-contract fair value.",
+    "simultaneous_basis_snapback": "Both contracts move together, but executable COIN-M versus USD-M basis becomes extreme and begins to contract; trade USD-M toward basis normalization."
+  },
+  "source_contract": {
+    "provider": "Official Binance Vision public archives",
+    "coin_m_paths": ["futures/cm/daily or monthly aggTrades", "futures/cm/daily or monthly bookTicker", "futures/cm 1m klines for audit"],
+    "usd_m_paths": ["futures/um/daily or monthly aggTrades", "futures/um/daily or monthly bookTicker", "futures/um 1m klines for audit"],
+    "integrity": "Every ZIP must match its adjacent official .CHECKSUM; source replacement creates a new dataset revision.",
+    "fail_closed": "If official BBO history is unavailable for either contract type, no strategy PnL is computed and no midpoint or kline fill substitute is allowed."
+  },
+  "information_availability": {
+    "signal_events": "Only aggregate trades and BBO events timestamped at or before the completed observation bucket are used.",
+    "bucket": "Events are grouped into non-overlapping 100ms, 500ms or 1s exchange-time buckets; a bucket becomes available only at its end.",
+    "entry": "First actual USD-M BBO event at or after bucket end plus registered combined data/order latency.",
+    "same_timestamp": "When cross-contract event order is not identifiable, strategy-adverse ordering is used.",
+    "funding_collision": "Entries whose maximum hold can cross a USD-M funding settlement are blocked."
+  },
+  "time_splits": {
+    "pilot_days": ["2022-01-01", "2022-07-01", "2023-01-01", "2023-07-01"],
+    "development_days": "remaining first UTC day of every month in 2022 and 2023",
+    "selection_days": "first UTC day of every month in 2024, physically unopened until development pass",
+    "confirmation_days": "first UTC day of every month in 2025, physically unopened until one frozen 2024 primary",
+    "2026_opened": false
+  },
+  "parameter_grid": {
+    "observation_ms": [500, 1000, 3000],
+    "coinm_displacement_spreads": [2.0, 4.0, 8.0],
+    "coinm_flow_imbalance": [0.60, 0.75],
+    "maximum_usdm_response_fraction": [0.25, 0.50],
+    "combined_latency_ms": [50, 100, 250],
+    "maximum_holding_ms": [1000, 3000, 10000],
+    "protective_stop_spreads": [4.0, 8.0],
+    "basis_z_threshold": [2.0, 3.0]
+  },
+  "portfolio_and_costs": {
+    "one_global_open_or_pending_slot": true,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "maximum_observed_usdm_top_quote_participation": 0.05,
+    "fee_bps_per_side": [5.0, 7.5, 10.0],
+    "fills": "Observed executable USD-M bid/ask plus adverse quantity impact; every entered trade must exit.",
+    "ambiguous_ordering": "Protective stop before convergence or profit exit.",
+    "drawdown": "Executable mark-to-liquidation value throughout each position and closed account path."
+  },
+  "fatal_pilot_gate": {
+    "minimum_trades": 100,
+    "positive_zero_fee_mean_bps": true,
+    "positive_total_return_at_5_and_10_bps_per_side": true,
+    "positive_after_removing_top_10_percent_trades": true,
+    "minimum_positive_day_fraction": 0.50
+  },
+  "development_gate": {
+    "minimum_trades": 500,
+    "minimum_median_trades_per_day": 10,
+    "positive_total_return_at_all_fee_levels": true,
+    "positive_2022_and_2023": true,
+    "minimum_positive_day_fraction": 0.60,
+    "positive_after_removing_top_10_percent_trades": true,
+    "maximum_top_five_positive_profit_share": 0.20,
+    "minimum_profit_factor_at_5bps_per_side": 1.10,
+    "maximum_drawdown": 0.20,
+    "maximum_single_symbol_positive_pnl_share": 0.70
+  },
+  "selection_and_confirmation_gate": {
+    "minimum_trades": 200,
+    "positive_total_return_at_all_fee_levels": true,
+    "minimum_positive_day_fraction": 0.58,
+    "positive_after_removing_top_10_percent_trades": true,
+    "minimum_profit_factor_at_5bps_per_side": 1.05,
+    "maximum_drawdown": 0.20
+  },
+  "promotion": {
+    "public_sample_champion_eligible": false,
+    "requirement_after_sample_confirmation": "Full independently registered official or institutional tick dataset covering every operable day, followed by the same frozen target test.",
+    "target_test": "Net external-cashflow-adjusted geometric daily NAV return >=0.01 only after all rules and full-day data are fixed."
+  },
+  "prohibitions": [
+    "No kline midpoint fills when BBO is unavailable.",
+    "No target-return, leverage, fee or latency fitting.",
+    "No 2024 or 2025 URL request before the preceding frozen gate.",
+    "No 2026 access.",
+    "No paper, testnet or live orders."
+  ]
+}
