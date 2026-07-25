@@ -49,7 +49,34 @@ jobs:
         uses: actions/cache@v4
         with:
           path: research_runs/round_number_acceptance/cache
-          key: round-number-bybit-trades-v1-btceth-20230115-20231119
+          key: round-number-bybit-trades-v2-raw-gzip-btceth-20230115-20231119
+
+      - name: Prefetch exact raw gzip bytes and verify transport encoding
+        run: |
+          set -euo pipefail
+          dates=(2023-01-15 2023-03-19 2023-05-21 2023-07-16 2023-09-17 2023-11-19)
+          symbols=(BTCUSDT ETHUSDT)
+          for symbol in "${symbols[@]}"; do
+            mkdir -p "research_runs/round_number_acceptance/cache/${symbol}"
+            for date in "${dates[@]}"; do
+              file="${symbol}${date}.csv.gz"
+              path="research_runs/round_number_acceptance/cache/${symbol}/${file}"
+              magic=""
+              if [[ -s "${path}" ]]; then
+                magic="$(od -An -tx1 -N2 "${path}" | tr -d ' \n')"
+              fi
+              if [[ "${magic}" == "1f8b" ]]; then
+                continue
+              fi
+              rm -f "${path}" "${path}.part"
+              curl --fail --location --retry 4 --retry-all-errors --connect-timeout 20 --max-time 600 --raw \
+                "https://public.bybit.com/trading/${symbol}/${file}" \
+                --output "${path}.part"
+              magic="$(od -An -tx1 -N2 "${path}.part" | tr -d ' \n')"
+              test "${magic}" = "1f8b"
+              mv "${path}.part" "${path}"
+            done
+          done
 
       - name: Run frozen 576-candidate fatal screen
         run: |
