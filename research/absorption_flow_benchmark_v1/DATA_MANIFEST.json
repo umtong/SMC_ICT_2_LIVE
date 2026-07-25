@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "dataset_id": "BINANCE_USDM_4ASSET_1M_PREHOLDOUT_V1",
+  "snapshot_at": "2026-07-25T15:25:00+09:00",
+  "four_asset_comparable_start": "2022-04-03T00:00:00Z",
+  "analysis_end_exclusive": "2025-07-01T00:00:00Z",
+  "gap_policy": "no_imputation; exact complete 5-minute groups only; signal/trade windows crossing gaps invalid",
+  "composite_audit_sha256": "d254ae08cd361bfd32046ce76b7307e37cbe7d1c2f8542ff35f705ebf6644996",
+  "bundles": {
+    "btc_eth": {
+      "sha256": "983ae19e78b761d6a570a745dbd7241b8afdc50d77232f22a0d437be6820b040",
+      "bytes": 171022957
+    },
+    "sol_xrp_flow": {
+      "sha256": "a5f3d65b08bf337fcf374dae2cb090a621fc7b0b7078799ce9128b36fc7ba76f",
+      "bytes": 128394253
+    },
+    "sol_xrp_funding": {
+      "sha256": "e10814b209acc1d348ad207b10765eab03c7649f79a6ea4ef9f1fc0b4ba24052",
+      "bytes": 98123
+    }
+  },
+  "symbols": {
+    "BTCUSDT": {
+      "bytes": 84414996,
+      "sha256": "bbd53c60f7b1022a2502869539445e3450831f70e3062c711da6ae1d209e272e",
+      "rows": 2191672,
+      "columns": ["timestamp","open","high","low","close","volume","quote_volume","num_trades","taker_buy_base_volume","taker_buy_quote_volume"],
+      "start": "2021-05-01 00:01:00+00:00",
+      "end": "2025-06-30 23:59:00+00:00",
+      "duplicate_timestamps": 0,
+      "out_of_order": 0,
+      "abnormal_gap_count": 7,
+      "largest_gap": "0 days 00:02:00",
+      "abnormal_gaps": [
+        {"after":"2021-05-31 23:59:00+00:00","before":"2021-06-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-06-30 23:59:00+00:00","before":"2021-07-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-07-31 23:59:00+00:00","before":"2021-08-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-08-31 23:59:00+00:00","before":"2021-09-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-09-30 23:59:00+00:00","before":"2021-10-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-10-31 23:59:00+00:00","before":"2021-11-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-11-30 23:59:00+00:00","before":"2021-12-01 00:01:00+00:00","delta":"0 days 00:02:00"}
+      ],
+      "null_counts": {"timestamp":0,"open":0,"high":0,"low":0,"close":0,"volume":0,"quote_volume":0,"num_trades":0,"taker_buy_base_volume":0,"taker_buy_quote_volume":0},
+      "funding": {"bytes":45921,"sha256":"2efd07821e0c7f7589e9edcff5297666ab9ea1a7270331847e498e540e727a60","rows":4566,"columns":["timestamp","funding_rate","funding_interval_hours"],"start":"2021-05-01 00:00:00.002000+00:00","end":"2025-06-30 16:00:00.002000+00:00","null_counts":{"timestamp":0,"funding_rate":0,"funding_interval_hours":0}},
+      "upstream_published_sha256": "40e0cb41e8623a49d1e7561197f0bef4c1e1cc8fb471ae8ac9dde7a116cdc4ae"
+    },
+    "ETHUSDT": {
+      "bytes": 86513376,
+      "sha256": "0b843ca317cf841660ab4db8def7378995690a8c8a2a72b5e4460f2e0934631b",
+      "rows": 2191672,
+      "columns": ["timestamp","open","high","low","close","volume","quote_volume","num_trades","taker_buy_base_volume","taker_buy_quote_volume"],
+      "start": "2021-05-01 00:01:00+00:00",
+      "end": "2025-06-30 23:59:00+00:00",
+      "duplicate_timestamps": 0,
+      "out_of_order": 0,
+      "abnormal_gap_count": 7,
+      "largest_gap": "0 days 00:02:00",
+      "abnormal_gaps": [
+        {"after":"2021-05-31 23:59:00+00:00","before":"2021-06-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-06-30 23:59:00+00:00","before":"2021-07-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-07-31 23:59:00+00:00","before":"2021-08-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-08-31 23:59:00+00:00","before":"2021-09-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-09-30 23:59:00+00:00","before":"2021-10-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-10-31 23:59:00+00:00","before":"2021-11-01 00:01:00+00:00","delta":"0 days 00:02:00"},
+        {"after":"2021-11-30 23:59:00+00:00","before":"2021-12-01 00:01:00+00:00","delta":"0 days 00:02:00"}
+      ],
+      "null_counts": {"timestamp":0,"open":0,"high":0,"low":0,"close":0,"volume":0,"quote_volume":0,"num_trades":0,"taker_buy_base_volume":0,"taker_buy_quote_volume":0},
+      "funding": {"bytes":46298,"sha256":"ac39186b84e90e69cbb1a6cb08afae533effa16aa436d83837521bae9df37cd3","rows":4566,"columns":["timestamp","funding_rate","funding_interval_hours"],"start":"2021-05-01 00:00:00.002000+00:00","end":"2025-06-30 16:00:00.002000+00:00","null_counts":{"timestamp":0,"funding_rate":0,"funding_interval_hours":0}},
+      "upstream_published_sha256": "369c49083c31293e6f96ef4ef8e04a0fd5cb853753464d6ec123043c17d87537"
+    },
+    "SOLUSDT": {
+      "bytes": 62142588,
+      "sha256": "7b1dc2828166f5f39bbea863a69ac2e13b659482646d47b98258468bbed3339c",
+      "rows": 1876320,
+      "columns": ["timestamp","open","high","low","close","volume","quote_volume","num_trades","taker_buy_base_volume","taker_buy_quote_volume"],
+      "start": "2021-12-01 00:00:00+00:00",
+      "end": "2025-06-30 23:59:00+00:00",
+      "duplicate_timestamps": 0,
+      "out_of_order": 0,
+      "abnormal_gap_count": 2,
+      "largest_gap": "3 days 00:01:00",
+      "abnormal_gaps": [{"after":"2022-02-25 23:59:00+00:00","before":"2022-03-01 00:00:00+00:00","delta":"3 days 00:01:00"},{"after":"2022-03-31 23:59:00+00:00","before":"2022-04-03 00:00:00+00:00","delta":"2 days 00:01:00"}],
+      "null_counts": {"timestamp":0,"open":0,"high":0,"low":0,"close":0,"volume":0,"quote_volume":0,"num_trades":0,"taker_buy_base_volume":0,"taker_buy_quote_volume":0},
+      "funding": {"bytes":48219,"sha256":"c8811dd885ab9233cfeac14a3a1ab74afdb07ca6b4b9e6ce214d64b74c103b97","rows":3999,"columns":["timestamp","funding_rate"],"start":"2021-12-01 00:00:00+00:00","end":"2025-06-30 16:00:00.002000+00:00","null_counts":{"timestamp":0,"funding_rate":0}}
+    },
+    "XRPUSDT": {
+      "bytes": 69232912,
+      "sha256": "6ca3df854acbdb32f47ac86f74d1e6eac1c9a76d1e9bcc3f50a769c87d45b25b",
+      "rows": 1876320,
+      "columns": ["timestamp","open","high","low","close","volume","quote_volume","num_trades","taker_buy_base_volume","taker_buy_quote_volume"],
+      "start": "2021-12-01 00:00:00+00:00",
+      "end": "2025-06-30 23:59:00+00:00",
+      "duplicate_timestamps": 0,
+      "out_of_order": 0,
+      "abnormal_gap_count": 2,
+      "largest_gap": "3 days 00:01:00",
+      "abnormal_gaps": [{"after":"2022-02-25 23:59:00+00:00","before":"2022-03-01 00:00:00+00:00","delta":"3 days 00:01:00"},{"after":"2022-03-31 23:59:00+00:00","before":"2022-04-03 00:00:00+00:00","delta":"2 days 00:01:00"}],
+      "null_counts": {"timestamp":0,"open":0,"high":0,"low":0,"close":0,"volume":0,"quote_volume":0,"num_trades":0,"taker_buy_base_volume":0,"taker_buy_quote_volume":0},
+      "funding": {"bytes":45552,"sha256":"b34660ece100c7935f00225bfb6785d419db034120718faa146318e0b0e1bfcb","rows":3924,"columns":["timestamp","funding_rate"],"start":"2021-12-01 00:00:00+00:00","end":"2025-06-30 16:00:00.002000+00:00","null_counts":{"timestamp":0,"funding_rate":0}}
+    }
+  }
+}
