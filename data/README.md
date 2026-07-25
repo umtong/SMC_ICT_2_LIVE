@@ -1,26 +1,26 @@
 # Durable data library
 
-The data library prevents repeated searching, re-downloading, re-interpreting, chart reconstruction, and duplicate hypothesis extraction.
+이 라이브러리는 같은 자료의 재검색·재다운로드·재요약, 차트 재구성, 중복 가설 추출을 줄인다.
 
-## Source classes
+## 자료 유형
 
-- YouTube videos and transcripts
-- papers and technical reports
-- day traders, funds, public performance cases, and competitions
-- exchange, broker, API, fee, and market-data documentation
-- code repositories and implementations
-- market and reference datasets
+- 유튜브 영상과 자막
+- 논문과 기술 보고서
+- 트레이더, 운용사, 공개 성과 사례와 대회
+- 거래소, 브로커, API, 수수료와 시장데이터 문서
+- 코드 저장소와 구현체
+- 시장·참조 데이터셋
 
-## Intake contract
+## 등록 절차
 
-1. Search Source, Dataset, Entity, Result, and active Work Claim registries before external search.
-2. Canonicalize the URL and compute SHA-256 for any stored file.
-3. If the canonical URL or hash already exists, reuse the existing source or place a conflicting duplicate in quarantine.
-4. Publicly accessible information and materials may be used and retained for research; do not create a separate permission-classification workflow.
-5. Store material actually used in Drive and keep raw files immutable. Full videos are stored only when they add unique research value.
-6. Record metadata and relative Drive path in `data/catalog/source-registry.jsonl`.
-7. Extract claims and hypotheses into processed/research records; do not treat external claims as verified results.
-8. Record source IDs and dependency fingerprints in every downstream experiment and result.
-9. Reuse unchanged processed outputs and validation evidence rather than rebuilding them.
+1. 외부 검색 전에 Source·Dataset·Entity·Result Registry와 활성 Work Claim을 확인한다.
+2. URL을 정규화하고 저장 파일의 SHA-256을 계산한다.
+3. 동일 URL이나 hash가 있으면 기존 자료를 재사용한다. 충돌하는 중복은 quarantine에 둔다.
+4. 공개된 정보와 자료를 자유롭게 사용한다.
+5. 작업에 사용하거나 재사용 가치가 높은 자료를 Drive에 보존하고 원본은 변경하지 않는다.
+6. 메타데이터와 Drive 경로를 registry에 한 번 기록한다.
+7. 원본과 분리하여 주장·가설·실험 기록을 만든다.
+8. 후속 실험과 결과에 source ID와 의존성 지문을 기록한다.
+9. 의존성이 바뀌지 않은 가공 산출물과 검증 증거를 재사용한다.
 
-Git intentionally ignores `data/raw`, `data/cache`, and `data/downloads` except marker files. Large files belong in Drive or another configured store.
+대형 파일은 Drive 또는 설정된 외부 저장소에 두고 Git에는 manifest, checksum과 재현 정보만 보관한다.
