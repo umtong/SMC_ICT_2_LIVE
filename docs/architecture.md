@@ -1,25 +1,23 @@
 # Architecture
 
-## 저장 계층
+## 역할
 
-- 실행 규칙은 작업 행동을 정의한다.
-- TOML 설정은 저장소 복사본을 프로젝트에 연결한다.
-- Google Drive는 라이브 문서, Work Claim, Run Report, registry와 대형 자료를 보관한다.
-- GitHub는 버전된 규칙, 코드, provenance, manifest, 의존성 지문, 재현 증거와 상태를 보관한다.
-- ChatGPT Project는 활성 작업과 hot context를 제공한다.
+- Google Drive는 라이브 Work Claim, 전체 Run Report, 원시·대형 자료와 실행 산출물을 저장한다.
+- GitHub는 실행 규칙, 설정, 코드, 스키마, 재현 스크립트, 검증된 manifest와 milestone 상태를 버전 관리한다.
+- ChatGPT Project는 현재 작업에 필요한 작은 문맥과 실행 채팅을 제공한다.
+
+같은 라이브 상태를 Drive와 GitHub에 수동으로 중복 기록하지 않는다. GitHub에는 중요한 상태 변경과 재현 가능한 요약만 반영한다.
 
 ## 작업 충돌 방지
 
-작업 시작 전 최신 상태, 활성 Work Claim, 결과·검증·자료 registry와 열린 PR을 확인한다. 작업 목적·범위·의존성 지문, 기준 revision, lease와 branch를 Work Claim에 기록한다.
-
-동일 범위의 활성 작업은 기존 산출물을 재사용하고 미해결 부분으로 이동한다. 독립 재현은 기존 작업과 다른 방법 또는 확인 가치를 기록한다.
-
-각 실행은 고유 Run Report와 작업 브랜치를 사용한다. 공통 상태 변경 전 최신 revision을 다시 확인하고, 오래된 기준이면 재평가·rebase·충돌 조정 후 검증된 PR로 반영한다.
+중복 비용이 크거나 재사용 가치가 높은 작업은 Work Claim으로 선점한다. 짧은 확인과 국소 분석은 기존 작업 기록 안에서 처리한다. 상태 변경 전 최신 revision과 관련 열린 PR을 다시 확인한다.
 
 ## 재사용과 검증
 
-자료, 데이터셋, 차트, 특징량, 코드 산출물, 결과와 검증 증거는 stable ID와 의존성 지문으로 식별한다. 의존성이 같으면 기존 산출물과 검증 증거를 재사용한다. 검증은 변경된 코드·데이터·가정과 새로운 가설 위험에 집중한다.
+자료, 데이터, 차트, 특징량, 코드, 결과와 검증 증거는 stable ID와 dependency fingerprint로 재사용한다. 관련 기록만 검색하고 전체 Registry를 기본적으로 전수 검토하지 않는다.
+
+검증은 단계적으로 적용한다. 초기 후보는 치명적 오류와 기본 비용을 빠르게 확인하고, 경제적 가능성이 확인될수록 아웃오브샘플·안정성·체결·계좌 스트레스를 확대한다.
 
 ## 다른 프로젝트에 재사용
 
-`config/project.toml`에는 공개 binding을 기록한다. 비공개 Drive 폴더 ID는 Git에서 제외되는 `config/project.local.toml`과 Drive의 `00_PROJECT_BINDING`에 기록한다. 저장소를 복사한 뒤 `scripts/init_project.py`로 binding을 바꾼다.
+`config/project.toml`에는 공개 가능한 프로젝트 binding을 두고, 비공개 Drive ID는 Git에서 제외되는 `config/project.local.toml`과 비공개 Drive binding에 기록한다. `scripts/init_project.py`로 프로젝트별 값을 변경한다.
