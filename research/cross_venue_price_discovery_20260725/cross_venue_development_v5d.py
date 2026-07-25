@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import cross_venue_basis_v5d as basis_v5d
 import cross_venue_counterfactual_v5d as counterfactual
 import cross_venue_development_v2 as d2
 import cross_venue_development_v5 as development
@@ -73,6 +74,7 @@ def _update_grid(output: Path, selections: list[dict]) -> None:
 
 def run(pilot_dir: Path, output: Path, cache: Path) -> dict:
     validate_pilot_v5d(pilot_dir)
+    basis_v5d.patch()
     v5d.patch_v5()
     original_passes = d2.passes
     d2.passes = preliminary_pass
@@ -122,7 +124,7 @@ def run(pilot_dir: Path, output: Path, cache: Path) -> dict:
         "development_gate_pass_count": len(passed),
         "frozen_development_representatives": passed[:12],
         "counterfactual_top10_contract": "remove baseline top-10% event keys before slot competition and rerun from initial NAV",
-        "source_continuity_contract": "segmented rolling state resets after unavailable Binance/Bybit state",
+        "source_continuity_contract": "segmented rolling signal and convergence state reset after unavailable Binance/Bybit state",
         "execution_gap_contract": "entry and exit quotes within 1s; finite state throughout accepted positions",
         "exit_floor_contract": "no economic 10%-of-quote floor; numerical positive floor only",
         "drawdown_contract": "single chronological marked account path without double counting",
