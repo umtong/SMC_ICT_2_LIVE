@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "HYP-20260725-CROSS-ASSET-SMT-SWITCH",
+  "parent_claim": "CLAIM-20260725-001-ATTENTION-LIQUIDITY",
+  "registered_at": "2026-07-25T16:32:00+09:00",
+  "pivot_reason": "State-first hazard was predictable but direction was weak; even a non-tradable perfect-label upper bound did not consistently reach the target at 1% risk. Direction information is moved from a single-asset classifier to simultaneous cross-asset liquidity structure.",
+  "economic_hypothesis": "BTC, ETH, SOL and XRP share systemic liquidity shocks. A unique sweep/reclaim against peer non-confirmation is a reversal state, while broad peer breakouts with one non-breaking but flow-aligned laggard are a catch-up continuation state.",
+  "arms": {
+    "UNIQUE_SWEEP_REVERSAL": "exactly one asset sweeps a prior external high/low and closes back inside while at least the preregistered number of peers do not confirm the sweep; trade the sweeper toward the range",
+    "BREADTH_BREAK_LAGGARD": "at least the preregistered number of peer assets close beyond the same prior boundary; among non-breakers trade the asset with the strongest aligned taker flow"
+  },
+  "grid": {
+    "range_lookback_bars": [12, 48],
+    "peer_confirmation_count": [2, 3],
+    "sweep_depth_atr_min": [0.0, 0.1],
+    "directional_clv_min": [0.55, 0.65],
+    "aligned_flow_min": [0.0, 0.15],
+    "stop_lookback_bars": [6, 12],
+    "target_r": [1.5, 2.5, 3.5]
+  },
+  "search_count": 192,
+  "information_and_execution": "identical to the corrected attention-liquidity evaluator: completed 5-minute bars, next open, structural price-risk target, actual funding, same-bar stop first, gap stop at actual open, global one position, no forced period close",
+  "chronology_and_gates": "identical to preregistration.json",
+  "paper_live_authority": false
+}
