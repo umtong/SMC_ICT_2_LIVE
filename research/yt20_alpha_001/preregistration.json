@@ -1,0 +1,57 @@
+{
+  "study_id": "YT20-ALPHA-001",
+  "claim_id": "WC-R3-YT20-ALPHA-001",
+  "base_revision": 3,
+  "base_commit": "2f5058bf8551a43256a8dc7a7296220ce54bb643",
+  "hypothesis_id": "HYP-YT20-001",
+  "dataset_id": "BINANCE-UM-1M-2025-01_2026-06-R1",
+  "dataset_sha256": "5994c95a0288b3cb0131a7396c557c915d5a5bfef0b381afacbdd0e8b7e32b1c",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "signal_timeframe": "15m",
+  "execution_timeframe": "1m",
+  "variants": [
+    "ordinary_engulf",
+    "sweep_engulf",
+    "sweep_double_engulf",
+    "sweep_fvg_engulf"
+  ],
+  "fixed_rules": {
+    "external_liquidity": "prior completed 20-bar high/low",
+    "engulf_body_ratio": 2.0,
+    "sweep_distance_atr": 0.02,
+    "stop_buffer_atr": 0.05,
+    "entry": "first zone-mid touch schedules next-minute taker entry",
+    "minimum_net_rr": 2.0,
+    "target": "opposite prior-20-bar external boundary",
+    "global_orders_positions_max": 1,
+    "arbitrary_time_exit": false
+  },
+  "base_cost_bps": {
+    "entry_fee": 5,
+    "entry_slippage": 2,
+    "target_fee": 2,
+    "target_slippage": 1,
+    "stop_fee": 5,
+    "stop_slippage": 3,
+    "funding_stress_per_8h": 1,
+    "strict_target_trade_through": 1
+  },
+  "splits": {
+    "DEV1": ["2025-01-01", "2025-04-01"],
+    "DEV2": ["2025-04-01", "2025-07-01"],
+    "VALID": ["2025-07-01", "2025-10-01"],
+    "TEST1": ["2025-10-01", "2026-01-01"],
+    "TEST2": ["2026-01-01", "2026-04-01"],
+    "RESERVED_HOLDOUT": ["2026-04-01", "2026-07-01"]
+  },
+  "promotion_gate": {
+    "each_development_trades_min": 20,
+    "each_development_pf_min": 1.2,
+    "each_development_sum_r_positive": true,
+    "each_development_top5_share_max": 0.4,
+    "valid_test_pf_min": 1.1,
+    "valid_test_sum_r_positive": true,
+    "cost_stress_required": [1.5, 2.0]
+  },
+  "holdout_open_policy": "Do not evaluate unless DEV1 DEV2 VALID TEST1 TEST2 all pass."
+}
