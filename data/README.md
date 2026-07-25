@@ -1,26 +1,24 @@
 # Durable data library
 
-이 라이브러리는 같은 자료의 재검색·재다운로드·재요약, 차트 재구성, 중복 가설 추출을 줄인다.
+자료 라이브러리는 같은 자료의 재검색·재다운로드·재해석과 동일 차트·가설의 반복 생성을 줄인다.
 
-## 자료 유형
+## Source classes
 
-- 유튜브 영상과 자막
-- 논문과 기술 보고서
-- 트레이더, 운용사, 공개 성과 사례와 대회
-- 거래소, 브로커, API, 수수료와 시장데이터 문서
-- 코드 저장소와 구현체
-- 시장·참조 데이터셋
+- YouTube videos and transcripts
+- papers and technical reports
+- day traders, funds, public performance cases, and competitions
+- exchange, broker, API, fee, and market-data documentation
+- code repositories and implementations
+- market and reference datasets
 
-## 등록 절차
+## Intake contract
 
-1. 외부 검색 전에 Source·Dataset·Entity·Result Registry와 활성 Work Claim을 확인한다.
-2. URL을 정규화하고 저장 파일의 SHA-256을 계산한다.
-3. 동일 URL이나 hash가 있으면 기존 자료를 재사용한다. 충돌하는 중복은 quarantine에 둔다.
-4. 공개된 정보와 자료를 자유롭게 사용한다.
-5. 작업에 사용하거나 재사용 가치가 높은 자료를 Drive에 보존하고 원본은 변경하지 않는다.
-6. 메타데이터와 Drive 경로를 registry에 한 번 기록한다.
-7. 원본과 분리하여 주장·가설·실험 기록을 만든다.
-8. 후속 실험과 결과에 source ID와 의존성 지문을 기록한다.
-9. 의존성이 바뀌지 않은 가공 산출물과 검증 증거를 재사용한다.
+1. 수행 중인 범위와 관련된 Source·Dataset·Entity·Result·Work Claim 항목만 검색한다.
+2. 동일 canonical URL이나 SHA-256이 있으면 기존 자료를 재사용한다.
+3. 실제 가설·구현·검증에 사용했거나 다른 작업에서 다시 찾을 가능성이 높은 자료만 등록한다.
+4. 초기 등록은 Source ID, URL 또는 파일, 자료 유형, 핵심 관련성, 사용한 가설·실험과 원본 위치처럼 검색·재현에 필요한 최소 항목으로 시작한다.
+5. 저장한 원본은 변경하지 않고 가공본은 버전 관리한다. 전체 영상은 영상 자체가 고유한 연구 가치를 제공할 때만 저장한다.
+6. 자료의 주장과 프로젝트의 검증 결과를 분리하고, downstream 실험에는 Source ID와 dependency fingerprint를 연결한다.
+7. 사용하지 않은 검색 결과와 일회성 배경 자료를 등록하지 않는다.
 
-대형 파일은 Drive 또는 설정된 외부 저장소에 두고 Git에는 manifest, checksum과 재현 정보만 보관한다.
+Git은 `data/raw`, `data/cache`, `data/downloads`의 대형 원본을 추적하지 않는다. 대형 파일은 Drive에 두고 Git에는 manifest, checksum, 변환 코드와 재현 요약을 저장한다.
