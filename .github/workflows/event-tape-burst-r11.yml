@@ -30,6 +30,7 @@ jobs:
     env:
       PYTHONHASHSEED: "0"
       PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,11 +51,15 @@ jobs:
           path: /tmp/bybit-event-tape
           key: bybit-event-tape-v1-${{ hashFiles('research/event_tape_burst_20260726/preregistration.json') }}
       - name: Run sparse pre-2024 fatal alpha screen
+        shell: bash
         run: |
           rm -rf artifacts/event_tape_burst
+          mkdir -p artifacts/event_tape_burst
+          set -o pipefail
           python research/event_tape_burst_20260726/run_screen.py run \
             --cache /tmp/bybit-event-tape \
-            --output artifacts/event_tape_burst
+            --output artifacts/event_tape_burst \
+            2>&1 | tee artifacts/event_tape_burst/run.log
       - name: Verify frozen contract and causal boundaries
         run: |
           python - <<'PY'
