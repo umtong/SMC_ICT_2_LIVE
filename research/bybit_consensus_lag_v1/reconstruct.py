@@ -10,12 +10,12 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "run.py.gz.b64"
 TARGET = ROOT / "run.py"
 EXPECTED = {
-    "base64_bytes": 13968,
-    "base64_sha256": "6496939712a9afa53e2cc1be362f3eff922bd3cb246b45a0ce84f509e91e1631",
-    "gzip_bytes": 10474,
-    "gzip_sha256": "92c8c76b15e81102d7914fdd7ce1029c9c20594911a0c4f5583dde813b8339f3",
-    "raw_bytes": 38341,
-    "raw_sha256": "7736ceba0a08b68d093729bee1b884dd79fc111218aa68cdb9f539f9ce701628"
+    "base64_bytes": 14444,
+    "base64_sha256": "7a288e93a58e8fba41de928208c966a61132c72206d152b714e9ec5b0ebdde7b",
+    "gzip_bytes": 10832,
+    "gzip_sha256": "99ca27b53a771d00d89a2a289e9c10ec96a75c5ca714ab3195856e4f71a4ad46",
+    "raw_bytes": 39343,
+    "raw_sha256": "366aa871dcff28a49e64782560737d0a7bc54c0ad97effe40b72d24f1b0f4bf8"
 }
 
 
