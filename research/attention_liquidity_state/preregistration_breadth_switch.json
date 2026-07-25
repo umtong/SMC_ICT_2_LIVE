@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "HYP-20260725-ATTENTION-BREADTH-SWITCH",
+  "parent_claim": "CLAIM-20260725-001-ATTENTION-LIQUIDITY",
+  "registered_at": "2026-07-25T15:45:00+09:00",
+  "post_result_context": "The first mechanism screen was invalidated for a target-cost defect and the corrected screen found no gate. Breakout signs varied by development period while isolated trap/absorption cells were sparse. No validation or 2025 confirmation was opened.",
+  "economic_hypothesis": "Market-wide abnormal attention is an information-diffusion state favoring continuation, whereas a single-asset attention spike is more likely a local liquidity raid favoring reversal after reclaim. The same policy routes between these mutually exclusive states without looking at outcomes.",
+  "causality_and_execution": "Identical to preregistration.json plus Amendments 001 and 002: completed bar, next open, cost-invariant structural target, actual funding, stop-first, one global position, no forced close.",
+  "policy": {
+    "systemic_state": "number of assets whose current prior-only attention z exceeds the policy threshold is at least systemic_breadth_min",
+    "systemic_action": "top-attention asset trades aligned 1h/4h breakout continuation",
+    "idiosyncratic_state": "exactly one asset exceeds the attention threshold",
+    "idiosyncratic_action": "that asset trades external-range sweep/reclaim reversal with sweep-direction taker flow",
+    "no_trade": "all other breadth states"
+  },
+  "grid": {
+    "attention_z": [1.0, 1.75],
+    "systemic_breadth_min": [2, 3],
+    "range_lookback_bars": [12, 48],
+    "continuation_body_atr_min": [0.1, 0.25],
+    "flow_abs_min": [0.1, 0.3],
+    "target_r": [1.5, 2.5, 3.5]
+  },
+  "fixed": {
+    "attention_rank": 1,
+    "continuation_directional_clv_min": 0.65,
+    "trap_directional_clv_min": 0.60,
+    "continuation_stop_lookback_bars": 12,
+    "stop_buffer_atr": 0.05
+  },
+  "search_count": 96,
+  "chronology_and_gates": "unchanged from preregistration.json",
+  "paper_live_authority": false
+}
