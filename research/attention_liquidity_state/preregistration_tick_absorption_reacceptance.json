@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "hypothesis_id": "HYP-20260725-TICK-ABSORPTION-REACCEPTANCE",
+  "parent_claim": "CLAIM-20260725-001-ATTENTION-LIQUIDITY",
+  "registered_at": "2026-07-25T16:55:00+09:00",
+  "pivot_reason": "All completed-bar attention, breadth, state-first ML and cross-asset SMT screens failed. The experiment changes to checksum-verified native BBO and aggTrade event states on separated dates.",
+  "data": {
+    "source": "public GitHub Actions artifacts from checksum-verified official Binance Vision USD-M bookTicker and aggTrades",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "dates": ["2023-06-15", "2023-07-15", "2023-08-15", "2023-09-15", "2023-10-15", "2023-11-15"],
+    "row_contract": "completed one-second state; entry is first native BBO strictly after second end",
+    "feature_only_inputs": ["spread_rel", "l1_imb", "micro_dev", "quote_age_ms", "depth_z", "spread_rel_z", "ofi_1", "ofi_5", "ofi_30", "replenish_imb", "depletion_imb", "flow_imb_1", "flow_imb_5", "flow_imb_30", "flow_depth_pressure_z", "volume_z", "count_z", "updates_z", "buy_vwap_dev", "sell_vwap_dev", "ret_1", "ret_5", "ret_30", "rv_30", "flow_price_eff"],
+    "outcome_fields": "long/short gross BBO returns and exit timestamps are labels/execution outcomes only and never decision inputs"
+  },
+  "chronology": {
+    "development": ["2023-06-15", "2023-07-15"],
+    "selection": ["2023-08-15", "2023-09-15"],
+    "frozen_validation": ["2023-10-15", "2023-11-15"]
+  },
+  "mechanisms": {
+    "VACUUM_CONTINUATION": {
+      "side": "sign(ofi_5)",
+      "requirements": "ofi_5 and flow_imb_5 aligned; microprice or L1 imbalance aligned; aggressive flow is not being replenished on the opposite side",
+      "grid": {
+        "ofi_abs_min": [2.0, 4.0],
+        "flow_abs_min": [0.4, 0.6],
+        "volume_z_min": [0.5, 1.0],
+        "book_alignment_min": [0.0, 0.25],
+        "depletion_alignment_min": [0.0, 0.25]
+      }
+    },
+    "ABSORPTION_REVERSAL": {
+      "side": "negative sign(flow_imb_5)",
+      "requirements": "large five-second aggressive flow with low directional price progress, opposite one-second OFI and opposite microprice/book state",
+      "grid": {
+        "flow_abs_min": [0.6, 0.8],
+        "event_ofi_abs_min": [1.0, 2.0],
+        "flow_price_eff_abs_max": [0.00005, 0.00010],
+        "opposite_ofi_1_min": [0.0, 0.5],
+        "opposite_book_min": [0.0, 0.25]
+      }
+    },
+    "FLOW_REACCEPTANCE_CATCHUP": {
+      "side": "sign(flow_imb_30)",
+      "requirements": "persistent 30-second flow, fresh same-direction one-second flow and OFI, while the 30-second price move has not yet followed the flow",
+      "grid": {
+        "persistent_flow_abs_min": [0.4, 0.6],
+        "fresh_flow_abs_min": [0.5, 0.75],
+        "fresh_ofi_abs_min": [0.5, 1.0],
+        "lagging_price_bps_max": [0.0, 1.0],
+        "book_alignment_min": [0.0, 0.25]
+      }
+    }
+  },
+  "signal_deduplication": "within each symbol and mechanism, emit only false-to-true state transitions and require five completed seconds before rearming",
+  "execution": {
+    "horizons_seconds": [3, 10, 30, 60],
+    "base_roundtrip_cost_bp": 12.0,
+    "stress_roundtrip_cost_bp": 18.0,
+    "severe_roundtrip_cost_bp": 24.0,
+    "global_position": "at most one BTC/ETH position; the highest normalized mechanism score wins simultaneous entries",
+    "exit": "the horizon is a signal-decay candidate chosen on development only; validation uses the frozen horizon",
+    "promotion_limit": "fixed-horizon BBO results are discovery evidence only; any survivor requires raw native-tick barrier and adverse-fill reconstruction before Champion comparison"
+  },
+  "selection": {
+    "development_each_day_min_trades": 30,
+    "development_each_day_net_positive_at_12bp": true,
+    "development_aggregate_pf_min": 1.10,
+    "development_18bp_positive": true,
+    "selection_each_day_min_trades": 30,
+    "selection_each_day_net_positive_at_12bp": true,
+    "selection_aggregate_pf_min": 1.15,
+    "selection_18bp_positive": true,
+    "top5_positive_return_share_max": 0.35,
+    "validation_open_condition": "one frozen rule per mechanism passes every development and selection gate",
+    "validation_pass": "both validation dates positive at 12bp, aggregate PF at least 1.20, aggregate 18bp positive, at least 60 trades, top-five share at most 0.35"
+  },
+  "search_count": 384,
+  "paper_live_authority": false
+}
