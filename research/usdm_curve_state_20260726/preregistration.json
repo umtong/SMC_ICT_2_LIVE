@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "study_id": "USDM_DATED_FUTURES_CURVE_STATE_V1",
+  "claim_id": "CLM-20260726-0522-USDM-CURVE-001",
+  "worker_id": "gpt-5.6-pro-20260726-0522",
+  "base_project_revision": 11,
+  "registered_at": "2026-07-26T05:22:38+09:00",
+  "status": "PREREGISTERED_BEFORE_ANY_2024_CURVE_OUTCOME",
+  "objective": "Discover whether causal BTCUSDT/ETHUSDT USD-M dated-futures term-structure state can produce materially higher realistic after-cost geometric account growth than the current first place under one global slot without top-trade dependence.",
+  "objective_fingerprint": "1d7e1ea1aae1a5d72c8d96fc1ab7170711ec660b311af80d8317209650629692",
+  "scope_fingerprint": "de463f8ee95f5fe7c85db54ff49d952d88429cff5b944b61fd8335461803838c",
+  "markets": {
+    "signal_source": "Official Binance USD-M continuous PERPETUAL, CURRENT_QUARTER and NEXT_QUARTER contracts",
+    "execution_proxy": "Binance USD-M perpetual during initial screen; any survivor requires later Bybit-normalized replay",
+    "pairs": ["BTCUSDT", "ETHUSDT"],
+    "bar_interval": "15m",
+    "global_slot": 1
+  },
+  "causal_features": [
+    "completed-bar current-quarter minus perpetual log basis",
+    "completed-bar next-quarter minus perpetual log basis",
+    "common basis change",
+    "far-minus-near curve slope",
+    "perpetual return",
+    "perpetual taker quote-flow imbalance",
+    "prior-only rolling standardization"
+  ],
+  "families": [
+    "basis_flow_continuation",
+    "basis_catchup",
+    "basis_exhaustion_reversal"
+  ],
+  "grid": {
+    "rolling_windows_bars": [96, 672],
+    "absolute_z_thresholds": [1.5, 2.0, 2.5],
+    "holding_bars": [4, 8, 16],
+    "stop_atr_multipliers": [1.5, 2.5],
+    "candidate_count": 108
+  },
+  "stages": {
+    "feature_warmup_and_fit": ["2021-01-01T00:00:00Z", "2022-01-01T00:00:00Z"],
+    "development": ["2022-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "conditional_2024": ["2024-01-01T00:00:00Z", "2025-01-01T00:00:00Z"],
+    "2025_and_2026": "SEALED"
+  },
+  "execution": {
+    "signal_time": "after the complete 15-minute bar",
+    "entry": "next exact 15-minute perpetual open",
+    "exit": "frozen holding horizon or adverse ATR stop, with stop-first ordering",
+    "gap_stop": "adverse actual bar open",
+    "round_trip_cost_bps": [12.0, 18.0, 24.0],
+    "stop_extra_slippage_bps": 4.0,
+    "actual_funding": true,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "daily_boundary": "00:00 UTC",
+    "daily_growth_denominator": "all UTC calendar days in the evaluated interval"
+  },
+  "development_gate": {
+    "minimum_combined_trades": 100,
+    "minimum_trades_each_calendar_year": 30,
+    "positive_total_return_at_12_18_24_bps": true,
+    "minimum_geometric_daily_growth_at_18bps": 0.0005,
+    "minimum_profit_factor_at_18bps": 1.15,
+    "positive_median_trade_at_18bps": true,
+    "positive_each_calendar_year_at_18_and_24bps": true,
+    "positive_after_removing_largest_10_percent_positive_trades_at_18bps": true,
+    "maximum_top_five_positive_trade_share": 0.35,
+    "maximum_trade_ledger_drawdown": 0.15
+  },
+  "conditional_opening_rule": "The workflow may download and evaluate 2024 only if at least one preregistered candidate passes every development gate. The winner is frozen by highest 24-bps development geometric daily growth before 2024 is requested.",
+  "exclusions": [
+    "option-surface shape or volatility risk premium",
+    "COIN-M or cross-margin collateral stress",
+    "funding-only settlement rules",
+    "spot-perpetual leadership",
+    "positioning metrics",
+    "cross-venue propagation",
+    "event-tape or liquidation episodes",
+    "passive L2 queue execution",
+    "two-sided hazard OCO",
+    "quarter-hour event clocks",
+    "Donchian dependence",
+    "auction profile",
+    "fixed strategy portfolio integration"
+  ],
+  "safety": {
+    "credentials": false,
+    "orders": false,
+    "2024_opened_before_gate": false,
+    "2025_or_2026_opened": false
+  }
+}
