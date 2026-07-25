@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0553-USDC-LEAD-001",
+  "screen_id": "BYBIT-USDC-USDT-LEADLAG-FATAL-20260726-V1",
+  "provisional_result_id": "RES-20260726-USDC-LEAD-FATAL-001",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-usdc-leadlag-001",
+  "research_stage": "sparse_pre_2024_frozen_validation_fatal_screen",
+  "rank_eligibility": false,
+  "objective": "Test whether same-venue Bybit USDC-settled BTC/ETH perpetual trade innovations causally predict an after-cost directional response in the USDT-settled perpetuals before any official 2024 opening.",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "scope_boundary": {
+    "signal_instruments": [
+      "BTCPERP",
+      "ETHPERP"
+    ],
+    "execution_instruments": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "venue": "Bybit",
+    "one_global_slot": true,
+    "signal_only_usdc_contracts": true,
+    "orders_submitted": false,
+    "excluded": [
+      "USDC funding or session-settlement clocks",
+      "last-mark-index-premium dislocation",
+      "dated-futures term structure",
+      "spot-perpetual basis",
+      "cross-venue propagation",
+      "COIN-M or collateral stress",
+      "liquidation labels",
+      "displayed L2 or maker fills",
+      "generic event-time pace/control thresholds",
+      "atomic multi-level match-sweep topology",
+      "quarter-hour, OCO, auction, VWAP, round-number, positioning, options and fixed-portfolio scopes"
+    ]
+  },
+  "source_concept_contract": {
+    "used_pre_cutoff_videos": [
+      {
+        "video_id": "bXNGACsNXbY",
+        "publisher": "Faares Q",
+        "title": "The Beginner's Guide to Making Money with Crypto Arbitrage",
+        "published": "2023-01-29",
+        "role": "segmented markets can display temporary price discrepancies, but fees and execution determine economic value"
+      },
+      {
+        "video_id": "cGddRFr1rsE",
+        "publisher": "Real Vision",
+        "title": "What Is Basis and Arbitrage Yield Trading?",
+        "published": "2022-03-21",
+        "role": "participant preferences can create basis; simultaneous execution and convergence risk are essential"
+      }
+    ],
+    "exact_pre_cutoff_bybit_usdc_to_usdt_alpha_video_found": false,
+    "interpretation": "The videos motivate a falsifiable segmentation hypothesis only; they are not evidence of profitability and their cross-exchange or delta-neutral tactics are not copied."
+  },
+  "data_contract": {
+    "base_url": "https://public.bybit.com/trading",
+    "required_fields": [
+      "timestamp",
+      "symbol",
+      "side",
+      "size",
+      "price",
+      "trdMatchID"
+    ],
+    "discovery_dates_already_opened": [
+      "2023-06-11",
+      "2023-09-17",
+      "2023-12-17"
+    ],
+    "discovery_role": "data feasibility, candidate construction and fit thresholds only; never reported as frozen validation",
+    "frozen_validation_date_selection_rule": "UTC calendar day 15 of every still-unopened full month July, August, October and November 2023",
+    "frozen_validation_dates_unopened_at_preregistration": [
+      "2023-07-15",
+      "2023-08-15",
+      "2023-10-15",
+      "2023-11-15"
+    ],
+    "official_2024_2025_2026_opened": false,
+    "integrity": "record downloaded byte count, decompressed row count and SHA-256 of the retrieved payload for every archive"
+  },
+  "discovery_observations_not_validation_results": {
+    "usdc_trade_rate_per_second_range": [
+      0.0216,
+      0.1513
+    ],
+    "first_probe_usdt_trade_rate_per_second": {
+      "BTCUSDT": 6.060625,
+      "ETHUSDT": 2.0775
+    },
+    "frozen_validation_motivation": "USDC activity is sparse and observed gross effects were below 12 bp; only a frozen unseen exception can justify expansion."
+  },
+  "causal_event_contract": {
+    "usdc_event": "all USDC perpetual fills sharing the exact exchange timestamp, completed before any decision",
+    "event_price": "last observed USDC trade price in stable archive order at that timestamp",
+    "event_notional": "sum(size * price) across the completed timestamp group",
+    "event_imbalance": "sum(aggressor_sign * size * price) divided by total event notional",
+    "usdc_move_bps": "10000 * log(current USDC event price / previous USDC event price)",
+    "usdt_pre_move_bps": "10000 * log(last USDT trade price at current event time / last USDT trade price at previous USDC event time)",
+    "residual_bps": "usdc_move_bps - usdt_pre_move_bps",
+    "decision_latency_ms": 100,
+    "entry_mark": "first USDT trade at or after current USDC event timestamp plus 100 ms",
+    "diagnostic_markout_horizons_seconds": [
+      1,
+      5,
+      15,
+      60,
+      300
+    ],
+    "exit_mark": "first USDT trade at or after entry timestamp plus the frozen diagnostic horizon",
+    "missing_mark": "event is ineligible; no favorable carry-forward or deletion after acceptance",
+    "same_timestamp_cross_symbol_tie_break": "BTC before ETH after deterministic sort",
+    "global_slot_release": "at the selected exit-mark timestamp for that candidate"
+  },
+  "frozen_hypothesis_families": [
+    {
+      "family": "usdc_move_continuation",
+      "direction": "sign(usdc_move_bps)",
+      "mechanism": "a large USDC move not yet incorporated by USDT reveals a segmented-pool lead"
+    },
+    {
+      "family": "usdc_residual_continuation",
+      "direction": "sign(residual_bps)",
+      "mechanism": "the USDC innovation after removing completed USDT movement continues into USDT"
+    },
+    {
+      "family": "usdc_residual_reversal",
+      "direction": "negative sign(residual_bps)",
+      "mechanism": "a USDC-specific stale or liquidity shock is rejected rather than transmitted"
+    },
+    {
+      "family": "usdc_flow_continuation",
+      "direction": "sign(event_imbalance)",
+      "mechanism": "aggressive USDC participant control leads the more liquid USDT contract"
+    }
+  ],
+  "frozen_candidate_grid": {
+    "families": 4,
+    "signal_absolute_quantiles_from_discovery_by_symbol": [
+      0.9,
+      0.97
+    ],
+    "event_notional_quantiles_from_discovery_by_symbol": [
+      0.5,
+      0.9
+    ],
+    "minimum_absolute_event_imbalance": [
+      0.5,
+      0.8
+    ],
+    "maximum_abs_usdt_pre_move_to_abs_usdc_move_ratio": [
+      0.5,
+      1.0
+    ],
+    "markout_horizons_seconds": [
+      1,
+      5,
+      15,
+      60,
+      300
+    ],
+    "candidate_count": 320,
+    "threshold_learning": "all symbol-specific signal and notional quantiles use only the three disclosed discovery dates"
+  },
+  "cost_and_path_contract": {
+    "all_in_round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "same_gross_path_replay": true,
+    "one_global_slot_enforced_independently_per_candidate": true,
+    "historical_bbo_or_depth_replay": false,
+    "funding": "not separately modeled because the longest markout is 300 seconds and funding/settlement clocks are excluded",
+    "qualification": "fatal diagnostic only; any survivor still requires structural entries/exits, exact BBO/depth, risk sizing, funding and account NAV replay"
+  },
+  "frozen_validation_gate": {
+    "minimum_accepted_trades_at_18bp": 40,
+    "mean_net_markout_at_18bp": "> 0",
+    "median_net_markout_at_12bp": "> 0",
+    "total_compounded_return_at_24bp": "> 0",
+    "top_10_percent_positive_trades_removed_return_at_18bp": "> 0",
+    "positive_symbol_date_fraction_at_18bp": ">= 2/3 of the eight frozen symbol-date segments",
+    "top_five_positive_trade_share_at_18bp": "<= 50%"
+  },
+  "conditional_decision": {
+    "if_zero_survivors": "close this exact USDC-event-to-USDT formulation without opening 2024 or adding execution/risk detail",
+    "if_survivor_exists": "reconstruct broader 2023 coverage and freeze one family before any official 2024 opening; do not select on 2024"
+  },
+  "prohibitions": [
+    "no validation-date download before this preregistration commit",
+    "no 2024, 2025 or 2026 download",
+    "no same-event or pre-latency USDT entry",
+    "no use of current product settings to define historical clock rules",
+    "no threshold modification after validation archives are opened",
+    "no credentials, paper, testnet or live orders",
+    "no cumulative ranking promotion from this sparse screen"
+  ]
+}
