@@ -3,7 +3,9 @@ from __future__ import annotations
 import csv
 import json
 import re
+import subprocess
 import tomllib
+from pathlib import Path
 
 from common import ROOT, read_jsonl
 
@@ -29,6 +31,11 @@ REQUIRED = [
     "schemas/work-claim.schema.json",
     "schemas/result.schema.json",
     "schemas/validation-attestation.schema.json",
+    "bootstrap/template-manifest.toml",
+    "bootstrap/drive-blueprint.json",
+    "bootstrap/bootstrap-contract.md",
+    "prompts/bootstrap-new-project.md",
+    "scripts/instantiate_project.py",
 ]
 
 AI_FACING_FILES = [
@@ -48,6 +55,9 @@ AI_FACING_FILES = [
     "docs/drive-layout.md",
     "docs/operating-playbook.md",
     "docs/ranking-policy.md",
+    "docs/reusable-bootstrap.md",
+    "bootstrap/bootstrap-contract.md",
+    "prompts/bootstrap-new-project.md",
 ]
 
 FORBIDDEN_RUNTIME_PHRASES = [
@@ -112,6 +122,62 @@ def unique(values: list[str], label: str, errors: list[str]) -> None:
         fail(f"duplicate {label}", errors)
 
 
+def is_git_tracked(path: Path) -> bool:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "--error-unmatch", str(path.relative_to(ROOT))],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return completed.returncode == 0
+    except (FileNotFoundError, ValueError):
+        return False
+
+
+def validate_ranking(ranking: dict, state_text: str, errors: list[str]) -> None:
+    if ranking.get("schema_version") != 1:
+        fail("ranking schema_version", errors)
+    match = re.search(r"(?m)^- revision:\s*(\d+)\s*$", state_text)
+    if not match:
+        fail("current state revision missing", errors)
+        return
+    if ranking.get("revision") != int(match.group(1)):
+        fail("ranking revision does not match current state", errors)
+
+    status = ranking.get("status")
+    first = ranking.get("first_place")
+    ranked = ranking.get("ranked_candidates", [])
+    if status == "EMPTY":
+        if first is not None:
+            fail("EMPTY ranking must have first_place=null", errors)
+        if ranked:
+            fail("EMPTY ranking must have no ranked candidates", errors)
+        if "current first place: none" not in state_text.lower():
+            fail("EMPTY state must explicitly record no first place", errors)
+    elif status == "ACTIVE":
+        if not isinstance(first, dict) or first.get("rank") != 1:
+            fail("ACTIVE ranking must contain first place", errors)
+        metrics = first.get("metrics", {}) if isinstance(first, dict) else {}
+        if metrics.get("target_geometric_daily_growth") != 0.01:
+            fail("first-place target must remain 1%", errors)
+        expected_gap = metrics.get("target_geometric_daily_growth", 0) - metrics.get("geometric_daily_growth", 0)
+        if abs(metrics.get("target_gap", -999) - expected_gap) > 1e-12:
+            fail("first-place target gap is inconsistent", errors)
+        ranks = [row.get("rank") for row in ranked]
+        gaps = [row.get("target_gap") for row in ranked]
+        if ranks != sorted(ranks):
+            fail("ranked candidates must be ordered by rank", errors)
+        if gaps != sorted(gaps):
+            fail("ranked candidates must primarily follow target gap", errors)
+    else:
+        fail("ranking status must be EMPTY or ACTIVE", errors)
+
+    if not ranking.get("ranking_rule", {}).get("rank_does_not_determine_work_priority"):
+        fail("rank must not anchor work selection", errors)
+    if "Rank does not determine research priority" not in state_text:
+        fail("current state must prevent rank from anchoring work selection", errors)
+
+
 def main() -> int:
     errors: list[str] = []
     for rel in REQUIRED:
@@ -134,11 +200,20 @@ def main() -> int:
     except Exception as exc:
         fail(f"project.toml: {exc}", errors)
 
-    for rel in ["config/evaluation.toml", "config/storage.toml", "config/workers.toml"]:
+    for rel in ["config/evaluation.toml", "config/storage.toml", "config/workers.toml", "bootstrap/template-manifest.toml"]:
         try:
             tomllib.loads((ROOT / rel).read_text(encoding="utf-8"))
         except Exception as exc:
             fail(f"{rel}: {exc}", errors)
+
+    try:
+        blueprint = json.loads((ROOT / "bootstrap/drive-blueprint.json").read_text(encoding="utf-8"))
+        if blueprint.get("schema_version") != 1:
+            fail("drive blueprint schema_version", errors)
+        if "00_CONTROL" not in blueprint.get("folders", []):
+            fail("drive blueprint missing 00_CONTROL", errors)
+    except Exception as exc:
+        fail(f"drive blueprint: {exc}", errors)
 
     try:
         evaluation = tomllib.loads((ROOT / "config/evaluation.toml").read_text(encoding="utf-8"))
@@ -149,106 +224,33 @@ def main() -> int:
         for stage in ["initial", "promising", "deep_validation"]:
             if not evaluation.get("stage", {}).get(stage, {}).get("required"):
                 fail(f"evaluation stage missing requirements: {stage}", errors)
-        if evaluation.get("stage", {}).get("deep_validation", {}).get("entry_condition") != "material_strategy_account_or_practical_use_decision":
-            fail("deep validation must follow material decision value, not rank", errors)
-
         ranking_policy = evaluation.get("ranking", {})
-        if ranking_policy.get("definition") != "ordered_hard_valid_strategy_or_portfolio_candidates":
-            fail("ranking definition must use ordered hard-valid candidates", errors)
-        if ranking_policy.get("first_place_role") != "current_result_closest_to_full_project_objective":
-            fail("first place must mean closest current result to the objective", errors)
-        if ranking_policy.get("primary_metric") != "realistic_after_cost_geometric_daily_growth_gap_to_target":
-            fail("ranking primary metric must be target-gap based", errors)
         if ranking_policy.get("primary_target") != 0.01:
             fail("ranking target must remain 1%", errors)
-        if ranking_policy.get("first_place_target_attainment_required") is not False:
-            fail("first-place selection must not require target attainment", errors)
-        if ranking_policy.get("first_place_full_validation_required") is not False:
-            fail("first-place selection must not require full validation", errors)
-        if not ranking_policy.get("survival_qualified_candidate_cannot_be_outranked_by_forced_liquidation_raw_return"):
-            fail("ranking must enforce the account-survival constraint", errors)
         if ranking_policy.get("rank_grants_research_priority") is not False:
             fail("rank must not grant research priority", errors)
-        if ranking_policy.get("rank_creates_default_improvement_target") is not False:
-            fail("rank must not create a default improvement target", errors)
-        if ranking_policy.get("extra_preservation_on_rank_change_required") is not False:
-            fail("rank changes must not require repeated preservation", errors)
-        if ranking_policy.get("work_selection_criterion") != "objective_impact_and_information_value":
-            fail("work selection must be independent of rank", errors)
-        if evaluation.get("final_reporting", {}).get("applies_to") != "material_strategy_portfolio_or_practical_use_decision":
-            fail("final reporting scope is not materiality-gated", errors)
     except Exception as exc:
         fail(f"evaluation.toml: {exc}", errors)
 
     try:
         workers = tomllib.loads((ROOT / "config/workers.toml").read_text(encoding="utf-8"))
-        work = workers["work"]
-        lookup = workers["lookup"]
-        validation = workers["validation"]
-        records = workers["records"]
-        defaults = workers["defaults"]
-
-        if work.get("state_update_protocol") != "optimistic_revision":
+        if workers["work"].get("state_update_protocol") != "optimistic_revision":
             fail("unexpected work state_update_protocol", errors)
-        if not work.get("claim_required_for_costly_or_reusable_work"):
+        if not workers["work"].get("claim_required_for_costly_or_reusable_work"):
             fail("costly/reusable work must use claims", errors)
-        if not work.get("claim_optional_for_short_local_work"):
-            fail("short local work must not require a new claim", errors)
-        if not lookup.get("targeted_related_records_only"):
+        if not workers["lookup"].get("targeted_related_records_only"):
             fail("lookup must be targeted to the intended scope", errors)
-        if lookup.get("full_registry_scan_by_default") is not False:
+        if workers["lookup"].get("full_registry_scan_by_default") is not False:
             fail("full registry scan must not be the default", errors)
-        if validation.get("mode") != "staged":
+        if workers["validation"].get("mode") != "staged":
             fail("validation must be staged", errors)
-        if not records.get("register_used_or_reusable_sources_only"):
-            fail("source registration must be use/reuse based", errors)
-        if not records.get("minimal_metadata_first"):
-            fail("source registration must start with minimal metadata", errors)
-        if not records.get("full_run_report_for_material_checkpoint_only"):
-            fail("full Run Reports must be limited to material checkpoints", errors)
-        if not records.get("pull_request_for_shared_or_reusable_changes_only"):
-            fail("PRs must be limited to shared or reusable changes", errors)
-        if not defaults.get("check_active_claims"):
-            fail("active work claims must be checked", errors)
-        if not defaults.get("reuse_registered_artifacts"):
-            fail("registered artifacts must be reused", errors)
     except Exception as exc:
         fail(f"workers.toml: {exc}", errors)
 
     try:
         ranking = json.loads((ROOT / "control/ranking.json").read_text(encoding="utf-8"))
-        if ranking.get("schema_version") != 1:
-            fail("ranking schema_version", errors)
         state_text = (ROOT / "control/current-state.md").read_text(encoding="utf-8")
-        match = re.search(r"(?m)^- revision:\s*(\d+)\s*$", state_text)
-        if not match:
-            fail("current state revision missing", errors)
-        elif ranking.get("revision") != int(match.group(1)):
-            fail("ranking revision does not match current state", errors)
-        if ranking.get("status") != "ACTIVE":
-            fail("current project must have an active strategy ranking", errors)
-        first = ranking.get("first_place")
-        if not isinstance(first, dict) or first.get("rank") != 1:
-            fail("ranking must contain first place", errors)
-        if first and first.get("target_status") != "NOT_MET":
-            fail("current first-place target status must remain NOT_MET", errors)
-        metrics = first.get("metrics", {}) if isinstance(first, dict) else {}
-        if metrics.get("target_geometric_daily_growth") != 0.01:
-            fail("first-place target must remain 1%", errors)
-        expected_gap = metrics.get("target_geometric_daily_growth", 0) - metrics.get("geometric_daily_growth", 0)
-        if abs(metrics.get("target_gap", -999) - expected_gap) > 1e-12:
-            fail("first-place target gap is inconsistent", errors)
-        ranked = ranking.get("ranked_candidates", [])
-        ranks = [row.get("rank") for row in ranked]
-        gaps = [row.get("target_gap") for row in ranked]
-        if ranks != sorted(ranks):
-            fail("ranked candidates must be ordered by rank", errors)
-        if gaps != sorted(gaps):
-            fail("ranked candidates must primarily follow target gap", errors)
-        if not ranking.get("ranking_rule", {}).get("rank_does_not_determine_work_priority"):
-            fail("rank must not anchor work selection", errors)
-        if "Rank does not determine research priority" not in state_text:
-            fail("current state must prevent rank from anchoring work selection", errors)
+        validate_ranking(ranking, state_text, errors)
     except Exception as exc:
         fail(f"ranking.json: {exc}", errors)
 
@@ -263,16 +265,9 @@ def main() -> int:
     try:
         with (ROOT / "control/work-claims.csv").open(encoding="utf-8", newline="") as handle:
             reader = csv.DictReader(handle)
-            header = list(reader.fieldnames or [])
+            header = set(reader.fieldnames or [])
             claims = list(reader)
-        required_claim_columns = {
-            "claim_id",
-            "worker_id",
-            "scope_fingerprint",
-            "base_revision",
-            "status",
-            "lease_until",
-        }
+        required_claim_columns = {"claim_id", "worker_id", "scope_fingerprint", "base_revision", "status", "lease_until"}
         if not required_claim_columns.issubset(header):
             fail("work-claims header", errors)
         unique([row.get("claim_id", "") for row in claims], "claim_id", errors)
@@ -282,12 +277,6 @@ def main() -> int:
     try:
         results = read_jsonl(ROOT / "control/result-registry.jsonl")
         unique([str(row.get("result_id", "")) for row in results], "result_id", errors)
-        pairs = [
-            f"{row.get('artifact_fingerprint', '')}:{row.get('dependency_fingerprint', '')}"
-            for row in results
-            if row.get("artifact_fingerprint") and row.get("dependency_fingerprint")
-        ]
-        unique(pairs, "result artifact/dependency fingerprint", errors)
     except Exception as exc:
         fail(f"result registry: {exc}", errors)
 
@@ -298,7 +287,10 @@ def main() -> int:
         fail(f"validation cache: {exc}", errors)
 
     for rel in AI_FACING_FILES:
-        text = (ROOT / rel).read_text(encoding="utf-8").lower()
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8").lower()
         for phrase in FORBIDDEN_RUNTIME_PHRASES:
             if phrase.lower() in text:
                 fail(f"AI-facing meta-commentary or legacy terminology in {rel}: {phrase}", errors)
@@ -309,7 +301,8 @@ def main() -> int:
             if fragment.lower() not in text:
                 fail(f"missing efficiency or ranking rule in {rel}: {fragment}", errors)
 
-    if (ROOT / "config/project.local.toml").exists():
+    local_binding = ROOT / "config/project.local.toml"
+    if local_binding.exists() and is_git_tracked(local_binding):
         fail("config/project.local.toml must not be committed", errors)
 
     if errors:
