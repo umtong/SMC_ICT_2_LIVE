@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-OPTION-FLOW-HEDGE-001",
+  "correction_id": "COR-20260726-OPTION-FLOW-RAW-HASH-RECOVERY-002",
+  "status": "FROZEN_BEFORE_ECONOMIC_RESULT",
+  "observed_failure": {
+    "workflow_run": 30193231283,
+    "step": "Reconstruct and validate frozen screen",
+    "economic_screen_started": false,
+    "fit_result_produced": false,
+    "development_opened": false,
+    "2024_2026_opened": false
+  },
+  "root_cause": "The precomputed base64 transport digest does not match either repository transport representation after whitespace normalization. The transport digest is not the executable-source identity; the already frozen gzip digest, raw source digest and raw byte length are.",
+  "deterministic_change": "Try the repository single-file transport and the lexical concatenation of part00 through part03. A candidate is accepted only if strict base64 decoding succeeds, the compressed payload exactly matches the frozen gzip SHA-256, decompression succeeds, and both the raw byte length and raw source SHA-256 exactly match the frozen executable identity. The actual transport SHA-256 is printed for audit but is not used as an executable identity.",
+  "scientific_contract_unchanged": {
+    "raw_executable_sha256": "a87613b623f0b228ca9a7eb365e2fe462efffd51dbcfa06d1b948061fe5e742d",
+    "gzip_sha256": "8f078ffa980d2481db47ddbc601791637587063dad599859725c2c2aaa4af6f7",
+    "raw_bytes": 42628,
+    "dates": true,
+    "features": true,
+    "labels": true,
+    "candidate_grid": true,
+    "costs": true,
+    "latency": true,
+    "exits": true,
+    "stage_gates": true,
+    "official_period_seals": true
+  },
+  "orders_submitted": false,
+  "created_at": "2026-07-26T16:54:00+09:00"
+}
