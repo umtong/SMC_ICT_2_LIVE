@@ -9,6 +9,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from system import research_pipeline  # noqa: E402
 from system.canonical_adapter import causal_asof_join  # noqa: E402
 from system.coarse import CoarseEventReplay, CoarseExecutionConfig  # noqa: E402
 from system.core import EventCandidate, EventFamily, RiskConfig  # noqa: E402
@@ -35,6 +36,10 @@ class _CaptureRegressor:
 class _IdentityCalibrator:
     def predict(self, values: list[float]) -> np.ndarray:
         return np.asarray(values, dtype=float)
+
+
+def test_action_label_numpy_dependency_is_bound() -> None:
+    assert research_pipeline.np.isnan(research_pipeline.np.nan)
 
 
 def test_model_scoring_uses_same_structural_features_as_training() -> None:
