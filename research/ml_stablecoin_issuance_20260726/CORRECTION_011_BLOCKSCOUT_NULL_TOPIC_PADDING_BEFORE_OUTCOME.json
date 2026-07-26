@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-BLOCKSCOUT-NULL-TOPIC-PADDING-011",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_or_model_outcome": true,
+  "observed_source_evidence": {
+    "workflow_run": 30204888446,
+    "artifact_id": 8632806200,
+    "transport": "TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003",
+    "failure": "Blockscout returned canonical USDT Issue/Redeem topic0 with null or empty trailing topic placeholders; the strict decoder rejected the provider representation before writing a source decision.",
+    "market_price_opened": false,
+    "future_label_opened": false,
+    "model_fit": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "correction": [
+    "Normalize only null, empty-string, and literal 0x trailing topic placeholders before validating a USDT Issue or Redeem event.",
+    "Require the remaining nonempty topic list to equal exactly one canonical Issue or Redeem topic0.",
+    "Continue rejecting any genuine additional nonempty indexed topic, including zero-address Transfer topics."
+  ],
+  "unchanged": [
+    "canonical USDT Issue(uint256) and Redeem(uint256) event identities",
+    "canonical USDC zero-address Transfer semantics",
+    "2021-01 through 2023-12 source months",
+    "12-block primary and 64-block stress availability",
+    "source-density gates",
+    "conditional HGBT, chronology, features, costs and structural exits",
+    "sequential 2024H1 evaluation contract",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used_to_choose_correction": false
+}
