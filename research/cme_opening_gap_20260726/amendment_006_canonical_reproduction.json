@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-CME-GAP-CANONICAL-REPRO-006",
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "amended_at": "2026-07-26T18:22:00+09:00",
+  "trigger": {
+    "fresh_source_success_run": 30195160649,
+    "cached_source_reproduction_run": 30196192776,
+    "fresh_result_summary_sha256": "be9c84cae4782cfa4a6314f5d9d0cc1b698ffa31ac1750bb409faa38b77cfb86",
+    "cached_result_summary_sha256": "be9c84cae4782cfa4a6314f5d9d0cc1b698ffa31ac1750bb409faa38b77cfb86",
+    "scientific_result_summary_exact_match": true,
+    "observed_non_scientific_raw_differences": [
+      "source_manifest cache_hit booleans differ by fresh download versus cache reuse",
+      "JSON/CSV floating-point text differs only in the final machine-representation digits, with maximum observed probability difference 1.1102230246251565e-16 and maximum observed derived-EV difference below 1e-12"
+    ]
+  },
+  "canonical_contract": {
+    "float_format": "12 significant decimal digits",
+    "csv": "preserve column order, row order and every nonnumeric string; normalize numeric cells to 12 significant digits; encode missing cells as null",
+    "json": "sort object keys recursively, preserve list order and all strings/integers/booleans; normalize finite floats to 12 significant digits",
+    "source_manifest_exception": "remove only the cache_hit transport metadata key before canonical hashing",
+    "raw_result_summary_required": "be9c84cae4782cfa4a6314f5d9d0cc1b698ffa31ac1750bb409faa38b77cfb86",
+    "canonical_sha256": {
+      "development_2022_opportunities.csv": "5b3b0936eaf50c35cf93180890c8d369955b58208108c39b586154ff32e6c6db",
+      "development_result.json": "db27dbc06c6c4f08af204af7897e3c993166360f6b5c8273a27c5b1dc1a41506",
+      "result_summary.json": "547cb5abd8c12385b018741dcf6641086a04eff2bef0520ab16a988f46e51277",
+      "source_manifest.json": "13fa5e0bbf3cb5e43bee5103cd364a493383a880febc7806da45ef2a7815627b",
+      "training_2021_opportunities.csv": "60da4d433b34d6aa41e11c43d38b00b240d4195a33562df5c4ac7707d5b6b01b",
+      "training_model.json": "60004de692a745cc61ae9f3d969d164231041b7bf530331fc089b9112b04a6a1"
+    }
+  },
+  "scientific_contract_unchanged": {
+    "features": true,
+    "model": true,
+    "labels": true,
+    "routes": true,
+    "trade_path": true,
+    "costs_and_funding": true,
+    "stage_boundaries": true,
+    "economic_result": true
+  },
+  "acceptance": "The raw result_summary hash and all six canonical scientific fingerprints must match. No approximate metric comparison substitutes for these fingerprints.",
+  "orders_submitted": false
+}
