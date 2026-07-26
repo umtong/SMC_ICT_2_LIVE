@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1710-BYBIT-RESERVE-NETFLOW-001",
+  "phase": "OUTCOME_SEALED_SOURCE_GATE",
+  "chain": "Ethereum mainnet",
+  "period": ["2023-01-01T00:00:00Z", "2023-02-01T00:00:00Z"],
+  "availability": "event block plus 12 canonical blocks",
+  "event": "external ERC20 USDT/USDC Transfer involving one of four Bybit-announced reserve addresses; internal Bybit-to-Bybit transfers excluded",
+  "gate": {
+    "minimum_external_events": 100,
+    "minimum_unique_finality_times": 30,
+    "minimum_events_at_least_1m": 20,
+    "minimum_inflows": 10,
+    "minimum_outflows": 10,
+    "both_tokens_present": true,
+    "independent_rpc_hash_match": true
+  },
+  "authority": {
+    "bybit_addresses": "Bybit official balance-checker Proof-of-Reserves-era Ethereum configuration, public from 2022-12-12",
+    "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  },
+  "outcome_seal": {
+    "market_outcome_opened": false,
+    "model_fit": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  }
+}
