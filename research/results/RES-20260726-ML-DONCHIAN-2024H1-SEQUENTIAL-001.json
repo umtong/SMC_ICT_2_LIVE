@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
+  "claim_id": "CLM-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
+  "status": "OFFICIAL_2024H1_STRUCTURALLY_BELOW_OBJECTIVE",
+  "hard_validity_status": "PASS_CAUSAL_BINANCE_PROXY_INDEPENDENT_RERUN_IDENTICAL",
+  "economic_status": "STRUCTURALLY_BELOW_OBJECTIVE",
+  "ranking_role": "PROVISIONAL_RANK_4_RETIRED_INFORMATION_UNIT",
+  "candidate": "one pooled HGBT accept/flat filter on Donchian all-breakout a70626d9e484285f2cb4|all",
+  "chronology": {
+    "information_cutoff": "2023-12-31T23:59:59Z",
+    "train": "2023H1",
+    "calibration": "2023Q3",
+    "pre2024_confirmation": "2023Q4",
+    "official_first_research_interval": "2024H1",
+    "2024H2_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "model": {
+    "family": "HistGradientBoostingRegressor",
+    "feature_count": 23,
+    "train_rows": 136,
+    "calibration_rows": 66,
+    "pre2024_confirmation_rows": 59,
+    "official_2024H1_resolved_rows": 146,
+    "authorized_2024H1_events": 40,
+    "calibration_scale": 0.13837019366705572,
+    "official_2024H1_diagnostics": {
+      "mae_bps": 326.54717473408823,
+      "baseline_mae_bps": 321.12126984678787,
+      "mae_skill": -0.016896747107063792,
+      "rmse_bps": 572.9410624221971,
+      "baseline_rmse_bps": 573.6259385741408,
+      "rmse_skill": 0.0011939420899379494,
+      "spearman": 0.12673112702804318
+    }
+  },
+  "account_paths": {
+    "12bps": {
+      "calendar_days": 182,
+      "geometric_daily_growth": 0.0004924615377805974,
+      "total_return": 0.0937431960844477,
+      "final_nav": 10937.431960844477,
+      "completed_trade_count": 24,
+      "profit_factor": 2.1044858658288805,
+      "maximum_drawdown": 0.10473357941955963,
+      "median_completed_account_return_bps": -49.999999999998934,
+      "top5_positive_share": 1.0,
+      "winner_removed_geometric_daily_growth": -0.0004097704041026162,
+      "winner_removed_total_return": -0.07187930714288138
+    },
+    "18bps": {
+      "calendar_days": 182,
+      "geometric_daily_growth": 0.00043727377321256533,
+      "total_return": 0.08281749069335387,
+      "final_nav": 10828.174906933538,
+      "completed_trade_count": 24,
+      "profit_factor": 1.9817144241187055,
+      "maximum_drawdown": 0.10313176097504406,
+      "median_completed_account_return_bps": -50.0,
+      "top5_positive_share": 1.0,
+      "winner_removed_geometric_daily_growth": -0.00042462226783157586,
+      "winner_removed_total_return": -0.07438571043920095
+    },
+    "24bps": {
+      "calendar_days": 182,
+      "geometric_daily_growth": 0.0003873170703223572,
+      "total_return": 0.07302102602013516,
+      "final_nav": 10730.210260201351,
+      "completed_trade_count": 24,
+      "profit_factor": 1.8711953493879065,
+      "maximum_drawdown": 0.1016557360891246,
+      "median_completed_account_return_bps": -50.0,
+      "top5_positive_share": 1.0,
+      "winner_removed_geometric_daily_growth": -0.0004378387203566314,
+      "winner_removed_total_return": -0.07661046043680741,
+      "target_gap": 0.009612682929677643
+    }
+  },
+  "baseline_unfiltered_24bps": {
+    "geometric_daily_growth": 0.00010051636083741045,
+    "total_return": 0.01846140123876716,
+    "completed_trade_count": 49,
+    "profit_factor": 1.1090480483211003,
+    "maximum_drawdown": 0.12699732131116814,
+    "median_completed_account_return_bps": -50.0
+  },
+  "decision": "Retire the exact HGBT information unit without feature, threshold, stop, risk or leverage rescue. 2024H1 is seen sequential evidence and cannot be relabeled fresh independent OOS for a modified strategy.",
+  "known_limitations": [
+    "Binance USD-M completed 60-minute bars are a proxy rather than exact Bybit BBO/depth execution.",
+    "Historical funding is omitted.",
+    "The training sample contains 136 resolved events for 23 features.",
+    "The 24bp five positive winners provide 100% of positive PnL.",
+    "Winner removal changes the 24bp account from +7.3021% to -7.6610%.",
+    "One position remains open at the 2024-07-01 boundary and is marked without forced strategy closure."
+  ],
+  "evidence": {
+    "independent_result_byte_identical": true,
+    "independent_summary_byte_identical": true,
+    "independent_event_predictions_byte_identical": true,
+    "result_sha256": "36dac200ed51787449347a456d3aa550ac913f678fe365069d49b15a6869266e",
+    "durable_result_sha256": "545184613d804f4abc08de7e0cc7f7f7d2c424709606a4d2c46261cf5e725dee",
+    "runner_sha256": "870ebfcbc91b7e5a5cbd34e1d14ca379ef21022fdaebd06fd7b3efb5ad1e7940",
+    "baseline_engine_sha256": "0374a2e3e86da68d0843aa4990cdee3db342e48dffb3ee0f3f4a78a496961148",
+    "preregistration_sha256": "8be976896facc024aa01c5c220b7b51ef6efa054fd664884955dcd42df990501",
+    "dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "dependency_fingerprint": "e5b2794d02340e6e4c35b8e02d543dc81974c0d1317113362ff3c13a2ea67663"
+  },
+  "orders_submitted": false,
+  "live_order_permission": "none"
+}
