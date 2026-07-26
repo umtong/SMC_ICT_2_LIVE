@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,7 @@ MODULE_PATH = Path(__file__).with_name("run_wallet_skill_gate.py")
 spec = importlib.util.spec_from_file_location("wallet_skill_gate", MODULE_PATH)
 assert spec and spec.loader
 module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 
 
