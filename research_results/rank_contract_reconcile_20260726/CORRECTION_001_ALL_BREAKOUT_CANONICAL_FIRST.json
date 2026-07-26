@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION_001_ALL_BREAKOUT_CANONICAL_FIRST",
+  "claim_id": "CLM-20260726-2036-RANK-ALLBREAKOUT-CONSISTENCY-001",
+  "source_result_id": "RES-20260726-RANK-CONTRACT-RECONCILE-001",
+  "source_merge_commit": "2ea2edd6294daf11a42f6e8fccb77779ff38fc69",
+  "issue": 174,
+  "problem": "The merged durable RESULT selected the recorded Donchian all-breakout comparator as first place, while control/ranking.json, control/current-state.md, DECISION.json and the PR body selected the lower after-loser path.",
+  "authoritative_policy": "Incomplete comparisons receive provisional rank with disclosed uncertainty rather than silent exclusion. No incumbent or fully populated metric record is protected against a higher recorded current-contract-compatible growth path.",
+  "canonical_first_place": {
+    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
+    "candidate_id": "a70626d9e484285f2cb4|all",
+    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+    "geometric_daily_growth_12bps": 0.0009008544402622221,
+    "geometric_daily_growth_24bps": 0.0007001887213879954,
+    "target_gap_12bps": 0.009099145559737778,
+    "comparison_confidence": "VERY_LOW"
+  },
+  "canonical_second_place": {
+    "first_place_id": "SECOND-20260726-DONCHIAN-AFTER-LOSER-A70626D9E484",
+    "candidate_id": "a70626d9e484285f2cb4|after_loser",
+    "geometric_daily_growth_12bps": 0.0008299955525170599,
+    "geometric_daily_growth_24bps": 0.0006318446194384375
+  },
+  "unchanged": [
+    "former dynamic state-exit remains removed for prohibited elapsed-time liquidation",
+    "Donchian exit-contract audit",
+    "all market data, strategy paths, models and parameters",
+    "target status NOT_MET",
+    "live-order permission none"
+  ],
+  "authority": {
+    "market_data_opened": false,
+    "strategy_replayed": false,
+    "model_fit_performed": false,
+    "parameters_searched": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  }
+}
