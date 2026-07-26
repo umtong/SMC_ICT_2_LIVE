@@ -3,7 +3,7 @@
 - Result ID: `RES-20260727-ML-SWEEP-CROWDING-001`
 - Claim: `CLM-20260727-0245-ML-SWEEP-CROWDING-001`
 - Status: **SOURCE_GATE_FAIL**
-- Contract SHA-256: `471746ad41adabdbb1547514efb52ee6ee47a87deb15df38436921b2d26a3784`
+- Contract SHA-256: `229d8d6038a679bf0cfffb9c8d1591b1cd06850b2b4c30451b4b97e6561bdf05`
 - Live orders: none
 
 ## Mechanism
