@@ -9,9 +9,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
-    runs-on: macos-14
+    runs-on: ubuntu-slim
     timeout-minutes: 390
     env:
       PYTHONHASHSEED: "0"
@@ -20,7 +24,6 @@ jobs:
       OMP_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
-      VECLIB_MAXIMUM_THREADS: "2"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
