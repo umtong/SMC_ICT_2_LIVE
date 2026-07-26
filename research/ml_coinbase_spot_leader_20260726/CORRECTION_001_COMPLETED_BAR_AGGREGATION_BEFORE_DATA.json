@@ -1,0 +1,30 @@
+{
+  "changes": [
+    "replace resample aggregation labels high/low with max/min and rename the outputs high/low",
+    "add a prefix-invariance test proving the current incomplete 15-minute bar never changes the previously completed structural range"
+  ],
+  "claim_id": "CLM-20260726-1935-ML-COINBASE-SPOT-001",
+  "correction_id": "CORRECTION-20260726-ML-COINBASE-COMPLETED-BAR-AGG-001",
+  "market_rows_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false,
+  "reason": "The synthetic completed-bar test exposed invalid pandas aggregation labels high/low in the previous-15-minute range constructor. pandas Series.resample aggregation requires max/min, followed by an explicit rename to high/low.",
+  "schema_version": 1,
+  "strategy_outcome_observed_before_correction": false,
+  "timing": "BEFORE_ANY_MARKET_SOURCE_DOWNLOAD_MODEL_FIT_LABEL_ACTION_TRADE_OR_PNL",
+  "unchanged": [
+    "market data sources and dates",
+    "event definition",
+    "feature set",
+    "model family and hyperparameters",
+    "calibration",
+    "labels",
+    "structural target and stop",
+    "relay delays",
+    "costs",
+    "account rules",
+    "fit and development gates",
+    "prohibited years",
+    "order authority"
+  ]
+}
