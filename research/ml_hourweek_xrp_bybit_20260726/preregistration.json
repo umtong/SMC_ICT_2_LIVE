@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-001",
+  "source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
+  "selected_route": {
+    "model": "pooled Ridge",
+    "ridge_alpha": 10.0,
+    "target_horizon_hours": 24,
+    "calibration_quantile": 0.95,
+    "cost_multiplier_floor": 0.75,
+    "entry_hours_utc": [8, 9, 10, 11, 12, 13, 14, 15],
+    "symbol": "XRPUSDT",
+    "side_filter": "BOTH",
+    "threshold_multiplier": 1.25,
+    "switch_penalty_cost_multiples": 1.0,
+    "exit_ratio": 0.0,
+    "elapsed_time_liquidation": false,
+    "global_slot": 1
+  },
+  "published_parity_targets": {
+    "trade_count": 58,
+    "geometric_daily_growth_24bps": 0.002230296864317971,
+    "ending_nav_multiple_24bps": 5.096385829505215,
+    "profit_factor_24bps": 4.880804161162647,
+    "maximum_drawdown_24bps": 0.25813319810649304,
+    "median_trade_return_24bps": 0.021498908105074183,
+    "long_trades": 51,
+    "short_trades": 7,
+    "mean_duration_hours": 36.310344827586206,
+    "half_year_returns": {
+      "2024H1": 0.010256032307766949,
+      "2024H2": 1.599284725130186,
+      "2025H1": 0.7576924867972765,
+      "2025H2": 0.10416530378035871
+    }
+  },
+  "parity_gate": {
+    "trade_count_exact": true,
+    "direction_counts_exact": true,
+    "continuous_account_metrics_absolute_tolerance": 1e-10,
+    "half_year_returns_absolute_tolerance": 1e-10,
+    "non_parity_code_may_open_bybit_or_2026": false
+  },
+  "bybit_replay": {
+    "period": ["2024-01-01T00:00:00Z", "2025-12-31T23:59:59Z"],
+    "signal_source": "unchanged parity-verified external feature stream",
+    "execution_symbol": "XRPUSDT linear perpetual",
+    "entry_and_exit": "first available adverse executable Bybit price after the frozen decision boundary",
+    "funding": "exact historical Bybit funding when complete; otherwise separately reported adverse fallback, never zero",
+    "capacity": "public-trade and available-book evidence with explicit participation limits",
+    "account": "continuous marked NAV, fees, funding, margin and liquidation distance"
+  },
+  "forward_2026h1": {
+    "information_cutoff": "2025-12-31T23:59:59Z",
+    "period": ["2026-01-01T00:00:00Z", "2026-06-30T23:59:59Z"],
+    "opened_once_after_all_dependencies_frozen": true,
+    "may_revise_evaluated_version": false
+  },
+  "ranking_decision": {
+    "parity_failure": "downgrade or remove provisional first place for unreproducibility",
+    "bybit_replay_failure": "demote or remove immediately",
+    "2026h1_result": "insert immediately without protecting current rank or capping growth at 1 percent"
+  },
+  "orders_submitted": false
+}
