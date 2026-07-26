@@ -61,6 +61,7 @@ jobs:
           python -m py_compile "$root/reconstruct.py" "$root/run.py" "$root/test_run.py"
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
           PYTHONPATH="$root" python "$root/run.py" self-test
+          python -m json.tool "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" >/dev/null
           python scripts/validate_project.py
 
       - name: Download only frozen fit sources
@@ -73,7 +74,7 @@ jobs:
             y=${date:0:4}; m=${date:5:2}; d=${date:8:2}
             mkdir -p "$data/$date"
             curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
-              "https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTCUSD.csv.gz" \
+              "https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTC-USD.csv.gz" \
               -o "$data/$date/coinbase_BTCUSD_trades.csv.gz"
             curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
               "https://datasets.tardis.dev/v1/bybit/quotes/$y/$m/$d/BTCUSDT.csv.gz" \
@@ -115,7 +116,7 @@ jobs:
             y=${date:0:4}; m=${date:5:2}; d=${date:8:2}
             mkdir -p "$data/$date"
             curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
-              "https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTCUSD.csv.gz" \
+              "https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTC-USD.csv.gz" \
               -o "$data/$date/coinbase_BTCUSD_trades.csv.gz"
             curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
               "https://datasets.tardis.dev/v1/bybit/quotes/$y/$m/$d/BTCUSDT.csv.gz" \
@@ -164,6 +165,7 @@ jobs:
             "$root/preregistration.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
+            "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" \
             "$root/bundle_manifest.json" \
             "$root/reconstruct.py" \
             "$root/source_bundle.tar.gz.b64.part00" \
