@@ -41,13 +41,15 @@ jobs:
       - name: Validate probe implementation and project
         run: |
           python scripts/validate_project.py
-          python -m py_compile research/option_flow_hedge_20260726/probe.py
+          python -m py_compile \
+            research/option_flow_hedge_20260726/probe.py \
+            research/option_flow_hedge_20260726/probe_transport_v2.py
           python research/option_flow_hedge_20260726/probe.py self-test
           python -m json.tool research/option_flow_hedge_20260726/preregistration.json >/dev/null
       - name: Run bounded pre-2024 source and schema probe
         run: |
           rm -rf artifacts/option_flow_source_probe
-          python research/option_flow_hedge_20260726/probe.py run \
+          python research/option_flow_hedge_20260726/probe_transport_v2.py run \
             --output artifacts/option_flow_source_probe
       - name: Verify probe-only stage boundaries
         run: |
@@ -71,6 +73,7 @@ jobs:
           assert result["orders_submitted"] is False
           assert all(str(row["date"]).startswith("2023-") for row in result["records"])
           assert all(bool(row.get("url")) for row in result["records"])
+          assert all(row.get("transport") in ("normal_get_locally_capped", None) for row in result["records"])
           print("OPTION_FLOW_PROBE_BOUNDARIES_PASS")
           print(json.dumps({
               "probe_pass": result["probe_pass"],
