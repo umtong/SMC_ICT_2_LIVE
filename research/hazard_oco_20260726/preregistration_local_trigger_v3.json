@@ -1,0 +1,104 @@
+{
+  "schema_version": 3,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "result_id": "RES-20260726-ML-L2-HAZARD-LOCAL-TRIGGER-001",
+  "engine_version": "BYBIT-L2-HAZARD-LOCAL-TRIGGER-V3",
+  "frozen_at": "2026-07-26T18:49:20+09:00",
+  "frozen_before_outcome": true,
+  "objective": "Test whether one symmetric Bybit top-five L2 model identifies an imminent balance-to-displacement transition strongly enough for a single-order local-trigger payoff to survive observed BBO execution, latency, cost and winner-concentration stress.",
+  "smc_ict_explanation": "ML identifies balance likely to expand. It does not predict direction. Local software watches equal internal buy-side and sell-side trigger levels; the first exact Bybit trade-through reveals delivery, then one marketable order enters that direction. Target and stop are structural displacement distances.",
+  "market": "Bybit BTCUSDT USDT-linear perpetual",
+  "global_entry_contract": {
+    "local_monitoring_states": 1,
+    "resting_exchange_entry_orders": 0,
+    "maximum_exchange_entry_orders": 1,
+    "maximum_open_positions": 1,
+    "first_cross_source": "exact raw trade local_timestamp and price",
+    "same_timestamp_two_sided_cross": "reject without sending an order",
+    "entry_offset_bp": 4,
+    "activation_latency_ms": 100,
+    "pending_monitor_ttl_seconds": 5,
+    "trigger_to_fill_latency_ms": [100, 300],
+    "fresh_quote_limit_ms": 200
+  },
+  "chronology": {
+    "fit_train": "2022-07-01T00:01:00Z/2022-07-01T12:00:00Z",
+    "fit_score_calibration": "2022-07-01T12:00:00Z/2022-07-01T18:00:00Z",
+    "fit_account_test": "2022-07-01T18:00:00Z/2022-07-02T00:00:00Z",
+    "conditional_development": "untouched 2023-07-01; state and raw trades parsed only after a frozen full fit survivor",
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "features": [
+    "spread_bps",
+    "abs_microprice_skew_bps",
+    "abs_depth_imbalance_5",
+    "total_cancel_ratio",
+    "total_refill_ratio",
+    "abs_flow_1s",
+    "update_intensity_1s",
+    "volatility_30s_bps"
+  ],
+  "future_columns_prohibited": ["label_5s_bps", "label_15s_bps", "label_30s_bps"],
+  "label": {
+    "definition": "maximum absolute log executable-mid move from t+100ms through t+30s reaches 40bp",
+    "source_boundary": "unavailable unless the complete future window stays in one valid contiguous source run",
+    "fit_only": true
+  },
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "single_model_only": true,
+    "parameters": {
+      "loss": "log_loss",
+      "learning_rate": 0.05,
+      "max_iter": 120,
+      "max_depth": 2,
+      "min_samples_leaf": 200,
+      "l2_regularization": 2.0,
+      "early_stopping": false,
+      "random_state": 20260726
+    },
+    "sample_weight": "inverse train-class frequency",
+    "threshold": "99th percentile of fit-score-calibration model probabilities",
+    "baseline": "volatility_30s_bps; model calibration AUC must exceed it by 0.02"
+  },
+  "payoff_cells": [
+    {"cell_id": "T40_S20", "target_bp": 40, "stop_bp": 20},
+    {"cell_id": "T60_S25", "target_bp": 60, "stop_bp": 25},
+    {"cell_id": "T80_S30", "target_bp": 80, "stop_bp": 30}
+  ],
+  "exit": {
+    "allowed": ["profit target", "protective stop", "source-boundary full structural stop"],
+    "same_timestamp_target_stop": "stop first",
+    "trigger_to_fill_latency_ms": 100,
+    "fill": "adverse of the exact trigger trade and first fresh delayed BBO",
+    "elapsed_time_exit": false
+  },
+  "account": {
+    "initial_nav_usdt": 10000,
+    "planned_loss_fraction": 0.01,
+    "notional_cap_multiple": 3.0,
+    "participation_cap": "0.1% of prior three-second raw traded quote notional",
+    "minimum_notional_usdt": 5,
+    "cost_profiles_round_trip_bp_beyond_observed_bbo": [12, 18, 24],
+    "funding_reserve": "adverse 1bp for every crossed UTC eight-hour boundary",
+    "winner_removal": "remove ceil(10% of positive 12bp event keys before full slot rerouting"
+  },
+  "fit_gate_all_required": {
+    "train_positive_labels": ">=100",
+    "calibration_auc": ">=0.60",
+    "auc_lift_over_volatility": ">=0.02",
+    "trade_count_18bp": ">=30",
+    "total_return_18bp": ">0",
+    "total_return_24bp": ">0",
+    "median_trade_18bp": ">0",
+    "profit_factor_18bp": ">=1.10",
+    "winner_removed_return_18bp": ">0",
+    "top_five_positive_pnl_share": "<=0.40",
+    "return_18bp_at_300ms_entry_latency": ">0",
+    "winner_removed_sample_day_growth_18bp": ">=1%",
+    "maximum_exchange_entry_orders": "=1"
+  },
+  "development_gate": "same economics and concentration rules, at least 50 trades, both 100ms and 300ms latency positive",
+  "rank_eligible": false,
+  "orders_permitted": false
+}
