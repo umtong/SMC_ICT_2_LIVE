@@ -1,0 +1,127 @@
+name: CME opening-gap source probe
+
+on:
+  push:
+    branches:
+      - agent/r11-cme-opening-gap-001
+    paths:
+      - research/cme_opening_gap_20260726/**
+      - .github/workflows/cme-opening-gap-probe-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/cme_opening_gap_20260726/**
+      - .github/workflows/cme-opening-gap-probe-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cme-opening-gap-probe-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deterministic dependency
+        run: pip install --disable-pip-version-check "requests==2.32.4"
+
+      - name: Validate probe and project
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+          python -m py_compile research/cme_opening_gap_20260726/probe.py
+          python research/cme_opening_gap_20260726/probe.py self-test
+          python -m json.tool research/cme_opening_gap_20260726/preregistration.json >/dev/null
+
+      - name: Run pre-2024 source probe without PnL
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/cme_opening_gap_probe
+          mkdir -p artifacts/cme_opening_gap_probe
+          set -o pipefail
+          python research/cme_opening_gap_20260726/probe.py run \
+            --output artifacts/cme_opening_gap_probe \
+            2>&1 | tee artifacts/cme_opening_gap_probe/run.log
+
+      - name: Verify probe-only boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import time
+          from pathlib import Path
+
+          root = Path("artifacts/cme_opening_gap_probe")
+          result = json.loads((root / "SOURCE_PROBE.json").read_text())
+          prereg = json.loads(Path("research/cme_opening_gap_20260726/preregistration.json").read_text())
+
+          assert result["claim_id"] == prereg["claim_id"]
+          assert result["probe_id"] == prereg["probe_id"]
+          assert result["stage"] == "SOURCE_PROBE_ONLY_NO_PNL"
+          assert result["strategy_pnl_opened"] is False
+          assert result["candidate_metrics_opened"] is False
+          assert result["fit_opened"] is False
+          assert result["development_opened"] is False
+          assert result["confirmation_opened"] is False
+          assert result["official_2024_opened"] is False
+          assert result["official_2025_opened"] is False
+          assert result["official_2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["paper_or_testnet_started"] is False
+          assert len(result["records"]) == 6
+
+          yahoo = [row for row in result["records"] if row["source"] == "Yahoo Finance chart"]
+          binance = [row for row in result["records"] if row["source"] == "Binance Vision"]
+          assert len(yahoo) == 2 and len(binance) == 2
+          for row in yahoo:
+              assert row["finite_row_count"] >= 600
+              assert row["strictly_chronological"] is True
+              assert {2021, 2022, 2023}.issubset(set(row["years_utc"]))
+              assert time.gmtime(row["last_timestamp"]).tm_year <= 2023
+              assert len(row["raw_sha256"]) == 64
+          for row in binance:
+              assert row["checksum_verified"] is True
+              assert row["schema_pass"] is True
+              assert len(row["raw_sha256"]) == 64
+
+          print("CME_OPENING_GAP_PROBE_BOUNDARIES_PASS")
+          print(json.dumps({
+              "probe_pass": result["probe_pass"],
+              "yahoo_cme_daily_pass": result["yahoo_cme_daily_pass"],
+              "binance_execution_archive_pass": result["binance_execution_archive_pass"],
+          }, sort_keys=True))
+          PY
+
+      - name: Build immutable artifact inventory
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/cme_opening_gap_probe
+          find artifacts/cme_opening_gap_probe -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 -r sha256sum \
+            > artifacts/cme_opening_gap_probe/CI_SHA256SUMS.txt
+          sha256sum artifacts/cme_opening_gap_probe/CI_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cme-opening-gap-source-probe-20260726
+          path: artifacts/cme_opening_gap_probe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
