@@ -19,7 +19,7 @@ One HistGradientBoosting regressor estimates the gross structural payoff of both
 - Features use completed 100 ms states only.
 - The signal state completes before the fixed 500 ms latency starts.
 - Entry uses the first actual Bybit BBO observed at or after the fixed 500 ms activation boundary, with a marketable-limit protection. If no quote arrives within 1 second, the order expires and the pending global slot remains occupied through that expiry.
-- A resting structural target or stop can execute without a new discretionary decision.
+- The stop is exchange-resting. The structural target is an exchange-resting take-profit market trigger, not a touch-filled limit: same-bin target/stop ambiguity goes to the stop, and a target-only trigger is filled no better than the adverse executable BBO extreme of that 100 ms bucket.
 - External-reference and opposite-displacement exits use a fresh completed state, a further fixed 500 ms latency, and the first actual executable Bybit BBO observed at or after that delayed boundary.
 - There is no maximum holding time or scheduled liquidation.
 - Exposure still open at a source boundary is marked to executable BBO for NAV and remains strategy-open.

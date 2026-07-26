@@ -11,7 +11,7 @@ import pandas as pd
 COSTS = (12, 18, 24)
 EXPECTED_EXIT_REASONS = {
     "resting_structural_stop",
-    "resting_structural_target",
+    "resting_take_profit_market_trigger",
     "external_reference_reversal",
     "opposite_displacement",
     "boundary_nav_mark_open_exposure",

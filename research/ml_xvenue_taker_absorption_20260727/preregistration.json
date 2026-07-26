@@ -47,7 +47,7 @@
     "signal_availability": "the 100ms signal state completes before the fixed 500ms latency starts",
     "entry": "marketable Bybit BBO using a marketable-limit protection; execution uses the first actual Bybit BBO observed at or after the fixed activation boundary, an order with no quote within 1000ms expires while occupying the global pending slot, and a reversal order expires if its frozen structural anchor was already delivered",
     "position_capacity": "10% of displayed opposing Bybit best-quote notional",
-    "resting_target": "frozen at signal and entry from causal structural anchors",
+    "resting_target": "frozen at signal and entry from causal structural anchors and implemented as an exchange-resting take-profit market trigger; target contact never receives an automatic target-price limit fill, same-bin target/stop ambiguity is assigned to the stop, and a target-only trigger fills no better than the adverse executable BBO extreme of that 100ms bucket",
     "resting_stop": "maximum of 8bp, 0.75 times shock magnitude and 1.5 times prior 500ms volatility, capped only for the initial screen at 80/100/160/160bp by symbol",
     "discretionary_exit_latency_ms": 500,
     "discretionary_exits": ["external reference reversal after 500ms then first actual Bybit BBO", "opposite displacement after 500ms then first actual Bybit BBO"],
