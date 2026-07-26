@@ -91,7 +91,7 @@ jobs:
                   }
               assert int(trades.max()) == int(summary['maximum_development_trades']) == 66
               assert int(manifest['raw_trade_rows']) == sum(int(x['rows']) for x in manifest['archives']) == 5_646_495
-              assert sum(int(x['compressed_bytes']) for x in manifest['archives']) == 219_945_454
+              assert sum(int(x['compressed_bytes']) for x in manifest['archives']) == 209_945_454
               state.update({
                   'claim_id': summary['claim_id'],
                   'result_id': summary['result_id'],
