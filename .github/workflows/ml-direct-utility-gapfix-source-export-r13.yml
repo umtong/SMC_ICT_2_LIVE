@@ -5,6 +5,10 @@ on:
     branches: [agent/r13-ml-direct-utility-gapfix-001]
     paths:
       - '.github/workflows/ml-direct-utility-gapfix-source-export-r13.yml'
+  pull_request:
+    branches: [agent/r13-ml-direct-utility-001]
+    paths:
+      - '.github/workflows/ml-direct-utility-gapfix-source-export-r13.yml'
   workflow_dispatch:
 
 permissions:
@@ -16,8 +20,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/r13-ml-direct-utility-gapfix-001
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -41,5 +43,3 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 6
-
-# source-export-trigger: 2026-07-26T20:39:00+09:00
