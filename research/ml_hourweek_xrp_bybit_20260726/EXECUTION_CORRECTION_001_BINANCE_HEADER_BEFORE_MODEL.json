@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-BINANCE-HEADER-001",
+  "claim_id": "CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
+  "created_at": "2026-07-26T22:58:00+09:00",
+  "observed_run": {
+    "workflow_run": 30204982805,
+    "artifact_id": 8632793434,
+    "artifact_digest": "sha256:903490449208a347816ec3cfd626f6d4e6846e3e30363425c24187f8c680c393",
+    "failure": "The published Binance Vision hourly CSV included a header row whose open_time field was parsed as market data, raising ValueError before any model fit."
+  },
+  "outcome_state_before_correction": {
+    "2026_account_path_opened": false,
+    "actions_opened": false,
+    "model_fitted": false,
+    "orders_submitted": false,
+    "pnl_opened": false,
+    "predictions_opened": false,
+    "trades_opened": false
+  },
+  "correction": "Treat a nonnumeric open_time row as source metadata, remove it, then require numeric conversion of every market-data field. No missing or malformed market row is imputed or silently discarded.",
+  "unchanged": [
+    "market source URLs and months",
+    "feature definitions and target",
+    "Ridge alpha and calibration rule",
+    "XRP UTC08-15 threshold-1.25 route",
+    "entry and structural edge exit",
+    "position sizing and cost paths",
+    "funding and winner-removal rules",
+    "official 2026H1 interval",
+    "order authority"
+  ],
+  "source_identity": {
+    "transport_raw_sha256": "6776def0ce1dc3f749507387eadc1834e2d19e26486b80c25308943db73edced",
+    "corrected_raw_sha256": "c4aef87f1bb42fe8f196630a545a37d6a4ae3b7a1e4f8d3b4b7ada60f9826aaa",
+    "corrected_test_sha256": "1420c73d01bef32c51ce09abb374e873b5b027d8e30fabc9ffeba3adcbff400b",
+    "patch_sha256": "b938775a04814deb5fa4c9a90815de169e657ff8192f752cdcbd03f6853c8cd0"
+  },
+  "scientific_contract_unchanged": true,
+  "orders_submitted": false
+}
