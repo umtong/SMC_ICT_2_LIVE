@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-PR-VISIBLE-016",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_ANY_CORRECTED_SOURCE_GATE_DECISION_OR_MARKET_OUTCOME",
+  "observed_problem": "The single authoritative corrected source workflow was push-only and used a constant cancelling concurrency group, so later pre-outcome source corrections could cancel earlier runs and the connected evidence reader could not associate push runs with the PR head.",
+  "change": [
+    "Add a pull_request trigger for main while retaining the same branch push trigger.",
+    "Scope concurrency to immutable github.sha and disable cancellation.",
+    "Include this correction in the frozen evidence bundle."
+  ],
+  "unchanged": [
+    "corrected USDT Issue/Redeem and USDC zero-address Transfer semantics",
+    "2021-01 through 2023-12 source period",
+    "block plus 12 and block plus 64 availability",
+    "source coverage gates",
+    "model, features, calibration, action, cost, risk and notional rules",
+    "immediate 2024H1 after a positive frozen pre-2024 survivor",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ],
+  "source_gate_decision_observed_before_change": false,
+  "market_outcome_observed_before_change": false,
+  "model_fitted_before_change": false,
+  "orders_submitted": false
+}
