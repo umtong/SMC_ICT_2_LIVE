@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-BATCH-TIMESTAMP-IMPLEMENTATION-008",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "recorded_before_market_or_model_outcome": true,
+  "scientific_outcome_used_to_choose_correction": false,
+  "observed_source_evidence": {
+    "workflow_run": 30204103060,
+    "artifact_id": 8632776815,
+    "completed_dense_windows": 5,
+    "decoded_swap_logs_before_transport_failure": 4894,
+    "failure": "Blockscout HTTP 429 during one-request-per-block timestamp completion",
+    "market_price_opened": false,
+    "label_or_model_opened": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false
+  },
+  "correction": [
+    "pace all Blockscout HTTP requests",
+    "retrieve exact eth_getBlockByNumber timestamps in JSON-RPC batches of at most 40",
+    "cache consecutive exact block timestamps and retain paced single-request fallback",
+    "change no source window, pool, ABI, density gate, model, feature, label, cost, target, stop, risk, leverage or official-period boundary"
+  ],
+  "orders_submitted": false
+}
