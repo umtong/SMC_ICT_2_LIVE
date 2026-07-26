@@ -9,6 +9,10 @@ from typing import Any
 import source_gate_blockscout as base
 
 OriginalBlockscoutClient = base.BlockscoutClient
+AUTHORITATIVE_MIN_REQUEST_INTERVAL_SECONDS = 0.36
+# Blockscout's default unauthenticated allowance is approximately three requests
+# per second. The authoritative source route stays below that rate.
+base.MIN_REQUEST_INTERVAL_SECONDS = AUTHORITATIVE_MIN_REQUEST_INTERVAL_SECONDS
 
 
 def eligible_boundary_block(block_number: int, timestamp: int, closest: str) -> int:
@@ -66,6 +70,8 @@ def self_test() -> None:
         raise AssertionError("ISO timestamp parsing failed")
     if len(base.auth.FIXED_MONTHS) != 36:
         raise AssertionError("full 2021-2023 month contract missing")
+    if base.MIN_REQUEST_INTERVAL_SECONDS != AUTHORITATIVE_MIN_REQUEST_INTERVAL_SECONDS:
+        raise AssertionError("authoritative Blockscout request pace is not frozen")
     boundary = base.auth.base.MAX_ALLOWED_TIMESTAMP
     if eligible_boundary_block(18_000_000, boundary, "after") != 17_999_936:
         raise AssertionError("64-block pre-2024 boundary was not applied")
@@ -93,7 +99,7 @@ def self_test() -> None:
 
     fake = {
         "address": base.auth.CONTRACTS["USDT"]["address"],
-        "topics": [base.auth.ISSUE_TOPIC],
+        "topics": [base.auth.ISSUE_TOPIC, None, "", "0x"],
         "data": hex(1_000_000 * 10**6),
         "blockNumber": "0x10",
         "transactionHash": "0x" + "ab" * 32,
