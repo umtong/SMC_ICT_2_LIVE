@@ -31,8 +31,12 @@ A pooled HGBT predicts the completed structural trade's net notional return. The
 
 ## Sequential contract
 
-The model is trained and calibrated only on pre-July-2022 data. Untouched 2022H2 must beat the matched all-breakout route at 24 bp. Calendar 2023 opens only after every confirmation gate passes. Only a passing 2023 result opens a broad, prewritten risk/leverage search and the continuous official 2024-01-01 through 2026-06-30 replay.
+The model is trained and calibrated only on pre-July-2022 data. Untouched 2022H2 must beat the matched all-breakout route at 24 bp. Calendar 2023 opens only after every confirmation gate passes.
 
-A failure retires this exact information unit without adjacent channel, stop, feature, model, threshold, risk or leverage tuning.
+A passing 2023 result opens the broad prewritten risk/leverage search and then **2024H1 only**. That first official interval is evaluated immediately with the model, risk, cost and execution rules fixed using information through 2023-12-31. It does not open one frozen continuous 2024-2026 block.
+
+After 2024H1 is observed, any 2024H2 strategy version must be fixed using only information available through 2024-06-30. The same causal progression applies to later half-years while the account NAV remains continuous. A period already used for revision or selection is not claimed as a new independent OOS for the revised strategy.
+
+The pre-outcome correction is recorded in `SEQUENTIAL_RESEARCH_CORRECTION_001.json`. A failure retires this exact information unit without adjacent channel, stop, feature, model, threshold, risk or leverage tuning.
 
 No credentials or orders are used.
