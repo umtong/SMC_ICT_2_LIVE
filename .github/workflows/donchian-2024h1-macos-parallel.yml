@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/donchian-2024h1-macos-parallel.yml'
       - 'research/donchian_2024h1_20260726/EXECUTION_CORRECTION_004_MACOS_PARALLEL_BEFORE_OUTCOME.json'
+      - 'research/donchian_2024h1_20260726/EXECUTION_CORRECTION_005_COMPLETE_5M_AGGREGATION_BEFORE_RESULT.json'
+      - 'research/donchian_2024h1_20260726/download_bars_5m_aggregate.py'
+      - 'scripts/donchian_2024h1_validation_hook.py'
   workflow_dispatch:
 
 permissions:
@@ -34,10 +37,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Validate execution-only correction
+      - name: Validate execution-only corrections
         run: |
           set -euo pipefail
           python -m json.tool research/donchian_2024h1_20260726/EXECUTION_CORRECTION_004_MACOS_PARALLEL_BEFORE_OUTCOME.json >/dev/null
+          python -m json.tool research/donchian_2024h1_20260726/EXECUTION_CORRECTION_005_COMPLETE_5M_AGGREGATION_BEFORE_RESULT.json >/dev/null
+          python -m py_compile research/donchian_2024h1_20260726/download_bars_5m_aggregate.py scripts/donchian_2024h1_validation_hook.py
           python -m pip install --disable-pip-version-check pytest==8.3.5
       - name: Run unchanged official 2024H1 evaluator
         run: |
