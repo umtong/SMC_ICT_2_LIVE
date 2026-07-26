@@ -2,7 +2,7 @@
   "schema_version": 1,
   "claim_id": "CLM-20260726-LIQ-SWEEP-RETEST-001",
   "worker_id": "gpt-5.6-pro-20260726",
-  "status": "ACTIVE",
+  "status": "COMPLETED",
   "title": "Passive mitigation entry after liquidation sweep, reclaim and MSS",
   "repository": "umtong/SMC_ICT_2_LIVE",
   "branch": "agent/r11-liq-sweep-retest-001",
@@ -31,6 +31,10 @@
     "arbitrary pending-order TTL"
   ],
   "expected_outputs": ["fit and conditional development ledgers", "1,024 policy metrics", "pending-order outcomes", "counterfactual winner-removal reruns", "decision-ready summary and checksums"],
+  "result_id": "RES-20260726-LIQ-SWEEP-RETEST-FATAL-001",
+  "result_status": "TESTED_BELOW_GATE",
+  "result_summary": "Zero of 1,024 policies survived the fit gate. Best frozen-order candidate had one trade: +10.3456 bp after 12 bp stress, +4.3456 bp after 18 bp, and -1.6544 bp after 24 bp. Development was not opened; exact payoff retired without adjacent tuning.",
   "orders_permitted": false,
-  "created_at": "2026-07-26T16:31:00+09:00"
+  "created_at": "2026-07-26T16:31:00+09:00",
+  "completed_at": "2026-07-26T16:58:00+09:00"
 }
