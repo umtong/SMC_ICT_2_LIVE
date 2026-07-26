@@ -35,10 +35,24 @@ def test_pinned_one_minute_exact_grid(tmp_path: Path) -> None:
 
 
 def test_funding_open_column_is_actual_rate() -> None:
+    rates = [
+        0.0001,
+        -0.0002,
+        0.0003,
+        -0.0004,
+        0.0005,
+        -0.0006,
+        0.0007,
+        -0.0008,
+        0.0009,
+        -0.0010,
+        0.0011,
+        -0.0012,
+    ]
     frame = pd.DataFrame(
         {
             "date": pd.date_range("2022-01-01", periods=12, freq="8h", tz="UTC"),
-            "open": [0.0001, -0.0002, 0.0003, -0.0004] * 3,
+            "open": rates,
             "high": [0.0] * 12,
             "low": [0.0] * 12,
             "close": [0.0] * 12,
@@ -47,5 +61,5 @@ def test_funding_open_column_is_actual_rate() -> None:
     )
     normalized = normalize_funding_open(frame)
     assert normalized.index[0] == pd.Timestamp("2022-01-01T00:00:00Z")
-    assert normalized["funding_rate"].nunique() == 4
+    assert normalized["funding_rate"].nunique() == 12
     assert normalized["funding_rate"].iloc[1] == -0.0002
