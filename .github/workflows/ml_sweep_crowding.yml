@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/ml_sweep_crowding
-          key: ml-sweep-crowding-v3-${{ hashFiles('research/ml_sweep_crowding/contract.json') }}
+          key: ml-sweep-crowding-v4-${{ hashFiles('research/ml_sweep_crowding/contract.json') }}
 
       - name: Install pinned runtime
         run: |
@@ -57,13 +57,14 @@ jobs:
 
       - name: Verify deterministic accounting and source invariants
         run: |
+          python -m py_compile research/ml_sweep_crowding/*.py
           pytest -q \
             research/ml_sweep_crowding/test_run.py \
-            research/ml_sweep_crowding/test_source_static_hf.py
+            research/ml_sweep_crowding/test_source_hf_pinned.py
 
       - name: Execute the sealed source-to-account sequence
         run: |
-          python -m research.ml_sweep_crowding.run_static_hf_open \
+          python -m research.ml_sweep_crowding.run_hf_pinned \
             --contract research/ml_sweep_crowding/contract.json \
             --cache-dir .cache/ml_sweep_crowding \
             --output-dir research/results/ml_sweep_crowding
@@ -78,7 +79,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No result changes to publish."
           else
-            git commit -m "research: publish source-valid ML sweep-crowding result"
+            git commit -m "research: publish complete pinned-mirror sweep result"
             git push origin HEAD:${GITHUB_REF_NAME}
           fi
 
@@ -86,7 +87,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ml-sweep-crowding-result-v3
+          name: ml-sweep-crowding-result-v4
           path: research/results/ml_sweep_crowding
           if-no-files-found: warn
           retention-days: 30
