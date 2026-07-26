@@ -67,13 +67,31 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_intermarket_smt_20260726
+          out=research_runs/ml_intermarket_smt_20260726/r11
           probe="$RUNNER_TEMP/usatechidxusd-2022-01-03-2022-01-04-m1.json"
+          mkdir -p "$out"
+          {
+            node --version
+            node -e 'const m=require("dukascopy-node"); console.log(JSON.stringify({resolved:require.resolve("dukascopy-node"),exports:Object.keys(m)}))'
+          } 2>&1 | tee "$out/DUKASCOPY_PROBE.log"
+          set +e
           node "$root/download_dukascopy.js" \
             usatechidxusd \
             2022-01-03 \
             2022-01-04 \
-            "$probe"
-          PYTHONPATH="$root" python "$root/run.py" --validate-dukascopy-probe "$probe"
+            "$probe" \
+            2>&1 | tee -a "$out/DUKASCOPY_PROBE.log"
+          node_status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$node_status" -ne 0 ]]; then
+            exit "$node_status"
+          fi
+          set +e
+          PYTHONPATH="$root" python "$root/run.py" --validate-dukascopy-probe "$probe" \
+            2>&1 | tee -a "$out/DUKASCOPY_PROBE.log"
+          python_status=${PIPESTATUS[0]}
+          set -e
+          exit "$python_status"
 
       - name: Run frozen 2022 fit and conditional untouched 2023 development
         shell: bash
