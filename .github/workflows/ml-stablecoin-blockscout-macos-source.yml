@@ -1,6 +1,11 @@
 name: Stablecoin Blockscout source gate
 
 on:
+  push:
+    branches: [agent/r13-ml-stablecoin-issuance-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
   pull_request:
     branches: [main]
     paths:
@@ -12,12 +17,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-blockscout-macos-${{ github.event.pull_request.number || github.sha }}
+  group: stablecoin-blockscout-authoritative-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: false
 
 jobs:
   source:
-    runs-on: macos-14
+    runs-on: ubuntu-24.04
     timeout-minutes: 240
     env:
       PYTHONHASHSEED: '0'
@@ -47,6 +52,7 @@ jobs:
           python -m json.tool "$root/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_012_UBUNTU_SOURCE_RUNNER_BEFORE_OUTCOME.json" >/dev/null
       - name: Query complete pre-2024 issuance source only
         run: |
           set -u
@@ -101,8 +107,8 @@ jobs:
           root=research/ml_stablecoin_issuance_20260726
           out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
           mkdir -p "$out/source"
-          cp "$root"/{WORK_CLAIM.json,preregistration.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,source_gate_blockscout.py,source_gate_blockscout_authoritative.py,test_source_gate.py,verify_source_result.py,write_transport_failure.py,EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json,CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json,CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json} "$out/source/"
-          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 shasum -a 256 > "$out/OUTPUT_SHA256SUMS.txt"
+          cp "$root"/{WORK_CLAIM.json,preregistration.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,source_gate_blockscout.py,source_gate_blockscout_authoritative.py,test_source_gate.py,verify_source_result.py,write_transport_failure.py,EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_012_UBUNTU_SOURCE_RUNNER_BEFORE_OUTCOME.json,CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json,CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json} "$out/source/"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
