@@ -1,0 +1,146 @@
+name: Stablecoin Blockscout source gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-batch-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-blockscout-batch-windows-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: windows-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-stablecoin-issuance-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install and validate frozen source identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+          $r = 'research/ml_stablecoin_issuance_20260726'
+          $o = 'research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_windows'
+          New-Item -ItemType Directory -Force -Path $o | Out-Null
+          python -m py_compile "$r/source_gate.py" "$r/source_gate_authoritative.py" "$r/source_gate_blockscout.py" "$r/source_gate_blockscout_authoritative.py" "$r/test_source_gate.py"
+          $env:PYTHONPATH = $r
+          pytest -q "$r/test_source_gate.py" 2>&1 | Tee-Object -FilePath "$o/PYTEST.log"
+          if ($LASTEXITCODE -ne 0) { throw 'source tests failed' }
+          python "$r/source_gate_blockscout_authoritative.py" --self-test 2>&1 | Tee-Object -FilePath "$o/SELF_TEST.log"
+          if ($LASTEXITCODE -ne 0) { throw 'source self-test failed' }
+
+      - name: Extract and run the pre-outcome exact-batch transport
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $r = 'research/ml_stablecoin_issuance_20260726'
+          $o = 'research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_windows'
+          $env:PYTHONPATH = $r
+          $extract = @'
+          from pathlib import Path
+          import os, textwrap
+          source = Path('.github/workflows/ml-stablecoin-blockscout-batch-source.yml').read_text()
+          start = "cat > \"$RUNNER_TEMP/stablecoin_batch_source.py\" <<'PY'\n"
+          end = "\n          PY\n\n          cat > \"$out/TRANSPORT_CORRECTION.json\""
+          if start not in source or end not in source:
+              raise SystemExit('frozen batch runner markers missing')
+          body = textwrap.dedent(source.split(start, 1)[1].split(end, 1)[0])
+          target = Path(os.environ['RUNNER_TEMP']) / 'stablecoin_batch_source.py'
+          target.write_text(body)
+          compile(body, str(target), 'exec')
+          print(target)
+          '@
+          $extractPath = Join-Path $env:RUNNER_TEMP 'extract_batch.py'
+          Set-Content -Path $extractPath -Value $extract -Encoding utf8
+          python $extractPath
+          if ($LASTEXITCODE -ne 0) { throw 'batch runner extraction failed' }
+
+          $transport = @'
+          {
+            "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+            "market_outcome_opened": false,
+            "model_fit": false,
+            "orders_submitted": false,
+            "recorded_before_source_decision": true,
+            "transport": "identical corrected Blockscout logs with exact eth_getBlockByNumber batches of at most 40 and exact REST fallback",
+            "transport_id": "TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-BATCH-WINDOWS-005"
+          }
+          '@
+          Set-Content -Path "$o/TRANSPORT_CORRECTION.json" -Value $transport -Encoding utf8
+
+          $runner = Join-Path $env:RUNNER_TEMP 'stablecoin_batch_source.py'
+          python $runner --output $o 2>&1 | Tee-Object -FilePath "$o/RUN.log"
+          $rc = $LASTEXITCODE
+          Set-Content -Path "$o/RUN_EXIT_CODE.txt" -Value $rc
+          if (-not (Test-Path "$o/SOURCE_GATE_RESULT.json")) {
+            python "$r/write_transport_failure.py" --output $o --transport TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-BATCH-WINDOWS-005 --exit-code $rc
+          }
+          exit 0
+
+      - name: Verify canonical source schema and outcome seal
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $verify = @'
+          import json
+          from pathlib import Path
+          p=Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_windows/SOURCE_GATE_RESULT.json')
+          result=json.loads(p.read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['status'] in {'PASS','FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE','SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE'}
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          if result['status']=='PASS':
+              assert result['source_schema_id']=='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
+              assert result['source_correction_id']=='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+          print(json.dumps({'status':result['status'],'events':result.get('event_count'),'months':len(result.get('months_with_events',[])),'tokens':result.get('distinct_tokens'),'authorized':result.get('conditional_model_screen_authorized',False)},sort_keys=True))
+          '@
+          $verifyPath = Join-Path $env:RUNNER_TEMP 'verify_result.py'
+          Set-Content -Path $verifyPath -Value $verify -Encoding utf8
+          python $verifyPath
+
+      - name: Freeze evidence hashes
+        if: always()
+        shell: pwsh
+        run: |
+          $hash = @'
+          import hashlib, pathlib
+          root=pathlib.Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_windows')
+          rows=[]
+          for p in sorted(x for x in root.rglob('*') if x.is_file() and x.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows))
+          '@
+          $hashPath = Join-Path $env:RUNNER_TEMP 'hash_outputs.py'
+          Set-Content -Path $hashPath -Value $hash -Encoding utf8
+          python $hashPath
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-blockscout-batch-windows-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_windows
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
