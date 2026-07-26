@@ -1,0 +1,174 @@
+name: SMT reclaim ML exact calibration fast path
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-reclaim-ml-meta-001
+    paths:
+      - ".github/workflows/smt-reclaim-ml-calibration-fast.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/smt-reclaim-ml-calibration-fast.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smt-reclaim-ml-calibration-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Enforce parent zero-survivor authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research_results/r11_smt_overreaction_reclaim_001/result.json > /tmp/parent.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/parent.json'))
+          assert r['hard_validity']=='PASS'
+          assert int(r['main_mss_survivor_count'])==0
+          assert r['official_2024_opened'] is False
+          assert r['orders_submitted'] is False
+          print('PARENT_ZERO_SURVIVOR_AUTHORITY_PASS')
+          PY
+
+  matrix:
+    needs: authority
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        date:
+          - "2022-01-09"
+          - "2022-02-13"
+          - "2022-03-13"
+          - "2022-04-10"
+          - "2022-05-08"
+          - "2022-06-12"
+          - "2022-07-10"
+          - "2022-08-14"
+          - "2022-09-11"
+          - "2022-10-09"
+          - "2022-11-13"
+          - "2022-12-11"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install frozen extraction environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+      - name: Reconstruct exact frozen engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 \
+            > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64,pathlib,zlib
+          root=pathlib.Path('runtime')
+          root.joinpath('base_probe.py').write_bytes(
+              zlib.decompress(base64.b64decode(root.joinpath('base_probe.py.zlib.b64').read_text().strip()))
+          )
+          PY
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research/smt_overreaction_reclaim_20260726/run.py > runtime/rule_engine.py
+          cp research/smt_reclaim_ml_meta_20260726/extract.py runtime/extract.py
+          cp research/smt_reclaim_ml_meta_20260726/extract_entry.py runtime/extract_entry.py
+          python -m py_compile runtime/*.py
+          PYTHONPATH=runtime python runtime/extract_entry.py --self-test
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/smt-reclaim-ml-cache
+          key: smt-reclaim-ml-fast-${{ runner.os }}-${{ matrix.date }}
+      - name: Extract exact confirmation-time rows and frozen outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="matrix/${{ matrix.date }}"
+          mkdir -p "$out"
+          PYTHONPATH=runtime python runtime/extract_entry.py \
+            --date "${{ matrix.date }}" \
+            --cache /tmp/smt-reclaim-ml-cache \
+            --output "$out" \
+            2>&1 | tee "$out/run.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-fast-base-${{ matrix.date }}-${{ github.sha }}
+          path: matrix/${{ matrix.date }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  calibrate:
+    needs: [authority, matrix]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install frozen model environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smt-fast-base-*-${{ github.sha }}
+          path: matrices
+          merge-multiple: true
+      - name: Fit only on frozen fit dates and select only on disjoint calibration dates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime calibration
+          cp research/smt_reclaim_ml_meta_20260726/train.py runtime/train.py
+          cp research/smt_reclaim_ml_meta_20260726/train_entry.py runtime/train_entry.py
+          python -m py_compile runtime/*.py
+          PYTHONPATH=runtime python runtime/train_entry.py self-test
+          PYTHONPATH=runtime python runtime/train_entry.py calibrate \
+            --input matrices \
+            --output calibration \
+            2>&1 | tee calibration/run.log
+          python - <<'PY'
+          import json
+          r=json.load(open('calibration/CALIBRATION_RESULT.json'))
+          assert r['official_2024_opened'] is False
+          assert r['official_2025_opened'] is False
+          assert r['official_2026_opened'] is False
+          assert r['orders_submitted'] is False
+          print(json.dumps({
+              'pair_survivor_count':r['pair_survivor_count'],
+              'fit_rows':r.get('fit_rows'),
+              'calibration_rows':r.get('calibration_rows'),
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-reclaim-ml-fast-calibration-${{ github.sha }}
+          path: calibration
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
