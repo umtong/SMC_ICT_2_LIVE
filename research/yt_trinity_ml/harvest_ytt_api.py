@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch one channel's complete timestamped caption set through a cloud-safe public API."""
+"""Fetch one channel shard's complete timestamped captions through a cloud-safe public API."""
 
 from __future__ import annotations
 
@@ -42,8 +42,18 @@ def load_inventory(path: Path, channel: str) -> list[dict[str, Any]]:
     return selected
 
 
-def request_json(url: str, timeout: float = 50.0) -> tuple[int, Any, dict[str, str]]:
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+def request_json(
+    url: str,
+    *,
+    timeout: float = 50.0,
+    api_key: str | None = None,
+    method: str = "GET",
+    data: bytes | None = None,
+) -> tuple[int, Any, dict[str, str]]:
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    if api_key:
+        headers["X-API-Key"] = api_key
+    request = urllib.request.Request(url, headers=headers, method=method, data=data)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             raw = response.read()
@@ -59,6 +69,17 @@ def request_json(url: str, timeout: float = 50.0) -> tuple[int, Any, dict[str, s
         except Exception:
             payload = {"raw": raw.decode("utf-8", "replace")[:4000]}
         return int(exc.code), payload, dict(exc.headers)
+
+
+def register_free_key() -> tuple[str, dict[str, Any]]:
+    status, payload, _ = request_json(f"{BASE}/free/register", method="POST", data=b"")
+    if status not in {200, 201} or not isinstance(payload, dict):
+        raise RuntimeError(f"free-key registration failed: HTTP {status}: {payload}")
+    key = str(payload.get("api_key") or "")
+    if not key.startswith("ytt_free_"):
+        raise RuntimeError(f"free-key registration returned an invalid key shape: {payload}")
+    safe_metadata = {key_name: value for key_name, value in payload.items() if key_name != "api_key"}
+    return key, safe_metadata
 
 
 def normalize_transcript(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -77,17 +98,19 @@ def normalize_transcript(payload: dict[str, Any]) -> list[dict[str, Any]]:
             duration = float(row.get("duration") or 0.0)
         except (TypeError, ValueError):
             continue
-        segments.append({
-            "index": int(row.get("index", index)),
-            "start": round(start, 3),
-            "duration": round(max(duration, 0.0), 3),
-            "text": text,
-        })
+        segments.append(
+            {
+                "index": int(row.get("index", index)),
+                "start": round(start, 3),
+                "duration": round(max(duration, 0.0), 3),
+                "text": text,
+            }
+        )
     segments.sort(key=lambda row: (row["start"], row["index"]))
     return segments
 
 
-def fetch_video(video_id: str, attempts: int, pace_seconds: float) -> dict[str, Any]:
+def fetch_video(video_id: str, attempts: int, pace_seconds: float, api_key: str) -> dict[str, Any]:
     history: list[dict[str, Any]] = []
     consistent_no_caption: list[tuple[str, str]] = []
     for attempt in range(1, attempts + 1):
@@ -95,7 +118,7 @@ def fetch_video(video_id: str, attempts: int, pace_seconds: float) -> dict[str, 
             time.sleep(max(pace_seconds, 6.2) + random.random())
         url = f"{BASE}/full_transcript/{urllib.parse.quote(video_id)}?meta=true"
         try:
-            status, payload, headers = request_json(url)
+            status, payload, headers = request_json(url, api_key=api_key)
         except Exception as exc:
             history.append({"attempt": attempt, "exception": f"{type(exc).__name__}: {exc}"})
             continue
@@ -146,11 +169,19 @@ def fetch_video(video_id: str, attempts: int, pace_seconds: float) -> dict[str, 
             continue
         if status in {408, 500, 502, 503, 504}:
             continue
-        if status in {401, 403, 404, 410, 451}:
+        if status in {404, 410, 451}:
             return {
                 "status": "unavailable",
                 "segments": [],
                 "error": payload.get("error") if isinstance(payload, dict) else f"HTTP {status}",
+                "reason": payload.get("reason") if isinstance(payload, dict) else None,
+                "attempt_history": history,
+            }
+        if status in {401, 403}:
+            return {
+                "status": "retry_required",
+                "segments": [],
+                "error": "caption API authorization failure",
                 "reason": payload.get("reason") if isinstance(payload, dict) else None,
                 "attempt_history": history,
             }
@@ -162,7 +193,13 @@ def fetch_video(video_id: str, attempts: int, pace_seconds: float) -> dict[str, 
     }
 
 
-def write_checkpoint(output: Path, channel: str, inventory: list[dict[str, Any]], outcomes: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def write_checkpoint(
+    output: Path,
+    channel: str,
+    inventory: list[dict[str, Any]],
+    outcomes: dict[str, dict[str, Any]],
+    key_metadata: dict[str, Any],
+) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     transcript_root = output / "transcripts" / channel
     transcript_root.mkdir(parents=True, exist_ok=True)
@@ -194,9 +231,10 @@ def write_checkpoint(output: Path, channel: str, inventory: list[dict[str, Any]]
     (output / "videos.jsonl").write_text(videos_raw, encoding="utf-8")
     counts = Counter(row["caption_status"] for row in video_rows)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
         "provider": "api.youtubetotext.com/full_transcript",
+        "provider_key_metadata": key_metadata,
         "channel_slug": channel,
         "updated_at_utc": utc_now(),
         "inventory_count": len(inventory),
@@ -207,7 +245,9 @@ def write_checkpoint(output: Path, channel: str, inventory: list[dict[str, Any]]
         "transcript_segment_count": sum(row["caption_segment_count"] for row in video_rows),
         "transcript_character_count": sum(row["caption_character_count"] for row in video_rows),
     }
-    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (output / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     return manifest
 
 
@@ -224,19 +264,31 @@ def main() -> int:
     if health_status != 200 or not isinstance(health, dict) or health.get("status") != "ok":
         raise SystemExit(f"transcript API health failed: {health_status} {health}")
 
+    api_key = os.environ.get("YTT_API_KEY", "").strip()
+    if api_key:
+        key_metadata: dict[str, Any] = {"source": "YTT_API_KEY environment"}
+    else:
+        api_key, key_metadata = register_free_key()
+        key_metadata["source"] = "POST /free/register"
+
     inventory = load_inventory(args.inventory, args.channel)
+    maximum_requests = len(inventory) * max(args.attempts, 1)
+    daily_cap = key_metadata.get("daily_fetch_cap")
+    if isinstance(daily_cap, int) and maximum_requests > daily_cap:
+        raise SystemExit(f"shard can consume {maximum_requests} requests, exceeding free-key cap {daily_cap}")
+
     outcomes: dict[str, dict[str, Any]] = {}
-    manifest = write_checkpoint(args.output, args.channel, inventory, outcomes)
+    manifest = write_checkpoint(args.output, args.channel, inventory, outcomes, key_metadata)
     print(json.dumps({"stage": "start", **manifest}, ensure_ascii=False), flush=True)
     for index, item in enumerate(inventory, start=1):
         if index > 1:
             time.sleep(max(args.pace_seconds, 6.2))
         video_id = item["video_id"]
-        outcomes[video_id] = fetch_video(video_id, args.attempts, args.pace_seconds)
+        outcomes[video_id] = fetch_video(video_id, args.attempts, args.pace_seconds, api_key)
         if index % 5 == 0 or index == len(inventory):
-            manifest = write_checkpoint(args.output, args.channel, inventory, outcomes)
+            manifest = write_checkpoint(args.output, args.channel, inventory, outcomes, key_metadata)
             print(json.dumps({"stage": "checkpoint", "completed": index, **manifest}, ensure_ascii=False), flush=True)
-    manifest = write_checkpoint(args.output, args.channel, inventory, outcomes)
+    manifest = write_checkpoint(args.output, args.channel, inventory, outcomes, key_metadata)
     print(json.dumps({"stage": "final", **manifest}, ensure_ascii=False, indent=2), flush=True)
     return 0 if manifest["all_resolved"] else 2
 
