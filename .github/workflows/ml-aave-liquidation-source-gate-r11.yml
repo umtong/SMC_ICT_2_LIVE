@@ -52,10 +52,16 @@ jobs:
         run: |
           set -euo pipefail
           python -m py_compile research/ml_aave_liquidation_20260726/probe_aave_liquidations.py
+          set +e
           python research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
             --addresses /tmp/ml-aave-liquidation-source/ADDRESSES.json \
             --output /tmp/ml-aave-liquidation-source \
-            | tee /tmp/ml-aave-liquidation-source/run.log
+            > /tmp/ml-aave-liquidation-source/run.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/ml-aave-liquidation-source/run.log
+          printf '%s\n' "$status" > /tmp/ml-aave-liquidation-source/EXIT_STATUS.txt
+          exit "$status"
       - name: Freeze evidence hashes
         if: always()
         run: |
