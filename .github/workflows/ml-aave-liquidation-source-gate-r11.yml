@@ -27,17 +27,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
       - name: Export pinned official Aave addresses
         run: |
           set -euo pipefail
           mkdir -p /tmp/ml-aave-liquidation-source
-          cd /tmp/ml-aave-liquidation-source
+          cd "$GITHUB_WORKSPACE/research/ml_aave_liquidation_20260726"
           npm init -y >/dev/null
-          npm install --no-save '@bgd-labs/aave-address-book@4.61.2'
-          node "$GITHUB_WORKSPACE/research/ml_aave_liquidation_20260726/export_addresses.cjs" \
-            > ADDRESSES.json
-          cat ADDRESSES.json
+          npm install --no-save '@aave-dao/aave-address-book@4.61.0'
+          npm ls --all --json > /tmp/ml-aave-liquidation-source/NPM_DEPENDENCIES.json
+          cp package-lock.json /tmp/ml-aave-liquidation-source/package-lock.json
+          node export_addresses.cjs > /tmp/ml-aave-liquidation-source/ADDRESSES.json
+          cat /tmp/ml-aave-liquidation-source/ADDRESSES.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -63,6 +64,8 @@ jobs:
           cp research/ml_aave_liquidation_20260726/PREREGISTRATION.md \
             /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
           cp research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
+            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/export_addresses.cjs \
             /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
           find /tmp/ml-aave-liquidation-source -maxdepth 1 -type f -print0 \
             | sort -z \
