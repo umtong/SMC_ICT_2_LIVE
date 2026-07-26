@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "correction_id": "COR-20260726-ML-OPTION-PREMODEL-FEASIBILITY-001",
+  "status": "FROZEN_BEFORE_MODEL_OR_ECONOMIC_RESULT",
+  "observed_failure": {
+    "workflow_run": 30195457383,
+    "stage": "one-model fit feasibility check",
+    "downloaded_dates": ["2022-01-01", "2022-03-01", "2022-05-01", "2022-07-01", "2022-09-01", "2022-11-01"],
+    "event_rows_by_date": [302, 423, 348, 484, 443, 382],
+    "model_fitted": false,
+    "probabilities_produced": false,
+    "candidate_actions_produced": false,
+    "strategy_pnl_produced": false,
+    "development_2023_opened": false
+  },
+  "root_cause": "The implementation contained an undocumented total-row feasibility cutoff of 300 training and 100 calibration labels. This cutoff was stricter than required by the frozen single HGBT complexity and was not an economic or promotion gate.",
+  "correction": {
+    "minimum_resolved_training_rows": 200,
+    "minimum_resolved_calibration_rows": 50,
+    "minimum_training_rows_per_class": 20,
+    "minimum_calibration_rows_per_class": 10,
+    "rationale": "Training total remains above twice the frozen min_samples_leaf=80 scale with explicit two-class support; calibration retains explicit two-class support. The unchanged confirmation gates still require predictive lift, calibration skill and after-cost account performance."
+  },
+  "scientific_contract_unchanged": {
+    "dates": true,
+    "sources": true,
+    "option_greek_translation": true,
+    "features": true,
+    "labels": true,
+    "model_family_and_parameters": true,
+    "calibration_method": true,
+    "economic_decision_rule": true,
+    "costs": true,
+    "risk_and_capacity": true,
+    "global_slot": true,
+    "confirmation_and_development_gates": true,
+    "sealed_periods": true
+  },
+  "original_source_sha256": "cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a",
+  "patched_source_sha256": "122c2f8e1d49d77a8aa9fa3fe9b074232b6c6af04b66efe6f9f83bf94f85c4d6",
+  "orders_submitted": false,
+  "created_at": "2026-07-26T17:58:00+09:00"
+}
