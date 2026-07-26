@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-BOUNDED-ARCHIVE-RPC-006",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "recorded_at": "2026-07-26T22:08:30+09:00",
+  "pre_outcome_status": {
+    "source_gate_result_opened": false,
+    "future_return_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "observed_transport_defect": "The original adaptive log reader caught every exception and bisected the block range. Rate limits, timeouts, authorization failures, missing archive state and malformed responses could therefore recurse to individual blocks instead of failing over to another endpoint.",
+  "correction": [
+    "Bisect only explicit provider range/result-size errors.",
+    "Classify rate, quota, authorization, timeout, archive and malformed-response errors as endpoint unavailability.",
+    "Preflight a frozen historical block and one-block historical eth_getLogs request before selecting an endpoint.",
+    "Cap each endpoint at 3000 RPC calls, 1200 wall-clock seconds and two attempts per request.",
+    "Fail over deterministically while preserving all six frozen windows and every ABI, identity and density check."
+  ],
+  "unchanged": [
+    "canonical factory, token, pool and fee identities",
+    "Swap event signature and decoder",
+    "six one-hour pre-2024 probe windows",
+    "source-gate density thresholds",
+    "pre-2024 ML model and account contract",
+    "sequential 2024H1 evaluation contract",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used_to_choose_correction": false,
+  "orders_submitted": false
+}
