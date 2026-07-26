@@ -1,0 +1,80 @@
+name: ML path-continuity stage router
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-path-continuity-router-001
+    paths:
+      - "research_results/r11_ml_path_continuity_proxy_001/**"
+      - ".github/workflows/ml-path-continuity-stage-router-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  route:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Route result without discretionary delay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          result=research_results/r11_ml_path_continuity_proxy_001/result.json
+          test -f "$result"
+          python - <<'PY'
+          import json, re, requests
+          from pathlib import Path
+          r=json.loads(Path('research_results/r11_ml_path_continuity_proxy_001/result.json').read_text())
+          root=Path('research_results/r11_ml_path_continuity_proxy_001')
+          if r['status']!='PROMISING_PRE2024_SURVIVOR':
+              text=(
+                  '# Stage decision: close proxy family\n\n'
+                  f"Status: **{r['status']}**. The official Binance proxy did not pass the full 18/24-bp, sample, median, concentration and drawdown gate. "
+                  'No Bybit download, risk retuning, leverage retuning or 2024 access is opened. The exact path-continuity formulation is closed and the project must pivot to a different payoff/information source.\n'
+              )
+              (root/'STAGE_DECISION.md').write_text(text)
+              raise SystemExit(0)
+          bases=[
+              'https://public.bybit.com/kline_for_metatrader4/{symbol}/{year}/',
+              'https://public.bybit.com/kline_for_metatrader4/{symbol}/',
+          ]
+          session=requests.Session();session.headers['User-Agent']='SMC-ICT-research/1.0'
+          records=[]
+          for symbol in ('BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT'):
+              for year in (2021,2022,2023):
+                  found=[];attempts=[]
+                  for template in bases:
+                      url=template.format(symbol=symbol,year=year)
+                      try:
+                          resp=session.get(url,timeout=(20,60));attempts.append({'url':url,'status':resp.status_code,'bytes':len(resp.content)})
+                          if resp.status_code==200:
+                              found += [x for x in re.findall(r'href=[\"\']([^\"\']+\.csv\.gz)[\"\']',resp.text,re.I) if str(year) in x]
+                      except Exception as exc:
+                          attempts.append({'url':url,'error':f'{type(exc).__name__}: {exc}'})
+                  records.append({'symbol':symbol,'year':year,'files':sorted(set(found)),'attempts':attempts})
+          usable=all(x['files'] for x in records)
+          out={'schema_version':1,'proxy_status':r['status'],'all_symbol_years_usable':usable,'records':records,'2024_opened':False,'orders_submitted':False}
+          (root/'BYBIT_STATIC_PROBE.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          if not usable:
+              (root/'STAGE_DECISION.md').write_text('# Stage decision: source blocked\n\nThe proxy survived, but the exact Bybit static archive listing was incomplete. No 2024 data or order path was opened.\n')
+              raise SystemExit(0)
+          (root/'STAGE_DECISION.md').write_text('# Stage decision: open Bybit replay\n\nThe proxy passed every preregistered economic gate and all twelve pre-2024 Bybit symbol-year archive listings are usable. The next stage is the unchanged-rule Bybit replay; 2024 remains sealed.\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research_results/r11_ml_path_continuity_proxy_001
+          if ! git diff --cached --quiet; then
+            git commit -m "Record ML path-continuity stage decision [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+          gh pr comment 170 --body-file research_results/r11_ml_path_continuity_proxy_001/STAGE_DECISION.md || true
