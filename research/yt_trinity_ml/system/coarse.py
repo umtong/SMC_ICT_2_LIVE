@@ -68,6 +68,66 @@ def _market_fill(open_price: float, side: int, row: pd.Series, slippage_bps: flo
     return open_price * (1 + side * cost)
 
 
+class _RangeExtremaIndex:
+    """Segment tree for first low/high barrier crossing at or after a position."""
+
+    def __init__(self, low: np.ndarray, high: np.ndarray) -> None:
+        if len(low) != len(high):
+            raise ValueError("low/high length mismatch")
+        self.length = len(low)
+        size = 1
+        while size < self.length:
+            size <<= 1
+        self.size = size
+        self.minimum = np.full(2 * size, np.inf, dtype=float)
+        self.maximum = np.full(2 * size, -np.inf, dtype=float)
+        self.minimum[size : size + self.length] = low
+        self.maximum[size : size + self.length] = high
+        for node in range(size - 1, 0, -1):
+            self.minimum[node] = min(self.minimum[node * 2], self.minimum[node * 2 + 1])
+            self.maximum[node] = max(self.maximum[node * 2], self.maximum[node * 2 + 1])
+
+    def _first(self, tree: np.ndarray, start: int, threshold: float, lower: bool) -> int | None:
+        if start >= self.length:
+            return None
+
+        def eligible(value: float) -> bool:
+            return value <= threshold if lower else value >= threshold
+
+        if not eligible(float(tree[1])):
+            return None
+
+        def visit(node: int, left: int, right: int) -> int | None:
+            if right <= start or not eligible(float(tree[node])):
+                return None
+            if right - left == 1:
+                return left if left < self.length else None
+            middle = (left + right) // 2
+            first = visit(node * 2, left, middle)
+            if first is not None:
+                return first
+            return visit(node * 2 + 1, middle, right)
+
+        return visit(1, 0, self.size)
+
+    def first_low_le(self, start: int, threshold: float) -> int | None:
+        return self._first(self.minimum, start, threshold, True)
+
+    def first_high_ge(self, start: int, threshold: float) -> int | None:
+        return self._first(self.maximum, start, threshold, False)
+
+    def first_low_lt(self, start: int, threshold: float) -> int | None:
+        return self.first_low_le(start, float(np.nextafter(threshold, -np.inf)))
+
+    def first_high_gt(self, start: int, threshold: float) -> int | None:
+        return self.first_high_ge(start, float(np.nextafter(threshold, np.inf)))
+
+
+def _first_position(*positions: int | None) -> int | None:
+    valid = [position for position in positions if position is not None]
+    return min(valid) if valid else None
+
+
 class CoarseLabeler:
     """Array-backed conservative first-passage labeler for one symbol."""
 
@@ -81,6 +141,7 @@ class CoarseLabeler:
         self.high = self.data["high"].to_numpy(dtype=float)
         self.low = self.data["low"].to_numpy(dtype=float)
         self.close = self.data["close"].to_numpy(dtype=float)
+        self.extrema = _RangeExtremaIndex(self.low, self.high)
 
     @staticmethod
     def _first_true(values: np.ndarray) -> int | None:
@@ -98,18 +159,17 @@ class CoarseLabeler:
         passive_filled = 0
         if passive:
             if side > 0:
-                invalidated = self.low[start_position:] <= candidate.stop_reference
-                reached_target = self.high[start_position:] >= candidate.target_reference
-                crossed = self.low[start_position:] < candidate.entry_reference
+                invalidation_position = self.extrema.first_low_le(start_position, candidate.stop_reference)
+                target_position = self.extrema.first_high_ge(start_position, candidate.target_reference)
+                crossed_position = self.extrema.first_low_lt(start_position, candidate.entry_reference)
             else:
-                invalidated = self.high[start_position:] >= candidate.stop_reference
-                reached_target = self.low[start_position:] <= candidate.target_reference
-                crossed = self.high[start_position:] > candidate.entry_reference
-            first_event = self._first_true(invalidated | reached_target | crossed)
-            if first_event is None:
+                invalidation_position = self.extrema.first_high_ge(start_position, candidate.stop_reference)
+                target_position = self.extrema.first_low_le(start_position, candidate.target_reference)
+                crossed_position = self.extrema.first_high_gt(start_position, candidate.entry_reference)
+            entry_position = _first_position(invalidation_position, target_position, crossed_position)
+            if entry_position is None:
                 return CoarseLabel(candidate.timestamp, None, None, None, None, 0, "UNRESOLVED_NO_FILL")
-            entry_position = start_position + first_event
-            if invalidated[first_event] or reached_target[first_event]:
+            if entry_position in {invalidation_position, target_position}:
                 return CoarseLabel(candidate.timestamp, None, self.available_times[entry_position], None, None, 0, "CANCELLED_BEFORE_FILL")
             entry_price = candidate.entry_reference
             entry_fee_rate = self.config.maker_fee_rate
@@ -130,17 +190,16 @@ class CoarseLabeler:
             return CoarseLabel(candidate.timestamp, entry_time, entry_time, 0, -1.0, passive_filled, "INVALID_STOP")
 
         if side > 0:
-            stop_hit = self.low[entry_position:] <= candidate.stop_reference
-            target_hit = self.high[entry_position:] >= candidate.target_reference
+            stop_position = self.extrema.first_low_le(entry_position, candidate.stop_reference)
+            target_position = self.extrema.first_high_ge(entry_position, candidate.target_reference)
         else:
-            stop_hit = self.high[entry_position:] >= candidate.stop_reference
-            target_hit = self.low[entry_position:] <= candidate.target_reference
-        first_barrier = self._first_true(stop_hit | target_hit)
-        if first_barrier is None:
+            stop_position = self.extrema.first_high_ge(entry_position, candidate.stop_reference)
+            target_position = self.extrema.first_low_le(entry_position, candidate.target_reference)
+        exit_position = _first_position(stop_position, target_position)
+        if exit_position is None:
             return CoarseLabel(candidate.timestamp, entry_time, None, None, None, passive_filled, "UNRESOLVED_CENSORED")
-        exit_position = entry_position + first_barrier
         exit_time = self.available_times[exit_position]
-        if stop_hit[first_barrier]:
+        if stop_position == exit_position:
             stop_price = candidate.stop_reference * (
                 1 - self.config.stop_slippage_bps / 10000
                 if side > 0
@@ -369,18 +428,17 @@ def _outcome_from_labeler(labeler: CoarseLabeler, candidate: EventCandidate, pas
     side = candidate.side
     if passive:
         if side > 0:
-            invalidated = labeler.low[start_position:] <= candidate.stop_reference
-            reached_target = labeler.high[start_position:] >= candidate.target_reference
-            crossed = labeler.low[start_position:] < candidate.entry_reference
+            invalidation_position = labeler.extrema.first_low_le(start_position, candidate.stop_reference)
+            target_position = labeler.extrema.first_high_ge(start_position, candidate.target_reference)
+            crossed_position = labeler.extrema.first_low_lt(start_position, candidate.entry_reference)
         else:
-            invalidated = labeler.high[start_position:] >= candidate.stop_reference
-            reached_target = labeler.low[start_position:] <= candidate.target_reference
-            crossed = labeler.high[start_position:] > candidate.entry_reference
-        first_event = labeler._first_true(invalidated | reached_target | crossed)
-        if first_event is None:
+            invalidation_position = labeler.extrema.first_high_ge(start_position, candidate.stop_reference)
+            target_position = labeler.extrema.first_low_le(start_position, candidate.target_reference)
+            crossed_position = labeler.extrema.first_high_gt(start_position, candidate.entry_reference)
+        entry_position = _first_position(invalidation_position, target_position, crossed_position)
+        if entry_position is None:
             return CoarseOutcome(candidate.timestamp, None, None, "UNRESOLVED_NO_FILL", None, None, 0.0, None, None, None)
-        entry_position = start_position + first_event
-        if invalidated[first_event] or reached_target[first_event]:
+        if entry_position in {invalidation_position, target_position}:
             return CoarseOutcome(candidate.timestamp, None, labeler.available_times[entry_position], "CANCELLED_BEFORE_FILL", None, None, 0.0, None, None, None)
         entry_price = candidate.entry_reference
         entry_fee_rate = config.maker_fee_rate
@@ -392,17 +450,16 @@ def _outcome_from_labeler(labeler: CoarseLabeler, candidate: EventCandidate, pas
         entry_liquidity = "taker"
     entry_time = labeler.available_times[entry_position] if passive else labeler.times[entry_position]
     if side > 0:
-        stop_hit = labeler.low[entry_position:] <= candidate.stop_reference
-        target_hit = labeler.high[entry_position:] >= candidate.target_reference
+        stop_position = labeler.extrema.first_low_le(entry_position, candidate.stop_reference)
+        target_position = labeler.extrema.first_high_ge(entry_position, candidate.target_reference)
     else:
-        stop_hit = labeler.high[entry_position:] >= candidate.stop_reference
-        target_hit = labeler.low[entry_position:] <= candidate.target_reference
-    first_barrier = labeler._first_true(stop_hit | target_hit)
-    if first_barrier is None:
+        stop_position = labeler.extrema.first_high_ge(entry_position, candidate.stop_reference)
+        target_position = labeler.extrema.first_low_le(entry_position, candidate.target_reference)
+    exit_position = _first_position(stop_position, target_position)
+    if exit_position is None:
         return CoarseOutcome(candidate.timestamp, entry_time, None, "UNRESOLVED_CENSORED", entry_price, None, entry_fee_rate, None, entry_liquidity, None)
-    exit_position = entry_position + first_barrier
     end_time = labeler.available_times[exit_position]
-    if stop_hit[first_barrier]:
+    if stop_position == exit_position:
         exit_price = candidate.stop_reference * (1 - config.stop_slippage_bps / 10000 if side > 0 else 1 + config.stop_slippage_bps / 10000)
         return CoarseOutcome(candidate.timestamp, entry_time, end_time, "STOP", entry_price, exit_price, entry_fee_rate, config.taker_fee_rate, entry_liquidity, "taker")
     return CoarseOutcome(candidate.timestamp, entry_time, end_time, "TARGET", entry_price, candidate.target_reference, entry_fee_rate, config.maker_fee_rate, entry_liquidity, "maker")
@@ -493,10 +550,13 @@ class CoarseEventReplay:
             passive = selected.action == PolicyDecision.PASSIVE_RETEST
             outcome = self.outcome(candidate, passive)
             if outcome.entry_time is None:
-                if outcome.end_time is None:
+                if outcome.end_time is None or outcome.end_time >= evaluation_end_exclusive:
                     slot_release = evaluation_end_exclusive
                 else:
-                    slot_release = min(outcome.end_time, evaluation_end_exclusive)
+                    slot_release = outcome.end_time
+                continue
+            if outcome.entry_time >= evaluation_end_exclusive:
+                slot_release = evaluation_end_exclusive
                 continue
             assert outcome.entry_price is not None
             step, minimum = instrument_rules.get(candidate.symbol, (risk.quantity_step, risk.minimum_quantity))
@@ -518,16 +578,21 @@ class CoarseEventReplay:
             cash -= entry_fee
             cash_events.append((outcome.entry_time, -entry_fee))
             account.fills.append(FillRecord(outcome.entry_time, candidate.symbol, "ENTRY", candidate.side, quantity, outcome.entry_price, entry_fee, outcome.entry_liquidity or "unknown"))
-            interval_end = outcome.end_time if outcome.end_time is not None else evaluation_end_exclusive
+            effective_end = (
+                outcome.end_time
+                if outcome.end_time is not None and outcome.end_time < evaluation_end_exclusive
+                else None
+            )
+            interval_end = effective_end if effective_end is not None else evaluation_end_exclusive
             funding_pnl = 0.0
             for timestamp, rate in self._funding_events(funding, candidate.symbol, outcome.entry_time, interval_end):
                 payment = -candidate.side * quantity * _mark_at(self.labelers[candidate.symbol], timestamp) * rate
                 funding_pnl += payment
                 cash += payment
                 cash_events.append((timestamp, payment))
-            interval = CoarsePositionInterval(candidate, quantity, outcome.entry_time, outcome.end_time, outcome.entry_price, entry_fee, entry_equity, funding_pnl)
+            interval = CoarsePositionInterval(candidate, quantity, outcome.entry_time, effective_end, outcome.entry_price, entry_fee, entry_equity, funding_pnl)
             intervals.append(interval)
-            if outcome.end_time is None or outcome.exit_price is None or outcome.exit_fee_rate is None:
+            if effective_end is None or outcome.exit_price is None or outcome.exit_fee_rate is None:
                 open_interval = interval
                 slot_release = evaluation_end_exclusive
                 break
@@ -535,8 +600,8 @@ class CoarseEventReplay:
             gross = candidate.side * quantity * (outcome.exit_price - outcome.entry_price)
             exit_delta = gross - exit_fee
             cash += exit_delta
-            cash_events.append((outcome.end_time, exit_delta))
-            account.fills.append(FillRecord(outcome.end_time, candidate.symbol, outcome.status, -candidate.side, quantity, outcome.exit_price, exit_fee, outcome.exit_liquidity or "unknown"))
+            cash_events.append((effective_end, exit_delta))
+            account.fills.append(FillRecord(effective_end, candidate.symbol, outcome.status, -candidate.side, quantity, outcome.exit_price, exit_fee, outcome.exit_liquidity or "unknown"))
             net_pnl = gross - entry_fee - exit_fee + funding_pnl
             stop_budget = quantity * abs(outcome.entry_price - candidate.stop_reference)
             account.closed_trades.append(
@@ -545,7 +610,7 @@ class CoarseEventReplay:
                     candidate.family.value,
                     candidate.side,
                     outcome.entry_time,
-                    outcome.end_time,
+                    effective_end,
                     quantity,
                     outcome.entry_price,
                     outcome.status,
@@ -554,7 +619,7 @@ class CoarseEventReplay:
                     net_pnl / max(stop_budget, 1e-12),
                 )
             )
-            slot_release = outcome.end_time
+            slot_release = effective_end
 
         account.cash = cash
         if open_interval is not None:
