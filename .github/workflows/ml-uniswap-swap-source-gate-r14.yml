@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   source-gate:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-slim
     timeout-minutes: 60
     env:
       PYTHONHASHSEED: '0'
@@ -50,6 +50,7 @@ jobs:
           python -m py_compile "$root/probe_uniswap_swaps.py" "$root/test_probe_uniswap_swaps.py"
           PYTHONPATH="$root" python -m pytest -q "$root/test_probe_uniswap_swaps.py"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
 
       - name: Run outcome-sealed Ethereum source gate
         run: |
@@ -113,6 +114,7 @@ jobs:
           sha256sum \
             "$root/WORK_CLAIM.json" \
             "$root/PREREGISTRATION.md" \
+            "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" \
             "$root/probe_uniswap_swaps.py" \
             "$root/test_probe_uniswap_swaps.py" \
             .github/workflows/ml-uniswap-swap-source-gate-r14.yml \
