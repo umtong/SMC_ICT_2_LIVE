@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "conditional_on": {
+    "result_id": "RES-20260726-SMT-OVERREACTION-RECLAIM-001",
+    "main_mss_survivor_count_equals": 0
+  },
+  "economic_role": "At an already confirmed causal MSS event, estimate whether equilibrium reclaim will beat frozen invalidation and 24-bp execution cost. The model does not invent a direction or a chart pattern.",
+  "smc_ict_story": [
+    "BTC displacement",
+    "SOL/XRP external-liquidity overrun",
+    "SMT divergence from prior-only beta fair value",
+    "opposite-flow CISD/MSS confirmation",
+    "ML exhaustion-versus-continuation meta-label",
+    "equilibrium reclaim or structural invalidation"
+  ],
+  "chronology": {
+    "fit": "selected precommitted 2022 Sunday partitions",
+    "calibration": "remaining precommitted 2022 Sunday partitions",
+    "development": "precommitted January-August 2023 Sunday partitions",
+    "selection": "already opened September-December 2023 family evidence",
+    "official_2024_2026": "sealed"
+  },
+  "features_available_at_confirmation_only": [
+    "btc_displacement_z",
+    "btc_activity_ratio",
+    "btc_aggressor_alignment",
+    "horizon_seconds",
+    "frozen_beta",
+    "initial_residual_gap_bps",
+    "overreaction_ratio",
+    "target_to_btc_trade_count_ratio_30m",
+    "target_to_btc_realized_volatility_ratio_15m",
+    "mss_contraction_ratio",
+    "milliseconds_to_mss",
+    "opposite_flow_imbalance_1s",
+    "opposite_flow_trade_count_1s",
+    "target_short_horizon_volatility",
+    "target_activity",
+    "cross_follower_residual_breadth",
+    "utc_time_sine_cosine",
+    "target_symbol"
+  ],
+  "models": [
+    {
+      "name": "sparse_logistic_control",
+      "purpose": "interpretable linear control with standardized numeric inputs and one-hot symbol"
+    },
+    {
+      "name": "shallow_histogram_gradient_boosting",
+      "purpose": "limited nonlinear interactions without deep architecture or feature proliferation",
+      "max_depth": 3,
+      "max_iter": 100,
+      "learning_rate": 0.05,
+      "l2_regularization": 1.0
+    }
+  ],
+  "label": "24-bp account log return of frozen equilibrium-target versus invalidation path, with 100/300-ms execution evaluated separately",
+  "selection_objective": "chronological calibration account log growth after 24 bp, subject to positive median, breadth, concentration and winner-removal constraints",
+  "forbidden": [
+    "AUC-only model selection",
+    "future MFE or MAE as an input",
+    "threshold tuning on official 2024-2026",
+    "changing the frozen MSS, target, invalidation, cost, risk or leverage rules",
+    "deep learning before the shallow models demonstrate reusable economic edge"
+  ],
+  "retirement_rule": "If neither model survives both execution latencies, 24-bp cost, chronological development, positive median and counterfactual winner removal, retire the entire BTC-to-alt overreaction-reclaim information unit."
+}
