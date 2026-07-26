@@ -1,0 +1,92 @@
+name: Register SMT-FVG result records
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-fvg-liquidity-sweep-001
+    paths:
+      - ".github/workflows/register-smt-fvg-result-r11.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: register-smt-fvg-result-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append validated records once
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result_path = Path('control/result-registry.jsonl')
+          validation_path = Path('control/validation-cache.jsonl')
+
+          result = {
+              'schema_version': 1,
+              'result_id': 'RES-20260726-SMT-FVG-SWEEP-FATAL-001',
+              'claim_id': 'CLM-20260726-1539-SMT-FVG-SWEEP-001',
+              'worker_id': 'gpt-5.6-pro-20260726-1539',
+              'status': 'TESTED_BELOW_GATE',
+              'hard_validity_status': 'PASS_FATAL_SCREEN_ONLY',
+              'economic_status': 'BELOW_GATE',
+              'summary': 'Hard-valid sparse Bybit BTCUSDT/ETHUSDT causal SMT external-liquidity sweep study. Confirmed five-second swing/equal-liquidity pools, one-market raids and paired-market non-raids routed sweep-reclaim plus displacement/MSS/FVG reversal or accepted-sweep laggard liquidity-transfer continuation across 3,072 frozen policies. Zero passed development. At 18bp and 24bp no policy was positive; at 12bp 22 were positive but zero had at least ten trades. Maximum development trades were 66. Best >=10-trade 18bp path lost 1.247619% with mean -12.539862bp and -1.331479% after top-10% winner removal. 2024-2026 remained unopened; no rank or live-permission change.',
+              'source_ids': ['exchange:bybit:public-trading-archive','paper:osler-currency-orders-technical-levels-2003','paper:osler-stop-loss-cascades-2005','paper:katsiampa-btc-eth-volatility-comovement-2019','paper:hasan-crypto-liquidity-connectedness-2022'],
+              'dataset_ids': ['DS-BYBIT-BTCETH-SMT-FVG-SWEEP-2023-R1'],
+              'code_commit': 'fa4e766c7f2b7b47c3016217c684524111b36e8d',
+              'evaluation_contract_sha256': 'd7576560ecc4e7881a674b5bced9f4458ac8bbeab9c22d1a90f0fda5e58d23ea',
+              'artifact_fingerprint': '18adee65e7ab5360323b25152d50f309ea489822364d4c1eda339c6082a87852',
+              'dependency_fingerprint': '5551ed5bcdd463c79e637bae700f6e9d4f507734a80d0e655a24468cc490180b',
+              'artifact_links': ['https://github.com/umtong/SMC_ICT_2_LIVE/pull/95','https://github.com/umtong/SMC_ICT_2_LIVE/tree/agent/r11-smt-fvg-liquidity-sweep-001/research_results/smt_fvg_liquidity_sweep_20260726'],
+              'ranking_role': 'NOT_RANK_ELIGIBLE_FATAL_SCREEN',
+              'created_at': '2026-07-26T16:24:00+09:00',
+          }
+          validation = {
+              'attestation_id': 'VAL-20260726-SMT-FVG-SWEEP-FATAL-001',
+              'dependency_fingerprint': '5551ed5bcdd463c79e637bae700f6e9d4f507734a80d0e655a24468cc490180b',
+              'validation_scope': 'Immutable implementation reconstruction, official Bybit source identity, completed one-second and right-confirmed five-second liquidity structure, first post-confirmation sweep, paired-market SMT non-raid, confirmation-plus-100ms entry, structural exits, adverse stop-first, sparse-boundary full-stop, one global slot, identical 12/18/24bp replay, stage seals and independent candidate-ledger reproduction.',
+              'changed_surface': ['new causal SMT external-liquidity sweep/FVG family','new official Bybit six-day BTC/ETH dataset manifest','observable result persistence and independent audit','audit-only compressed-byte sum correction without strategy or outcome change'],
+              'status': 'PASS',
+              'evidence': ['Twelve official archives and 5,646,495 trades matched exact source identities.','All 3,072 candidates completed with zero development-gate passes and maximum 66 trades.','At 18bp and 24bp no candidate was positive; 12bp positives disappeared at a ten-trade minimum.','Independent audit exactly reproduced the gate, positive counts, cost monotonicity, sample tiers, maximum trades and source totals.','Candidate results SHA-256 4b0853e1b8554d6a5e339c045a21dad3664d1f987a739c056a0583f4999563dc; summary 37bf2103da1e0339adf8b4f5a18f601a2c3c574ce5fb1d874ea764c0b702e63c; source manifest dfa0db2afd5d251bca151897de57eca5b78ce2246c4a197fa91fa6e7532a376c.','2024-2026 remained sealed and no order was submitted.'],
+              'code_commit': 'fa4e766c7f2b7b47c3016217c684524111b36e8d',
+              'created_at': '2026-07-26T16:24:00+09:00',
+          }
+
+          def append_once(path: Path, key: str, value: str, row: dict) -> bool:
+              existing = path.read_text() if path.exists() else ''
+              for line in existing.splitlines():
+                  if not line.strip():
+                      continue
+                  try:
+                      if json.loads(line).get(key) == value:
+                          return False
+                  except json.JSONDecodeError as exc:
+                      raise SystemExit(f'invalid existing JSONL in {path}: {exc}')
+              with path.open('a', encoding='utf-8') as handle:
+                  if existing and not existing.endswith('\n'):
+                      handle.write('\n')
+                  handle.write(json.dumps(row, sort_keys=True, separators=(',', ':')) + '\n')
+              return True
+
+          changed = []
+          if append_once(result_path, 'result_id', result['result_id'], result):
+              changed.append(str(result_path))
+          if append_once(validation_path, 'attestation_id', validation['attestation_id'], validation):
+              changed.append(str(validation_path))
+          Path('research/smt_fvg_liquidity_sweep_20260726/REGISTRY_WRITE_STATE.json').write_text(json.dumps({'changed': changed, 'result_id': result['result_id'], 'attestation_id': validation['attestation_id']}, sort_keys=True, indent=2) + '\n')
+          print(json.dumps({'changed': changed}, sort_keys=True))
+          PY
+      - name: Commit registration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add control/result-registry.jsonl control/validation-cache.jsonl research/smt_fvg_liquidity_sweep_20260726/REGISTRY_WRITE_STATE.json
+          git commit -m "Register SMT-FVG result and validation [skip smt-fvg]"
+          git push origin HEAD:agent/r11-smt-fvg-liquidity-sweep-001
