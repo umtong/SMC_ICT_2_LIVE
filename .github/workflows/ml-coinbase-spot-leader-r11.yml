@@ -55,15 +55,70 @@ jobs:
       - name: Compile and test frozen source
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           root=research/ml_coinbase_spot_leader_20260726
-          python -m json.tool "$root/CORRECTION_001_COMPLETED_BAR_AGGREGATION_BEFORE_DATA.json" >/dev/null
-          python -m json.tool "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" >/dev/null
-          python "$root/reconstruct_v2.py"
-          python -m py_compile "$root/reconstruct_v2.py" "$root/run.py" "$root/test_run.py"
-          PYTHONPATH="$root" pytest -q "$root/test_run.py"
-          PYTHONPATH="$root" python "$root/run.py" self-test
-          python scripts/validate_project.py
+          out=research_runs/ml_coinbase_spot_leader_20260726/r11
+          mkdir -p "$out"
+
+          python -m json.tool "$root/CORRECTION_001_COMPLETED_BAR_AGGREGATION_BEFORE_DATA.json" \
+            >"$out/correction_001.stdout" 2>"$out/correction_001.stderr"
+          s1=$?
+          python -m json.tool "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" \
+            >"$out/correction_002.stdout" 2>"$out/correction_002.stderr"
+          s2=$?
+          python "$root/reconstruct_v2.py" \
+            >"$out/reconstruct.stdout" 2>"$out/reconstruct.stderr"
+          s3=$?
+
+          for file in run.py test_run.py bundle_manifest_v2.json reconstruct_v2.py preregistration.json; do
+            if test -f "$root/$file"; then
+              cp "$root/$file" "$out/$file"
+            fi
+          done
+
+          python -m py_compile "$root/reconstruct_v2.py" "$root/run.py" "$root/test_run.py" \
+            >"$out/compile.stdout" 2>"$out/compile.stderr"
+          s4=$?
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" \
+            >"$out/pytest.stdout" 2>"$out/pytest.stderr"
+          s5=$?
+          PYTHONPATH="$root" python "$root/run.py" self-test \
+            >"$out/self_test.stdout" 2>"$out/self_test.stderr"
+          s6=$?
+          python scripts/validate_project.py \
+            >"$out/project_validation.stdout" 2>"$out/project_validation.stderr"
+          s7=$?
+
+          printf '%s\n' "$s1" >"$out/correction_001.status"
+          printf '%s\n' "$s2" >"$out/correction_002.status"
+          printf '%s\n' "$s3" >"$out/reconstruct.status"
+          printf '%s\n' "$s4" >"$out/compile.status"
+          printf '%s\n' "$s5" >"$out/pytest.status"
+          printf '%s\n' "$s6" >"$out/self_test.status"
+          printf '%s\n' "$s7" >"$out/project_validation.status"
+          sha256sum "$out"/* >"$out/PREMARKET_SHA256SUMS.txt" 2>/dev/null || true
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('research_runs/ml_coinbase_spot_leader_20260726/r11')
+          names=('correction_001','correction_002','reconstruct','compile','pytest','self_test','project_validation')
+          payload={
+              'claim_id':'CLM-20260726-1935-ML-COINBASE-SPOT-001',
+              'stage':'PRE_MARKET_SOURCE_TEST_DIAGNOSTIC',
+              'market_rows_parsed':False,
+              'model_fit':False,
+              'pnl_computed':False,
+              'orders_submitted':False,
+              'statuses':{name:int((out/f'{name}.status').read_text()) for name in names},
+          }
+          (out/'PREMARKET_DIAGNOSTIC.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(payload,sort_keys=True))
+          PY
+
+          if test "$s1" -ne 0 || test "$s2" -ne 0 || test "$s3" -ne 0 || test "$s4" -ne 0 || test "$s5" -ne 0 || test "$s6" -ne 0 || test "$s7" -ne 0; then
+            exit 1
+          fi
 
       - name: Download only frozen fit sources
         shell: bash
