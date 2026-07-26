@@ -37,7 +37,7 @@ jobs:
           python -m pip install --disable-pip-version-check \
             "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
 
-      - name: Reconstruct frozen shared source and record exact API
+      - name: Reconstruct frozen sources and record exact API contract
         shell: bash
         run: |
           set -euo pipefail
@@ -45,7 +45,11 @@ jobs:
           git fetch --depth=1 origin agent/r11-altlag-opportunity-001
           git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 \
             > runtime/base_probe.py.zlib.b64
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research/smt_overreaction_reclaim_20260726/run.py \
+            > audit/rule_engine.py
           python - <<'PY'
+          import ast
           import base64
           import hashlib
           import inspect
@@ -72,7 +76,7 @@ jobs:
           ]
           sections = []
           manifest = {
-              'schema_version': 1,
+              'schema_version': 2,
               'claim_id': 'CLM-20260726-SMT-RECLAIM-ML-001',
               'source_sha256': hashlib.sha256(source).hexdigest(),
               'source_bytes': len(source),
@@ -98,7 +102,25 @@ jobs:
                   sections.append(f'\n===== {name} {record["signature"]} =====\n{text}')
               manifest['symbols'][name] = record
 
+          rule_source = out.joinpath('rule_engine.py').read_text(encoding='utf-8')
+          tree = ast.parse(rule_source)
+          keys_by_base = {}
+          for node in ast.walk(tree):
+              if not isinstance(node, ast.Subscript):
+                  continue
+              if not isinstance(node.value, ast.Name):
+                  continue
+              key_node = node.slice
+              if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str):
+                  keys_by_base.setdefault(node.value.id, set()).add(key_node.value)
+          key_payload = {name: sorted(values) for name, values in sorted(keys_by_base.items())}
+          manifest['rule_engine_sha256'] = hashlib.sha256(rule_source.encode()).hexdigest()
+          manifest['subscript_keys_by_variable'] = key_payload
+
           (out / 'API.txt').write_text(''.join(sections), encoding='utf-8')
+          (out / 'FEATURE_KEYS.json').write_text(
+              json.dumps(key_payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
           (out / 'MANIFEST.json').write_text(
               json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8'
           )
