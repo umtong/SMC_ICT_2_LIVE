@@ -7,23 +7,18 @@ on:
     paths:
       - 'research/ml_uniswap_hedge_transfer_20260726/**'
       - '.github/workflows/ml-uniswap-swap-source-gate-r14.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/ml_uniswap_hedge_transfer_20260726/**'
-      - '.github/workflows/ml-uniswap-swap-source-gate-r14.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-uniswap-source-gate-r14-${{ github.event.pull_request.number || github.ref }}
+  group: ml-uniswap-signed-source-authoritative
   cancel-in-progress: true
 
 jobs:
   source-gate:
-    runs-on: ubuntu-slim
+    runs-on: macos-14
     timeout-minutes: 90
     env:
       PYTHONHASHSEED: '0'
@@ -31,6 +26,9 @@ jobs:
       PYTHONFAULTHANDLER: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/r14-ml-uniswap-hedge-transfer-001
+          fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
@@ -77,6 +75,19 @@ jobs:
             python -m json.tool "$root/EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json" >/dev/null
             python -m json.tool "$root/EXECUTION_CORRECTION_010_HTTP_BUDGET_AND_BINARY_SINGLE_LOOKUPS_BEFORE_OUTCOME.json" >/dev/null
             python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
+            python -m json.tool "$root/AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/ml_uniswap_hedge_transfer_20260726')
+          a=json.loads((root/'AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json').read_text())
+          assert a['recorded_before_source_or_market_outcome'] is True
+          assert a['source_gate_result_observed'] is False
+          assert a['market_outcome_observed'] is False
+          assert a['official_2024H1']['opens_immediately_after_freeze'] is True
+          assert max(a['risk_search']['planned_stop_risk_fraction']) == 0.6
+          assert max(a['risk_search']['notional_cap_multiple']) == 100
+          PY
           } 2>&1 | tee "$out/PRECHECK.log"
           rc=${PIPESTATUS[0]}
           set -e
@@ -118,16 +129,16 @@ jobs:
               assert result['scientific_decision'] == 'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES'
           serialized = json.dumps(result, sort_keys=True).lower()
           for forbidden_key in (
-              'future_return_value', 'first_passage_label_value', 'trade_return',
-              'account_nav', 'model_auc', 'official_2024_opened', 'orders_submitted'
+            'future_return_value', 'first_passage_label_value', 'trade_return',
+            'account_nav', 'model_auc', 'official_2024_opened', 'orders_submitted'
           ):
               assert forbidden_key not in serialized
           print(json.dumps({
-              'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
-              'source_gate_pass': result['source_gate_pass'],
-              'decision': result['scientific_decision'],
-              'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
-              'decode_errors': result.get('totals', {}).get('decode_error_count', 0),
+            'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
+            'source_gate_pass': result['source_gate_pass'],
+            'decision': result['scientific_decision'],
+            'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
+            'decode_errors': result.get('totals', {}).get('decode_error_count', 0),
           }, sort_keys=True))
           PY
 
@@ -141,7 +152,7 @@ jobs:
           set -e
           echo "$rc" > "$out/PROJECT_VALIDATION_EXIT_CODE.txt"
           if [ "$rc" -ne 0 ]; then
-            echo "Current-main validation drift recorded; the source-only scientific result remains separately sealed."
+            echo 'Current-main validation drift recorded; the source-only scientific result remains separately sealed.'
           fi
 
       - name: Freeze source evidence hashes
@@ -151,31 +162,37 @@ jobs:
           root=research/ml_uniswap_hedge_transfer_20260726
           out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
           mkdir -p "$out"
-          sha256sum \
-            "$root/WORK_CLAIM.json" \
-            "$root/PREREGISTRATION.md" \
-            "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_008_BATCH_TIMESTAMP_IMPLEMENTATION_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_010_HTTP_BUDGET_AND_BINARY_SINGLE_LOOKUPS_BEFORE_OUTCOME.json" \
-            "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" \
-            "$root/probe_uniswap_swaps.py" \
-            "$root/probe_uniswap_swaps_bounded.py" \
-            "$root/run_source_gate_with_blockscout.py" \
-            "$root/run_source_gate_with_batch_timestamps.py" \
-            "$root/test_probe_uniswap_swaps.py" \
-            "$root/test_probe_uniswap_swaps_bounded.py" \
-            .github/workflows/ml-uniswap-swap-source-gate-r14.yml \
-            > "$out/INPUT_SHA256SUMS.txt"
-          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
-            | sort -z \
-            | xargs -0 sha256sum \
-            > "$out/OUTPUT_SHA256SUMS.txt"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root=Path('research/ml_uniswap_hedge_transfer_20260726')
+          out=Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate')
+          inputs=[
+            root/'WORK_CLAIM.json', root/'PREREGISTRATION.md',
+            root/'EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_008_BATCH_TIMESTAMP_IMPLEMENTATION_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json',
+            root/'EXECUTION_CORRECTION_010_HTTP_BUDGET_AND_BINARY_SINGLE_LOOKUPS_BEFORE_OUTCOME.json',
+            root/'AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json',
+            root/'AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json',
+            root/'probe_uniswap_swaps.py', root/'probe_uniswap_swaps_bounded.py',
+            root/'run_source_gate_with_blockscout.py', root/'run_source_gate_with_batch_timestamps.py',
+            root/'test_probe_uniswap_swaps.py', root/'test_probe_uniswap_swaps_bounded.py',
+            Path('.github/workflows/ml-uniswap-swap-source-gate-r14.yml'),
+          ]
+          (out/'INPUT_SHA256SUMS.txt').write_text(''.join(
+            f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in inputs
+          ),encoding='utf-8')
+          rows=[]
+          for p in sorted(x for x in out.rglob('*') if x.is_file() and x.name!='OUTPUT_SHA256SUMS.txt'):
+            rows.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n")
+          (out/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()
