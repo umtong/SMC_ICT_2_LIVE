@@ -1,0 +1,93 @@
+name: ML Coinbase frozen source transport probe
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-coinbase-spot-leader-001
+    paths:
+      - ".github/workflows/ml-coinbase-source-probe-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/ml-coinbase-source-probe-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-coinbase-source-probe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe frozen URL identities without parsing market rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          urls = {
+              'coinbase_btcusd': 'https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTCUSD.csv.gz',
+              'coinbase_btc_dash_usd': 'https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTC-USD.csv.gz',
+              'bybit_btcusdt': 'https://datasets.tardis.dev/v1/bybit/quotes/2022/01/01/BTCUSDT.csv.gz',
+          }
+          Path('probe/URLS.json').write_text(json.dumps(urls, indent=2, sort_keys=True)+'\n')
+          PY
+          while IFS='=' read -r name url; do
+            echo "=== $name ===" | tee -a probe/PROBE.log
+            set +e
+            curl -sSIL --max-time 60 \
+              -A 'SMC-ICT-2-LIVE-source-probe/1.0' \
+              -w '\nCURL_HTTP=%{http_code}\nCURL_URL=%{url_effective}\nCURL_CONTENT_TYPE=%{content_type}\n' \
+              "$url" \
+              > "probe/${name}.headers" 2>>probe/PROBE.log
+            status=$?
+            set -e
+            echo "CURL_EXIT=$status" | tee -a probe/PROBE.log
+            cat "probe/${name}.headers" | tee -a probe/PROBE.log
+          done < <(python - <<'PY'
+          import json
+          for k,v in json.load(open('probe/URLS.json')).items():
+              print(f'{k}={v}')
+          PY
+          )
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          urls=json.load(open('probe/URLS.json'))
+          result={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-1935-ML-COINBASE-SPOT-001',
+              'market_rows_parsed':False,
+              'model_fit':False,
+              'pnl_computed':False,
+              'orders_submitted':False,
+              'probes':{},
+          }
+          for name,url in urls.items():
+              text=Path(f'probe/{name}.headers').read_text(errors='replace')
+              codes=[int(x) for x in re.findall(r'HTTP/\S+\s+(\d{3})',text)]
+              result['probes'][name]={
+                  'url':url,
+                  'http_chain':codes,
+                  'content_type_headers':re.findall(r'(?im)^content-type:\s*([^\r\n]+)',text),
+                  'content_length_headers':re.findall(r'(?im)^content-length:\s*([^\r\n]+)',text),
+                  'location_headers':re.findall(r'(?im)^location:\s*([^\r\n]+)',text),
+              }
+          Path('probe/RESULT.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-coinbase-source-probe-${{ github.sha }}
+          path: probe
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
