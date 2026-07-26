@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1540-BPR-FVG-001",
+  "correction_id": "COR-20260726-BPR-VECTORIZED-AGG-001",
+  "created_at": "2026-07-26T15:52:00+09:00",
+  "status": "FROZEN_BEFORE_ANY_CANDIDATE_METRIC_OR_GATE_RESULT",
+  "observed_failure": {
+    "stage": "source reconstruction",
+    "symptom": "The non-vectorized per-group lookup used to sum buy quote notional exceeded the execution limit on ETHUSDT 2023-03-19.",
+    "candidate_metrics_produced": false,
+    "fit_table_produced": false,
+    "development_opened": false,
+    "pnl_result_produced": false
+  },
+  "deterministic_change": {
+    "before": "groupby aggregation computes buy notional with a Python lambda that indexes the parent frame for every second group",
+    "after": "precompute buy_notional = quote_notional * is_buy and use the built-in grouped sum",
+    "mathematical_quantity_changed": false,
+    "bar_definition_changed": false,
+    "signal_rule_changed": false,
+    "candidate_grid_changed": false,
+    "dates_changed": false,
+    "execution_rule_changed": false,
+    "costs_changed": false,
+    "gates_changed": false
+  },
+  "sealed_periods": {
+    "development_unopened": true,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "orders_submitted": false
+}
