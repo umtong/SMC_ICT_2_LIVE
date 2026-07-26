@@ -1,0 +1,175 @@
+{
+  "accounts": {
+    "12.0": {
+      "final_nav": 9960.195969818127,
+      "geometric_daily_growth": -2.1675558052103305e-05,
+      "liquidated": false,
+      "maximum_drawdown": 0.020047778598344834,
+      "median_net_trade_bps": -46.296743852152396,
+      "month_count": 6,
+      "open_positions_at_end": 0,
+      "positive_month_fraction": 0.16666666666666666,
+      "positive_months": 1,
+      "profit_factor": 0.8874569114059946,
+      "selected_positions": 12,
+      "total_return": -0.003980403018187251,
+      "trades": 12
+    },
+    "18.0": {
+      "final_nav": 9931.03941485136,
+      "geometric_daily_growth": -3.760769613003756e-05,
+      "liquidated": false,
+      "maximum_drawdown": 0.020028989504597083,
+      "median_net_trade_bps": -52.30659790037852,
+      "month_count": 6,
+      "open_positions_at_end": 0,
+      "positive_month_fraction": 0.0,
+      "positive_months": 0,
+      "profit_factor": 0.8045838515643315,
+      "selected_positions": 12,
+      "total_return": -0.0068960585148639675,
+      "trades": 12
+    },
+    "24.0": {
+      "final_nav": 9905.388915978418,
+      "geometric_daily_growth": -5.166251872168459e-05,
+      "liquidated": false,
+      "maximum_drawdown": 0.02001438431508007,
+      "median_net_trade_bps": -58.316451948605284,
+      "month_count": 6,
+      "open_positions_at_end": 0,
+      "positive_month_fraction": 0.0,
+      "positive_months": 0,
+      "profit_factor": 0.7313755493568086,
+      "selected_positions": 12,
+      "total_return": -0.009461108402158191,
+      "trades": 12
+    }
+  },
+  "artifact": {
+    "frozen_models_sha256": "be140b6b2842bc673dd140907a2c9bd0f467dfedd57a28ba2b394f2e9278c87d",
+    "id": 8630176860,
+    "result_sha256": "65e3bf61ee260e5c4eeff36fc8cd10b2b6ba7955ea1fc1d710e803e91d27c7c6",
+    "sha256": "51afd5492ff218860803cc5c24dcaf0072819794513a53f6b3822e7274139f18",
+    "source_manifest_sha256": "419c66aee6d691879e1fe2c4e0c6b6f4951851928fe959a5258147b59fc73810"
+  },
+  "base_revision": 11,
+  "candidate_count": 2823,
+  "chronology": {
+    "calibration": [
+      "2022-04-01T00:00:00Z",
+      "2022-07-01T00:00:00Z"
+    ],
+    "conditional_development": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "fit_confirmation": [
+      "2022-07-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "train": [
+      "2021-10-01T00:00:00Z",
+      "2022-04-01T00:00:00Z"
+    ]
+  },
+  "claim_id": "CLM-20260726-1742-ML-LEVERAGE-CASCADE-001",
+  "code_commit": "8b8be1ce8b0fa6bd0aa5320d3e57ba28a7dc98ce",
+  "decision": "KILL_POSITIONING_DRIVEN_STRUCTURE_BREAK_NO_SALVAGE",
+  "development_opened": false,
+  "eligible_confirmation_candidate_count": 17,
+  "engine_version": "ML-LEVERAGE-CASCADE-V1",
+  "fit_gate_checks": {
+    "at_least_four_positive_months": false,
+    "full_auc_exceeds_structure": false,
+    "full_brier_better_than_structure": true,
+    "minimum_80_completed_trades": false,
+    "no_liquidation": true,
+    "positive_at_18bp": false,
+    "positive_at_24bp": false,
+    "positive_median_trade": false,
+    "profit_factor_above_one": false,
+    "top10pct_removed_positive": false
+  },
+  "fit_gate_passed": false,
+  "hard_valid": true,
+  "interpretation": "The full positioning model improved Brier score but reduced AUC versus the structure-only baseline. The accepted account path was sparse and negative at every tested cost, with negative median trade, profit factor below one, zero positive months at 18/24 bp and a more negative winner-removed path. The exact Binance-positioning plus Bybit-structure-break information unit is retired without threshold, feature, symbol, direction, risk, leverage or sizing tuning.",
+  "live_permission_changed": false,
+  "next_research_direction": "Do not reuse slow aggregate positioning for direction. Focus on point-in-time execution or forced-flow sources that change the payoff before Bybit reacts, with passive economics or an exogenous event clock.",
+  "orders_submitted": false,
+  "prediction": {
+    "auc_lift": -0.008515283842794763,
+    "brier_skill": 0.0497131175344947,
+    "full": {
+      "auc": 0.7427510917030566,
+      "brier": 0.20915616700870046,
+      "positive_rate": 0.4662004662004662,
+      "rows": 429
+    },
+    "structure": {
+      "auc": 0.7512663755458514,
+      "brier": 0.2200979208152888,
+      "positive_rate": 0.4662004662004662,
+      "rows": 429
+    }
+  },
+  "prohibited_years_opened": [],
+  "pull_request": 140,
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "resolved_candidate_count": 2815,
+  "result_id": "RES-20260726-ML-LEVERAGE-CASCADE-001",
+  "schema_version": 1,
+  "source_coverage": [
+    {
+      "binance_metrics": {
+        "active_day_coverage_after_first_file": 1.0,
+        "day_coverage_from_requested_start": 1.0,
+        "expected_days": 457,
+        "first_time": "2021-10-01T00:00:00Z",
+        "last_time": "2022-12-31T23:55:00Z",
+        "parse_errors": [],
+        "present_days": 457,
+        "rows": 131549,
+        "symbol": "BTCUSDT"
+      },
+      "bybit_valid_minute_fraction": 1.0,
+      "symbol": "BTCUSDT"
+    },
+    {
+      "binance_metrics": {
+        "active_day_coverage_after_first_file": 1.0,
+        "day_coverage_from_requested_start": 0.8665207877461707,
+        "expected_days": 457,
+        "first_time": "2021-12-01T00:00:00Z",
+        "last_time": "2022-12-31T23:55:00Z",
+        "parse_errors": [],
+        "present_days": 396,
+        "rows": 114041,
+        "symbol": "ETHUSDT"
+      },
+      "bybit_valid_minute_fraction": 1.0,
+      "symbol": "ETHUSDT"
+    }
+  ],
+  "status": "HARD_VALID_ECONOMIC_FAIL",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "top_10_percent_winner_removed_18bp": {
+    "final_nav": 9776.04783960717,
+    "geometric_daily_growth": -0.0001230891467350892,
+    "liquidated": false,
+    "maximum_drawdown": 0.026450423083926422,
+    "median_net_trade_bps": -53.65082159834809,
+    "month_count": 6,
+    "open_positions_at_end": 0,
+    "positive_month_fraction": 0.0,
+    "positive_months": 0,
+    "profit_factor": 0.4360810407553577,
+    "selected_positions": 12,
+    "total_return": -0.02239521603928296,
+    "trades": 12
+  },
+  "workflow_run_id": 30196159792
+}
