@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2205-ML-BREADTH-DIFFUSION-001",
+  "experiment_id": "BINANCE-BROAD-MARKET-BREADTH-SMT-V1",
+  "objective": "Test one external cross-sectional information unit capable of leading Bybit-eligible target delivery after realistic 12/18/24bp costs, rather than tuning target-only candles or leverage.",
+  "targets": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "breadth_universe": ["BNBUSDT", "ADAUSDT", "DOGEUSDT", "XLMUSDT", "LINKUSDT", "LTCUSDT", "BCHUSDT", "EOSUSDT", "TRXUSDT", "ETCUSDT", "DOTUSDT", "AVAXUSDT", "MATICUSDT", "UNIUSDT", "ATOMUSDT", "FILUSDT", "AAVEUSDT", "NEARUSDT", "FTMUSDT", "SANDUSDT", "MANAUSDT", "RUNEUSDT", "EGLDUSDT", "THETAUSDT"],
+  "source": {
+    "provider": "official Binance Vision",
+    "market": "USD-M perpetual daily 5m klines",
+    "membership": "fixed declared universe with date-local inclusion; at least 16 contiguous contracts",
+    "gap_policy": "no imputation; incomplete target day is fatal; incomplete breadth contract is absent"
+  },
+  "event": {
+    "breadth_return_z_abs_min": 1.25,
+    "return_direction_agreement_min": 0.65,
+    "flow_direction_agreement_min": 0.55,
+    "target_underreaction_min_bp": 4.0,
+    "target_opposite_move_floor_bp": -5.0,
+    "target_must_remain_inside_prior_60m_range": true,
+    "target_distance_bp": [20.0, 250.0],
+    "stop_distance_bp": [8.0, 150.0],
+    "cooldown_bars": 3
+  },
+  "label": "breadth-direction prior-60m external-liquidity pool first versus prior-60m equilibrium first; stop-first ambiguity and adverse gaps",
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "parameters": {"learning_rate": 0.05, "max_iter": 180, "max_leaf_nodes": 15, "min_samples_leaf": 30, "l2_regularization": 2.0, "random_state": 20260726},
+    "calibration": "one isotonic map on disjoint calibration dates",
+    "model_grid": false,
+    "feature_grid": false
+  },
+  "chronology": {
+    "train_dates": ["2021-01-03", "2021-03-07", "2021-05-02", "2021-07-04", "2021-09-05", "2021-11-07"],
+    "calibration_dates": ["2022-02-06", "2022-04-03", "2022-06-05", "2022-08-07"],
+    "confirmation_dates": ["2022-10-02", "2022-12-04", "2023-02-05", "2023-04-02"],
+    "conditional_development_dates": ["2023-06-04", "2023-08-06", "2023-10-01", "2023-12-03"],
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "account": {
+    "initial_nav": 10000.0,
+    "one_global_slot": true,
+    "planned_structural_stop_risk": 0.01,
+    "notional_cap": 3.0,
+    "cost_paths_bps": [12.0, 18.0, 24.0],
+    "funding_reserve_bps_per_8h_boundary": 2.0,
+    "entry": "next completed five-minute open",
+    "exit": "frozen external-liquidity target or equilibrium stop only; no elapsed-time liquidation",
+    "winner_removal": "largest positive 10% of 12bp event keys removed before full reroute"
+  },
+  "fit_gate": {
+    "resolved_confirmation_rows_min": 300,
+    "model_auc_min": 0.55,
+    "auc_lift_over_structural_distance_min": 0.02,
+    "positive_brier_skill": true,
+    "24bp_trade_count_min": 40,
+    "positive_24bp_return_mean_median_pf": true,
+    "positive_confirmation_dates_18bp_min": 3,
+    "top5_positive_share_max": 0.50,
+    "positive_winner_removed_18bp_return": true,
+    "winner_removed_24bp_geometric_growth_per_sample_day_min": 0.01,
+    "unresolved_24bp_max": 0
+  },
+  "promotion_boundary": "A development survivor is non-rank-eligible until unchanged exact Bybit BBO/depth, actual funding, latency, capacity and continuous-account replay.",
+  "orders_submitted": false
+}
