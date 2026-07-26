@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-BLOCKSCOUT-TOPIC-PADDING-011",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-26T23:16:00+09:00",
+  "trigger": "Corrected workflow 30204888446 passed ten source tests and the authoritative self-test, then failed on the first live USDT supply log because the Blockscout Etherscan-compatible response contained empty topic slots after canonical topic0. No BTC/ETH market row, label, model, trade, PnL or 2024H1 outcome was opened.",
+  "change": {
+    "normalization": "Discard only null, empty, 0x, 0x0, and all-zero 32-byte topic placeholders before validating USDT Issue/Redeem.",
+    "validation": "After normalization, require exactly one nonempty topic and require it to equal canonical Issue(uint256) or Redeem(uint256). Reject every nonzero additional topic.",
+    "amount": "Continue decoding the positive uint256 amount only from the data field.",
+    "USDC": "Unchanged canonical zero-address Transfer decoding."
+  },
+  "unchanged": [
+    "contracts event hashes and amounts",
+    "all 36 pre-2024 months",
+    "12 and 64 block causal availability",
+    "source-density gates",
+    "model features labels costs risk search and sequential 2024H1 contract",
+    "no credentials and no orders"
+  ],
+  "market_or_model_outcome_observed_before_correction": false,
+  "orders_submitted": false
+}
