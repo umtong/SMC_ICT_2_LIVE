@@ -62,12 +62,12 @@ jobs:
           python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
           PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
           PYTHONPATH="$root" python "$root/run.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
-          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
-          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
-          python -m json.tool "$root/preregistration.json" >/dev/null
           mkdir -p "$out/source"
           cp "$root/run.py" "$root/test_run.py" "$out/source/"
           sha256sum "$out/source/run.py" "$out/source/test_run.py" > "$out/source/SOURCE_SHA256SUMS.txt"
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
 
       - uses: actions/cache@v4
         with:
