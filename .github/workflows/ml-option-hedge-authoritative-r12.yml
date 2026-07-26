@@ -91,6 +91,7 @@ jobs:
           assert contract['one_model_family'] is True
           assert contract['hyperparameter_grid'] is False
           assert contract['one_economic_decision_rule'] is True
+          # Chronological roles are evaluator output, not model-architecture fields.
           assert result['model']['train_dates']==['2022-01-01','2022-02-01','2022-03-01','2022-04-01','2022-05-01','2022-06-01']
           assert result['model']['calibration_dates']==['2022-07-01','2022-08-01']
           assert result['model']['confirmation_dates']==['2022-09-01','2022-11-01']
