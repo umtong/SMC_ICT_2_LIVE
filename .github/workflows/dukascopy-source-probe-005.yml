@@ -1,0 +1,110 @@
+name: Dukascopy source transport probe 005
+
+on:
+  push:
+    branches:
+      - agent/r11-dukascopy-source-probe-005
+    paths:
+      - ".github/workflows/dukascopy-source-probe-005.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install pinned transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dukascopy-node"
+          npm install --prefix "$RUNNER_TEMP/dukascopy-node" --no-audit --no-fund "dukascopy-node@1.46.4"
+          echo "NODE_PATH=$RUNNER_TEMP/dukascopy-node/node_modules" >> "$GITHUB_ENV"
+      - name: Run source-only matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research_runs/dukascopy_source_probe_005
+          node <<'NODE' 2>&1 | tee research_runs/dukascopy_source_probe_005/probe.log
+          "use strict";
+          const fs = require("fs");
+          const mod = require("dukascopy-node");
+          const current = mod.getHistoricalRates;
+          const legacy = mod.getHistoricRates;
+          const out = [];
+
+          function summarize(value) {
+            const isArray = Array.isArray(value);
+            return {
+              type: typeof value,
+              is_array: isArray,
+              length: isArray ? value.length : (typeof value === "string" ? value.length : null),
+              sample: isArray && value.length ? value[0] : (typeof value === "string" ? value.slice(0, 180) : null),
+            };
+          }
+
+          async function one(name, fn, instrument, from, to, extra = {}) {
+            const record = {name, instrument, from, to, extra};
+            const started = Date.now();
+            try {
+              const value = await Promise.race([
+                fn({
+                  instrument,
+                  dates: {from: new Date(`${from}T00:00:00.000Z`), to: new Date(`${to}T00:00:00.000Z`)},
+                  timeframe: "m1",
+                  ...extra,
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("probe timeout")), 120000)),
+              ]);
+              Object.assign(record, {ok: true, elapsed_ms: Date.now() - started, ...summarize(value)});
+            } catch (error) {
+              Object.assign(record, {ok: false, elapsed_ms: Date.now() - started, error: error && error.stack ? error.stack : String(error)});
+            }
+            out.push(record);
+            console.log(JSON.stringify(record));
+          }
+
+          (async () => {
+            console.log(JSON.stringify({
+              module: require.resolve("dukascopy-node"),
+              version: require("dukascopy-node/package.json").version,
+              exports: Object.keys(mod).sort(),
+              metadata_type: typeof mod.instrumentMetaData,
+            }));
+
+            await one("control_minimal_2022", current, "eurusd", "2022-01-03", "2022-01-04");
+            for (const instrument of ["usatechidxusd", "usa500idxusd", "qqqususd", "spyususd"]) {
+              await one("minimal_2022", current, instrument, "2022-01-03", "2022-01-04");
+              await one("array_2022", current, instrument, "2022-01-03", "2022-01-04", {format: "array"});
+            }
+            for (const instrument of ["usatechidxusd", "usa500idxusd"]) {
+              await one("minimal_2025", current, instrument, "2025-03-19", "2025-03-20");
+              if (typeof legacy === "function") {
+                await one("legacy_minimal_2022", legacy, instrument, "2022-01-03", "2022-01-04");
+              }
+            }
+            fs.writeFileSync(
+              "research_runs/dukascopy_source_probe_005/probe.json",
+              JSON.stringify({schema_version: 1, orders_submitted: false, results: out}, null, 2) + "\n",
+            );
+            const viable = out.filter((row) => row.ok && row.is_array && row.length > 0).map((row) => `${row.instrument}:${row.name}`);
+            console.log(JSON.stringify({viable}));
+          })().catch((error) => {
+            console.error(error && error.stack ? error.stack : String(error));
+            process.exitCode = 1;
+          });
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dukascopy-source-probe-005-${{ github.sha }}
+          path: research_runs/dukascopy_source_probe_005
+          if-no-files-found: error
+          retention-days: 14
