@@ -7,13 +7,19 @@ on:
     paths:
       - 'research/ml_gmx_v1_liquidation_20260726/**'
       - '.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'research/ml_gmx_v1_liquidation_20260726/**'
+      - '.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-gmx-v1-liquidation-source-gate-${{ github.ref }}
+  group: ml-gmx-v1-liquidation-source-gate-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
