@@ -1,0 +1,210 @@
+name: ML COIN-M liquidation economic and immediate 2024H1
+
+on:
+  push:
+    branches:
+      - agent/r21-ml-coinm-liquidation-economic-001
+    paths:
+      - 'research/ml_coinm_liquidation_economic_20260727/RUN_AFTER_SOURCE_PASS.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-coinm-liquidation-economic-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  economic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+      ROOT: research/ml_coinm_liquidation_economic_20260727
+      OUT: research_runs/ml_coinm_liquidation_economic_20260727
+      CACHE: ${{ runner.temp }}/coinm-liquidation-economic-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.1.3 pandas==2.2.3 pyarrow==18.1.0 \
+            requests==2.32.4 scikit-learn==1.6.1 pytest==8.3.5
+
+      - name: Validate frozen engine before source consumption
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/validation"
+          python "$ROOT/reconstruct.py"
+          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/reconstruct.py"
+          PYTHONPATH="$ROOT" pytest -q "$ROOT/test_run.py" 2>&1 | tee "$OUT/validation/PYTEST.log"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" self-test 2>&1 | tee "$OUT/validation/SELF_TEST.log"
+          python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$ROOT/BUNDLE_MANIFEST.json" >/dev/null
+          python -m json.tool "$ROOT/AMENDMENT_001_MINIMAL_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+
+      - id: source
+        name: Consume decision-ready parent COIN-M source PASS
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/source" "$RUNNER_TEMP/source-download"
+          selected=0
+          mapfile -t runs < <(gh run list --repo "$GITHUB_REPOSITORY" \
+            --branch agent/r11-ml-binance-liquidation-dense-001 --limit 50 \
+            --json databaseId,name,status,conclusion,createdAt \
+            --jq '.[] | select(.name == "ML Binance dense COIN-M liquidation source gate" and .status == "completed" and .conclusion == "success") | .databaseId')
+          for run_id in "${runs[@]:-}"; do
+            [ -n "$run_id" ] || continue
+            rm -rf "$RUNNER_TEMP/source-download"/*
+            if ! gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/source-download" >/dev/null 2>&1; then
+              continue
+            fi
+            while IFS= read -r result; do
+              if python - <<'PY' "$result"
+          import json,sys
+          r=json.load(open(sys.argv[1]))
+          assert r['claim_id']=='CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
+          assert r['status']=='PASS' and r['source_gate_pass'] is True
+          PY
+              then
+                cp -a "$(dirname "$result")/." "$OUT/source/"
+                printf '%s\n' "$run_id" > "$OUT/source/PARENT_RUN_ID.txt"
+                printf 'result=%s\n' "$OUT/source/SOURCE_GATE_RESULT.json" >> "$GITHUB_OUTPUT"
+                selected=1
+                break 2
+              fi
+            done < <(find "$RUNNER_TEMP/source-download" -type f -name SOURCE_GATE_RESULT.json | sort)
+          done
+          if [ "$selected" != 1 ]; then
+            echo "No decision-ready parent source PASS exists" >&2
+            exit 2
+          fi
+
+      - name: Prepare pre-2024 forced flow, Bybit market and funding
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/pre2024" "$CACHE"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" prepare-liquidations \
+            --source-result "${{ steps.source.outputs.result }}" \
+            --cache "$CACHE" --output "$OUT/pre2024/LIQUIDATIONS.parquet" \
+            --start 2021-01-01 --end 2024-01-01
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" prepare-market \
+            --cache "$CACHE" --output "$OUT/pre2024/market" \
+            --start 2021-01-01 --end 2024-01-01
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" prepare-funding \
+            --output "$OUT/pre2024/funding" --start 2021-01-01 --end 2024-01-01
+
+      - name: Build causal pre-2024 matrix and run one fixed ML account
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" build-matrix \
+            --events "$OUT/pre2024/LIQUIDATIONS.parquet" \
+            --market "$OUT/pre2024/market" --funding "$OUT/pre2024/funding" \
+            --output "$OUT/pre2024/MATRIX.parquet"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" pre2024 \
+            --matrix "$OUT/pre2024/MATRIX.parquet" \
+            --market "$OUT/pre2024/market" --funding "$OUT/pre2024/funding" \
+            --output "$OUT/pre2024/result"
+
+      - id: pre2024
+        name: Decide whether official 2024H1 opens now
+        run: |
+          set -euo pipefail
+          python - <<'PY' "$OUT/pre2024/result/RESULT.json" "$GITHUB_OUTPUT"
+          import json,sys
+          r=json.load(open(sys.argv[1]))
+          assert r['claim_id']=='CLM-20260727-0015-ML-COINM-LIQ-ECONOMIC-001'
+          assert r['orders_submitted'] is False
+          authorized=r['status']=='PRE2024_SURVIVOR_READY_FOR_OFFICIAL_2024H1' and r['official_2024h1_authorized'] is True
+          with open(sys.argv[2],'a') as handle:
+              handle.write(f"authorized={'true' if authorized else 'false'}\n")
+          print(json.dumps({'status':r['status'],'official_2024h1_authorized':authorized},sort_keys=True))
+          PY
+
+      - name: Download only then-opened 2024H1 source and Bybit market
+        if: steps.pre2024.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/official_2024h1"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" prepare-liquidations \
+            --source-result "${{ steps.source.outputs.result }}" \
+            --cache "$CACHE" --output "$OUT/official_2024h1/LIQUIDATIONS_FULL.parquet" \
+            --start 2021-01-01 --end 2024-07-01
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" prepare-market \
+            --cache "$CACHE" --output "$OUT/official_2024h1/market" \
+            --start 2021-01-01 --end 2024-07-01
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" prepare-funding \
+            --output "$OUT/official_2024h1/funding" --start 2021-01-01 --end 2024-07-01
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" build-matrix \
+            --events "$OUT/official_2024h1/LIQUIDATIONS_FULL.parquet" \
+            --market "$OUT/official_2024h1/market" --funding "$OUT/official_2024h1/funding" \
+            --thresholds "$OUT/pre2024/MATRIX.thresholds.json" \
+            --output "$OUT/official_2024h1/MATRIX_FULL.parquet"
+
+      - name: Run immediate official 2024H1 account
+        if: steps.pre2024.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" official-2024h1 \
+            --matrix "$OUT/official_2024h1/MATRIX_FULL.parquet" \
+            --market "$OUT/official_2024h1/market" --funding "$OUT/official_2024h1/funding" \
+            --pre2024-result "$OUT/pre2024/result/RESULT.json" \
+            --output "$OUT/official_2024h1/result"
+
+      - name: Enforce authority and period seal
+        if: always()
+        run: |
+          set -euo pipefail
+          test -f "$OUT/pre2024/result/RESULT.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          out=Path(os.environ['OUT'])
+          pre=json.loads((out/'pre2024/result/RESULT.json').read_text())
+          assert pre['claim_id']=='CLM-20260727-0015-ML-COINM-LIQ-ECONOMIC-001'
+          assert pre['orders_submitted'] is False
+          official=out/'official_2024h1/result/RESULT.json'
+          if official.exists():
+              r=json.loads(official.read_text())
+              assert pre['official_2024h1_authorized'] is True
+              assert r['information_cutoff']=='2023-12-31T23:59:59Z'
+              assert r['opened_periods']==['2024H1']
+              assert r['unopened_periods']==['2024H2','2025H1','2025H2','2026H1']
+              assert r['orders_submitted'] is False
+              print(json.dumps({'official_status':r['status'],'paths':r['paths']},sort_keys=True))
+          else:
+              assert pre['official_2024h1_authorized'] is False
+              print(json.dumps({'pre2024_status':pre['status'],'official_opened':False},sort_keys=True))
+          PY
+          python scripts/validate_project.py || true
+
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/inputs"
+          cp "$ROOT"/{WORK_CLAIM.json,AMENDMENT_001_MINIMAL_COST_POSSIBILITY_BEFORE_OUTCOME.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,test_run.py.gz.b64.part00} "$OUT/inputs/"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-coinm-liquidation-economic-${{ github.run_id }}
+          path: research_runs/ml_coinm_liquidation_economic_20260727
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
