@@ -1,0 +1,35 @@
+{
+  "actual_historical_funding": true,
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "confirmation": "2023 conditional only if 2022 gate passes",
+  "costs_bps": [12, 18, 24],
+  "decision_cost_bps": 18,
+  "development": "2022 untouched annual OOS",
+  "entry": "after two completed 15m bars, next 15m open",
+  "feature_names": [
+    "gap_signed_atr",
+    "residual_in_gap_direction",
+    "response_in_gap_direction_atr",
+    "rebalance_progress",
+    "log_continuation_to_rebalance_distance"
+  ],
+  "forced_elapsed_time_exit": false,
+  "gap_stop": "adverse observed open",
+  "model_id": "CME_GAP_COMPETING_RISK_LOGIT_V2",
+  "official_2024_2025_2026_opened": false,
+  "one_global_slot": true,
+  "parent_amendments": [
+    "AMEND-20260726-CME-GAP-ML-CORE-001",
+    "AMEND-20260726-CME-GAP-ML-PURGE-002",
+    "AMEND-20260726-CME-GAP-ML-WINNER-003"
+  ],
+  "policy_count": 1,
+  "routes": [
+    "mapped prior CME close rebalancing",
+    "nearest known prior-day/week external-liquidity continuation"
+  ],
+  "same_bar": "stop first",
+  "schema_version": 1,
+  "scientific_contract": "AMEND-20260726-CME-GAP-ML-FIVE-FEATURE-004",
+  "training": "2021 causally resolved labels only"
+}
