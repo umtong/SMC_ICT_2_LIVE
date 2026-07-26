@@ -1,0 +1,164 @@
+name: YT Trinity action-value upgrade
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-action-value-upgrade.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-action-value-upgrade
+  cancel-in-progress: false
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+
+      - name: Verify immutable source and payload inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_blob() {
+            local expected="$1" path="$2"
+            local actual
+            actual="$(git hash-object "$path")"
+            [[ "$actual" == "$expected" ]] || {
+              echo "blob mismatch $path expected=$expected actual=$actual" >&2
+              exit 1
+            }
+          }
+
+          check_blob 566ef9146b51fad88b32bfc9f36466b1d3f079b4 research/yt_trinity_ml/system/core.py
+          check_blob 6717bad9e36c883649e3af61e248b444a58f5d2b research/yt_trinity_ml/system/model.py
+          check_blob 4acad4615ca0800d98d827919d8b34d72426d777 research/yt_trinity_ml/system/policy.py
+          check_blob daad7ed3be81b0a67779a831b6c973a5a7fb593a research/yt_trinity_ml/system/research_pipeline.py
+          check_blob 39928722e1905c4b7a16e83c4c49410127b03381 research/yt_trinity_ml/system/execution.py
+          check_blob 69d5d3c8f6f9af257b8d438e614e22a85bd5b6d1 research/yt_trinity_ml/system/event_tape.py
+          check_blob 4cd5a9ba2be6dff5d646a4aeb7349763a110e027 research/yt_trinity_ml/system/coarse.py
+          check_blob 8b490da05dfe48c41337dca8b18c31ca0eb224ef research/yt_trinity_ml/system/canonical_adapter.py
+          check_blob 4afee8f60556ff29c169e1c502468f31259fcdda research/yt_trinity_ml/system/labels.py
+          check_blob 4f85b75dc6103fe3c1d961d539380356df240233 research/yt_trinity_ml/system/metrics.py
+          check_blob 03711210b946ead8b304b1b1a3cdf55541ffcd17 research/yt_trinity_ml/tests/test_yt_trinity_system.py
+          check_blob caf0b5c40c76eb752c32ae92c304acf08f32ba8d research/yt_trinity_ml/system_contract.json
+          check_blob 22ab2b02a672fa5db5981e6949ed87a06c4fd68a research/yt_trinity_ml/SYSTEM_DESIGN.md
+
+          check_blob 293ef087093e7e25dd3dd84d465cc5a6812458cc research/yt_trinity_ml/upgrade_chunks/action_value_patch2.00
+          check_blob 7272e3ed9e31f6a4e9a22e2cd7f4a3772d10439c research/yt_trinity_ml/upgrade_chunks/action_value_patch2.01
+          check_blob cf46ed4c2544bc10f098d36c172e165b62f1727f research/yt_trinity_ml/upgrade_chunks/action_value_patch2.02
+          check_blob 8c98d2e29ec9c3865c9b69d920775e7e0525ba5e research/yt_trinity_ml/upgrade_chunks/action_value_patch2.03
+          check_blob 6a26b39e9da5f9ba274f84a9578d88682781b382 research/yt_trinity_ml/upgrade_chunks/action_value_patch2.04
+          check_blob e8ee659c4fd6ba8f1b4e41e16de8c1a80ce7c6a1 research/yt_trinity_ml/upgrade_chunks/action_value_patch2.05
+          check_blob 1a09c4d5e19311d808aa4a6c6745352743047869 research/yt_trinity_ml/upgrade_chunks/action_value_patch2.07
+          check_blob adb4eb9a6410a423a6a707d89eaa52bde7969569 research/yt_trinity_ml/upgrade_chunks/action_value_patch2.09
+          check_blob b7e8bfad74f127fa43220daba6835be4d5129738 research/yt_trinity_ml/upgrade_chunks/action_value_patch2.11
+          check_blob 1b3505c5f73cb47f8b8349609378475984fb9c7a research/yt_trinity_ml/upgrade_chunks/action_value_patch2.13
+          check_blob aed57fc985640ec4ac75ad1b68a28ee07f33ecee research/yt_trinity_ml/upgrade_chunks/action_value_patch2.15
+
+      - name: Reconstruct and apply verified causal action-value patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.00 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.01 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.02 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.03 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.04 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.05 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.07 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.09 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.11 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.13 \
+            research/yt_trinity_ml/upgrade_chunks/action_value_patch2.15 \
+            > /tmp/yt_action_value_patch.b64
+          base64 --decode /tmp/yt_action_value_patch.b64 > /tmp/yt_action_value_patch.gz
+          echo "d829ba22fdff4e654ba95469e38c35937882af43ac64d6cd3696e2cb61e1ad28  /tmp/yt_action_value_patch.gz" | sha256sum --check --strict
+          gzip --decompress --stdout /tmp/yt_action_value_patch.gz > /tmp/yt_action_value.patch
+          git apply --check /tmp/yt_action_value.patch
+          git apply /tmp/yt_action_value.patch
+
+      - name: Remove source materializers and temporary transfer files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/yt-trinity-system.yml')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          out: list[str] = []
+          skipping = False
+          for line in lines:
+              if (
+                  line.startswith('      - name: Materialize deterministic coarse replay')
+                  or line.startswith('      - name: Materialize deterministic entry-fill')
+                  or line.startswith('      - name: Persist coarse replay')
+                  or line.startswith('      - name: Persist materialized replay')
+              ):
+                  skipping = True
+                  continue
+              if skipping:
+                  if line.startswith('      - uses: actions/setup-python@v5'):
+                      skipping = False
+                      out.append(line)
+                  continue
+              if 'apply_coarse_replay_upgrade.py' in line or 'apply_entry_fill_guard_patch.py' in line:
+                  continue
+              if line.strip() == 'contents: write':
+                  line = line.replace('contents: write', 'contents: read')
+              line = line.replace('pytest -q -x ', 'pytest -q ')
+              out.append(line)
+          if skipping:
+              raise SystemExit('workflow materializer block did not terminate at setup-python')
+          text = '\n'.join(out) + '\n'
+          forbidden = ('apply_coarse_replay_upgrade.py', 'apply_entry_fill_guard_patch.py', 'pytest -q -x')
+          if any(token in text for token in forbidden):
+              raise SystemExit('workflow cleanup incomplete')
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git rm -f \
+            research/yt_trinity_ml/apply_coarse_replay_upgrade.py \
+            research/yt_trinity_ml/apply_entry_fill_guard_patch.py \
+            .github/workflows/yt-trinity-source-snapshot.yml
+          git rm -f research/yt_trinity_ml/upgrade_chunks/action_value*
+          git rm -f .github/workflows/yt-trinity-action-value-upgrade.yml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Compile and run every causal invariant
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
+          python -m py_compile research/yt_trinity_ml/system/*.py research/yt_trinity_ml/run_research.py research/yt_trinity_ml/extract_rule_ontology.py
+          python research/yt_trinity_ml/extract_rule_ontology.py --self-test
+          python -m json.tool research/yt_trinity_ml/system_contract.json >/dev/null
+          python -m json.tool research/yt_trinity_ml/INSTRUMENT_RULES.schema.json >/dev/null
+          pytest -q research/yt_trinity_ml/tests
+
+      - name: Commit one atomic source transition
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Enforce action-specific causal execution and NAV invariants'
+          git pull --rebase origin agent/r22-yt-trinity-ml-001
+          git push origin HEAD:agent/r22-yt-trinity-ml-001
