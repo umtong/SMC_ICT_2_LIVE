@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "correction_id": "COR-20260726-ML-OPTION-RESULT-DATE-ASSERTION-001",
+  "status": "POST_RESULT_VALIDATION_ONLY",
+  "workflow_run": 30196065066,
+  "observed_state": {
+    "market_execution_completed": true,
+    "result_json_written": true,
+    "fit_gate_passed": false,
+    "development_2023_opened": false,
+    "economic_result_changed": false,
+    "failure_step": "Enforce result and sealed boundaries"
+  },
+  "root_cause": "The validation workflow asserted train_dates and calibration_dates in MODEL_CONTRACT.json, but the immutable evaluator records chronological date roles in RESULT.json under model.train_dates and model.calibration_dates. MODEL_CONTRACT.json intentionally records only model architecture, features and decision-rule identity.",
+  "correction": "Read the two chronological date arrays from RESULT.json:model instead of MODEL_CONTRACT.json. No source, feature, label, model, calibration, probability, action, execution, cost, risk, account path, gate or sealed-period rule changes.",
+  "result_artifact": {
+    "artifact_id": 8630152355,
+    "artifact_digest": "sha256:082481eb2e804628ecf17f1f45d7824721cdd8af1fe6f8fef276173921471d90",
+    "result_json_sha256": "466616b235b0dae9701b349e6aa6babae279a8b12641e04c062c2f27a49bcde6"
+  },
+  "orders_submitted": false,
+  "created_at": "2026-07-26T18:18:00+09:00"
+}
