@@ -33,14 +33,18 @@ jobs:
             pandas==2.2.3 \
             pyarrow==18.1.0 \
             requests==2.32.3
+      - name: Inventory immutable Bybit mirror files
+        run: python research/ml_sweep_crowding/inventory_hf_bybit_files.py
       - name: Probe immutable Bybit funding mirror revision
         run: python research/ml_sweep_crowding/probe_hf_bybit_funding.py
-      - name: Publish immutable probe decision
+      - name: Publish immutable inventory and probe decision
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/results/ml_sweep_crowding/bybit_funding_mirror_probe.json
-          git commit -m "research: publish pinned Bybit funding mirror probe"
+          git add \
+            research/results/ml_sweep_crowding/hf_bybit_file_inventory.json \
+            research/results/ml_sweep_crowding/bybit_funding_mirror_probe.json
+          git commit -m "research: publish pinned Bybit funding mirror inventory"
           git push origin HEAD:${GITHUB_REF_NAME}
