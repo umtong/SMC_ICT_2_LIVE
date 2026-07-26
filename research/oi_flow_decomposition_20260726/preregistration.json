@@ -1,0 +1,139 @@
+{
+  "base_project_revision": 11,
+  "claim_id": "CLM-20260726-0958-OI-FLOW-DECOMP-001",
+  "dependency_fingerprint": "4ea0742e206d44297433f129ec5c02b7755604acf9822d5c0f180785e8d3fde5",
+  "economic_mechanism": {
+    "closing_cascade": "OI falls with efficient same-side aggressive displacement, indicating forced or voluntary position closure that remains price-inelastic.",
+    "closing_exhaustion_reversal": "OI falls with large range but weak closing efficiency, indicating closure pressure that has been absorbed and is losing marginal impact.",
+    "opening_continuation": "OI rises while same-side aggressive notional produces efficient displacement, indicating newly opened positions and unresolved information pressure.",
+    "opening_trap_reversal": "OI rises with large effort but weak directional result, indicating newly opened positions trapped against replenishing liquidity."
+  },
+  "execution_contract": {
+    "additional_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
+    "cost_interpretation": "Observed BBO spread is already in entry/exit prices; 12/18/24bp is additional round-trip fee, slippage and impact stress.",
+    "entry": "At decision plus 100ms or 500ms, buy at causally current ask or sell at causally current bid, provided the BBO update is no older than one second.",
+    "entry_capacity": "At most 5.00% of observed top-quote size, additionally capped by risk and 3.0x notional leverage.",
+    "exit_latency": "100ms. A protective stop cannot receive a better rebound price than the adverse trigger quote.",
+    "funding": "Final observed historical funding rate before every settlement in (entry, exit] is applied with the correct long/short sign.",
+    "global_slot": "One pending/open position across BTCUSDT and ETHUSDT; same-timestamp re-entry is prohibited.",
+    "initial_nav": 10000.0,
+    "risk_fraction": 0.005,
+    "stop": "Outside the completed event extreme plus one decision spread and no tighter than two decision spreads; adverse gap and stop-first ordering.",
+    "target": "Fixed 1R or 2R price barrier; no elapsed-time forced exit.",
+    "unresolved": "An accepted position unresolved at the public source boundary is valued at the structural stop and marked unresolved.",
+    "venue_and_instrument": "Bybit USDT linear perpetual BTCUSDT or ETHUSDT; ticker OI and order execution are same-symbol."
+  },
+  "fatal_gate": {
+    "maximum_top5_positive_pnl_share_18bp": 0.5,
+    "maximum_unresolved_share": 0.05,
+    "minimum_development_profit_factor_18bp": 1.15,
+    "minimum_development_trades": 20,
+    "minimum_fit_trades": 20,
+    "minimum_positive_development_dates": 2,
+    "positive_after_removing_largest_10pct_positive_trades_18bp": true,
+    "positive_development_median_trade_18bp": true,
+    "positive_development_return_at_18_and_24bp": true,
+    "positive_fit_return_at_18_and_24bp": true
+  },
+  "feature_contract": {
+    "aggressive_flow": "Buyer-initiated minus seller-initiated quote notional divided by total quote notional.",
+    "flow_size": "Absolute aggressive quote notional divided by the prior-only rolling median total notional.",
+    "oi_change": "Relative OI change between the latest ticker received strictly before the window start and the latest ticker received strictly before the completed window decision boundary.",
+    "oi_standardization": "Prior-only 1800-second rolling standard deviation, shifted one completed observation.",
+    "price_response": "Direction-adjusted trade return and completed event range normalized by the causally known BBO spread.",
+    "threshold_transition": "Each candidate acts only on the first completed window of its own eligibility run; higher-threshold crossings cannot be hidden by lower-threshold eligibility.",
+    "windows_seconds": [
+      1,
+      2,
+      5
+    ]
+  },
+  "frozen_grid": {
+    "candidate_count": 1152,
+    "families": [
+      "opening_continuation",
+      "opening_trap_reversal",
+      "closing_cascade",
+      "closing_exhaustion_reversal"
+    ],
+    "flow_imbalance": [
+      0.4,
+      0.65
+    ],
+    "flow_size": [
+      2.0,
+      4.0
+    ],
+    "latency_ms": [
+      100,
+      500
+    ],
+    "move_spreads": [
+      2.0,
+      5.0
+    ],
+    "oi_z": [
+      2.0,
+      3.0,
+      4.0
+    ],
+    "target_r": [
+      1.0,
+      2.0
+    ],
+    "window_seconds": [
+      1,
+      2,
+      5
+    ]
+  },
+  "information_and_source_contract": {
+    "availability_clock": "Tardis local_timestamp in microseconds; decisions use only completed windows and messages received before the boundary.",
+    "data_types": [
+      "trades",
+      "quotes",
+      "derivative_ticker"
+    ],
+    "development_dates": [
+      "2023-07-01",
+      "2023-09-01",
+      "2023-11-01"
+    ],
+    "exchange": "bybit",
+    "fit_dates": [
+      "2023-01-01",
+      "2023-03-01",
+      "2023-05-01"
+    ],
+    "later_periods": "2024-2026 sealed; a survivor must first be expanded to all remaining pre-2024 first-day samples under the identical frozen rule.",
+    "public_sample_constraint": "First-day monthly public samples only for the fatal screen.",
+    "source_gap_rule": "A decision or order boundary whose latest executable BBO is older than one second is unavailable. An accepted position not resolved by the source boundary receives its structural stop loss. Downloadable CSV disconnect omission remains a disclosed limitation and prevents rank eligibility.",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ]
+  },
+  "interpretation_boundary": {
+    "no_orders": true,
+    "rank_eligible": false,
+    "survivor_action": "Freeze exact survivors and test every other available pre-2024 first-day sample before any 2024 opening.",
+    "why": "Six sparse public days are a high-information fatal screen, not the 2024-2026 account contract.",
+    "zero_survivor_action": "Retire the exact dependency fingerprint and pivot without adjacent OI, flow, latency, target, stop, leverage or cost retuning."
+  },
+  "objective": "Test whether tick-level Bybit open-interest changes disambiguate aggressive trade flow strongly enough to overcome spread, fees, slippage stress and one-slot opportunity cost.",
+  "prohibitions": [
+    "No 2024-2026 access in this workflow.",
+    "No candidate, threshold, latency, target, stop, cost, risk or leverage change after outcomes.",
+    "No liquidation labels, L2 cancel/refill, cross-venue, cross-asset, premium/index, option or OCO information in this scope.",
+    "No credentials, paper, testnet or live orders."
+  ],
+  "registered_at": "2026-07-26T09:58:00+09:00",
+  "result_id": "RES-20260726-OI-FLOW-DECOMP-001",
+  "schema_version": 1,
+  "status": "PREREGISTERED_BEFORE_PRE2024_FATAL_SCREEN",
+  "study_id": "BYBIT_OI_FLOW_DECOMPOSITION_V1"
+}
