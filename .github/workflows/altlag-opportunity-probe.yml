@@ -7,13 +7,19 @@ on:
     paths:
       - "research/bybit_altlag_opportunity_20260726/**"
       - ".github/workflows/altlag-opportunity-probe.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "research/bybit_altlag_opportunity_20260726/**"
+      - ".github/workflows/altlag-opportunity-probe.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: altlag-opportunity-${{ github.ref }}
+  group: altlag-opportunity-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
