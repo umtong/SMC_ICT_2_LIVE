@@ -1,0 +1,110 @@
+{
+  "authority": {
+    "credentials_used": false,
+    "market_data_opened": false,
+    "model_fit_performed": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false,
+    "parameters_searched": false,
+    "strategy_replayed": false
+  },
+  "claim_id": "CLM-20260726-2014-RANK-CONTRACT-RECONCILE-001",
+  "economic_status": "RANKING_CORRECTED_TARGET_NOT_MET",
+  "hard_validity_status": "PASS_EXISTING_IMMUTABLE_EVIDENCE_AUDIT",
+  "historical_first_place_audit": {
+    "candidate_id": "021fbab613517a31ad98",
+    "candidate_parameters": {
+      "exit_mode": "flow_decay",
+      "maximum_hold_bars": 96,
+      "maximum_hold_minutes": 480,
+      "minimum_hold_bars": 1,
+      "signed_flow_exit_threshold": -0.5,
+      "stop_atr": 2.5
+    },
+    "current_contract_status": "HARD_INVALID_FOR_ACTIVE_RANKING",
+    "first_place_id": "FIRST-20260725-DYNAMIC-STATE-021FBAB6",
+    "historical_hard_validity": "PASS_UNDER_PRIOR_EVALUATION_CONTRACT",
+    "reason": "The exact verified implementation precommits a finite maximum_hold_bars and initializes every trade to close at the open exactly maximum_hold_bars after entry unless a stop or state exit occurs. The ranked candidate uses maximum_hold_bars=96 on five-minute bars, an eight-hour elapsed-time liquidation prohibited by the current project contract.",
+    "recorded_geometric_daily_growth_12bps_actual_funding": 0.0005730774040979547,
+    "source_evidence": {
+      "artifact_digest": "sha256:d1677e1bb776dfe6d52db913d4a689b6bfd95a5bad648b1b8e92c7846ef7ad20",
+      "artifact_id": 8620014408,
+      "source_lines": [
+        "44-48: ExitCandidate contains minimum_hold_bars and maximum_hold_bars.",
+        "62-74: maximum_hold_bars is selected from 12, 24, 48 or 96.",
+        "126-142: timeout_index=entry_index+maximum_hold; exit_index and exit_price default to that timeout open.",
+        "146-190: only a stop or learned state condition replaces the default timeout exit."
+      ],
+      "state_exit_source_sha256": "7ed8ebda8e8744f4dcefb6405b5576582fe682b03ad586fc8576e89cf80eedb0",
+      "workflow_run_id": 30160153706
+    },
+    "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+    "state_exit_rate": 0.3041237113402061
+  },
+  "new_current_first_place": {
+    "base_cost_bps": 12,
+    "candidate_id": "a70626d9e484285f2cb4|all",
+    "candidate_label": "Donchian all-breakout comparator, 60m entry-96 exit-48",
+    "comparison_confidence": "VERY_LOW",
+    "exit_contract": {
+      "elapsed_time_liquidation": false,
+      "logic": "ATR stop or completed Donchian channel exit; terminal evaluation mark only",
+      "status": "PASS_CURRENT_CONTRACT"
+    },
+    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
+    "geometric_daily_growth": 0.0009008544402622221,
+    "geometric_daily_growth_24bps": 0.0007001887213879954,
+    "known_weaknesses": [
+      "The comparator's complete trade ledger, MDD, profit factor and concentration fields were not preserved in the compact result.",
+      "Binance USD-M prices are a proxy rather than exact Bybit execution.",
+      "Historical funding is omitted.",
+      "No 2024 or later sequential interval was opened.",
+      "The surrounding Donchian family is highly dependent on rare large winners.",
+      "It is a non-ML baseline and cannot satisfy the final system's ML requirement."
+    ],
+    "ml_requirement_status": "NOT_MET_NON_ML_BASELINE",
+    "qualification_stage": "PRELIMINARY_CAUSAL_BINANCE_PROXY",
+    "selection_reason": "It is the highest recorded after-cost geometric daily-growth path whose exit implementation has been audited against the current no-elapsed-time-liquidation contract. Its 24-bp daily growth also exceeds the former first place's 12-bp actual-funding daily growth. Incomplete risk and concentration fields are disclosed rather than used to suppress the provisional rank.",
+    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/61",
+    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+    "target_fraction": 0.09008544402622221,
+    "target_gap": 0.009099145559737778,
+    "target_gap_24bps": 0.009299811278612004,
+    "target_geometric_daily_growth": 0.01
+  },
+  "ranking_decision": {
+    "new_first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
+    "new_ranking_revision": 13,
+    "no_result_protected_by_incumbency": true,
+    "previous_first_place_preserved_as_legacy_evidence": true,
+    "previous_first_place_removed_from_active_ranking": true,
+    "rank_does_not_determine_work_priority": true
+  },
+  "result_id": "RES-20260726-RANK-CONTRACT-RECONCILE-001",
+  "schema_version": 1,
+  "second_place_full_metrics": {
+    "base_cost_bps": 12,
+    "candidate_id": "a70626d9e484285f2cb4|after_loser",
+    "candidate_label": "Donchian after-loser, 60m entry-96 exit-48",
+    "exit_contract_status": "PASS_CURRENT_CONTRACT",
+    "first_place_id": "SECOND-20260726-DONCHIAN-AFTER-LOSER-A70626D9E484",
+    "geometric_daily_growth": 0.0008299955525170599,
+    "geometric_daily_growth_24bps": 0.0006318446194384375,
+    "maximum_drawdown": 0.11022614033372702,
+    "maximum_drawdown_24bps": 0.1102976476441001,
+    "median_account_return_bps": -50.0,
+    "profit_factor": 1.8083335951907238,
+    "profit_factor_24bps": 1.6226240830708625,
+    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+    "target_gap": 0.00917000444748294,
+    "top10pct_removed_return": -0.2577753295011854,
+    "top10pct_removed_return_24bps": -0.26306178630598,
+    "top5_positive_share": 0.684910996822014,
+    "total_return": 0.3536744682127009,
+    "total_return_24bps": 0.259293006748736,
+    "trade_count": 89
+  },
+  "status": "PASS_RANKING_RECONCILIATION",
+  "target_status": "NOT_MET",
+  "validation_stage": "STATE_AND_RANKING_RECONCILIATION"
+}
