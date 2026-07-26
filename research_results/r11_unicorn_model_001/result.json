@@ -1,0 +1,102 @@
+{
+  "artifact_fingerprint": "b02daa12594fa04b97cbd73be472f2db54bf40824aa8d4f64b74014dfb5f6a20",
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/99",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30192218575",
+    "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30192218575/artifacts/8628962842"
+  ],
+  "claim_id": "CLM-20260726-1539-UNICORN-001",
+  "code_commit": "58923465ee73c32366bf7aab2c24fe03c373d685",
+  "created_at": "2026-07-26T16:16:00+09:00",
+  "dataset_ids": [
+    "DS-BYBIT-USDT-BTCETHSOLXRP-1M-2022-UNICORN-FIT-R1"
+  ],
+  "dependency_fingerprint": "ff327a20386a8f96f638c4c0d8439bd89c4ac40029530ee06912b213fe033f20",
+  "economic_status": "FIT_BELOW_GATE",
+  "engine_sha256": "5119e93bf56b4cb8a7cfcd0ea206fd98d77a5d76c1f39f6617af1272a516fec5",
+  "evaluation_contract_sha256": "0fc4afcf261e08a0ce20df4d6d87678d06830b489353103cf3561329c3ff1b63",
+  "hard_validity_status": "PASS",
+  "known_limitations": [
+    "One-minute Bybit public bars are an initial proxy rather than exact historical BBO/depth replay.",
+    "An adverse one-basis-point reserve per crossed eight-hour boundary was used instead of exact historical funding.",
+    "The workflow opened only calendar 2022 because no fit candidate passed; 2023-2026 remained sealed.",
+    "The result is a fatal alpha screen and is not rank eligible."
+  ],
+  "metrics": {
+    "candidate_count": 128,
+    "development_opened": false,
+    "fit_gate_pass_count": 0,
+    "maximum_candidate_trade_count": 283,
+    "positive_candidate_count": {
+      "12bps": 0,
+      "18bps": 0,
+      "24bps": 0
+    },
+    "best_12bps": {
+      "config": {
+        "displacement_atr": 1.2,
+        "entry_mode": "consequent_encroachment_reclaim",
+        "external_pivot_right": 3,
+        "minimum_fvg_atr": 0.1,
+        "minimum_rr": 2.0,
+        "mss_window": 5,
+        "order_block_mode": "body"
+      },
+      "config_id": "a36a0d4ae11f7cb5cca6",
+      "geometric_calendar_day_growth": -0.0002460988016164121,
+      "maximum_drawdown": 0.10098229175063778,
+      "median_trade_bps": -34.03406017000732,
+      "n": 61,
+      "positive_day_fraction": 0.019178082191780823,
+      "profit_factor": 0.4763211937021153,
+      "return_h1": -0.05354496954257226,
+      "return_h2": -0.03420655876431744,
+      "top_five_positive_pnl_share": 0.9180926719661979,
+      "total_return": -0.0859199391596982
+    },
+    "best_24bps": {
+      "config": {
+        "displacement_atr": 1.2,
+        "entry_mode": "consequent_encroachment_reclaim",
+        "external_pivot_right": 3,
+        "minimum_fvg_atr": 0.1,
+        "minimum_rr": 3.0,
+        "mss_window": 5,
+        "order_block_mode": "body"
+      },
+      "config_id": "44737cb5ddceb0a98ea7",
+      "geometric_calendar_day_growth": -0.0003896595473420857,
+      "maximum_drawdown": 0.13331218051456406,
+      "median_trade_bps": -39.01415175953882,
+      "n": 59,
+      "positive_day_fraction": 0.01643835616438356,
+      "profit_factor": 0.24950485110177312,
+      "return_h1": -0.07307585392344207,
+      "return_h2": -0.06421535369060505,
+      "top_five_positive_pnl_share": 1.0,
+      "total_return": -0.13259861580811028
+    },
+    "best_recorded_median_trade_bps_at_12bps": -16.14759617681094,
+    "development_gate_pass_count": 0,
+    "opportunity_count_before_global_slot_range": [70, 382]
+  },
+  "official_2023_2026_opened": false,
+  "orders_submitted": false,
+  "output_hashes": {
+    "FIT_GRID.json": "f7fc5d86518958b152aa9f7fb1e3a1a6882e2169e0bf4c5453b6608d679e2737",
+    "FIT_RESULT.json": "6dab55625ff39847d8ca5eaf6d762ee83163be54a5d28c3c1984af85d55cca7c",
+    "FIT_SOURCE_MANIFEST.json": "f732c1dd6c6e15aef57f1494d3f08b5a53534de9546355b577b868216435a837",
+    "SEQUENTIAL_RESULT.json": "e0a037403105f64c83927cc3e7213d1d256fb7d7dc29915ced36e78e0c8ef643"
+  },
+  "paper_live_enabled": false,
+  "ranking_role": "NONE_FATAL_ALPHA_SCREEN",
+  "result_id": "RES-20260726-UNICORN-FATAL-001",
+  "schema_version": 1,
+  "source_ids": [
+    "bybit:public:kline_for_metatrader4:usdt-linear"
+  ],
+  "status": "TESTED_BELOW_GATE",
+  "strategy_explanation": "Raid confirmed external liquidity; reclaim; displace through a confirmed internal pivot for MSS; require an opposite order block to fail and convert into a breaker; require a same-direction three-candle FVG to overlap that breaker; enter only on the first accepted retracement into the overlap, stop beyond the raid and target already-confirmed opposing external liquidity.",
+  "summary": "Hard-valid causal ICT Unicorn screen on Bybit BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT one-minute public bars. All 128 fixed liquidity-raid, MSS, failed-order-block breaker, breaker/FVG-overlap and first-retest candidates lost at 12, 18 and 24bp in calendar 2022. Best 12bp path made 61 trades, lost 8.59199%, grew -0.02461% per UTC day, had PF 0.4763, median -34.03bp, 10.10% MDD, negative H1/H2 and 91.81% top-five winner concentration. Zero fit survivors; 2023 and all later periods remained unopened. The exact Unicorn dependency is retired without adjacent threshold, risk or leverage tuning.",
+  "worker_id": "gpt-5.6-pro-20260726-1539"
+}
