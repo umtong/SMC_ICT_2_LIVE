@@ -1,0 +1,139 @@
+name: Stablecoin Blockscout source gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-batch-visible.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-blockscout-batch-visible-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-stablecoin-issuance-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install and validate frozen source identity
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+          root=research/ml_stablecoin_issuance_20260726
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_visible
+          mkdir -p "$out"
+          python -m py_compile "$root"/source_gate*.py "$root/test_source_gate.py"
+          PYTHONPATH="$root" pytest -q "$root/test_source_gate.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/source_gate_blockscout_authoritative.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+
+      - name: Extract and run the pre-outcome exact-batch transport
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_20260726
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_visible
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/ml-stablecoin-blockscout-batch-source.yml').read_text()
+          start_marker = "cat > \"$RUNNER_TEMP/stablecoin_batch_source.py\" <<'PY'\n"
+          end_marker = "\n          PY\n\n          cat > \"$out/TRANSPORT_CORRECTION.json\""
+          if start_marker not in source or end_marker not in source:
+              raise SystemExit('frozen batch runner markers missing')
+          body = source.split(start_marker, 1)[1].split(end_marker, 1)[0]
+          body = textwrap.dedent(body)
+          target = Path('/tmp/stablecoin_batch_source.py')
+          target.write_text(body)
+          compile(body, str(target), 'exec')
+          print(f'extracted {target} bytes={len(body.encode())}')
+          PY
+
+          cat > "$out/TRANSPORT_CORRECTION.json" <<'JSON'
+          {
+            "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+            "market_outcome_opened": false,
+            "model_fit": false,
+            "orders_submitted": false,
+            "recorded_before_source_decision": true,
+            "transport": "identical corrected Blockscout logs with exact eth_getBlockByNumber batches of at most 40 and exact REST fallback",
+            "transport_id": "TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-BATCH-004"
+          }
+          JSON
+
+          set +e
+          PYTHONPATH="$root" python /tmp/stablecoin_batch_source.py --output "$out" 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          if [[ ! -f "$out/SOURCE_GATE_RESULT.json" ]]; then
+            python "$root/write_transport_failure.py" \
+              --output "$out" \
+              --transport TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-BATCH-004 \
+              --exit-code "$rc"
+          fi
+          exit 0
+
+      - name: Verify canonical source schema and outcome seal
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_visible/SOURCE_GATE_RESULT.json')
+          result=json.loads(path.read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['status'] in {
+              'PASS',
+              'FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE',
+              'SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE',
+          }
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          if result['status']=='PASS':
+              assert result['source_schema_id']=='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
+              assert result['source_correction_id']=='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+          print(json.dumps({
+              'status': result['status'],
+              'events': result.get('event_count'),
+              'months': len(result.get('months_with_events', [])),
+              'tokens': result.get('distinct_tokens'),
+              'authorized': result.get('conditional_model_screen_authorized', False),
+          }, sort_keys=True))
+          PY
+
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_visible
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-blockscout-batch-visible-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_visible
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
