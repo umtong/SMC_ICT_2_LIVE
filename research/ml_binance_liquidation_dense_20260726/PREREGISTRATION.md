@@ -1,121 +1,129 @@
-# Dense forced-liquidation flow → structural liquidity delivery ML
+# Dense COIN-M forced-liquidation flow → Bybit structural-delivery ML
 
-## Claim and economic reason
+## Claim and economic mechanism
 
 Claim: `CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001`.
 
-The repeated failure mode of prior sparse liquidation studies was not merely a weak threshold. Public first-day samples produced too few independent forced-flow episodes to determine whether forced deleveraging contains information beyond price distance. This route first establishes whether Binance publishes a continuous, checksum-verifiable USD-M `liquidationSnapshot` history. It does not rescue any previous liquidation strategy.
+This route tests an explicit forced-flow information unit, not another completed-candle pattern:
 
-The trader-readable mechanism is:
+1. a completed Binance COIN-M account liquidation transfers vulnerable inventory at an exchange-recorded time;
+2. BTC and ETH liquidation breadth, side consensus, concentration and impact efficiency distinguish continuing forced delivery from an exhausted sweep;
+3. already-confirmed, unconsumed Bybit BTCUSDT/ETHUSDT external-liquidity pools define targets and stops;
+4. one pooled HGBT estimates upper-pool-first probability;
+5. one cost-adjusted `LONG / SHORT / FLAT` equation controls the single global Bybit slot;
+6. exits occur only at structural target, structural stop or completed strategy invalidation—never because time elapsed.
 
-1. completed forced liquidations reveal a real transfer of vulnerable inventory rather than an inferred candle pattern;
-2. multi-asset liquidation breadth, flow concentration, price impact efficiency and contemporaneous leverage state distinguish a continuing cascade from an exhausted sweep;
-3. already-confirmed, still-unconsumed external liquidity pools define the only permitted targets and stops;
-4. one ML probability is converted to cost-adjusted `LONG`, `SHORT` or `FLAT`;
-5. the one global Bybit position exits only at structural target, structural stop or completed strategy invalidation—never by elapsed time.
+## Pre-outcome source correction
 
-## Phase 0: outcome-sealed official source gate
+Before any source row or market outcome opened, the original USD-M archive assumption was corrected by
+`CORRECTION-20260726-ML-BINANCE-LIQ-COINM-SOURCE-001`.
 
-The authoritative transport is Binance Vision's official public S3 bucket and the corresponding `data.binance.vision` download host. The gate enumerates both possible public layouts:
+The authoritative source is now:
 
 ```text
-data/futures/um/monthly/liquidationSnapshot/<SYMBOL>/
-data/futures/um/daily/liquidationSnapshot/<SYMBOL>/
+data/futures/cm/daily/liquidationSnapshot/BTCUSD_PERP/
+data/futures/cm/daily/liquidationSnapshot/ETHUSD_PERP/
 ```
 
-The fixed range is January 2021 through December 2023 for `BTCUSDT`, `ETHUSDT`, `SOLUSDT` and `XRPUSDT`.
+Signal mapping is fixed:
 
-Every consumed ZIP must have a matching `.CHECKSUM`, contain exactly one CSV, decode under the frozen liquidation-order schema, remain within its stated UTC period and contain no invalid timestamp, side, quantity or price. Identities are `(timestamp, side, effective_price, effective_quantity)` within each archive. No price chart, future return, label, model metric, action, trade or PnL may be opened in this phase.
+```text
+BTCUSD_PERP liquidation → Bybit BTCUSDT
+ETHUSD_PERP liquidation → Bybit ETHUSDT
+```
 
-Monthly layout is preferred if it covers at least 90% of the fixed months and contains all fixed January/April/July/October samples. Daily layout is the fixed fallback if it covers at least 80% of fixed days and contains all ten preregistered stress dates. The source gate also requires:
+COIN-M is signal-only. Every account result is measured on Bybit USDT-linear perpetuals.
 
-- all four symbols observed;
-- both BUY and SELL liquidation records;
-- at least 500 decoded fixed-sample rows;
-- at least 75% of fixed sample archives nonempty;
-- duplicate fraction below 10%;
-- intact outcome seal.
+## Phase 0 — outcome-sealed source gate
 
-Failure closes this exact official `liquidationSnapshot` transport before outcomes. It is not interpreted as negative alpha.
+The fixed source range is `2021-01-01` through `2023-12-31`.
+
+The gate uses the public Binance Vision S3 ListObjectsV2 endpoint, verifies the daily key set, downloads only the twenty preregistered symbol/date samples, verifies every corresponding `.CHECKSUM`, and decodes exactly one CSV from each archive.
+
+Frozen sample dates:
+
+- 2021-01-29, 2021-05-19, 2021-09-07, 2021-12-04;
+- 2022-05-12, 2022-06-13, 2022-11-09;
+- 2023-03-10, 2023-08-17, 2023-10-23.
+
+The source gate passes only if all are true:
+
+- both BTCUSD_PERP and ETHUSD_PERP prefixes are present;
+- each symbol covers at least 80% of the 1,095 fixed UTC dates;
+- every frozen sample date exists for both symbols;
+- BUY and SELL liquidation records are both observed;
+- at least 500 decoded sample rows;
+- at least 75% of sample archives are nonempty;
+- duplicate identity fraction is below 10%;
+- the market/model/PnL/official-period seal remains intact.
+
+Source identities are symbol plus `(timestamp, side, effective price, effective quantity)`.
+COIN-M contract counts are preserved raw in this gate. Dollar normalization must use a separately verified historical contract specification before model fitting.
+
+No price chart, future return, first-passage label, model metric, action, trade, PnL or 2024–2026 outcome may open during this gate.
 
 ## Conditional pre-2024 ML system
 
-Only a source PASS authorizes the unchanged history/model stage.
+Only a source PASS opens this fixed model stage.
 
-### Information availability
+### Availability
 
-A liquidation record becomes usable only after its provider timestamp and completion of the containing one-minute bucket, plus a fixed five-second operational delay. Features use only completed records and completed market/OI/funding states. Source gaps reset every rolling state and prohibit labels or positions from crossing the gap.
+A liquidation row becomes usable after its provider timestamp, completion of the containing one-minute bucket and a fixed five-second operational delay. Completed market, funding, premium and OI states must also be available by that time. Gaps reset rolling state and no label or position may cross them.
 
 ### Structural map
 
-For each permitted market, completed 15-minute bars create pivot highs and lows with two bars on each side. A pivot becomes known only when both right-side bars close. A pivot consumed before confirmation is never used; a confirmed pivot is removed after consumption. The nearest unconsumed high and low are frozen at decision time.
+Completed 15-minute Bybit-proxy bars form pivot highs and lows with two completed bars on each side. A pivot becomes usable only after both right-side bars close. The nearest unconsumed high and low are frozen at decision time.
 
-### One fixed model
+### One model and fourteen trader-readable features
 
-Exactly one pooled `HistGradientBoostingClassifier` with a fixed seed estimates upper-pool-first probability. A single isotonic map is used only if the prewritten calibration sample-count and two-class condition are met; otherwise raw probabilities remain.
+One pooled `HistGradientBoostingClassifier` with one frozen isotonic map estimates upper-pool-first probability from:
 
-Fixed causal features are limited to:
-
-1. signed liquidation notional in the completed event bucket;
-2. absolute liquidation notional;
+1. signed forced contract count;
+2. absolute forced contract count;
 3. event count;
 4. unique-price concentration;
-5. same-side liquidation share;
-6. BTC/ETH/SOL/XRP liquidation breadth;
-7. liquidation notional relative to prior completed sixty-minute quote volume;
+5. same-side share;
+6. BTC/ETH liquidation breadth;
+7. forced flow relative to prior quote volume;
 8. price-impact efficiency;
-9. completed one-, five- and fifteen-minute returns;
-10. prior completed realized volatility;
+9. completed 1m, 5m and 15m returns;
+10. prior realized volatility;
 11. prior available OI change;
-12. prior available funding/premium state;
+12. prior available funding/premium;
 13. upper structural distance;
 14. lower structural distance.
 
-No future label, MFE, MAE, later liquidation record, wallet identity, post-decision OI or hindsight pivot is a feature.
+No future return, MFE, MAE, post-decision liquidation, hindsight pivot or later OI is a feature.
 
-### Frozen chronology
+### Chronology
 
-- fit: `2021-01-01` through `2022-06-30`;
-- calibration: `2022-07-01` through `2022-12-31`;
-- untouched confirmation: `2023-01-01` through `2023-06-30`;
-- conditional development: `2023-07-01` through `2023-12-31`;
-- official 2024H1: opened immediately only after the unchanged complete system is frozen through `2023-12-31`.
+- fit: 2021-01-01 through 2022-06-30;
+- calibration: 2022-07-01 through 2022-12-31;
+- untouched confirmation: 2023-01-01 through 2023-06-30;
+- conditional development: 2023-07-01 through 2023-12-31;
+- official 2024H1 opens immediately after the complete system is frozen through 2023-12-31.
 
-No label may cross a partition boundary.
+No label crosses a partition boundary.
 
-### Economic action and account path
+### Action and account
 
-At the first executable minute open after the fixed information delay, the model probability and structural distances produce one expected-value comparison:
+At the first executable minute open after the information delay:
 
 ```text
 EV_LONG  = p_up * upper_distance - (1-p_up) * lower_distance - all_in_cost
 EV_SHORT = (1-p_up) * lower_distance - p_up * upper_distance - all_in_cost
 ```
 
-The larger positive action is selected; otherwise the system remains flat. The same chronological decisions are replayed at 12, 18 and 24 basis points. Same-minute dual target/stop contact is adverse-first. Source-boundary unresolved positions receive the structural adverse loss plus cost. One pending/open position blocks every other symbol.
+Take only the larger strictly positive action; otherwise remain flat. BTCUSDT and ETHUSDT share one global slot. The same chronological decisions are replayed at 12, 18 and 24bp. Same-minute target/stop ambiguity is stop-first. Source-boundary unresolved positions receive the structural adverse loss plus exit cost. There is no elapsed-time liquidation.
 
-The initial measurement path uses 0.5% planned structural-loss risk and a 3x notional cap only to measure the base edge. These are not final safety ceilings.
+The initial measurement path uses 0.5% planned structural-loss risk and a 3x notional cap only to measure base edge.
 
-### Advancement gate
+## Advancement and immediate official evaluation
 
-Untouched confirmation and conditional development must each independently satisfy the prewritten requirements:
+Untouched confirmation and development must independently show model skill, positive 24bp return and median trade, positive chronological halves, positive exact winner-removal rerouting, controlled concentration and no forced liquidation.
 
-- model AUC exceeds the structural-distance baseline;
-- positive Brier skill against that baseline;
-- at least 50 completed global-slot trades at 18bp;
-- positive total return and median trade at 24bp;
-- positive 18bp return in both chronological halves;
-- positive 18bp return after removing the top five winners and the top 10% positive event keys before complete rerouting;
-- top-five positive-PnL share no greater than 35%;
-- MDD below 30%;
-- zero liquidation or irrecoverable account path.
+A failure retires this exact information unit without adjacent feature, threshold, target, stop, risk or leverage rescue.
 
-A failure retires this exact information unit without feature, threshold, target, stop, risk or leverage rescue.
+A survivor is reconstructed on exact Bybit BBO, mark, funding, latency, partial-fill/capacity, margin and continuous NAV. Only then is the broad prewritten risk/notional frontier searched using information through 2023-12-31. The highest sustainable no-liquidation growth path is frozen without a 1% ceiling and official 2024H1 opens immediately.
 
-## Immediate official sequential evaluation
-
-A pre-2024 survivor is reconstructed on exact Bybit BBO, mark, funding, latency, partial-fill/capacity and NAV. The broad risk frontier—0.25% to 60% planned loss and 1x to 100x notional cap—is searched only with information through 2023-12-31 under the unchanged model and decision rule. Paths with forced liquidation or irrecoverable account damage are excluded; the highest sustainable after-cost geometric-growth path is frozen. The objective is not capped at 1%.
-
-That frozen system opens official `2024-01-01` through `2024-06-30` immediately. If performance is structurally far from the objective, the information unit is retired and research changes alpha. If promising, data through 2024-06-30 update the prewritten system for 2024H2, continuing causally through 2026H1.
-
-No credentials or orders are permitted in this research.
+Weak 2024H1 performance retires the route and changes alpha. Promising performance follows the predetermined causal half-year update method through 2026H1. No credentials or orders are permitted.
