@@ -1,0 +1,92 @@
+{
+  "account": {
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "global_slot_count": 1,
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 3.0,
+    "prior_15m_volume_participation_cap": 0.001,
+    "risk_fraction": 0.005,
+    "top_trade_counterfactual": "remove largest positive 10 percent and release affected global slots before replay"
+  },
+  "authority": {
+    "credentials": false,
+    "live_permission_change": false,
+    "orders": false,
+    "rank_eligibility": false
+  },
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "engine_version": "ML-INTERMARKET-SMT-FIRST-PASSAGE-V1",
+  "event": {
+    "cooldown_minutes": 15,
+    "decision_clock": "each fifth UTC minute after all source bars are complete",
+    "external_same_direction_required": true,
+    "external_shock_minimum_component_z5": 1.25,
+    "minimum_signed_crypto_lag_z5": 0.75,
+    "risk_normalization_observations": 390
+  },
+  "external_sources": {
+    "dukascopy_node_version": "1.46.4",
+    "instruments": ["usatechidxusd", "usa500idxusd"],
+    "price_type": "bid",
+    "role": "signal only",
+    "timeframe": "m1"
+  },
+  "feature_columns": [
+    "nq_ret1_z",
+    "nq_ret5_z",
+    "sp_ret1_z",
+    "sp_ret5_z",
+    "risk_common_z5",
+    "risk_dispersion_z5",
+    "risk_range_ratio5",
+    "crypto_ret1_z",
+    "crypto_ret5_z",
+    "signed_lag_z5",
+    "range_position",
+    "is_eth"
+  ],
+  "fit_gate_all_required": {
+    "auc_lift_over_best_of_distance_and_risk_direction_baselines": ">=0.01",
+    "brier_skill_over_distance_baseline": ">0",
+    "model_auc": ">=0.55",
+    "positive_month_fraction_at_18bps": ">=2/3",
+    "resolved_confirmation_rows": ">=500",
+    "top_10_percent_winner_removed_return_at_12bps": ">0",
+    "trade_count_at_18bps": ">=80",
+    "total_return_at_18bps": ">0",
+    "median_net_trade_at_12bps": ">0"
+  },
+  "market": {
+    "exchange_and_contract": "Bybit USDT-linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "timeframe": "native completed m1, causally aggregated completed m15 structure"
+  },
+  "model": {
+    "calibration": "one frozen isotonic map",
+    "family": "HistGradientBoostingClassifier",
+    "model_or_feature_grid": false,
+    "minimum_probability_advantage_over_exact_break_even": 0.05,
+    "selection": "shock direction continuation only; model accepts or rejects",
+    "signal_cost_bps": 18,
+    "single_model_only": true
+  },
+  "scientific_question": "Do synchronized completed U.S. technology and broad-equity index shocks add causal information about shock-direction BTCUSDT or ETHUSDT external-liquidity delivery beyond structural distance and shock direction alone?",
+  "structure": {
+    "entry": "next Bybit one-minute open after the completed-information decision boundary",
+    "elapsed_time_exit": false,
+    "maximum_pool_width_atr": 10.0,
+    "minimum_pool_width_atr": 0.75,
+    "pivot_span_completed_15m_bars_each_side": 2,
+    "pool_lookback_15m_bars": 672,
+    "same_minute_rule": "stop first",
+    "source_gap_rule": "stop label scan; accepted unresolved account position pays full structural stop",
+    "target_and_stop": "nearest still-unreached frozen external-liquidity pools"
+  },
+  "time_partitions": {
+    "calibration": "2022-07-01T00:00:00Z through 2022-09-30, labels must resolve before 2022-10-01",
+    "conditional_development": "untouched calendar 2023, opened only after every fit gate passes",
+    "fit_confirmation": "2022-10-01T00:00:00Z through 2022-12-31",
+    "prohibited": [2024, 2025, 2026],
+    "training": "2022-01-01T00:00:00Z through 2022-06-30, labels must resolve before 2022-07-01"
+  }
+}
