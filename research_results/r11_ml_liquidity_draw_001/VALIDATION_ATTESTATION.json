@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-LIQUIDITY-DRAW-001",
+  "claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001",
+  "status": "PASS_NEGATIVE_RESULT_REPRODUCIBILITY",
+  "checks": {
+    "project_harness": "PASS",
+    "source_reconstruction_sha256": "PASS",
+    "python_compile": "PASS",
+    "causal_and_account_tests": "12_PASS",
+    "chronological_train_calibration_confirmation": "PASS",
+    "ambiguous_pool_touch_not_favorably_labeled": "PASS",
+    "source_gap_and_year_boundary_conservative": "PASS",
+    "one_global_slot": "PASS",
+    "cost_monotonicity": "PASS",
+    "counterfactual_winner_removal_releases_slots": "PASS",
+    "2023_unopened_after_fit_failure": "PASS",
+    "2024_2025_2026_sealed": "PASS",
+    "orders_submitted": false
+  },
+  "independent_numeric_rechecks": {
+    "confirmation_rows": 4025,
+    "distance_baseline_auc": 0.7348654930127331,
+    "distance_baseline_brier": 0.20879303993890497,
+    "model_auc_below_baseline": true,
+    "model_brier_worse_than_baseline": true,
+    "all_cost_paths_trade_count_equal": true,
+    "returns_monotone_with_cost": true,
+    "fit_gate_passed": false
+  },
+  "workflow": {
+    "run_id": 30194348946,
+    "artifact_id": 8629624480,
+    "artifact_digest": "sha256:e986870c95f524a5c6a872d38534b5714111746f215096c722ff9ee62986a817",
+    "workflow_conclusion": "success"
+  },
+  "artifact_hashes": {
+    "RESULT.json": "991b8663ca4623cdbe0821f149943175ef3fab9056a984517afb399bda7bf794",
+    "FIT_EVENTS.csv.gz": "72f8bc2e0f3b1332096a6cd67711eaa916a4b5a01bfea13c31531b7ec127efc0",
+    "FIT_TRADES_12BPS.csv": "fc0ff5b87d9067d6ac463566dee8b33ea4185fdcd333167b96eb946696055bcf",
+    "FIT_TRADES_18BPS.csv": "e2e03284f1736323027982f4d52c8bd5266829e1cfba948c903fea5d97fceb83",
+    "FIT_TRADES_24BPS.csv": "cea01599b7f087bf022c6c45815cefc6d57aca0fc1823f01fa76ed4a9de924a0"
+  },
+  "authority": "This attestation confirms that the negative result is reproducible and causally bounded. It does not authorize ranking, deployment or opening later periods.",
+  "created_at": "2026-07-26T17:29:00+09:00"
+}
