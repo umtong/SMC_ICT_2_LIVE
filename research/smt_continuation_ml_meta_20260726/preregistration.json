@@ -2,58 +2,35 @@
   "account": {
     "initial_nav_usdt": 10000,
     "notional_cap_multiple": 3,
-    "participation_cap": 0.001,
+    "participation_cap": "0.1% of causally observed follower quote notional in the prior completed three seconds",
     "planned_risk_fraction": 0.01,
-    "top_positive_event_removal_fraction": 0.1
-  },
-  "calibration_gate_all_required": {
-    "accepted_trades_both_latencies": ">=20",
-    "auc_lift_over_structure_baseline": ">=0.01",
-    "brier_skill_over_structure_baseline": ">0",
-    "calibration_auc": ">=0.55",
-    "positive_date_count_both_latencies": ">=3",
-    "positive_mean_and_median_24bp_both_latencies": true,
-    "positive_top10_removed_return_both_latencies": true,
-    "resolved_calibration_rows": ">=80",
-    "resolved_fit_rows": ">=80",
-    "top_five_positive_pnl_share_both_latencies": "<=0.40",
-    "winner_removed_sample_day_geometric_growth_both_latencies": ">=0.01"
+    "top_positive_event_removal_fraction": 0.1,
+    "winner_removal": "remove the largest positive 10% of routed event keys, release their slots and replay from initial NAV"
   },
   "chronology": {
-    "calibration": [
-      "2022-07-10",
-      "2022-08-14",
-      "2022-09-11",
-      "2022-10-09",
-      "2022-11-13",
-      "2022-12-11"
-    ],
-    "conditional_development": [
-      "2023-01-08",
-      "2023-02-12",
-      "2023-03-12",
-      "2023-04-09",
-      "2023-05-14",
-      "2023-06-11",
-      "2023-07-09",
-      "2023-08-13"
-    ],
-    "fit": [
-      "2022-01-09",
-      "2022-02-13",
-      "2022-03-13",
-      "2022-04-10",
-      "2022-05-08",
-      "2022-06-12"
-    ],
+    "conditional_development": "every UTC Sunday from 2023-01-01 through 2023-08-27 inclusive (35 dates)",
+    "fit": "every UTC Sunday from 2022-01-02 through 2022-06-26 inclusive (26 dates)",
     "prohibited_years": [
       2024,
       2025,
       2026
-    ]
+    ],
+    "score_calibration_only": "every UTC Sunday from 2022-07-03 through 2022-09-25 inclusive (13 dates)",
+    "untouched_fit_confirmation": "every UTC Sunday from 2022-10-02 through 2022-12-25 inclusive (13 dates)"
   },
   "claim_id": "CLM-20260726-1906-SMT-CONTINUATION-ML-001",
-  "development_gate": "same economics with >=30 trades, positive on >=6/8 dates, and no unavailable accepted paths",
+  "development_gate_all_required": {
+    "accepted_trades_both_latencies": ">=30",
+    "brier_not_worse_than_structure_baseline": true,
+    "positive_date_count_both_latencies": ">=18 of 35",
+    "positive_mean_median_and_profit_factor_24bp_both_latencies": true,
+    "positive_top10_removed_return_both_latencies": true,
+    "prediction_auc": ">=0.55",
+    "prediction_auc_not_worse_than_structure_baseline": true,
+    "top_five_positive_pnl_share_both_latencies": "<=40%",
+    "winner_removed_sample_day_geometric_growth_both_latencies": ">=1%",
+    "zero_unavailable_no_fill_or_zero_capacity_selected": true
+  },
   "engine_version": "SMT-CONTINUATION-ML-META-V1",
   "event": {
     "btc_horizons_seconds": [
@@ -62,7 +39,7 @@
       5
     ],
     "direction": "original BTC displacement direction only",
-    "entry_state": "first completed residual contraction to 50% or less while remaining above 25%, followed by one completed second of original-direction follower aggressive flow",
+    "entry_state": "first three consecutive completed 100ms states with residual in the 50-75% pullback zone and nonnegative original-direction one-second follower flow",
     "minimum_beta_residual_overdelivery_bps": 12,
     "no_immediate_entry": true,
     "prior_only_beta_attention_volatility": true
@@ -74,7 +51,7 @@
       100,
       300
     ],
-    "funding_reserve_bps_per_8h_boundary": 2,
+    "funding_boundary": "full planned structural stop, matching the frozen parent executor",
     "same_event_paths": true,
     "source_boundary": "accepted unresolved position pays full structural stop plus cost"
   },
@@ -83,6 +60,7 @@
     "btc_activity_ratio",
     "btc_aggressor_alignment",
     "follower_aggressor_alignment_at_event",
+    "horizon_seconds",
     "frozen_beta",
     "initial_residual_gap_bps",
     "overreaction_ratio",
@@ -94,18 +72,36 @@
     "reacceleration_trade_count_1s",
     "target_realized_volatility_10s",
     "other_follower_residual_bps",
-    "leader_move_at_entry_bps"
+    "leader_move_at_entry_bps",
+    "symbol_is_xrp"
   ],
+  "fit_confirmation_gate_all_required": {
+    "accepted_trades_both_latencies": ">=20",
+    "auc_lift_over_structure_baseline": ">=0.01",
+    "confirmation_auc": ">=0.55",
+    "positive_brier_skill_over_structure_baseline": true,
+    "positive_date_count_both_latencies": ">=3 of 13",
+    "positive_mean_median_and_profit_factor_24bp_both_latencies": true,
+    "positive_top10_removed_return_both_latencies": true,
+    "resolved_confirmation_rows": ">=40",
+    "resolved_fit_rows": ">=80",
+    "resolved_score_calibration_rows": ">=40",
+    "top_five_positive_pnl_share_both_latencies": "<=40%",
+    "two_classes_each_stage": true,
+    "winner_removed_sample_day_geometric_growth_both_latencies": ">=1%",
+    "zero_unavailable_no_fill_or_zero_capacity_selected": true
+  },
   "label_and_route": {
     "ambiguous": "adverse/negative",
-    "negative": "any fixed structural invalidation first",
-    "positive": "after fixed 100ms entry, 150% residual expansion is reached before 25% reclaim, adverse follower stop or BTC-origin failure",
-    "route": "trade only when calibrated probability implies positive expected value after 24bp and exceeds the structure baseline probability by at least 0.05"
+    "label_available": "both frozen 100ms and 300ms paths obtain an executable entry and structural exit without unvalued state",
+    "negative": "any fixed structural invalidation first or a latency disagreement",
+    "positive": "both latency paths reach 150% residual expansion before every fixed invalidation",
+    "route": "trade only when calibrated full-model probability exceeds the calibrated structure baseline by at least 0.05 and structural expected value after 24bp is positive"
   },
   "model": {
     "C": 0.25,
-    "baseline": "structure-only logistic using gap, pullback depth, leader persistence and volatility",
-    "calibration": "one frozen isotonic map fitted on calibration only when both classes are present",
+    "baseline": "one structure-only logistic using initial gap, pullback depth, leader persistence and target volatility",
+    "calibration": "one isotonic map fitted only on the score-calibration period when both classes exist",
     "class_weight": "balanced",
     "family": "standardized L2 logistic regression",
     "feature_grid": false,
@@ -115,17 +111,17 @@
     "threshold_grid": false
   },
   "orders_submitted": false,
-  "promotion_boundary": "Any survivor remains pre-2024 discovery; exact Bybit BBO/depth, funding and full sequential 2024-2026 replay are required before ranking.",
+  "promotion_boundary": "Any survivor remains pre-2024 discovery; exact Bybit BBO/depth, actual funding, continuous full-calendar account NAV and causal sequential 2024-2026 replay are required before ranking.",
   "result_id": "RES-20260726-SMT-CONTINUATION-ML-001",
   "schema_version": 1,
-  "scientific_question": "After BTC displacement and SOL/XRP beta-residual overdelivery accept external liquidity, can one explainable ML meta-label identify which first 50% residual pullbacks reaccelerate to 150% expansion before reclaim/BTC-origin failure strongly enough to survive 24bp and one-global-slot account replay?",
+  "scientific_question": "After BTC displacement and SOL/XRP beta-residual overdelivery accept external liquidity, can one explainable ML meta-label identify which first 50-75% residual pullbacks reaccelerate to 150% expansion before reclaim/BTC-origin failure strongly enough to survive 24bp, 100/300ms latency and one-global-slot account replay?",
   "smc_ict_translation": [
     "BTC displacement establishes delivery direction.",
     "SOL or XRP extends beyond prior-only BTC beta fair value and accepts external liquidity, forming quantitative SMT overdelivery.",
-    "The first 50% residual pullback is a measurable FVG/OTE mitigation; it is the only admissible entry state.",
+    "The first completed 50-75% residual pullback with nonnegative original-direction flow is the measurable FVG/OTE mitigation and the only admissible entry state.",
     "One ML model accepts the trade only when pullback structure, flow, attention and leader persistence imply renewed distribution in the original direction.",
-    "Target is 150% residual expansion; invalidation is 25% residual reclaim, adverse follower displacement, BTC-origin failure or conservative source-boundary stop.",
-    "ML cannot choose direction, entry depth, target, stop, latency, risk or leverage."
+    "Target is 150% residual expansion; invalidation is 25% residual reclaim, a 50%-gap adverse follower move, BTC-origin failure, a funding boundary or a conservative source-boundary full stop.",
+    "ML cannot choose direction, event, entry depth, target, stop, latency, risk or leverage."
   ],
   "universe": {
     "execution": [
