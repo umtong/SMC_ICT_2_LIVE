@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-BATCHED-TIMESTAMPS-007",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "recorded_at": "2026-07-26T22:58:00+09:00",
+  "trigger": "Workflow 30204103060 retrieved 4,894 canonical Swap logs across five frozen windows and verified all four pools, but made more than one thousand per-block timestamp RPC calls. Blockscout returned HTTP 429 before the sixth window, leaving 123 otherwise-decodable logs without timestamps.",
+  "outcome_state_before_correction": {
+    "source_logs_retrieved": 4894,
+    "market_or_model_outcome_opened": false,
+    "model_fitted": false,
+    "trades_or_pnl_computed": false,
+    "official_2024h1_opened": false,
+    "orders_submitted": false
+  },
+  "change": {
+    "window_boundaries": "Use twelve bounded Blockscout getblocknobytime requests instead of repeated binary-search block calls.",
+    "swap_logs": "Use the same four pools, six one-hour windows and Swap topic with one bounded range request per pool-window; bisect only explicit provider range-limit errors.",
+    "timestamps": "Collect unique block numbers first and request eth_getBlockByNumber in JSON-RPC batches of at most 80 while preserving exact block identity.",
+    "rate_limits": "Honor Retry-After or exponential backoff and classify persistent transport failure as SOURCE_UNAVAILABLE, never source scarcity.",
+    "authority": "No previously retrieved log is selected by outcome; the unchanged source gate is recomputed from all six frozen windows."
+  },
+  "unchanged": [
+    "factory token and canonical pool identities",
+    "six preregistered pre-2024 UTC windows",
+    "Swap ABI and event identity",
+    "minimum four dense windows and 100 logs",
+    "zero decode errors and duplicate identities",
+    "all model features labels payoff and thresholds",
+    "12 18 24bp costs and one global slot",
+    "sequential 2024H1 contract",
+    "no credentials and no orders"
+  ],
+  "scientific_source_changed": false,
+  "orders_submitted": false
+}
