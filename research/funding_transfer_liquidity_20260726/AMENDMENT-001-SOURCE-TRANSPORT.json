@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-FUNDING-TRANSFER-SOURCE-001",
+  "claim_id": "CLM-20260726-1150-FUNDING-TRANSFER-001",
+  "registered_before_successful_2022_2023_outcome_access": true,
+  "trigger": {
+    "workflow_run_id": 30191486838,
+    "status": "DATA_UNAVAILABLE",
+    "error": "Global Bybit API domains returned HTTP 403 from the GitHub-hosted runner before any 2022-2023 market, premium or funding row was obtained."
+  },
+  "change": {
+    "type": "SOURCE_TRANSPORT_ONLY",
+    "description": "Add officially documented Bybit local-site V5 API hostnames as sequential public-market-data transport fallbacks.",
+    "domains": [
+      "https://api.bybit.com",
+      "https://api.bytick.com",
+      "https://api.bybit.nl",
+      "https://api.byhkbit.com",
+      "https://api.bybit.tr",
+      "https://api.bybit.kz",
+      "https://api.bybitgeorgia.ge",
+      "https://api.bybit.ae",
+      "https://api.bybit.id"
+    ]
+  },
+  "unchanged": [
+    "strategy mechanism and SMC/ICT interpretation",
+    "symbols and one-global-slot contract",
+    "2022 fit and 2023 development partitions",
+    "exact returned funding-settlement timestamp availability",
+    "720 candidate grid",
+    "all thresholds, families, confirmation delays and horizons",
+    "12/18/24 bp cost replay",
+    "survivor gate",
+    "2024-2026 prohibition",
+    "rank-ineligibility and no-order boundary"
+  ],
+  "outcome_boundary": "No market outcome, event row, candidate PnL or gate statistic was available from the failed run. Domain order cannot be changed after the first successful historical response."
+}
