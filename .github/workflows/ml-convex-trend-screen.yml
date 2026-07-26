@@ -39,20 +39,47 @@ jobs:
           gh run download 30147824722 --repo "${{ github.repository }}" --name cross-asset-leadlag-baseline-20260725 --dir source
           test -f source/snapshot/BTCUSDT_5m.npz
       - name: Run frozen pre-2024 screen
+        id: frozen_screen
+        continue-on-error: true
         run: |
           rm -rf research/ml_convex_trend_20260726/observed
+          set +e
           python research/ml_convex_trend_20260726/run.py \
             --snapshot source/snapshot \
-            --out research/ml_convex_trend_20260726/observed
+            --out research/ml_convex_trend_20260726/observed \
+            > research/ml_convex_trend_20260726/RUN.log 2>&1
+          rc=$?
+          echo "$rc" > research/ml_convex_trend_20260726/RUN.exit
+          exit "$rc"
       - name: Independent audit
-        run: python research/ml_convex_trend_20260726/audit.py
-      - uses: actions/upload-artifact@v4
+        id: audit
+        if: steps.frozen_screen.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set +e
+          python research/ml_convex_trend_20260726/audit.py \
+            > research/ml_convex_trend_20260726/AUDIT.log 2>&1
+          rc=$?
+          echo "$rc" > research/ml_convex_trend_20260726/AUDIT.exit
+          exit "$rc"
+      - name: Upload reproduction evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: ml-convex-trend-20260726
           path: |
             research/ml_convex_trend_20260726/preregistration.json
             research/ml_convex_trend_20260726/FINGERPRINTS.json
             research/ml_convex_trend_20260726/dataset_manifest.json
+            research/ml_convex_trend_20260726/RUN.log
+            research/ml_convex_trend_20260726/RUN.exit
+            research/ml_convex_trend_20260726/AUDIT.log
+            research/ml_convex_trend_20260726/AUDIT.exit
             research/ml_convex_trend_20260726/observed
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
+      - name: Enforce reproduction success
+        if: always()
+        run: |
+          test "${{ steps.frozen_screen.outcome }}" = "success"
+          test "${{ steps.audit.outcome }}" = "success"
