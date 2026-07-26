@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-DONCHIAN-OFFICIAL-HALF-YEAR-001",
+  "claim_id": "CLM-20260726-2110-ML-DONCHIAN-STRUCTURAL-001",
+  "recorded_before_outcome": true,
+  "market_rows_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "account_path_opened_before_correction": false,
+  "official_2024_2026_opened_before_correction": false,
+  "orders_submitted": false,
+  "reason": "The prior contract treated every pre-2024 economic gate as permission to open the official period. The project intent is instead sequential research: freeze the strategy using information available through 2023-12-31 and use 2024H1 as the first official decision interval. A weak 2024H1 result causes immediate alpha-family retirement; a promising result may be developed using information then available and evaluated in 2024H2 without relabeling the already-seen interval as independent OOS.",
+  "scientific_change": {
+    "unchanged": [
+      "Donchian entry and structural exits",
+      "feature definitions",
+      "single pooled HGBT family",
+      "cost paths",
+      "one global slot",
+      "causal timing",
+      "no elapsed-time liquidation"
+    ],
+    "changed": [
+      "2024H1 becomes the first mandatory official sequential research interval after the pre-2024 strategy is frozen",
+      "pre-2024 performance is diagnostic and strategy-construction evidence, not a barrier used to preserve official-period purity",
+      "2024H2 and later updates must use only information available at each half-year boundary"
+    ]
+  },
+  "implementation_sequence": [
+    "materialize the immutable source without opening market outcomes",
+    "amend the evaluator to freeze through 2023-12-31 and always evaluate 2024H1",
+    "retire immediately if 2024H1 is structurally far from the objective",
+    "otherwise update only with information available through 2024-06-30 and evaluate 2024H2"
+  ]
+}
