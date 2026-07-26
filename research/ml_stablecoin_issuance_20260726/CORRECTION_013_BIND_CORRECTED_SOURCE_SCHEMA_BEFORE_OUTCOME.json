@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-SOURCE-SCHEMA-BINDING-013",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-26T23:24:00+09:00",
+  "status": "PRE_MARKET_OUTCOME_SOURCE_AUTHORITY_CORRECTION",
+  "trigger": "The economic continuation searched every successful historical source workflow on the parent branch and accepted any artifact whose result status was PASS. A PASS generated before the canonical USDT Issue/Redeem correction could not be distinguished from the corrected source authority by the result schema alone.",
+  "change": {
+    "source_schema_id": "STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1",
+    "source_correction_id": "CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010",
+    "artifact_binding": "Write the identifiers and explicit event semantics into SOURCE_MANIFEST.json and SOURCE_GATE_RESULT.json for every authoritative run."
+  },
+  "required_event_semantics": {
+    "USDT_MINT": "Issue(uint256)",
+    "USDT_BURN": "Redeem(uint256)",
+    "USDC_MINT": "zero-address Transfer",
+    "USDC_BURN": "zero-address Transfer",
+    "ordinary_usdt_transfer_excluded": true
+  },
+  "outcome_state_before_correction": {
+    "corrected_source_pass_consumed_by_economic_model": false,
+    "btc_or_eth_market_rows_opened": false,
+    "model_fitted": false,
+    "labels_actions_trades_or_pnl_computed": false,
+    "official_2024h1_opened": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "all 36 pre-2024 months",
+    "source density and coverage gates",
+    "event identities and confirmation delays",
+    "economic model features labels action rule costs and chronology",
+    "sequential 2024H1 contract",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ]
+}
