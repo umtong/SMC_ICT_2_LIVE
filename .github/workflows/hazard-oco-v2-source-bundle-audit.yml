@@ -29,13 +29,33 @@ jobs:
           out=research_runs/hazard_oco_v2_retained_source
           mkdir -p "$out/extracted"
           cat "$root"/source_bundle.tar.gz.b64.part* > "$out/source_bundle.tar.gz.b64"
-          base64 --decode "$out/source_bundle.tar.gz.b64" > "$out/source_bundle.tar.gz"
-          sha256sum "$out/source_bundle.tar.gz.b64" "$out/source_bundle.tar.gz" > "$out/BUNDLE_SHA256SUMS.txt"
-          tar -tzf "$out/source_bundle.tar.gz" | sort > "$out/ARCHIVE_FILES.txt"
-          tar -xzf "$out/source_bundle.tar.gz" -C "$out/extracted"
-          find "$out/extracted" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/EXTRACTED_SHA256SUMS.txt"
-          find "$out/extracted" -type f -printf '%P\n' | sort
+          sha256sum "$out/source_bundle.tar.gz.b64" > "$out/BASE64_SHA256SUM.txt"
+          wc -c "$out/source_bundle.tar.gz.b64" > "$out/BASE64_BYTES.txt"
+          set +e
+          base64 --decode "$out/source_bundle.tar.gz.b64" > "$out/source_bundle.tar.gz" 2> "$out/base64.stderr"
+          decode_status=$?
+          echo "$decode_status" > "$out/base64.status"
+          if test "$decode_status" -eq 0; then
+            sha256sum "$out/source_bundle.tar.gz" > "$out/GZIP_SHA256SUM.txt"
+            wc -c "$out/source_bundle.tar.gz" > "$out/GZIP_BYTES.txt"
+            tar -tzf "$out/source_bundle.tar.gz" > "$out/ARCHIVE_FILES.unsorted.txt" 2> "$out/tar_list.stderr"
+            list_status=$?
+            echo "$list_status" > "$out/tar_list.status"
+            if test "$list_status" -eq 0; then
+              sort "$out/ARCHIVE_FILES.unsorted.txt" > "$out/ARCHIVE_FILES.txt"
+              tar -xzf "$out/source_bundle.tar.gz" -C "$out/extracted" 2> "$out/tar_extract.stderr"
+              extract_status=$?
+              echo "$extract_status" > "$out/tar_extract.status"
+              if test "$extract_status" -eq 0; then
+                find "$out/extracted" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/EXTRACTED_SHA256SUMS.txt"
+                find "$out/extracted" -type f -printf '%P\n' | sort > "$out/EXTRACTED_FILES.txt"
+              fi
+            fi
+          fi
+          set -e
+          exit 0
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: hazard-oco-v2-retained-source-${{ github.sha }}
           path: research_runs/hazard_oco_v2_retained_source
