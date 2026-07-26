@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-FAILCLOSED-SOURCE-AUTHORITY-003",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_DECISION_READY_SOURCE_RESULT_OR_MARKET_OUTCOME",
+  "recorded_before_source_result_or_market_outcome": true,
+  "observed_problem": "The strict-causal workflow still pinned source commit 7bdf54c93607d6d71e8e9f35b66fd9c2c464e637 and executed a branch-local wrapper. That source predates correction 019 and can classify ambiguous Blockscout status=0 responses, including NOTOK with an empty result, as an empty interval. A false empty interval can fabricate source scarcity.",
+  "change": [
+    "Pin source snapshot 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539, which contains correction 019 and the fail-closed source runner.",
+    "Execute run_pinned_snapshot_source.py directly as the only source authority.",
+    "Require the source result and manifest to bind correction 019, EXPLICIT_NO_RECORDS_ONLY and FAIL_CLOSED_SOURCE_UNAVAILABLE before model authorization.",
+    "Execute strict_guard.py, not the intermediate causal wrapper, as the only economic authority."
+  ],
+  "superseded_non_authoritative_source_sha": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
+  "authoritative_source_sha": "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+  "strict_engine_commit": "f07f1ad7c5dcd14c2396b56a078defc7e9f069ca",
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address source identities",
+    "2021-2023 source chronology and 12/64-block availability",
+    "HGBT model, calibration, features, first-passage labels and structural action rule",
+    "one global BTC/ETH slot, costs, risk/notional domain and sequential evaluation rule"
+  ],
+  "source_result_observed_before_change": false,
+  "market_archive_opened_before_change": false,
+  "model_metric_observed_before_change": false,
+  "trade_or_pnl_observed_before_change": false,
+  "official_2024_2026_opened_before_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
