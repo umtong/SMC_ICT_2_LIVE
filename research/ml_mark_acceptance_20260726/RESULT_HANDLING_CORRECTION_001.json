@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "RESULT-HANDLING-CORRECTION-001-RUN-LOG-SELF-HASH",
+  "claim_id": "CLM-20260726-1940-ML-MARK-ACCEPTANCE-001",
+  "recorded_at": "2026-07-26T20:29:00+09:00",
+  "authoritative_workflow_run": 30199914721,
+  "authoritative_artifact": 8631380906,
+  "artifact_digest": "sha256:baa372d8fbb5e115ea24dea5f4abe54e610f02075ea6001570a12306ecb57b25",
+  "scientific_step_status": "success",
+  "result_status": "FIT_BELOW_GATE",
+  "observed_terminal_failure": "run.py created SHA256SUMS.txt while the enclosing shell tee still had RUN.log open; the final JSON line appended by tee changed RUN.log after its checksum was frozen. Every other file in SHA256SUMS.txt verified byte-for-byte.",
+  "correction": "Exclude only RUN.log from the runner-generated SHA256SUMS verification. RUN.log remains hashed later by OUTPUT_SHA256SUMS.txt after the job step has closed it.",
+  "scientific_changes": false,
+  "unchanged": [
+    "all source files and dates",
+    "all events and labels",
+    "all twelve features",
+    "model and calibration",
+    "baselines and fit gates",
+    "authorized actions",
+    "12/18/24bp account paths",
+    "winner-removal result",
+    "2023 and 2024-2026 access decisions",
+    "RESULT.json and SOURCE_MANIFEST.json"
+  ],
+  "orders_submitted": false
+}

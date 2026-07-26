@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-MARK-ACCEPTANCE-001",
+  "claim_id": "CLM-20260726-1940-ML-MARK-ACCEPTANCE-001",
+  "engine_version": "ML-MARK-ACCEPTANCE-FIRST-PASSAGE-V1",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_NOT_RANK_ELIGIBLE_PRE2024_SCREEN",
+  "decision": "Retire the exact executable-range raid plus mark/index acceptance first-passage information unit without adjacent model, feature, calibration, EV, target, stop, risk, leverage or participation tuning.",
+  "mechanism": "The prior completed five-minute executable range froze external liquidity. After a one-second boundary raid and one completed response second, one calibrated HGBT predicted upper-versus-lower structural first passage from twelve Bybit quote, trade, mark, index and open-interest variables. One exact 18bp expected-value rule selected continuation, rejection or flat.",
+  "chronology": {
+    "train": ["2022-01-01", "2022-03-01", "2022-05-01"],
+    "calibration": ["2022-07-01"],
+    "confirmation": ["2022-09-01", "2022-11-01"],
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "confirmation": {
+    "resolved_events": 1918,
+    "model_auc": 0.6176935392524179,
+    "distance_auc": 0.6524647120327611,
+    "mark_auc": 0.5884099721181494,
+    "best_baseline_auc": 0.6524647120327611,
+    "auc_lift": -0.03477117278034325,
+    "model_brier": 0.2558419758476107,
+    "distance_brier": 0.23181681784674493,
+    "brier_skill": -0.10363854626263103,
+    "authorized_actions": 1,
+    "replay_12bp": {
+      "trades": 1,
+      "total_return": 0.0038244701164789063,
+      "geometric_sample_day_growth": 0.0019104102246263466,
+      "median_trade_return": 0.0038244701164788387,
+      "positive_dates": 1,
+      "maximum_drawdown": 0.0
+    },
+    "replay_18bp": {
+      "trades": 1,
+      "total_return": 0.0034161442089406524,
+      "geometric_sample_day_growth": 0.001706615835665115,
+      "median_trade_return": 0.003416144208940602,
+      "positive_dates": 1,
+      "maximum_drawdown": 0.0
+    },
+    "replay_24bp": {
+      "trades": 1,
+      "total_return": 0.0030078183014023985,
+      "geometric_sample_day_growth": 0.0015027799768716488,
+      "median_trade_return": 0.003007818301402366,
+      "positive_dates": 1,
+      "maximum_drawdown": 0.0
+    },
+    "winner_removal_12bp": {
+      "removed_events": 1,
+      "trades": 0,
+      "total_return": 0.0,
+      "positive_dates": 0
+    }
+  },
+  "failed_fit_gates": [
+    "auc_lift_over_stronger_baseline",
+    "positive_brier_skill",
+    "minimum_80_confirmation_trades",
+    "positive_after_top10pct_winner_removal",
+    "both_confirmation_dates_positive"
+  ],
+  "passed_fit_gates": [
+    "minimum_500_resolved_confirmation_events",
+    "model_auc_at_least_0.55",
+    "positive_18bp_nominal_return",
+    "positive_12bp_nominal_median",
+    "no_liquidation"
+  ],
+  "interpretation": "The model had nontrivial discrimination but was worse than structural distance, less well calibrated, and generated only one cost-sized action. The apparent positive account path depended entirely on that single winner. It is not alpha evidence and cannot enter the cumulative strategy ranking.",
+  "orders_submitted": false,
+  "paper_live_started": false,
+  "ranking_changed": false,
+  "live_permission_changed": false,
+  "evidence": {
+    "authoritative_workflow_run": 30199914721,
+    "authoritative_artifact": 8631380906,
+    "artifact_digest": "sha256:baa372d8fbb5e115ea24dea5f4abe54e610f02075ea6001570a12306ecb57b25",
+    "result_sha256": "7bb7ba5d71cff841a0ff3e29aa2633980c97df6dc5bd9c3ac3716c9d190c48d5",
+    "source_manifest_sha256": "81f4e4268dffa7d7992fe275cf81375883924da906a9376bdafc2c93aa938793",
+    "authority_attestation_sha256": "1fa26822c87e3d740ed58ca64a1a82ea7a82f3817944726cb8658e043d9b325c",
+    "source_probe_sha256": "3f36830a715ee1eb22d57250343c142a596c60be74b2916c8fe9ada11920d1c1",
+    "confirmation_event_files_sha256": {
+      "2022-09-01": "72a867f55e4808437f6c205c564f542a9512f6c5370f023ef075856ce6d148c7",
+      "2022-11-01": "9e209383d71b6a1131de5e7b53fc0347b85260f2dbe1a678d34ab1adf6286cd7"
+    },
+    "result_handling_correction": "RESULT-HANDLING-CORRECTION-001-RUN-LOG-SELF-HASH"
+  }
+}

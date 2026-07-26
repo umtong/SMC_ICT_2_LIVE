@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "validation_id": "VAL-20260726-ML-MARK-ACCEPTANCE-001",
+  "result_id": "RES-20260726-ML-MARK-ACCEPTANCE-001",
+  "claim_id": "CLM-20260726-1940-ML-MARK-ACCEPTANCE-001",
+  "status": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "validated_surfaces": [
+    "deterministic gzip/base64 source reconstruction with pinned raw SHA-256",
+    "fourteen adversarial causality, chronology, BBO-extrema, global-slot, liquidation and winner-removal tests",
+    "project invariant validator",
+    "public Bybit quotes, trades and derivative_ticker source transport and schema",
+    "completed one-second raid and response availability",
+    "100ms delayed actual-BBO entry",
+    "frozen structural first passage and adverse same-second ordering",
+    "one global BTCUSDT/ETHUSDT slot",
+    "12/18/24bp cost monotonicity",
+    "top-10%-positive-event counterfactual rerouting",
+    "2023 conditional gate and 2024-2026 physical seals",
+    "no credentials, paper, testnet or live orders"
+  ],
+  "scientific_result": {
+    "resolved_confirmation_events": 1918,
+    "model_auc": 0.6176935392524179,
+    "best_baseline_auc": 0.6524647120327611,
+    "auc_lift": -0.03477117278034325,
+    "brier_skill": -0.10363854626263103,
+    "authorized_actions": 1,
+    "fit_gate_passed": false,
+    "2023_opened": false
+  },
+  "terminal_handling": {
+    "authoritative_run": 30199914721,
+    "scientific_step": "success",
+    "initial_job_conclusion": "failure",
+    "cause": "RUN.log changed after run.py hashed the still-open tee destination",
+    "correction_attestation": "RESULT-HANDLING-CORRECTION-001-RUN-LOG-SELF-HASH",
+    "scientific_change": false,
+    "independent_artifact_check": "All SHA256SUMS entries except RUN.log verified. RESULT.json, source manifest, authority attestation and confirmation event ledgers were separately rehashed."
+  },
+  "evidence": {
+    "workflow_run": 30199914721,
+    "artifact_id": 8631380906,
+    "artifact_digest": "sha256:baa372d8fbb5e115ea24dea5f4abe54e610f02075ea6001570a12306ecb57b25",
+    "result_sha256": "7bb7ba5d71cff841a0ff3e29aa2633980c97df6dc5bd9c3ac3716c9d190c48d5",
+    "source_manifest_sha256": "81f4e4268dffa7d7992fe275cf81375883924da906a9376bdafc2c93aa938793",
+    "source_probe_sha256": "3f36830a715ee1eb22d57250343c142a596c60be74b2916c8fe9ada11920d1c1"
+  },
+  "reusable_conclusion": "The tested mark/index acceptance information unit fails incremental prediction and cost-sized-action gates. Reuse the source transport and causal BBO replay components, but do not reopen this exact model, feature set, calibration, EV rule, structural geometry, risk, leverage or participation dependency.",
+  "orders_submitted": false,
+  "live_permission_changed": false
+}
