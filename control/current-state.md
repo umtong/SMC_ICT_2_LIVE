@@ -1,106 +1,73 @@
 # Current state
 
-- revision: 12
+- revision: 13
 - phase: ACTIVE_RESEARCH
-- current first place: `FIRST-20260725-DYNAMIC-STATE-021FBAB6`
-- first-place stage: `EXPLORATORY`
+- current first place: `FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9`
+- first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
 - target_status: `NOT_MET`
 - live_order_permission: none
 - repository: `umtong/SMC_ICT_2_LIVE`
-- Drive root: resolved privately through `config/project.local.toml` or `00_PROJECT_BINDING`
 
-## Current strategy ranking
+## Ranking correction
 
-The current first place is dynamic state-exit candidate `021fbab613517a31ad98` from `RES-20260725-DYNAMIC-FACTOR-001` / PR #25.
+The former first place, dynamic state-exit `021fbab613517a31ad98` from `RES-20260725-DYNAMIC-FACTOR-001`, is removed from the current-contract ranking.
 
-- 12 bps and actual-funding geometric daily growth: `0.0573077%`
-- 1% target gap: `0.9426923 percentage points per trading day`
-- target fraction: `5.73077%`
-- total return: `+23.2585%`
-- maximum drawdown: `4.6174%`
-- trades: `194`
-- profit factor: `1.5041`
-- top-five positive-trade share: `35.35%`
-- return at 18 bps: `+16.7170%`
-- return at 24 bps: `+11.2649%`
+Its immutable implementation stores `hold_bars`, computes the terminal index as `entry + hold`, and exits any surviving trade at that fixed future bar. That is an elapsed-time liquidation and conflicts with the fixed project rule that exits must arise from strategy logic rather than a maximum holding period. The historical result remains in the Result Registry but is not a valid current first place.
 
-It remains first because it has the smallest verified recorded after-cost daily-growth gap among hard-valid results. The rank is provisional: the registered economic gate failed, top-10%-removed return is `-21.8583%`, median per-trade return is negative, all four portfolios frozen from 2023 lost in 2024, and the exact candidate has no opened 2024 out-of-sample interval.
+## Current first place
 
-The current second place is `aligned_continuation 33034b092ffd271a` from `RES-20260725-ABS-FLOW-001` / PR #35.
+The provisional first place is Donchian after-loser `a70626d9e484285f2cb4` from `RES-20260726-DONCHIAN-DEPENDENCE-001` / PR #61.
 
-- approximately 15 bps round-trip geometric daily growth: `0.0227977%`
-- target gap: `0.9772023 percentage points per trading day`
-- total return: `+15.6276%`
-- maximum drawdown: `6.4718%`
-- trades: `184`
-- profit factor: `1.3065`
-- top-five positive-trade share: `18.00%`
-- approximately 30 bps geometric daily growth: `0.0118956%`
+- rule: completed 60-minute Donchian channel, entry lookback 96, exit channel 48, failsafe entry channel 240, after-loser mode
+- 24-bps geometric daily growth: `0.0631845%`
+- 1% target gap: `0.9368155 percentage points per UTC calendar day`
+- target fraction: `6.31845%`
+- total return: `+25.9293%`
+- maximum drawdown: `11.0298%`
+- trades: `89`
+- profit factor: `1.6226`
+- median account return: `-50.00 bps`
+- win rate: `17.98%`
+- top-five positive-PnL share: `67.35%`
+- top-10%-winner-removed return: `-26.3062%`
+- first-half / second-half return: `+20.0763% / +4.8744%`
 
-It is hard-valid but failed the preregistered yearly robustness gate. No sequential 2024 or 2025H1 interval was opened, and the approximately 30 bps path becomes negative after removing the top five winners.
+It is first only because its fully recorded 24-bps daily growth exceeds the former first place's 12-bps daily growth while using channel and stop exit logic rather than elapsed-time liquidation.
 
-The provisional third place is `perp_overshoot_reversal 191444bb0a4348e2a52b` from `RES-20260726-SPOT-PERP-LEADERSHIP-001` / PR #43.
+The comparison confidence is `VERY_LOW`. The source is a Binance USD-M proxy, historical funding and Bybit execution were not replayed, no 2024 or later interval was opened, and the result is dominated by rare large winners. The matched all-breakout comparator recorded still higher 24-bps growth, so the after-loser dependency itself is not established.
 
-- 12 bps geometric daily growth: `0.0118976%`
-- target gap: `0.9881024 percentage points per trading day`
-- total return: `+4.4380%`
-- maximum drawdown: `1.2337%`
-- trades: `17`
-- profit factor: `2.4637`
-- top-five positive-trade share: `92.76%`
-- top-10%-removed return: `-0.5817%`
-- 18/24 bps geometric daily growth: `0.0094770%` / `0.0070550%`
+## Lower provisional ranks
 
-It is hard-valid but failed five development gates, including sample count, positive median trade and top-trade-removal robustness. Zero of 496 candidates survived; later stages remained unopened. Its rank reflects target proximity only, with low comparison confidence.
+1. Donchian after-loser `a70626d9e484285f2cb4` — `0.0631845%` daily at 24 bps.
+2. aligned continuation `33034b092ffd271a` — `0.0227977%` daily under its recorded base-cost contract; legacy exit-contract re-audit pending.
+3. perp overshoot reversal `191444bb0a4348e2a52b` — `0.0118976%` daily; legacy exit-contract re-audit pending.
+4. liquidation exhaustion reversal `0c0b773a5be4eab4` — `0.00358316%` daily, very sparse.
+5. DVOL low-VRP residual continuation — `0.0034002%` daily; legacy exit-contract re-audit pending.
+6. high-resistance sweep `c232ae43b7a1401d` — `0.0024555%` daily.
+7. fragmented-flow reversal `95f3b144d5a291abc61c` — `0.0020533%` daily, four trades.
 
-The newly reconciled provisional fourth place is `exhaustion_reversal 0c0b773a5be4eab4` from `RES-20260726-LIQUIDATION-REFILL-001` / PR #58.
+Economic-gate failure and ranking are separate, but a strategy that violates the fixed exit contract is not ranking-eligible.
 
-- 18 bps development full-calendar geometric daily growth: `0.00358316%`
-- target gap: `0.99641684 percentage points per trading day`
-- development total return: `+1.31642%`
-- development maximum drawdown: `1.4925%`
-- development trades: `19`
-- development profit factor: `1.32394`
-- development median trade return: `+0.3092%`
-- 24 bps development total return: `+0.24768%`
+## Work stopped
 
-This candidate is inserted because hard validity and the normalized positive account-growth metric satisfy provisional ranking eligibility even though the economic gate failed. Comparison confidence is very low: the same rule lost `7.35461%` in the 2021–2022 fit period, the 18-bps top-10%-winner-removal return was `-0.00784%`, only eight development sample days were active, and validation plus 2024–2026 remained unopened.
-
-The former fourth through eighth places shift down one rank:
-
-- rank 5: `LOW_VRP_RESIDUAL_CONTINUATION 1b4ec83c59bb98660c23` from `RES-20260726-DVOL-XSEC-001`, `0.0034002%` daily growth;
-- rank 6: `high_resistance_sweep c232ae43b7a1401d` from `RES-20260725-ALPHA-HYP-001`, `0.0024555%` daily growth;
-- rank 7: `fragmented_flow_reversal 95f3b144d5a291abc61c` from `RES-20260726-FLOW-IMPACT-EFFICIENCY-001`, `0.0020533%` daily growth;
-- ranks 8 and 9 remain the negative `balance_to_imbalance` and cross-asset lead-lag records.
-
-The positive 10-symbol cross-sectional funding result is excluded because its tradable universe is outside the fixed four-symbol contract. Positive execution proxies and records explicitly marked non-rank-eligible remain outside the strategy ranking with their reasons recorded rather than being silently discarded.
-
-The current execution-routing component first place remains `RES-20260725-1510-L1-EXEC-001`, which improved modeled execution drag but has negative standalone expectancy.
-
-## Ranking policy
-
-- Hard-invalid results are excluded from strategy ranking but remain in the failure record.
-- The primary ranking criterion is closeness to the full project objective, led by the gap to 1% after-cost geometric daily growth.
-- A forced-liquidation or irrecoverable account path cannot outrank a survival-qualified candidate solely through raw return.
-- Drawdown/recovery, liquidation/tail risk, concentration, effective independent trades, execution robustness, capital efficiency and comparison confidence resolve similar or uncertain target gaps.
-- Economic gate failure, validation stage and deployability are reported separately from rank.
-- Rank does not determine research priority, validation budget, protection or the next work item.
-- Results are recorded once; rank changes update the ranking record without repeated backup or validation.
-
-## Active work
-
-The slower Coinbase institutional-flow branch PR #159 was closed before any scientific result because it duplicated the faster Coinbase spot-to-Bybit dependency. The retained active path is `CLM-20260726-1935-ML-COINBASE-SPOT-001` / PR #155: one Coinbase BTC spot-flow displacement, one calibrated ML router, 500/1,000-ms causal Bybit execution and one structural payoff. Exact-arrival cross-venue V5D also remains active but its latest run stopped during source-frame preparation before a decision-ready economic result.
-
-Reported work has rejected the tested first-passage, leverage-positioning, option-flow, option-surface, L2 hazard, L2 sweep-router, wallet-skill, parent-cadence and adjacent completed-bar dependencies under their recorded contracts. They do not receive threshold, feature, risk or leverage rescue.
+The fixed 2024 portfolio takeover that combined the now-ineligible dynamic state-exit with aligned continuation is stopped before any 2024 strategy outcome is opened. Replaying an invalid component would consume research budget without producing a ranking-eligible portfolio.
 
 ## Current objective
 
-Consume the retained fast Coinbase spot-flow ML result and corrected exact-arrival cross-venue result as soon as they become decision-ready. A positive hard-valid result is inserted into the cumulative ranking immediately under normalized conditions; a negative result is retired immediately. Do not spend the remaining research budget polishing ranked failures.
+Do not protect the new first place. It remains only a provisional benchmark and is still roughly 15.83 times short of the 1% daily-growth objective.
+
+Continue the retained high-information ML paths that have strategy-defined exits:
+
+- Coinbase aggressive spot flow into delayed executable Bybit BBO;
+- Bybit mark/index acceptance after an executable liquidity raid;
+- funding-boundary movement-hazard OCO if its frozen source passes.
+
+A positive hard-valid result is inserted immediately. A negative result is retired without model, feature, threshold, stop, risk or leverage rescue.
 
 ## Current blockers
 
-Every positive raw rank remains far below the 1% target and has material concentration, sample, cost or sequential-robustness defects. No candidate has survived sequential selection with robust cost, concentration and regime behavior. Capital velocity remains low, and exact historical queue/depth execution is incomplete.
+No candidate has robust sequential OOS evidence after realistic Bybit execution, funding, concentration removal and regime changes. The provisional first place has severe positive-tail dependence and no Bybit replay. The project still lacks a high-frequency, cost-sized ML information unit with repeatable positive median expectancy.
 
 ## Next exact action
 
-Finish the retained Coinbase 500/1,000-ms source correction and frozen ML screen in PR #155, then consume the exact-arrival V5D output. If neither produces cost-surviving incremental information, switch the primary information source or payoff rather than retuning their models, thresholds, stops, risk rates or leverage.
+Consume the already-running Coinbase and mark/index ML workflows as soon as they become decision-ready. If neither survives 24-bps costs and winner removal, switch to a materially new forced-flow or inventory-transfer information source rather than extending the Donchian or legacy completed-bar grids.

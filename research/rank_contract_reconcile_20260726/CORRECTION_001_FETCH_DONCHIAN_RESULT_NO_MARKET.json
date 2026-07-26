@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-RANK-AUDIT-DONCHIAN-PATH-001",
+  "claim_id": "CLM-20260726-2014-RANK-CONTRACT-RECONCILE-001",
+  "recorded_at": "2026-07-26T20:31:00+09:00",
+  "trigger": "The first audit stopped before producing AUDIT.json because RES-20260726-DONCHIAN-DEPENDENCE-001 exists on its immutable research branch but was never merged into the audit branch's working tree.",
+  "failure_workflow_run": 30199906957,
+  "failure_artifact": 8631398928,
+  "source_fix": {
+    "repository_commit": "53434193d5612fe40c998618b6f74e5368ecaedf",
+    "source_path": "research/donchian_trade_dependence_20260726/results/result.json",
+    "source_blob_sha": "31453a4b313412549f9d78a505d1329d4528436a",
+    "action": "fetch the immutable commit and materialize exactly this JSON before running the unchanged audit"
+  },
+  "unchanged": [
+    "dynamic-factor extension bundle and all SHA checks",
+    "Donchian result contents",
+    "current ranking contents",
+    "audit comparisons and assertions",
+    "no market replay, model fit, parameter search, 2024-2026 access or orders"
+  ]
+}

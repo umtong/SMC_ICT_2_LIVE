@@ -1,0 +1,103 @@
+name: Rank contract reconciliation audit
+
+on:
+  push:
+    branches:
+      - agent/r12-rank-contract-reconcile-001
+    paths:
+      - "research/rank_contract_reconcile_20260726/**"
+      - ".github/workflows/rank-contract-reconcile-r12.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/rank_contract_reconcile_20260726/**"
+      - ".github/workflows/rank-contract-reconcile-r12.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rank-contract-reconcile-r12-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r12-rank-contract-reconcile-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Materialize immutable Donchian result without opening market data
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/rank_contract_reconcile_20260726
+          python -m json.tool "$root/CORRECTION_001_FETCH_DONCHIAN_RESULT_NO_MARKET.json" >/dev/null
+          donchian_commit=53434193d5612fe40c998618b6f74e5368ecaedf
+          donchian_path=research/donchian_trade_dependence_20260726/results/result.json
+          git fetch --no-tags --depth=1 origin "$donchian_commit"
+          mkdir -p "$(dirname "$donchian_path")"
+          git show "$donchian_commit:$donchian_path" > "$donchian_path"
+          test "$(git hash-object "$donchian_path")" = "31453a4b313412549f9d78a505d1329d4528436a"
+          python -m json.tool "$donchian_path" >/dev/null
+
+      - name: Reconstruct immutable evidence and audit ranking contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/rank_contract_reconcile_20260726/audit.py \
+            2>&1 | tee /tmp/rank-contract-audit.log
+          python -m json.tool \
+            research_results/rank_contract_reconcile_20260726/AUDIT.json >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research_results/rank_contract_reconcile_20260726/AUDIT.json')
+          r=json.loads(p.read_text())
+          assert r['authority']['market_data_opened'] is False
+          assert r['authority']['strategy_replayed'] is False
+          assert r['authority']['orders_submitted'] is False
+          assert r['state_exit_source_audit']['contains_maximum_hold_bars'] is True
+          assert r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'] > 0
+          print(json.dumps({
+            'current_first': r['current_first_place']['first_place_id'],
+            'contains_maximum_hold_bars': r['state_exit_source_audit']['contains_maximum_hold_bars'],
+            'challenger_growth_delta': r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'],
+          }, sort_keys=True))
+          PY
+          python scripts/validate_project.py
+
+      - name: Commit immutable audit evidence
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research_results/rank_contract_reconcile_20260726 \
+            research/rank_contract_reconcile_20260726/CORRECTION_001_FETCH_DONCHIAN_RESULT_NO_MARKET.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record ranking-contract audit [skip ci]"
+          git push origin HEAD:agent/r12-rank-contract-reconcile-001
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rank-contract-reconcile-r12-${{ github.sha }}
+          path: |
+            research_results/rank_contract_reconcile_20260726
+            /tmp/rank-contract-audit.log
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
