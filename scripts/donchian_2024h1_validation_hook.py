@@ -27,7 +27,9 @@ def sha256_file(path: Path) -> str:
 
 def run(command: list[str]) -> None:
     print("DONCHIAN_2024H1_HOOK_COMMAND", json.dumps(command))
-    subprocess.run(command, cwd=ROOT, check=True)
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(CLAIM_ROOT)
+    subprocess.run(command, cwd=ROOT, env=environment, check=True)
 
 
 def compact_result(result: dict) -> dict:
