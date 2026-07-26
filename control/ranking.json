@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 14,
+  "revision": 15,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260726-R14",
+  "ranking_id": "STRATEGY-RANKING-20260726-R15",
   "ranking_rule": {
     "eligibility": "hard_valid_or_preliminary_causal_strategy_or_portfolio_compatible_with_current_fixed_project_contract",
     "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
@@ -91,14 +91,19 @@
     {"source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001", "reason": "Removed: the four-trade best raw path uses hold_minutes=30 and becomes negative after winner removal."},
     {"source_result_id": "RES-20260725-XSEC-FUNDING-CROWDING-001", "reason": "Outside the fixed four-symbol traded universe; no normalized BTC/ETH/SOL/XRP-only account path exists."},
     {"source_result_id": "RES-20260726-MARK-INDEX-RAID-ML-001", "reason": "One sparse sample-day trade is not a normalized full-calendar account growth path; the model was inferior to structural distance and the trade disappears under winner removal."},
+    {"source_result_id": "RES-20260726-ML-DIRECT-UTILITY-001", "reason": "Hard-valid negative pre-2024 screen: frozen calibration scale 0, zero prediction variance, worse error than the constant baseline and zero authorized trades at 12/18/24bp; development and risk/leverage search unopened."},
+    {"source_result_id": "RES-20260726-ML-PATH-CONTINUITY-001", "reason": "Hard-valid negative: HGBT underperformed structural distance and the 24bp account lost 71.93%, with still worse winner-removed performance."},
+    {"source_result_id": "RES-20260726-ML-OKX-CONSENSUS-001", "reason": "Hard-valid event-scarcity result: 116/67/8 train/calibration/confirmation events, no model or account path."},
+    {"source_result_id": "RES-20260726-ML-AAVE-LIQUIDATION-SOURCE-UNAVAILABLE-001", "reason": "Outcome-sealed source failure before prices, labels, model or PnL; not negative-alpha evidence and no ranking path."},
     {"source_result_id": "source_only_and_hard_invalid_results", "reason": "Source-only probes, hard-invalid outputs and non-tradable oracles have no ranking account path."}
   ],
   "component_rankings": [{"component": "execution_routing", "rank": 1, "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER", "source_result_id": "RES-20260725-1510-L1-EXEC-001", "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag while remaining unsuitable as a standalone strategy."}],
   "reconciliation_notes": [
-    "Reproduced the Donchian all-breakout account from the registered immutable 2023 snapshot and restored its complete 12/18/24bp metrics.",
-    "Removed five lower-ranked legacy paths that use fixed hold bars, maximum holding minutes or timeout exits, plus one INVALID hold-based result.",
-    "Inserted current-contract-compatible structural-exit candidates even when their local result record labeled the screen non-rank-eligible; incomplete execution comparisons are disclosed through VERY_LOW confidence rather than suppressed.",
+    "First place and all eight ranked candidates remain unchanged because the new ML results produced no superior current-contract-compatible positive account path.",
+    "Recorded the direct-utility model as a hard-valid zero-action negative result: its fixed calibration scale was zero and confirmation error was worse than the constant baseline.",
+    "Recorded path-continuity and OKX consensus as negative or event-scarce, and Aave liquidation as source-unavailable before outcomes.",
+    "Active research moved to materially different stablecoin issuance and Uniswap inventory-transfer sources rather than adjacent tuning.",
     "Rank does not imply economic-gate passage, deployment permission, research priority or protection."
   ],
-  "updated_at": "2026-07-26T21:08:00+09:00"
+  "updated_at": "2026-07-26T21:40:00+09:00"
 }
