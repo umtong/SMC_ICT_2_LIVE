@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "correction_id": "PRE-OUTCOME-CORRECTION-001-CURRENT-RANK-AND-SOURCE-GAP-DIAGNOSTIC",
+  "created_at": "2026-07-26T20:49:00+09:00",
+  "trigger": {
+    "ranking_revision": 13,
+    "current_first_place_id": "FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9",
+    "current_first_place_source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+    "current_first_place_geometric_daily_growth_at_24bps": 0.0006318446194384375,
+    "previous_benchmark_geometric_daily_growth": 0.0005730774040979547
+  },
+  "changes": [
+    "Replace the development promotion threshold with geometric daily growth strictly greater than 0.0631845% at 24 bps.",
+    "Export the reconstructed frozen source before project-state validation so a pre-model source failure can be diagnosed without guessing the implementation.",
+    "On any incomplete hourly grid, record exact missing timestamps, contiguous gap ranges, symbol, source files, first timestamp and last timestamp before deciding whether the source is repairable. No price or volume forward-fill is authorized."
+  ],
+  "unchanged": [
+    "model family and all model parameters",
+    "feature set and target",
+    "train, calibration, confirmation and conditional-development dates",
+    "one-global-slot KEEP/SWITCH/FLAT policy",
+    "12, 18 and 24 bp cost paths",
+    "funding reserve",
+    "structural stop and no-elapsed-time-liquidation contract",
+    "risk and notional-cap ladder",
+    "winner-removal rerouting",
+    "sealed 2024-2026 periods"
+  ],
+  "prior_attempts": {
+    "workflow_30200372239": "Stopped during source-grid validation with BTCUSDT missing 544 hourly bars, before model fitting or any strategy outcome.",
+    "workflow_30200574879": "Stopped in project validation because revision 13 temporarily omitted the literal rank-priority invariant, before market loading or any strategy outcome. The invariant was restored and merged in PR 177."
+  },
+  "outcome_state_before_correction": {
+    "model_fit_performed": false,
+    "model_metric_computed": false,
+    "action_selected": false,
+    "trade_generated": false,
+    "pnl_computed": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "authority": "Mechanical source diagnosis and harder current-rank comparison only; this correction cannot make a failing information unit survive."
+}
