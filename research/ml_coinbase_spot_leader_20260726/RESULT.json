@@ -1,0 +1,51 @@
+{
+  "claim_id": "CLM-20260726-1935-ML-COINBASE-SPOT-001",
+  "result_id": "RES-20260726-ML-COINBASE-SPOT-SOURCE-UNAVAILABLE-001",
+  "engine_version": "ML-COINBASE-SPOT-TO-BYBIT-FIRST-PASSAGE-V1",
+  "status": "SOURCE_UNAVAILABLE",
+  "hard_validity": "PASS_SOURCE_PROBE_NO_MARKET_OUTCOME",
+  "economic_status": "NOT_EVALUATED_SOURCE_UNAVAILABLE",
+  "ranking_role": "NONE",
+  "fit_gate_passed": false,
+  "development_opened": false,
+  "prohibited_years_opened": [],
+  "orders_submitted": false,
+  "paper_live_started": false,
+  "market_rows_parsed": false,
+  "model_fitted": false,
+  "labels_computed": false,
+  "actions_computed": false,
+  "trades_computed": false,
+  "pnl_computed": false,
+  "source_probe": {
+    "workflow_run": 30199496456,
+    "artifact_id": 8631189136,
+    "artifact_digest": "sha256:f42394e0e9da2660bc1c2d4fec789aaedb416e6867ba9be67585a2828b2974cf",
+    "observed_at": "2026-07-26T11:06:25Z",
+    "probes": {
+      "bybit_btcusdt_quotes": {
+        "url": "https://datasets.tardis.dev/v1/bybit/quotes/2022/01/01/BTCUSDT.csv.gz",
+        "http_chain": [404],
+        "content_type": "application/json"
+      },
+      "coinbase_btcusd_trades": {
+        "url": "https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTCUSD.csv.gz",
+        "http_chain": [404],
+        "content_type": "application/json"
+      },
+      "coinbase_btc_dash_usd_trades": {
+        "url": "https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTC-USD.csv.gz",
+        "http_chain": [404],
+        "content_type": "application/json"
+      }
+    }
+  },
+  "decision": "Close the exact unauthenticated Tardis CSV transport without making any alpha conclusion. Do not infer positive or negative expectancy, do not alter the model to fit another source after observing no market outcome, and do not spend further execution time repairing a source path that cannot open the preregistered data. Reopen the Coinbase information unit only with a point-in-time historical source that covers the frozen dates and can be independently hashed.",
+  "next_research_boundary": "Change the signal source to an immediately accessible official archive rather than changing thresholds, model, target, stop, latency, risk or leverage.",
+  "limitations": [
+    "This is not an economic strategy result.",
+    "No prediction metric or account path exists.",
+    "The original source and corrected completed-bar code remain research artifacts only.",
+    "Current project ranking and live permission are unchanged."
+  ]
+}
