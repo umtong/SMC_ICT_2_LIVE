@@ -29,7 +29,7 @@ jobs:
           node-version: "24"
       - name: Install public Innertube transcript client
         run: npm install -g @nadimtuhin/ytranscript
-      - name: Probe three blocked videos
+      - name: Probe blocked videos and a known-positive caption control
         shell: bash
         run: |
           mkdir -p artifact
@@ -40,6 +40,7 @@ jobs:
             swipalnam: 'UmEPMyzjQS8',
             chartbro: 'DnGemQi1sOE',
             indicator_sensei: '18U0aD4K21I',
+            known_positive_control: 'F6wDs1HRTSo',
           };
           function run(args) {
             return new Promise((resolve) => {
@@ -79,15 +80,16 @@ jobs:
             }
             const successful = rows.filter(r => r.segment_count > 0 || r.text_chars > 0);
             const output = {
-              schema_version: 1,
+              schema_version: 2,
               run_id: Number(process.env.GITHUB_RUN_ID),
               source_sha: process.env.GITHUB_SHA,
               success_count: successful.length,
+              positive_control_pass: successful.some(r => r.channel === 'known_positive_control'),
               successful,
               rows,
             };
             fs.writeFileSync('artifact/result.json', JSON.stringify(output, null, 2) + '\n');
-            console.log(JSON.stringify({ success_count: successful.length, successful }, null, 2));
+            console.log(JSON.stringify({ success_count: successful.length, positive_control_pass: output.positive_control_pass, successful }, null, 2));
           })().catch(error => { console.error(error); process.exitCode = 1; });
           JS
       - uses: actions/upload-artifact@v4
