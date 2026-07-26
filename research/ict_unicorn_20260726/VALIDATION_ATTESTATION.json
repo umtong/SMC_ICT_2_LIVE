@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-ICT-UNICORN-001",
+  "result_id": "RES-20260726-ICT-UNICORN-001",
+  "status": "PASS_FATAL_SCREEN_ONLY",
+  "validation_scope": "Source reconstruction, native Bybit monthly-file acquisition, causal pivot availability, completed-bar sequencing, Breaker/FVG overlap, first-retest lifecycle, next-open entry, structural exits, one-global-slot account replay, cost stress and stage seals.",
+  "evidence": [
+    "Engine source reconstructed to 61159 bytes and SHA-256 5119e93bf56b4cb8a7cfcd0ea206fd98d77a5d76c1f39f6617af1272a516fec5 before compilation.",
+    "Built-in deterministic causal self-test passed with exactly 128 unique candidates.",
+    "Project harness passed in GitHub Actions run 30192218575.",
+    "Forty-eight native Bybit monthly one-minute files covering four allowed symbols in 2022 were acquired and recorded with compressed SHA-256, row counts and timestamp bounds.",
+    "A complete UTC minute grid was used without forward fill, interpolation or timeline compression.",
+    "Pivots were usable only after right-side confirmation; entry occurred at the next contiguous open after a completed first-retest signal.",
+    "Failed first touches could not be reused; stop won same-bar ambiguity; source gaps after entry were terminal rather than deleted.",
+    "One global slot, 0.5-percent NAV risk sizing, 3x notional cap, prior-turnover capacity and identical 12/18/24-bps paths were enforced.",
+    "All 128 candidates were negative even at 12 bps; no concentration counterfactual was needed to determine the economic failure.",
+    "2023 and every 2024-2026 period remained unopened; no credential or order path was used."
+  ],
+  "known_limitations": [
+    "One-minute bar execution proxy rather than point-in-time Bybit BBO/depth.",
+    "Adverse fixed funding-boundary reserve rather than exact historical funding cashflow.",
+    "Fatal screen only; it cannot support ranking or deployment."
+  ],
+  "workflow_run_id": 30192218575,
+  "artifact_id": 8628962842,
+  "artifact_digest": "sha256:b02daa12594fa04b97cbd73be472f2db54bf40824aa8d4f64b74014dfb5f6a20",
+  "created_at": "2026-07-26T16:10:00+09:00"
+}
