@@ -91,8 +91,9 @@ jobs:
           assert contract['one_model_family'] is True
           assert contract['hyperparameter_grid'] is False
           assert contract['one_economic_decision_rule'] is True
-          assert contract['train_dates']==['2022-01-01','2022-02-01','2022-03-01','2022-04-01','2022-05-01','2022-06-01']
-          assert contract['calibration_dates']==['2022-07-01','2022-08-01']
+          assert result['model']['train_dates']==['2022-01-01','2022-02-01','2022-03-01','2022-04-01','2022-05-01','2022-06-01']
+          assert result['model']['calibration_dates']==['2022-07-01','2022-08-01']
+          assert result['model']['confirmation_dates']==['2022-09-01','2022-11-01']
           assert environment['2024_opened'] is False
           assert environment['2025_opened'] is False
           assert environment['2026_opened'] is False
@@ -117,6 +118,7 @@ jobs:
             "$root/WORK_CLAIM.json" \
             "$root/AMENDMENT-002-SAMPLE-COVERAGE.json" \
             "$root/SUPERSESSION-001-PRESERVE-ORIGINAL-FIT-GUARD.json" \
+            "$root/VALIDATION_CORRECTION_001_RESULT_DATE_LOCATION.json" \
             "$root/source_manifest.json" \
             "$root/reconstruct.py" \
             "$root/apply_sample_amendment.py" \
