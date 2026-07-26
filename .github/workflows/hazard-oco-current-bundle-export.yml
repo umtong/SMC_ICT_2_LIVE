@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Copy exact tracked bytes and require exact reconstruction
+      - name: Compute actual tracked bundle identity without trusting the manifest
         shell: bash
         run: |
           set -euo pipefail
@@ -43,11 +43,67 @@ jobs:
           cp "$root/v2_bundle_manifest.json" "$out/tracked/"
           cp "$root/reconstruct_v2.py" "$out/tracked/"
           sha256sum "$out"/tracked/* > "$out/TRACKED_SHA256SUMS.txt"
-          python "$root/reconstruct_v2.py" | tee "$out/reconstruction.stdout"
-          echo 0 > "$out/reconstruction.status"
-          cp "$root/run_v2.py" "$out/"
-          cp "$root/test_run_v2.py" "$out/"
-          sha256sum "$root/run_v2.py" "$root/test_run_v2.py" > "$out/RECONSTRUCTED_SHA256SUMS.txt"
+          python - <<'PY'
+          from __future__ import annotations
+          import base64
+          import gzip
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('research/hazard_oco_20260726')
+          out = Path('research_runs/hazard_oco_current_bundle')
+          manifest = json.loads((root / 'v2_bundle_manifest.json').read_text(encoding='utf-8'))
+
+          def digest(data: bytes) -> str:
+              return hashlib.sha256(data).hexdigest()
+
+          def inspect_parts(paths: list[Path], output_name: str) -> dict:
+              encoded = ''.join(p.read_text(encoding='utf-8').strip() for p in paths)
+              compressed = base64.b64decode(encoded, validate=True)
+              raw = gzip.decompress(compressed)
+              (out / output_name).write_bytes(raw)
+              return {
+                  'paths': [p.name for p in paths],
+                  'base64_characters': len(encoded),
+                  'gzip_bytes': len(compressed),
+                  'gzip_sha256': digest(compressed),
+                  'output_path': output_name,
+                  'output_bytes': len(raw),
+                  'output_sha256': digest(raw),
+              }
+
+          actual = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260726-1734-HAZARD-OCO-ML-001',
+              'stage': 'TRANSPORT_IDENTITY_ONLY_NO_MARKET_DATA_NO_MODEL_NO_PNL',
+              'run': inspect_parts(sorted(root.glob('run_v2.py.gz.b64.part*')), 'run_v2.py'),
+              'test': inspect_parts([root / 'test_run_v2.py.gz.b64'], 'test_run_v2.py'),
+              'declared_manifest': manifest,
+          }
+          records = {record['output_path']: record for record in manifest['files']}
+          actual['matches_manifest'] = {
+              name: all(
+                  actual[key][field] == records[name].get(field)
+                  for field in ('base64_characters', 'gzip_sha256', 'output_sha256', 'output_bytes')
+              )
+              for key, name in (('run', 'run_v2.py'), ('test', 'test_run_v2.py'))
+          }
+          (out / 'ACTUAL_BUNDLE.json').write_text(
+              json.dumps(actual, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print('ACTUAL_BUNDLE=' + json.dumps(actual, sort_keys=True, separators=(',', ':')))
+          PY
+      - name: Capture current manifest reconstruction status
+        shell: bash
+        run: |
+          set +e
+          root=research/hazard_oco_20260726
+          out=research_runs/hazard_oco_current_bundle
+          python "$root/reconstruct_v2.py" > "$out/reconstruction.stdout" 2> "$out/reconstruction.stderr"
+          status=$?
+          echo "$status" > "$out/reconstruction.status"
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: hazard-oco-current-bundle-${{ github.sha }}
