@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-CME-GAP-ML-CORE-001",
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "provisional_result_id": "RES-20260726-CME-GAP-ML-FATAL-001",
+  "amended_at": "2026-07-26T17:15:00+09:00",
+  "trigger": {
+    "reason": "The project instruction now requires the deployed system to be ML-based and to remove unnecessary strategy grids and features.",
+    "source_probe_workflow": 30193397892,
+    "source_probe_artifact": 8629319683,
+    "source_probe_passed": true,
+    "strategy_pnl_opened_before_amendment": false,
+    "candidate_metrics_opened_before_amendment": false,
+    "2022_development_opened_before_amendment": false,
+    "2023_confirmation_opened_before_amendment": false
+  },
+  "superseded_unopened_contract": {
+    "legacy_policy_count": 432,
+    "legacy_families": [
+      "rule_grid_gap_rebalance",
+      "rule_grid_gap_acceptance"
+    ],
+    "legacy_runner": "research/cme_opening_gap_20260726/run_screen.py",
+    "status": "SUPERSEDED_BEFORE_ANY_STRATEGY_OUTCOME",
+    "scientific_use": "SOURCE_AND_EXECUTION_HELPERS_ONLY",
+    "legacy_grid_executed": false
+  },
+  "objective": "Use one calibrated, explainable competing-risk model to decide whether a true CME Bitcoin/Ether opening gap is more likely to rebalance to the prior CME close or continue toward already-known external crypto liquidity, and trade only when structural distances and the predicted probability imply positive after-cost expectancy.",
+  "trader_explanation": {
+    "name": "ML CME NDOG/NWOG Competing-Risk Router",
+    "sequence": [
+      "The real CME close-to-open gap defines the institutional fair-value array.",
+      "The first two completed 15-minute crypto bars reveal whether delivery is leaning back into the gap or accepting away from it.",
+      "One shared ML model estimates which of two frozen liquidity destinations is reached first: the mapped prior CME close or the nearest known previous-day/previous-week liquidity in the gap direction.",
+      "The model does not invent a target. It only routes between the two SMC/ICT structural destinations.",
+      "Trade only when the model probability and the actual target/stop distances have positive expected value after an 18-bp decision cost.",
+      "Entry is the next 15-minute open; the unselected destination is the structural stop; no elapsed-time liquidation is used."
+    ]
+  },
+  "active_model_contract": {
+    "policy_count": 1,
+    "model_id": "CME_GAP_COMPETING_RISK_LOGIT_V1",
+    "model_type": "one shared standardized L2 logistic competing-risk classifier",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "label": "After the fixed decision time, continuation=1 when the nearest prior-day/prior-week external liquidity in the CME-gap direction is touched before the mapped prior CME close; rebalance=0 for the reverse order. Same-bar double touches and stage-end censoring are not training labels.",
+    "decision_time": "After exactly two completed 15-minute bars from the mapped CME reopen; entry is the following 15-minute open.",
+    "feature_names": [
+      "symbol_eth",
+      "gap_kind_nwog",
+      "gap_signed_atr",
+      "residual_in_gap_direction",
+      "response_in_gap_direction_atr",
+      "rebalance_progress",
+      "response_body_efficiency",
+      "response_wick_support",
+      "log_volume_ratio",
+      "pretrend_in_gap_direction_atr",
+      "log_continuation_to_rebalance_distance"
+    ],
+    "feature_count": 11,
+    "hyperparameters": {
+      "C": 0.25,
+      "penalty": "L2",
+      "solver": "lbfgs",
+      "standardization": "training rows only",
+      "random_state": 0,
+      "maximum_absolute_roll_residual_bps": 35.0,
+      "minimum_gap_atr": 0.15,
+      "decision_cost_bps": 18.0
+    },
+    "model_selection": "NONE",
+    "hyperparameter_grid": "NONE",
+    "alternative_models": "NONE",
+    "probability_threshold_grid": "NONE",
+    "route": "Compute expected net basis points for continuation and rebalancing from the predicted probability and the two actual structural distances. Select only the larger route when its expected value after 18 bp is positive; otherwise abstain.",
+    "stop_and_target": "The selected structural destination is the target and the other destination is the stop. Same-bar ambiguity is stop-first and gap stops execute at the adverse observed open.",
+    "global_slot": "One pending/open BTCUSDT-or-ETHUSDT position across the whole account."
+  },
+  "chronological_contract": {
+    "training": "2021-01-01 through 2021-08-31",
+    "fit_holdout": "2021-09-01 through 2021-12-31",
+    "development_if_fit_passes": "2022-01-01 through 2022-12-31",
+    "confirmation_if_development_passes": "Refit the identical model on all labeled 2021-2022 events, then evaluate 2023-01-01 through 2023-12-31.",
+    "2024_2025_2026_opened": false
+  },
+  "cost_and_execution_contract": {
+    "data": "Yahoo CME continuous-front daily OHLCV plus checksum-verified official Binance USD-M 15-minute and funding archives are fatal-screen proxies only.",
+    "all_in_round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "same_gross_path_replay": true,
+    "actual_historical_funding": true,
+    "same_bar_exit": "protective stop before target",
+    "gap_stop": "adverse observed open",
+    "forced_elapsed_time_exit": false,
+    "final_required_venue": "Bybit USDT linear perpetual"
+  },
+  "gates": {
+    "fit_holdout": {
+      "minimum_resolved_trades_at_18bp": 20,
+      "mean_trade_at_18bp": "> 0",
+      "median_trade_at_12bp": "> 0",
+      "total_return_at_24bp": "> 0",
+      "top_10_percent_positive_removed_return_at_18bp": "> 0",
+      "top_five_positive_trade_share_at_18bp": "<= 50%",
+      "positive_two_month_block_fraction_at_18bp": "2/2",
+      "unresolved_positions": 0
+    },
+    "development_and_confirmation": {
+      "minimum_resolved_trades_at_18bp": 40,
+      "mean_trade_at_18bp": "> 0",
+      "median_trade_at_12bp": "> 0",
+      "total_return_at_24bp": "> 0",
+      "top_10_percent_positive_removed_return_at_18bp": "> 0",
+      "top_five_positive_trade_share_at_18bp": "<= 50%",
+      "positive_quarter_fraction_at_18bp": ">= 3/4",
+      "unresolved_positions": 0
+    }
+  },
+  "conditional_decision": {
+    "fit_failure": "Close the exact CME-gap ML dependency without opening 2022.",
+    "development_failure": "Close without opening 2023.",
+    "confirmation_survivor": "Freeze exact CME contract identities and exact Bybit BBO/depth, funding, sizing and causal NAV replay before official 2024. The proxy result itself cannot rank."
+  },
+  "prohibitions": [
+    "no execution of the superseded 432-policy rule grid",
+    "no additional model family",
+    "no hyperparameter or probability-threshold search",
+    "no feature expansion after outcomes",
+    "no 2022 source request unless fit holdout passes",
+    "no 2023 source request unless development passes",
+    "no 2024, 2025 or 2026 source request",
+    "no elapsed-time forced close",
+    "no credentials, paper, testnet or live orders",
+    "no ranking promotion from the Yahoo/Binance proxy screen"
+  ]
+}
