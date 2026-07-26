@@ -16,6 +16,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest==8.3.4"]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts", "scripts.*"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
