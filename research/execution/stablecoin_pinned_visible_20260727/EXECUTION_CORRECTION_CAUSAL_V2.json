@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VISIBLE-CAUSAL-V2-019",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "before corrected source decision and before any BTC/ETH market outcome, model metric, trade or PnL",
+  "supersedes_execution_pin": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VISIBLE-PINNED-018",
+  "source_commit": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
+  "economic_commit": "b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8",
+  "reason": [
+    "the prior economic pin could read completed-state features at the entry-minute index",
+    "the prior economic pin assigned a synthetic structural loss to positions unresolved at a partition boundary"
+  ],
+  "corrected_contract": [
+    "features are strictly available before the entry-minute open",
+    "partition-boundary positions remain marked evidence and are never claimed as a strategy exit",
+    "continuous UTC marked NAV includes unresolved exposure without forced liquidation"
+  ],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer source identities",
+    "2021-2023 source chronology and block+12/block+64 availability",
+    "one HGBT and one calibration map",
+    "features, first-passage label and structural action equation",
+    "12/18/24bp account paths and one global slot",
+    "winner-event exclusion before complete rerouting",
+    "risk and notional search domain",
+    "immediate 2024H1 only after the complete pre-2024 survivor condition"
+  ],
+  "market_outcome_opened": false,
+  "official_2024_2026_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
