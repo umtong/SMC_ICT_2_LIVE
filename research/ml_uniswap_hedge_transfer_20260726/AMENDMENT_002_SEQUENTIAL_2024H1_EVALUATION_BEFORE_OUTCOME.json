@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "amendment_id": "AMENDMENT-20260726-ML-UNISWAP-SEQUENTIAL-2024H1-002",
+  "recorded_at": "2026-07-26T21:45:00+09:00",
+  "status": "PRE_MARKET_OUTCOME_EVALUATION_CONTRACT_CORRECTION",
+  "reason": "The official half-year periods are sequential research intervals. They must not remain sealed after a complete pre-2024 candidate is frozen merely to preserve nominal OOS purity.",
+  "outcome_access_before_amendment": {
+    "source_gate_in_progress": true,
+    "dex_cex_price_comparison_opened": false,
+    "future_label_opened": false,
+    "model_fitted": false,
+    "trade_path_opened": false,
+    "pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "canonical Uniswap V3 WETH-stable inventory-transfer information unit",
+    "120-second information delay",
+    "single HGBT and structural-distance baseline",
+    "event threshold fitted only on the fit partition",
+    "external-liquidity first-passage target and stop",
+    "one global ETHUSDT slot",
+    "12, 18 and 24 bp cost paths",
+    "no elapsed-time liquidation"
+  ],
+  "pre_2024_freeze": {
+    "requirement": "The unchanged route must pass confirmation and 2023 development with positive 24-bp growth, positive median, positive winner-removal, period breadth and no liquidation.",
+    "exact_bybit_reconstruction": "Before official 2024 opens, reproduce the unchanged events on exact Bybit BBO, mark, funding, latency, executable quantity and account NAV using only information available through 2023-12-31.",
+    "risk_notional_search": {
+      "opens_only_after_full_pre_2024_gate": true,
+      "planned_stop_risk_fraction": [0.0025, 0.6],
+      "notional_cap_multiple": [1, 100],
+      "selection": "Freeze the no-liquidation path with the highest realistic 24-bp geometric daily growth among paths that remain positive after top-10-percent winner removal. Do not cap performance at 1%."
+    }
+  },
+  "official_sequential_evaluation": [
+    {
+      "period": "2024H1",
+      "start": "2024-01-01T00:00:00Z",
+      "end_exclusive": "2024-07-01T00:00:00Z",
+      "information_cutoff": "2023-12-31T23:59:59Z",
+      "action": "Open immediately after the complete pre-2024 Bybit strategy, sizing and execution rule are frozen."
+    },
+    {
+      "period": "2024H2",
+      "start": "2024-07-01T00:00:00Z",
+      "end_exclusive": "2025-01-01T00:00:00Z",
+      "information_cutoff": "2024-06-30T23:59:59Z"
+    },
+    {
+      "period": "2025H1",
+      "start": "2025-01-01T00:00:00Z",
+      "end_exclusive": "2025-07-01T00:00:00Z",
+      "information_cutoff": "2024-12-31T23:59:59Z"
+    },
+    {
+      "period": "2025H2",
+      "start": "2025-07-01T00:00:00Z",
+      "end_exclusive": "2026-01-01T00:00:00Z",
+      "information_cutoff": "2025-06-30T23:59:59Z"
+    },
+    {
+      "period": "2026H1",
+      "start": "2026-01-01T00:00:00Z",
+      "end_exclusive": "2026-07-01T00:00:00Z",
+      "information_cutoff": "2025-12-31T23:59:59Z"
+    }
+  ],
+  "decision_rule": "If an official half-year remains structurally far from the 1% after-cost daily geometric-growth objective, retire this information unit immediately and switch alpha. If promising, use only information available through the interval cutoff to freeze the next version for the next half-year.",
+  "oos_semantics": "A period already inspected may guide the next version but may not be represented as fresh independent OOS evidence for that modified version.",
+  "authority": {
+    "ranking_change": false,
+    "live_permission_change": false,
+    "credentials": false,
+    "orders": false
+  }
+}
