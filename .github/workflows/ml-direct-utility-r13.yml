@@ -35,6 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: agent/r13-ml-direct-utility-001
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
@@ -65,14 +66,18 @@ jobs:
           mkdir -p "$out/source"
           cp "$root/run.py" "$root/test_run.py" "$out/source/"
           sha256sum "$out/source/run.py" "$out/source/test_run.py" > "$out/source/SOURCE_SHA256SUMS.txt"
+          set +e
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+          echo ${PIPESTATUS[0]} > "$out/PROJECT_VALIDATION_EXIT_CODE.txt"
+          set -e
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_001_SOURCE_GAP_CONTINUITY.json" >/dev/null
 
       - uses: actions/cache@v4
         with:
           path: /tmp/ml-direct-utility-r13
-          key: ml-direct-utility-r13-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json') }}
+          key: ml-direct-utility-r13-gap-v2-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json', 'research/ml_direct_utility_20260726/AMENDMENT_001_SOURCE_GAP_CONTINUITY.json') }}
 
       - name: Run frozen pre-2024 direct-utility screen
         run: |
@@ -98,6 +103,8 @@ jobs:
           assert result['hyperparameter_grid'] is False
           assert result['one_global_slot'] is True
           assert result['no_elapsed_time_liquidation'] is True
+          assert result['source_gaps_interpolated'] is False
+          assert result['gap_crossing_labels_allowed'] is False
           assert result['official_2024_2026_opened'] is False
           assert result['orders_submitted'] is False
           assert contract['one_model_family'] is True
@@ -124,14 +131,15 @@ jobs:
           sha256sum \
             "$root/WORK_CLAIM.json" \
             "$root/preregistration.json" \
+            "$root/AMENDMENT_001_SOURCE_GAP_CONTINUITY.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
             "$root/source_manifest.json" \
-            "$root/run.py.gz.b64" \
+            "$root"/run.py.gz.b64.part* \
             "$root/reconstruct.py" \
             "$root/run.py" \
             "$root/test_run.py" \
-            > "$out/INPUT_SHA256SUMS.txt" || true
+            > "$out/INPUT_SHA256SUMS.txt"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
