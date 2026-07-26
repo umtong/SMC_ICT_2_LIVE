@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1849-ML-XVENUE-L2-SWEEP-001",
+  "provisional_result_id": "RES-20260726-ML-XVENUE-L2-SWEEP-001",
+  "hypothesis": "Displayed liquidity changes on Binance Futures can distinguish whether a completed Bybit dealing-range boundary raid is genuine accepted delivery or a rejected liquidity sweep before Bybit alone reveals the final draw on liquidity.",
+  "explainable_translation": {
+    "external_liquidity": "The immediately preceding completed Bybit five-minute high and low.",
+    "sweep": "The first one-sided trade through exactly one frozen boundary in the next five-minute block.",
+    "confirmation_time": "One entire post-raid second must close before the model decision; the first executable Bybit quote is at least 100 ms later.",
+    "acceptance": "Continuation toward a fixed half-range extension before the untouched opposite boundary.",
+    "rejection": "Reversal toward the untouched opposite boundary before the same-side half-range extension.",
+    "ml_role": "One model estimates which of the two structural liquidity objectives is reached first; cost-adjusted expected value may select continuation, reversal, or flat."
+  },
+  "universe": {
+    "signal_exchange": "binance-futures",
+    "execution_exchange": "bybit",
+    "symbol": "BTCUSDT",
+    "product": "USDT linear perpetual",
+    "global_slots": 1
+  },
+  "data_contract": {
+    "data_types": [
+      "binance-futures/book_snapshot_5",
+      "binance-futures/trades",
+      "bybit/quotes",
+      "bybit/trades"
+    ],
+    "availability_clock": "Tardis local_timestamp",
+    "train_dates": ["2022-01-01", "2022-03-01", "2022-05-01"],
+    "calibration_dates": ["2022-07-01"],
+    "confirmation_dates": ["2022-09-01", "2022-11-01"],
+    "conditional_development_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "sealed_dates": "every date from 2024-01-01 onward",
+    "development_download_condition": "all fit confirmation gates pass without changing any dependency"
+  },
+  "model_contract": {
+    "model": "HistGradientBoostingClassifier",
+    "calibrator": "IsotonicRegression",
+    "model_count": 1,
+    "feature_count": 10,
+    "features": [
+      "direction-normalized supportive displayed additions",
+      "direction-normalized opposing displayed additions",
+      "direction-normalized supportive displayed withdrawals",
+      "direction-normalized opposing displayed withdrawals",
+      "direction-normalized Binance top-five depth imbalance",
+      "direction-normalized Binance microprice skew",
+      "direction-normalized Binance aggressive-flow imbalance",
+      "direction-normalized Binance minus Bybit one-second return gap",
+      "Bybit sweep depth divided by prior range",
+      "Bybit decision position/reclaim divided by prior range"
+    ],
+    "baseline": "Exact competing-barrier distance probability computed from the executable entry midpoint.",
+    "action_rule": "Choose the larger of continuation and reversal expected values only when it exceeds the 24-bp contract by an additional fixed 5 bp; otherwise remain flat.",
+    "forbidden": [
+      "feature/model/threshold grid",
+      "directional signal override",
+      "future-smoothed state",
+      "post-result calibration change",
+      "risk or leverage rescue"
+    ]
+  },
+  "structural_payoff": {
+    "continuation_target": "raided boundary plus or minus 0.50 of the prior dealing range",
+    "continuation_stop": "untouched opposite dealing-range boundary",
+    "reversal_target": "untouched opposite dealing-range boundary",
+    "reversal_stop": "same-side 0.50 range extension",
+    "elapsed_time_exit": false,
+    "source_boundary": "full structural stop",
+    "same_timestamp_double_barrier": "ambiguous event excluded before model fitting"
+  },
+  "execution_account": {
+    "entry_latency_ms": 100,
+    "exit_latency_ms": 100,
+    "maximum_quote_delay_ms": 1000,
+    "initial_nav_usdt": 10000,
+    "planned_risk_fraction": 0.01,
+    "maximum_notional_multiple": 3.0,
+    "prior_60s_turnover_participation": 0.005,
+    "round_trip_cost_bps": [12, 18, 24],
+    "adverse_funding_reserve_bps_per_8h_boundary": 2,
+    "top_winner_removal": "Remove the largest 10 percent of positive event PnL and rerun global-slot arbitration from initial NAV."
+  },
+  "fit_gate": {
+    "model_auc_lift_over_distance": 0.01,
+    "positive_brier_skill_over_distance": true,
+    "minimum_resolved_confirmation_events": 200,
+    "minimum_accepted_24bp_trades": 80,
+    "positive_24bp_mean_median_pf_and_return": true,
+    "positive_18bp_winner_removed_return": true,
+    "minimum_positive_confirmation_dates": 2,
+    "maximum_top_five_positive_pnl_share": 0.40,
+    "minimum_18bp_winner_removed_geometric_growth_per_sample_day": 0.01,
+    "maximum_unresolved_share": 0.10
+  },
+  "promotion_boundary": "This sparse first-day pre-2024 screen is not rank eligible. A survivor must expand unchanged across all remaining pre-2024 source partitions and then receive exact Bybit funding, liquidation-distance, capacity and continuous account replay before official 2024 can open.",
+  "orders_submitted": false
+}
