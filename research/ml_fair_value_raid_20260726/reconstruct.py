@@ -11,12 +11,12 @@ SOURCE = ROOT / "run.py.gz.b64"
 TARGET = ROOT / "run.py"
 DIAGNOSTICS = ROOT / "RECONSTRUCTED_SOURCE.json"
 EXPECTED = {
-    "base64_bytes": 15681,
-    "base64_sha256": "72d0026311a47047a14fc12ed53527358bdbeda497582116d85d3d77090ba9d6",
-    "gzip_bytes": 11760,
-    "gzip_sha256": "4588ee6597ceb8566607eaddbd7f14ff429ed79197b13a6a9bddc228e4ad4824",
-    "raw_bytes": 48557,
-    "raw_sha256": "8a9f925e82e8e69971dfe8dd1360e83e039be972c41b0164638f0c1f1431ef8c"
+    "base64_bytes": 16085,
+    "base64_sha256": "a3ea86f2e8dff289a77ddff9b7a8934a5a7352e5bb18984d61f5b2ab107e1a64",
+    "gzip_bytes": 12063,
+    "gzip_sha256": "c842630e89cbc661f7e6200e7069c7e1fdc1bb17c597e2c92e6342f76fcaad51",
+    "raw_bytes": 49951,
+    "raw_sha256": "8cc765ecc379da4808599d95f91a5c44d3672483141d34d7781cf9c336fdc3c9"
 }
 
 
