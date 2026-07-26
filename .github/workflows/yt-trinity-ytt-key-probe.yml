@@ -2,6 +2,11 @@ name: YT Trinity authenticated caption probe
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - control/yt-trinity-ytt-key-probe-trigger.json
+      - .github/workflows/yt-trinity-ytt-key-probe.yml
   push:
     branches: [agent/yt-trinity-caption-exec-001]
     paths:
@@ -12,7 +17,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-ytt-key-probe-${{ github.ref }}
+  group: yt-trinity-ytt-key-probe-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -22,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -96,7 +101,7 @@ jobs:
               raise SystemExit('known-positive caption control failed')
           PY
       - name: Persist probe pointer
-        if: always()
+        if: always() && github.event_name == 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
