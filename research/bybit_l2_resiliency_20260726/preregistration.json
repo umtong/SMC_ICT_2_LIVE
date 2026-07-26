@@ -1,14 +1,19 @@
 {
   "schema_version": 1,
-  "study_id": "BYBIT_L2_RESILIENCY_AGGRESSIVE_ALPHA_V1",
-  "result_id": "RES-20260726-BYBIT-L2-RESILIENCY-FATAL-001",
+  "study_id": "BYBIT_COST_SENSITIVE_ML_LOB_ALPHA_V1",
+  "result_id": "RES-20260726-BYBIT-ML-LOB-FATAL-001",
   "claim_id": "CLM-20260726-BYBIT-L2-RESILIENCY-001",
   "research_stage": "high_information_pre_2024_fatal_alpha_screen",
   "rank_eligible": false,
-  "economic_objective": "Find a high-turnover Bybit-native edge whose realistic 24bp-stress account path can exceed 1% sample-day geometric growth before spending time on full official-period reconstruction.",
+  "economic_objective": "Find a high-turnover Bybit-native nonlinear order-book edge whose realistic 24bp-stress account path can exceed 1% sample-day geometric growth before spending time on full official-period reconstruction.",
+  "scope_boundary": {
+    "primary_decision_rule": "A cost-sensitive nonlinear model directly forecasts future executable BBO return magnitude and direction from stationary full-book and event-flow features.",
+    "not_the_pr68_rule_family": "No liquidity-pull continuation or pull-refill failure threshold is used to select a trade. Cancellation and refill estimates are auxiliary model inputs among queue shape, multi-level OFI, microprice, spread, aggressive flow, update intensity, response efficiency, volatility and clock state.",
+    "fit_partition_difference": "Only 2022-07-01 labels fit the model; 2023-07-01 is untouched development. PR #68 fits hand-specified rules on March/May/July 2023 and conditionally opens later 2023 dates."
+  },
   "hypothesis": {
-    "mechanism": "Displayed depth changes that cannot be explained by aggressive executions identify cancellation-led liquidity withdrawal or unusually fast replenishment. Their interaction with signed aggressive flow, microprice, depth imbalance and short-horizon price response forecasts continuation after a genuine liquidity vacuum and reversal after failed depletion with rapid refill.",
-    "why_cost_scale_can_be_large": "The screen selects only the strongest multivariate events, crosses the spread after explicit latency, and requires the predicted executable move to survive 24bp all-in cost rather than optimizing a sub-basis-point passive edge.",
+    "mechanism": "A nonlinear interaction of stationary multi-level order-flow imbalance, queue geometry, spread, microprice, update intensity, aggressive flow, execution-adjusted withdrawal/refill, short-horizon response efficiency and volatility predicts the tail of future executable BBO returns better than any single imbalance or cancellation rule. Selecting only forecasts whose magnitude is extreme relative to the fit distribution may isolate moves large enough to clear 24bp all-in cost.",
+    "why_cost_scale_can_be_large": "The screen is trained on executable bid/ask return labels, selects only the strongest multivariate forecasts, crosses the spread after explicit latency and requires the same path to remain profitable at 24bp rather than optimizing a sub-basis-point statistical score.",
     "failure_condition": "No candidate with at least 50 trades has positive mean and median net return at 24bp, positive account return on every development date, and positive 1%-risk daily growth after counterfactual top-winner removal."
   },
   "data": {
@@ -28,13 +33,15 @@
     "decision_time": "end of the completed 100ms bin",
     "signal_frequency_ms": 500,
     "maximum_book_state_age_ms": 500,
+    "stationary_inputs": "multi-level OFI and normalized queue shape rather than raw price levels",
     "depletion_decomposition": "bid and ask five-level depth decreases minus contemporaneous opposing aggressive trade amount",
     "replenishment_decomposition": "five-level depth increases plus contemporaneous amount consumed by opposing aggressive trades",
-    "features": "signed aggressive flow, withdrawal and refill at 0.5/1/3 seconds, microprice, depth imbalance, price-response efficiency, update intensity, volatility and time of day",
+    "features": "multi-level OFI, queue shape, signed aggressive flow, withdrawal/refill at 0.5/1/3 seconds, microprice, depth imbalance, spread, response efficiency, update intensity, volatility and time of day",
     "future_information_prohibition": "entry is one, three or five complete future 100ms bins after decision; labels are used only in the 2022 fit partition"
   },
   "model": {
     "type": "HistGradientBoostingRegressor",
+    "loss_role": "direct future executable BBO return regression; candidate gating is based on absolute forecast tail and independent event-strength tail",
     "separate_horizons_seconds": [5, 15, 30],
     "prediction_absolute_quantiles": [0.9, 0.95, 0.975],
     "event_strength_quantiles": [0.5, 0.75, 0.9],
@@ -67,9 +74,15 @@
     "counterfactual_1pct_risk_sample_day_geometric_growth_24bp": ">=1%",
     "account_path_valid": true
   },
+  "implementation_correction_before_economic_result": {
+    "observed_failure": "pandas datetime Series requires the .dt accessor for hour/minute/second on the first real fit-day build",
+    "allowed_change": "deterministic replacement of Series.hour/minute/second with Series.dt.hour/dt.minute/dt.second after verifying the immutable original evaluator bytes",
+    "economic_contract_changed": false
+  },
   "prohibitions": [
     "no 2024, 2025 or 2026 market data",
     "no same-bin or pre-decision entry",
+    "no hand-coded PR #68 cancellation/refill trade rule",
     "no passive touch fill",
     "no private credentials, paper, testnet or live orders",
     "no ranking promotion from the two-day fatal screen"
