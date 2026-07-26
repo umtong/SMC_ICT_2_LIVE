@@ -1,0 +1,115 @@
+name: Reconcile Donchian all-breakout rank revision 14
+
+on:
+  push:
+    branches:
+      - agent/r14-donchian-all-ranking-001
+    paths:
+      - "research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py"
+      - "research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json"
+      - ".github/workflows/rank-all-breakout-r14.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rank-all-breakout-r14
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r14-donchian-all-ranking-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply immutable-evidence ranking correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py \
+            2>&1 | tee /tmp/rank-all-breakout-r14.log
+          python -m json.tool control/ranking.json >/dev/null
+          python -m json.tool research_results/rank_contract_reconcile_20260726/RESULT.json >/dev/null
+          python -m json.tool research_results/rank_contract_reconcile_20260726/DECISION.json >/dev/null
+          python -m json.tool research_results/rank_contract_reconcile_20260726/RANKING_CORRECTION_002.json >/dev/null
+          python -m json.tool research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          ranking=json.loads(Path('control/ranking.json').read_text())
+          repro=json.loads(Path('research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json').read_text())
+          assert ranking['revision']==14
+          assert ranking['first_place']['first_place_id']=='FIRST-20260726-DONCHIAN-ALL-A70626D9'
+          assert ranking['first_place']['metrics']['base_cost_bps']==24
+          assert abs(ranking['first_place']['metrics']['geometric_daily_growth']-0.0007001887213879954)<1e-15
+          assert ranking['ranked_candidates'][1]['rank']==2
+          assert 'after_loser' in ranking['ranked_candidates'][1]['candidate_label']
+          assert repro['authority']['official_2024_2026_opened'] is False
+          assert repro['authority']['orders_submitted'] is False
+          print(json.dumps({
+              'revision':ranking['revision'],
+              'first_place':ranking['first_place']['first_place_id'],
+              'growth_24bps':ranking['first_place']['metrics']['geometric_daily_growth'],
+              'target_gap':ranking['first_place']['metrics']['target_gap'],
+          },sort_keys=True))
+          PY
+          python scripts/validate_project.py
+
+      - name: Record immutable output hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=research_results/rank_contract_reconcile_20260726
+          sha256sum \
+            control/ranking.json \
+            control/current-state.md \
+            "$out/RESULT.json" \
+            "$out/DECISION.json" \
+            "$out/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json" \
+            "$out/RANKING_CORRECTION_002.json" \
+            research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py \
+            > "$out/R14_SHA256SUMS.txt"
+
+      - name: Commit revision 14 state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            control/ranking.json \
+            control/current-state.md \
+            research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py \
+            research_results/rank_contract_reconcile_20260726/RESULT.json \
+            research_results/rank_contract_reconcile_20260726/DECISION.json \
+            research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json \
+            research_results/rank_contract_reconcile_20260726/RANKING_CORRECTION_002.json \
+            research_results/rank_contract_reconcile_20260726/R14_SHA256SUMS.txt
+          if git diff --cached --quiet; then
+            echo "No state change"
+            exit 0
+          fi
+          git commit -m "Promote reproduced Donchian all-breakout to provisional rank 1 [skip ci]"
+          git push origin HEAD:agent/r14-donchian-all-ranking-001
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rank-all-breakout-r14-${{ github.sha }}
+          path: |
+            control/ranking.json
+            control/current-state.md
+            research_results/rank_contract_reconcile_20260726
+            /tmp/rank-all-breakout-r14.log
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
