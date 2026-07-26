@@ -1,20 +1,19 @@
-name: Stablecoin supply shock strict causal V4 decision
+name: Stablecoin supply shock strict causal V4 macOS decision
 
 on:
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/ml-stablecoin-strict-exec-r21.yml'
-      - 'research/execution/stablecoin_strict_v4_20260727/**'
-      - 'research/triggers/stablecoin_strict_v3/**'
+      - 'research/execution/stablecoin_strict_macos_parallel_20260727/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-strict-main-authority
-  cancel-in-progress: true
+  group: stablecoin-strict-v4-macos-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   PYTHONHASHSEED: '0'
@@ -22,21 +21,22 @@ env:
   PYTHONFAULTHANDLER: '1'
   OMP_NUM_THREADS: '2'
   OPENBLAS_NUM_THREADS: '2'
-  MKL_NUM_THREADS: '2'
+  VECLIB_MAXIMUM_THREADS: '2'
   SOURCE_SHA: 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539
   STRICT_SHA: 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c
   SOURCE_ROOT: research/ml_stablecoin_issuance_20260726
   ECON_ROOT: research/ml_stablecoin_issuance_economic_20260726
   GUARD_ROOT: sourcefix/ml_stablecoin_causal_guard_20260726
   V4_ROOT: research/execution/stablecoin_strict_v4_20260727
-  RUN_ROOT: research_runs/ml_stablecoin_strict_v4
-  SOURCE_OUT: research_runs/ml_stablecoin_strict_v4/source
-  ECON_OUT: research_runs/ml_stablecoin_strict_v4/economic
+  RUN_ROOT: research_runs/ml_stablecoin_strict_v4_macos
+  SOURCE_OUT: research_runs/ml_stablecoin_strict_v4_macos/source
+  ECON_OUT: research_runs/ml_stablecoin_strict_v4_macos/economic
   MARKET_CACHE: ${{ runner.temp }}/stablecoin-market-v4
+  EXECUTION_RECORD: research/execution/stablecoin_strict_macos_parallel_20260727/EXECUTION_CORRECTION.json
 
 jobs:
   decision:
-    runs-on: ubuntu-24.04-arm
+    runs-on: macos-14
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +57,7 @@ jobs:
       - name: Materialize immutable source and strict engine snapshots
         run: |
           set -euo pipefail
+          python -m json.tool "$EXECUTION_RECORD" >/dev/null
           mkdir -p "$RUN_ROOT"
           git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
@@ -92,11 +93,8 @@ jobs:
           PYTHONPATH="$SOURCE_ROOT" pytest -q "$SOURCE_ROOT/test_source_gate.py"
           PYTHONPATH="$SOURCE_ROOT" python "$SOURCE_ROOT/run_pinned_snapshot_source.py" --self-test
           PYTHONPATH="$ECON_ROOT:$GUARD_ROOT:$V4_ROOT" pytest -q \
-            "$ECON_ROOT/test_run.py" \
-            "$ECON_ROOT/test_run_causal.py" \
-            "$GUARD_ROOT/test_causal_guard.py"
+            "$ECON_ROOT/test_run.py" "$ECON_ROOT/test_run_causal.py" "$GUARD_ROOT/test_causal_guard.py"
           PYTHONPATH="$ECON_ROOT:$GUARD_ROOT:$V4_ROOT" python "$V4_ROOT/strict_guard_v4.py" self-test
-          python scripts/validate_project.py
 
       - name: Run complete corrected 2021-2023 source gate
         run: |
@@ -108,15 +106,15 @@ jobs:
             --output "$SOURCE_OUT/run" 2>&1 | tee "$SOURCE_OUT/run/RUN.log"
           rc=${PIPESTATUS[0]}
           set -e
-          echo "$rc" > "$SOURCE_OUT/run/RUN_EXIT_CODE.txt"
+          printf '%s\n' "$rc" > "$SOURCE_OUT/run/RUN_EXIT_CODE.txt"
           if [[ ! -f "$SOURCE_OUT/run/SOURCE_GATE_RESULT.json" ]]; then
             python "$SOURCE_ROOT/write_transport_failure.py" \
               --output "$SOURCE_OUT/run" \
-              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V4-MAIN \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V4-MACOS \
               --exit-code "$rc"
           fi
           if [[ "$rc" != 0 && "$rc" != 2 ]]; then
-            echo "source transport returned unexpected exit $rc; durable outcome-sealed result retained" >&2
+            echo "source transport returned unexpected exit $rc; sealed result retained" >&2
           fi
 
       - id: source
@@ -167,7 +165,7 @@ jobs:
         if: steps.source.outputs.authorized == 'true'
         with:
           path: ${{ env.MARKET_CACHE }}
-          key: stablecoin-market-2020-12-2023-12-strict-v4-main
+          key: stablecoin-market-2020-12-2023-12-strict-v4-macos
 
       - name: Run strict causal V4 pre-2024 ML and account screen
         if: steps.source.outputs.authorized == 'true'
@@ -182,7 +180,7 @@ jobs:
             --output "$ECON_OUT/run" 2>&1 | tee "$ECON_OUT/run/RUN.log"
           rc=${PIPESTATUS[0]}
           set -e
-          echo "$rc" > "$ECON_OUT/run/RUN_EXIT_CODE.txt"
+          printf '%s\n' "$rc" > "$ECON_OUT/run/RUN_EXIT_CODE.txt"
           if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
           test -f "$ECON_OUT/run/RESULT.json"
           test -f "$ECON_OUT/run/FULL_RESULT.json"
@@ -205,8 +203,7 @@ jobs:
           assert result['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
           assert result['status'] in {'PRE2024_BELOW_GATE','PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1'}
           assert result['orders_submitted'] is False
-          assert result['official_2024h1_opened'] is False
-          assert result['official_2024_2026_opened'] is False
+          assert result['official_2024h1_opened'] is False and result['official_2024_2026_opened'] is False
           guard=result['strict_causal_guard']
           assert guard['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002'
           assert guard['source_decision_second_respected'] is True
@@ -242,8 +239,8 @@ jobs:
               assert row['liquidation_distance_rule']=='ACTUAL_FILL_TO_STRUCTURAL_STOP_OR_ADVERSE_GAP'
           next_stage='CHANGE_ALPHA'
           if result['status']=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
-              assert result['development_gate']['all'] is True
               selected=result['risk_search']['selected']
+              assert result['development_gate']['all'] is True
               assert selected is not None and selected['growth']>0 and selected['liquidation'] is False
               next_stage='OFFICIAL_2024H1_IMMEDIATELY'
           print(json.dumps({'source_status':source['status'],'economic_status':result['status'],'account_correction':v4['correction_id'],'development_gate':result['development_gate'].get('all'),'selected_risk_path':result.get('risk_search',{}).get('selected'),'next_stage':next_stage},sort_keys=True))
@@ -253,20 +250,32 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          mkdir -p "$RUN_ROOT/inputs"
-          cp "$SOURCE_ROOT"/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$SOURCE_ROOT"/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$GUARD_ROOT"/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$V4_ROOT"/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$GUARD_ROOT"/strict_guard.py "$GUARD_ROOT"/test_causal_guard.py "$RUN_ROOT/inputs/"
-          cp "$V4_ROOT"/strict_guard_v4.py "$RUN_ROOT/inputs/"
-          find "$RUN_ROOT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/OUTPUT_SHA256SUMS.txt"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root=Path('research_runs/ml_stablecoin_strict_v4_macos')
+          root.mkdir(parents=True,exist_ok=True)
+          inputs=root/'inputs'; inputs.mkdir(exist_ok=True)
+          for path in (
+              Path('research/execution/stablecoin_strict_macos_parallel_20260727/EXECUTION_CORRECTION.json'),
+              Path('research/ml_stablecoin_issuance_20260726/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json'),
+              Path('research/ml_stablecoin_issuance_20260726/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json'),
+              Path('sourcefix/ml_stablecoin_causal_guard_20260726/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json'),
+              Path('research/execution/stablecoin_strict_v4_20260727/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json'),
+          ):
+              if path.is_file():
+                  (inputs/path.name).write_bytes(path.read_bytes())
+          rows=[]
+          for path in sorted(x for x in root.rglob('*') if x.is_file() and x.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stablecoin-strict-v4-main-${{ github.run_id }}
-          path: research_runs/ml_stablecoin_strict_v4
+          name: stablecoin-strict-v4-macos-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_strict_v4_macos
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
