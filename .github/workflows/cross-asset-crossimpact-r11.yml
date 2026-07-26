@@ -117,6 +117,7 @@ jobs:
           PY
 
       - name: Attach exact source and build evidence checksums
+        if: always()
         run: |
           cp research/cross_asset_crossimpact_20260726/run_screen.py artifacts/cross_asset_crossimpact/RUN_SCREEN.py
           cp research/cross_asset_crossimpact_20260726/preregistration.json artifacts/cross_asset_crossimpact/PREREGISTRATION.json
@@ -129,6 +130,7 @@ jobs:
           sha256sum CI_SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: cross-asset-crossimpact-${{ github.sha }}
           path: artifacts/cross_asset_crossimpact
