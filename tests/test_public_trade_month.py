@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from scripts.market_data import build_public_trade_month as monthly
+from scripts.market_data import build_public_trade_segment as segment_builder
 
 
 def write_trade_gzip(path, rows: list[str]) -> None:
@@ -114,3 +115,15 @@ def test_month_partition_mapping_is_continuous() -> None:
     assert monthly.logical_segment(datetime(2025, 1, 1, tzinfo=timezone.utc)) == "2025_H1"
     assert monthly.logical_segment(datetime(2025, 7, 1, tzinfo=timezone.utc)) == "2025_H2"
     assert monthly.logical_segment(datetime(2026, 1, 1, tzinfo=timezone.utc)) == "2026_H1"
+
+
+def test_segment_month_enumeration_is_exact() -> None:
+    assert segment_builder.months_between(
+        "2024-01-01T00:00:00Z", "2024-07-01T00:00:00Z"
+    ) == ["2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06"]
+    assert segment_builder.months_between(
+        "2020-01-01T00:00:00Z", "2021-01-01T00:00:00Z"
+    )[0] == "2020-01"
+    assert segment_builder.months_between(
+        "2020-01-01T00:00:00Z", "2021-01-01T00:00:00Z"
+    )[-1] == "2020-12"
