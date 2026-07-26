@@ -1,11 +1,10 @@
-name: Uniswap AWS public Parquet transport probe
+name: Paused Uniswap AWS public Parquet transport probe
 
 on:
   push:
     branches:
       - agent/r20-uniswap-aws-public-transport-001
     paths:
-      - 'research/ml_uniswap_hedge_transfer_20260726/**'
       - '.github/workflows/ml-uniswap-aws-public-parquet-r20.yml'
   workflow_dispatch:
 
@@ -17,121 +16,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  source-transport:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    env:
-      PYTHONHASHSEED: '0'
-      PYTHONUNBUFFERED: '1'
-      PYTHONFAULTHANDLER: '1'
+  paused-before-outcome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: agent/r20-uniswap-aws-public-transport-001
-          fetch-depth: 1
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install fixed source-only environment
+      - name: Return execution capacity to the two active mechanisms
         run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check \
-            'duckdb==1.3.2' \
-            'requests==2.32.4'
-
-      - name: Compile and validate the pre-outcome transport contract
-        run: |
-          set -euo pipefail
-          root=research/ml_uniswap_hedge_transfer_20260726
-          python -m py_compile \
-            "$root/probe_uniswap_swaps.py" \
-            "$root/probe_aws_public_parquet.py" \
-            "$root/run_aws_public_parquet_probe.py"
-          python -m json.tool \
-            "$root/EXECUTION_CORRECTION_011_AWS_PUBLIC_PARQUET_TRANSPORT_BEFORE_OUTCOME.json" \
-            >/dev/null
-          PYTHONPATH="$root" python "$root/probe_aws_public_parquet.py" --self-test
-
-      - name: Probe six frozen AWS Ethereum-log windows
-        run: |
-          set -euo pipefail
-          root=research/ml_uniswap_hedge_transfer_20260726
-          out=research_runs/ml_uniswap_hedge_transfer_20260726/aws-public-parquet-r20
-          rm -rf "$out"
-          mkdir -p "$out"
-          PYTHONPATH="$root" python "$root/run_aws_public_parquet_probe.py" \
-            --output "$out" \
-            2>&1 | tee "$out/RUN.log"
-
-      - name: Enforce source-only authority boundary
-        run: |
-          set -euo pipefail
-          out=research_runs/ml_uniswap_hedge_transfer_20260726/aws-public-parquet-r20
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          path=Path('research_runs/ml_uniswap_hedge_transfer_20260726/aws-public-parquet-r20/AWS_TRANSPORT_PROBE_RESULT.json')
-          result=json.loads(path.read_text())
-          assert result['claim_id']=='CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
-          assert result['transport_id']=='TRANSPORT-20260726-UNISWAP-AWS-PUBLIC-PARQUET-001'
-          assert isinstance(result['transport_pass'], bool)
-          assert result['market_outcome_opened'] is False
-          assert result['model_fit'] is False
-          assert result['trade_or_pnl_opened'] is False
-          assert result['official_2024_2026_opened'] is False
-          assert result['credentials_used'] is False
-          assert result['orders_submitted'] is False
-          serialized=json.dumps(result,sort_keys=True).lower()
-          for forbidden in (
-              'future_return_value','first_passage_label_value','model_auc',
-              'trade_return','account_nav','official_2024_opened'
-          ):
-              assert forbidden not in serialized
-          print(json.dumps({
-              'transport_pass':result['transport_pass'],
-              'decision':result['scientific_decision'],
-              'decoded_logs':result.get('totals',{}).get('decoded_logs',0),
-              'fatal_error':result.get('fatal_error'),
-          },sort_keys=True))
-          PY
-
-      - name: Record current control-plane drift without changing source decision
-        if: always()
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          out=research_runs/ml_uniswap_hedge_transfer_20260726/aws-public-parquet-r20
-          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
-
-      - name: Freeze evidence hashes
-        if: always()
-        run: |
-          set -euo pipefail
-          root=research/ml_uniswap_hedge_transfer_20260726
-          out=research_runs/ml_uniswap_hedge_transfer_20260726/aws-public-parquet-r20
-          mkdir -p "$out/input"
-          sha256sum \
-            "$root/WORK_CLAIM.json" \
-            "$root/PREREGISTRATION.md" \
-            "$root/probe_uniswap_swaps.py" \
-            "$root/probe_aws_public_parquet.py" \
-            "$root/run_aws_public_parquet_probe.py" \
-            "$root/EXECUTION_CORRECTION_011_AWS_PUBLIC_PARQUET_TRANSPORT_BEFORE_OUTCOME.json" \
-            .github/workflows/ml-uniswap-aws-public-parquet-r20.yml \
-            > "$out/input/INPUT_SHA256SUMS.txt"
-          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
-            | sort -z \
-            | xargs -0 sha256sum \
-            > "$out/OUTPUT_SHA256SUMS.txt"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ml-uniswap-aws-public-parquet-r20-${{ github.run_id }}
-          path: research_runs/ml_uniswap_hedge_transfer_20260726/aws-public-parquet-r20
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 6
+          echo 'Paused before source transport outcome.'
+          echo 'Canonical signed Uniswap remains semantically valid but is not active.'
+          echo 'No market row, model, trade, PnL, official interval, credential or order opened.'
