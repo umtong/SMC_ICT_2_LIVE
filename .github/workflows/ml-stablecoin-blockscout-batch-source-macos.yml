@@ -1,0 +1,114 @@
+name: Stablecoin Blockscout source gate macOS
+
+on:
+  push:
+    branches: [agent/r13-ml-stablecoin-issuance-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-batch-source-macos.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-blockscout-batch-macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: macos-14
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      ROOT: research/ml_stablecoin_issuance_20260726
+      OUT: research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-stablecoin-issuance-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate unchanged corrected source authority
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+          mkdir -p "$OUT/source"
+          python -m py_compile "$ROOT"/source_gate*.py "$ROOT"/test_source_gate.py
+          PYTHONPATH="$ROOT" pytest -q "$ROOT/test_source_gate.py" | tee "$OUT/PYTEST.log"
+          PYTHONPATH="$ROOT" python "$ROOT/source_gate_blockscout_authoritative.py" --self-test | tee "$OUT/AUTHORITY_SELF_TEST.log"
+          PYTHONPATH="$ROOT" python "$ROOT/source_gate_blockscout_batch_authoritative.py" --self-test | tee "$OUT/BATCH_SELF_TEST.log"
+          python -m json.tool "$ROOT/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$ROOT/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_017_SCHEMA_BOUND_BATCH_ARTIFACT_BEFORE_OUTCOME.json" >/dev/null
+
+      - name: Query complete pre-2024 issuance source only
+        run: |
+          set -u
+          set +e
+          PYTHONPATH="$ROOT" python "$ROOT/source_gate_blockscout_batch_authoritative.py" \
+            --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$OUT/RUN_EXIT_CODE.txt"
+          if [[ ! -f "$OUT/SOURCE_GATE_RESULT.json" ]]; then
+            python "$ROOT/write_transport_failure.py" \
+              --output "$OUT" \
+              --transport TRANSPORT-20260726-ML-STABLECOIN-SCHEMA-BOUND-BATCH-MACOS-006 \
+              --exit-code "$rc"
+          fi
+
+      - name: Verify schema-bound source decision and outcome seal
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          out=Path(os.environ['OUT'])
+          result=json.loads((out/'SOURCE_GATE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['status'] in {'PASS','FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE','SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE'}
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          if result['status']=='PASS':
+              manifest=json.loads((out/'SOURCE_MANIFEST.json').read_text())
+              events=out/'EVENTS.jsonl'
+              schema='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
+              correction='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+              assert result['source_schema_id']==schema and manifest['source_schema_id']==schema
+              assert result['source_correction_id']==correction and manifest['source_correction_id']==correction
+              assert result['event_semantics']['ordinary_usdt_transfer_excluded'] is True
+              assert manifest['event_semantics']['ordinary_usdt_transfer_excluded'] is True
+              assert hashlib.sha256(events.read_bytes()).hexdigest()==manifest['events_sha256']
+              assert result['conditional_model_screen_authorized'] is True
+          print(json.dumps({'status':result['status'],'events':result.get('event_count'),'months':len(result.get('months_with_events',[])),'tokens':result.get('distinct_tokens'),'schema':result.get('source_schema_id')},sort_keys=True))
+          PY
+
+      - name: Preserve current-head source evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/source"
+          cp "$ROOT"/*.json "$ROOT"/*.md "$ROOT"/source_gate*.py \
+             "$ROOT"/test_source_gate.py "$ROOT"/verify_source_result.py \
+             "$ROOT"/write_transport_failure.py "$OUT/source/"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-blockscout-batch-source-macos-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_issuance_20260726/blockscout_batch_source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
