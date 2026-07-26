@@ -1,0 +1,143 @@
+name: Direct utility authoritative Windows gap-safe screen
+
+on:
+  push:
+    branches:
+      - agent/r13-ml-direct-utility-gapfix-002
+    paths:
+      - '.github/workflows/ml-direct-utility-gapfix-windows-r13.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-direct-utility-gapfix-windows-r13.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-direct-utility-gapfix-windows-r13-authoritative
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: windows-latest
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-direct-utility-gapfix-002
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 scipy==1.15.3 \
+            scikit-learn==1.6.1 pytest==8.3.5
+
+      - name: Reconstruct and validate identical gap-safe runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/gapfix-r13-windows
+          mkdir -p "$out/source"
+          python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/run.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          cp "$root/run.py" "$root/test_run.py" "$root/source_manifest.json" "$out/source/"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ml-direct-utility-r13
+          key: ml-direct-utility-r13-windows-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json') }}
+          restore-keys: |
+            ml-direct-utility-r13-windows-
+
+      - name: Run frozen pre-2024 direct-utility screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/gapfix-r13-windows
+          cache="${RUNNER_TEMP}/ml-direct-utility-r13"
+          PYTHONPATH="$root" python "$root/run.py" \
+            --output "$out" \
+            --cache "$cache" \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Enforce unchanged model and sealed official periods
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/ml_direct_utility_20260726/gapfix-r13-windows')
+          result=json.loads((root/'RESULT.json').read_text())
+          contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+          source=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2013-ML-DIRECT-UTILITY-001'
+          assert result['model_family_count']==1
+          assert result['hyperparameter_grid'] is False
+          assert result['one_global_slot'] is True
+          assert result['no_elapsed_time_liquidation'] is True
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          assert contract['one_model_family'] is True
+          assert contract['one_economic_decision_rule'] is True
+          assert contract['prohibited_years']==[2024, 2025, 2026]
+          assert 'no imputation' in contract['source_gap_policy']
+          coverage=[x for x in source['files'] if x.get('kind')=='assembled_hourly_grid']
+          assert len(coverage)==4
+          assert all(x['gap_policy']=='NO_IMPUTATION_RESET_ALL_CROSSING_HORIZONS' for x in coverage)
+          if not result['confirmation']['gate_passed']:
+              assert result['development'] is None
+              assert result['selected_risk_config'] is None
+          print(json.dumps({
+              'status':result['status'],
+              'confirmation_gate':result['confirmation']['gate_passed'],
+              'development_opened':result['development_opened'],
+              'decision':result['decision'],
+          },sort_keys=True))
+          PY
+
+      - name: Freeze evidence hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_direct_utility_20260726/gapfix-r13-windows
+          mkdir -p "$out"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root=Path('research_runs/ml_direct_utility_20260726/gapfix-r13-windows')
+          rows=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows), encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-direct-utility-gapfix-windows-r13-${{ github.run_id }}
+          path: research_runs/ml_direct_utility_20260726/gapfix-r13-windows
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

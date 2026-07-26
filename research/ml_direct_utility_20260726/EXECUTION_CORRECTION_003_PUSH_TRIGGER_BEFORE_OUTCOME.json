@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-DIRECT-UTILITY-PUSH-TRIGGER-003",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "recorded_at": "2026-07-26T21:00:00+09:00",
+  "trigger": "The gap-safe scientific patch existed on a child branch, but the dedicated workflow declared only a pull_request trigger against its non-default research parent and no workflow run was associated with the child head. Add a branch push trigger so the already-frozen corrected experiment executes.",
+  "outcome_state_before_correction": {
+    "gap_safe_runner_compiled_in_ci": false,
+    "model_fitted_under_gap_safe_runner": false,
+    "confirmation_metrics_computed_under_gap_safe_runner": false,
+    "development_opened": false,
+    "risk_search_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "change": {
+    "workflow_file": ".github/workflows/ml-direct-utility-gapfix-r13.yml",
+    "added_trigger": "push on agent/r13-ml-direct-utility-gapfix-002",
+    "scientific_source_changed": false
+  },
+  "unchanged": [
+    "one HistGradientBoostingRegressor model and frozen hyperparameters",
+    "feature definitions and label horizons",
+    "train calibration confirmation and conditional-development chronology",
+    "no-imputation source-gap reset policy",
+    "KEEP SWITCH FLAT account decision rule",
+    "12 18 and 24 bp cost paths",
+    "structural stop and no elapsed-time liquidation",
+    "risk and notional search gate",
+    "winner-removal rerouting",
+    "2024-2026 seals",
+    "order prohibition"
+  ]
+}

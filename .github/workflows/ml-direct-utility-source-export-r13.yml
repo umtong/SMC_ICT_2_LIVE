@@ -1,0 +1,68 @@
+name: Direct utility frozen source export
+
+on:
+  push:
+    branches:
+      - agent/r13-ml-direct-utility-gapfix-002
+    paths:
+      - '.github/workflows/ml-direct-utility-source-export-r13.yml'
+      - 'research/ml_direct_utility_20260726/run.py.gz.b64'
+      - 'research/ml_direct_utility_20260726/source_manifest.json'
+      - 'research/ml_direct_utility_20260726/reconstruct.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-direct-utility-source-export-r13.yml'
+      - 'research/ml_direct_utility_20260726/run.py.gz.b64'
+      - 'research/ml_direct_utility_20260726/source_manifest.json'
+      - 'research/ml_direct_utility_20260726/reconstruct.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-direct-utility-source-export-r13-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reconstruct and export exact frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_source_export_r13
+          mkdir -p "$out"
+          python "$root/reconstruct.py" | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/run.py" "$root/test_run.py"
+          cp "$root/run.py" "$root/test_run.py" "$root/source_manifest.json" "$root/reconstruct.py" "$out/"
+          sha256sum "$out"/run.py "$out"/test_run.py "$out"/source_manifest.json "$out"/reconstruct.py > "$out/SHA256SUMS.txt"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('research_runs/ml_direct_utility_source_export_r13')
+          payload={
+              'claim_id':'CLM-20260726-2013-ML-DIRECT-UTILITY-001',
+              'stage':'SOURCE_EXPORT_ONLY_NO_MARKET_DATA_NO_MODEL_NO_PNL',
+              'market_data_opened':False,
+              'model_fitted':False,
+              'pnl_computed':False,
+              'orders_submitted':False,
+          }
+          (out/'ATTESTATION.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-direct-utility-source-r13-${{ github.sha }}
+          path: research_runs/ml_direct_utility_source_export_r13
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-DIRECT-UTILITY-ARM-RUNNER-006",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "recorded_at": "2026-07-26T21:14:00+09:00",
+  "trigger": "The authoritative gap-safe workflow remained queued on the x86 Ubuntu runner while the same frozen Python stack had already executed successfully on the available Ubuntu 24.04 ARM runner in this repository.",
+  "outcome_state_before_correction": {
+    "gap_safe_model_fitted": false,
+    "confirmation_metrics_computed": false,
+    "development_opened": false,
+    "risk_search_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "change": {
+    "runs_on_before": "ubuntu-24.04",
+    "runs_on_after": "ubuntu-24.04-arm",
+    "scientific_source_changed": false
+  },
+  "unchanged": [
+    "Python version and pinned package versions",
+    "model architecture and hyperparameters",
+    "features labels and chronology",
+    "no-imputation source-gap policy",
+    "KEEP SWITCH FLAT economic decision rule",
+    "cost funding stop risk and leverage contracts",
+    "winner-removal rerouting",
+    "official-period seals",
+    "order prohibition"
+  ]
+}

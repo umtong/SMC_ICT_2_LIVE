@@ -1,0 +1,138 @@
+name: Direct utility authoritative SHA-scoped gap-safe screen
+
+on:
+  push:
+    branches:
+      - agent/r13-ml-direct-utility-gapfix-002
+    paths:
+      - ".github/workflows/ml-direct-utility-macos-r13.yml"
+      - "research/ml_direct_utility_20260726/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-direct-utility-authoritative-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-direct-utility-gapfix-002
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install identical frozen environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 scipy==1.15.3 \
+            scikit-learn==1.6.1 pytest==8.3.5
+
+      - name: Reconstruct and validate the exact gap-safe source
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/authoritative-r13
+          mkdir -p "$out/source"
+          python -m json.tool "$root/EXECUTION_CORRECTION_008_SHA_SCOPED_AUTOMATIC_RUN_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_004_CURRENT_RANK_BENCHMARK_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/run.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          cp "$root/run.py" "$root/test_run.py" "$root/source_manifest.json" \
+            "$root/preregistration.json" \
+            "$root/CORRECTION_004_CURRENT_RANK_BENCHMARK_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_008_SHA_SCOPED_AUTOMATIC_RUN_BEFORE_OUTCOME.json" \
+            "$out/source/"
+          (cd "$out/source" && sha256sum * | sort > SOURCE_SHA256SUMS.txt)
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/ml-direct-utility-r13
+          key: ml-direct-utility-r13-authoritative-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json') }}
+          restore-keys: |
+            ml-direct-utility-r13-authoritative-
+            ml-direct-utility-r13-
+
+      - name: Run the unchanged corrected pre-2024 direct-utility screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/authoritative-r13
+          PYTHONPATH="$root" python "$root/run.py" \
+            --output "$out" \
+            --cache /tmp/ml-direct-utility-r13 \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Enforce model, benchmark and authority boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/ml_direct_utility_20260726/authoritative-r13')
+          result=json.loads((root/'RESULT.json').read_text())
+          contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+          source=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          prereg=json.loads(Path('research/ml_direct_utility_20260726/preregistration.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2013-ML-DIRECT-UTILITY-001'
+          assert result['model_family_count']==1
+          assert result['hyperparameter_grid'] is False
+          assert result['one_global_slot'] is True
+          assert result['no_elapsed_time_liquidation'] is True
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          assert contract['one_model_family'] is True
+          assert contract['one_economic_decision_rule'] is True
+          assert contract['prohibited_years']==[2024, 2025, 2026]
+          assert '0.07001887213879954%' in prereg['development_gate_all_required']['geometric_daily_growth_at_24bp']
+          coverage=[x for x in source['files'] if x.get('kind')=='assembled_hourly_grid']
+          assert len(coverage)==4
+          assert all(x['gap_policy']=='NO_IMPUTATION_RESET_ALL_CROSSING_HORIZONS' for x in coverage)
+          if not result['confirmation']['gate_passed']:
+              assert result['development'] is None
+              assert result['selected_risk_config'] is None
+          print(json.dumps({'status':result['status'],'confirmation_gate':result['confirmation']['gate_passed'],'development_opened':result['development_opened'],'decision':result['decision']},sort_keys=True))
+          PY
+
+      - name: Freeze immutable output identities
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_direct_utility_20260726/authoritative-r13
+          mkdir -p "$out"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-direct-utility-authoritative-r13-${{ github.run_id }}
+          path: research_runs/ml_direct_utility_20260726/authoritative-r13
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

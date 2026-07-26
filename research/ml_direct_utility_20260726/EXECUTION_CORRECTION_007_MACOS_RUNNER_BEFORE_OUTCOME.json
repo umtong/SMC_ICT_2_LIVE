@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-DIRECT-UTILITY-MACOS-007",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "timing": "BEFORE_ANY_MODEL_FIT_OR_MARKET_RESULT",
+  "observed_problem": "Both x86 and ARM Linux execution paths remained queued or were cancelled by workflow concurrency before reconstruction and model fitting. No scientific outcome existed.",
+  "change": "Run the identical gap-safe evaluator once on macos-14; make Linux entry points manual-only to eliminate duplicate queue competition.",
+  "platform_equivalence": [
+    "Python 3.11",
+    "identical pinned NumPy, pandas, requests, SciPy, scikit-learn and pytest versions",
+    "identical source hashes and reconstructed run.py",
+    "identical data URLs, cache semantics, model, policy, costs and stage gates"
+  ],
+  "unchanged": [
+    "source-gap no-imputation policy",
+    "one HGBT model and hyperparameters",
+    "features, labels and calibration",
+    "chronology and official-period seals",
+    "turnover-aware KEEP_SWITCH_FLAT account rule",
+    "structural stop and no elapsed-time liquidation",
+    "cost, funding reserve, winner-removal and risk/leverage gate",
+    "current-rank benchmark",
+    "order permission"
+  ],
+  "scientific_outcome_opened_before_change": false,
+  "orders_submitted": false
+}
