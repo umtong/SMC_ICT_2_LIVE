@@ -1,0 +1,45 @@
+{
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "correction_id": "CORRECTION_004_DUKASCOPY_MINIMAL_CALL_BEFORE_OUTCOME",
+  "status": "PRE_OUTCOME_SOURCE_TRANSPORT_CORRECTION",
+  "failed_workflow_run": 30198174869,
+  "failed_artifact_id": 8630820820,
+  "observed_stage": "source acquisition failed on the first USATECHIDXUSD interval before a complete external panel, candidate ledger, model fit, action, trade, PnL or later-period access existed",
+  "root_cause": "The Dukascopy request reintroduced optional volumes=true and ignoreFlats=false fields. The pinned library returned an empty array for every attempted interval, including the seven-day leaf, while the official minimal request contract requires only instrument, dates, timeframe, priceType and format for this source.",
+  "change": {
+    "removed_request_fields": ["volumes", "ignoreFlats"],
+    "retained_request_fields": ["instrument", "dates", "timeframe", "priceType", "format"],
+    "provider": "dukascopy-node@1.46.4",
+    "instruments": ["usatechidxusd", "usa500idxusd"],
+    "timeframe": "m1",
+    "price_type": "bid",
+    "format": "json"
+  },
+  "scientific_contract_unchanged": {
+    "requested_dates": true,
+    "accepted_rows_and_integrity_assertions": true,
+    "event_definition_and_cooldown": true,
+    "features_and_labels": true,
+    "model_and_calibration": true,
+    "economic_authorization_rule": true,
+    "structural_target_stop": true,
+    "costs_risk_capacity_global_slot": true,
+    "chronological_gates_and_seals": true
+  },
+  "outcome_access_before_correction": {
+    "candidate_events": false,
+    "model_metrics": false,
+    "actions": false,
+    "pnl": false,
+    "2023_opened": false,
+    "2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "authority": {
+    "ranking_change": false,
+    "live_permission_change": false,
+    "credentials": false,
+    "orders": false
+  },
+  "created_at": "2026-07-26T19:29:00+09:00"
+}
