@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260727-0010-ML-AAVE-BLOCKSCOUT-001",
+  "phase": "OUTCOME_SEALED_SOURCE_GATE",
+  "authority": {
+    "address_book_package": "@aave-dao/aave-address-book@4.61.0",
+    "address_book_commit": "67c777be17e782c2f961a44e085ec55b39e63639",
+    "chain_id": 1,
+    "pools": {
+      "v2": "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+      "v3": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
+    },
+    "event_signature": "LiquidationCall(address,address,address,uint256,uint256,address,bool)",
+    "event_topic": "0xe413a321e8681d831f4dbccbca790d2952b56f977908e45be37335533e005286"
+  },
+  "probe_dates": [
+    "2021-05-19",
+    "2021-12-04",
+    "2022-05-12",
+    "2022-06-13",
+    "2022-11-09",
+    "2023-03-11",
+    "2023-08-17"
+  ],
+  "transport": {
+    "provider": "Blockscout Ethereum API",
+    "status_zero_empty": "explicit no-records message only",
+    "status_zero_range_split": "explicit range/result-limit message only",
+    "unknown_notok_or_rate_limit": "fail closed",
+    "truncation_rule": "bisect when result length reaches 1000",
+    "block_availability_delay_seconds": 120
+  },
+  "pass_rule": {
+    "all_pool_identities_match": true,
+    "decode_errors_zero": true,
+    "duplicate_identity_count": 0,
+    "minimum_event_dates": 4,
+    "minimum_decoded_events": 25,
+    "both_versions_present": true,
+    "all_block_timestamps_complete": true
+  },
+  "conditional_history_and_model": {
+    "history": "all canonical V2/V3 LiquidationCall logs from 2021-01-01 through 2023-12-31",
+    "availability": "completed five-minute bucket end plus 120 seconds",
+    "model": "one fixed HistGradientBoostingClassifier plus one frozen isotonic rule",
+    "execution": "one ETHUSDT global slot, next executable minute open, frozen structural upper/lower pools, 12/18/24bp",
+    "boundary_correction": "unresolved partition-boundary exposure is marked to NAV and never asserted as a strategy exit",
+    "official_rule": "freeze any positive cost-surviving system using information through 2023-12-31 and open 2024H1 immediately; structurally distant 2024H1 changes alpha"
+  },
+  "prohibited": [
+    "market price",
+    "future return or first-passage label",
+    "model fit or metric",
+    "action, trade or PnL",
+    "2024-2026 data",
+    "credentials",
+    "orders"
+  ],
+  "orders_submitted": false
+}
