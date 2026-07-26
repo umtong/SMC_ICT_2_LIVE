@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-HL-LIQUIDATION-CONVERT-PARQUET-004",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "recorded_at": "2026-07-26T22:00:00+09:00",
+  "status": "PRE_OUTCOME_SOURCE_ONLY",
+  "trigger": "Code audit found that the consolidated default/train/0000.parquet object belongs to the Hugging Face refs/convert/parquet revision, while the existing resolver requested the dataset main revision. The queued workflows had not started a source-gate job and no Hyperliquid event row or market outcome had been opened.",
+  "correction": {
+    "revision_ref": "refs/convert/parquet",
+    "revision_resolution": "Resolve the exact refs/convert/parquet commit through the Hugging Face dataset revision API before any Parquet row is queried.",
+    "parquet_path": "default/train/0000.parquet",
+    "sibling_check": "Require the exact Parquet path to exist in the resolved revision metadata before opening DuckDB.",
+    "transport": "Retain the same DuckDB HTTP range reads, projection, predicate pushdown and exact 36 frozen _src identities."
+  },
+  "unchanged": [
+    "same six dates and six frozen UTC hours per date",
+    "same source-density gates",
+    "same explicit LedgerUpdate liquidation schema and signed forced-flow interpretation",
+    "same duplicate identity definition",
+    "same model, features, structural target/stop, costs, sizing and one-global-slot contract",
+    "same prohibition on market price, future return, labels, model metrics, PnL, official 2026 and orders during the source gate"
+  ],
+  "hyperliquid_event_row_opened_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "orders_submitted": false
+}
