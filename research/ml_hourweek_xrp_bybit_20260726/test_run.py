@@ -140,9 +140,15 @@ def test_binance_header_row_is_source_metadata_not_market_data() -> None:
     assert float(frame.iloc[0]["taker_buy_quote"]) == 7.5
 
 
-def test_official_alternative_bybit_mainnet_endpoint_is_frozen() -> None:
+def test_official_bybit_endpoint_fallback_is_frozen() -> None:
     import inspect
 
     source = inspect.getsource(run)
-    assert "https://api.bytick.com" in source
-    assert "https://api.bybit.com" not in source
+    for endpoint in (
+        "https://api.bybit.com",
+        "https://api.bytick.com",
+        "https://api-demo.bybit.com",
+        "https://api.bybit.nl",
+    ):
+        assert endpoint in source
+    assert "chosen_url = urls[attempt % len(urls)]" in source
