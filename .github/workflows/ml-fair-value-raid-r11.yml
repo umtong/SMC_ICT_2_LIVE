@@ -57,10 +57,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUT"
-          python "$ROOT/reconstruct.py" | tee "$OUT/reconstruct.log"
+          python "$ROOT/reconstruct.py" 2>&1 | tee "$OUT/reconstruct.log"
           python -m py_compile "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py"
           pytest -q "$ROOT/test_run.py" 2>&1 | tee "$OUT/tests.log"
-          python "$ROOT/run.py" self-test | tee "$OUT/self_test.log"
+          python "$ROOT/run.py" self-test 2>&1 | tee "$OUT/self_test.log"
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python scripts/validate_project.py
@@ -108,7 +108,7 @@ jobs:
             "$ROOT/WORK_CLAIM.json" \
             "$ROOT/preregistration.json" \
             "$ROOT/reconstruct.py" \
-            "$ROOT/run.py.gz.b64" \
+            "$ROOT"/run.py.gz.b64.part* \
             "$ROOT/test_run.py" \
             .github/workflows/ml-fair-value-raid-r11.yml \
             > "$OUT/INPUT_SHA256SUMS.txt"
