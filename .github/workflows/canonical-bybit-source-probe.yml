@@ -1,0 +1,50 @@
+name: Canonical Bybit historical source probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - data/contracts/canonical_bybit_usdt_linear_v1.json
+      - pyproject.toml
+      - scripts/market_data/**
+      - .github/workflows/canonical-bybit-source-probe.yml
+
+concurrency:
+  group: canonical-bybit-source-probe-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install declared dependencies
+        run: python -m pip install .
+      - name: Probe representative historical windows
+        shell: bash
+        run: |
+          set +e
+          mkdir -p probe
+          python scripts/market_data/probe_bybit_history.py --out probe \
+            > probe/stdout.log 2> probe/stderr.log
+          echo $? > probe/exit-code.txt
+          exit 0
+      - name: Upload immutable probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-source-probe-${{ github.run_id }}
+          path: probe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce historical source coverage
+        shell: bash
+        run: test "$(cat probe/exit-code.txt)" = 0
