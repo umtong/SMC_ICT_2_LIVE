@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-HAZARD-OCO-ML-EIGHT-FEATURE-003",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "parent_amendment_id": "AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME",
+  "created_at": "2026-07-26T17:58:00+09:00",
+  "timing": "Committed after the no-outcome schema probe and verified prior-engine source export, but before any V2 future hazard label, model fit, score, simulated order, trade path or PnL was computed.",
+  "reason": "The schema exposed multiple duplicate 1s/3s transforms. To follow the project instruction to remove nonessential choices, the model is reduced from at-most-twelve preregistered features to eight economically distinct symmetric state variables and remains one fixed HGBT.",
+  "active_features": [
+    "spread_bps",
+    "abs_microprice_skew_bps",
+    "abs_depth_imbalance_5",
+    "total_cancel_ratio",
+    "total_refill_ratio",
+    "abs_flow_1s",
+    "update_intensity_1s",
+    "volatility_30s_bps"
+  ],
+  "removed_before_outcome": [
+    "duplicate 3-second trade-notional and imbalance transforms",
+    "duplicate 1-second and 3-second return-magnitude transforms",
+    "all hour-of-day terms",
+    "all directional signs",
+    "all feature, model and threshold searches"
+  ],
+  "unchanged": {
+    "model": "one HistGradientBoostingClassifier with preregistered parameters",
+    "label": "40bp absolute executable-mid first passage within 30 seconds after 100ms activation",
+    "threshold": "99th percentile of 2022 fit-calibration scores",
+    "entry": "one symmetric 4bp two-sided stop pair",
+    "payoffs": ["T40_S20", "T60_S25", "T80_S30"],
+    "cancel_latency": "100ms base and 300ms mandatory stress",
+    "account": "1% planned loss, 3x notional cap, 0.1% prior-three-second quote-notional participation",
+    "costs_bps": [12, 18, 24],
+    "development": "2023 source parsed only after one frozen fit survivor",
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "implementation_clarifications": {
+    "raw_trigger_stream": "SHA-identified Bybit public trades aggregated into adverse 100ms min/max bins.",
+    "execution_quotes": "The first fresh completed 100ms Bybit state within 200ms after the registered latency; no prior failed model score or label is reused.",
+    "trigger_without_fresh_fill": "Rejected no-fill order, as already frozen by the V2 hard-invalidation boundary.",
+    "accepted_position_source_boundary": "Full structural stop plus explicit cost; never deleted and never treated as account-wide terminal loss.",
+    "funding": "Add a fixed adverse 1bp reserve for each crossed eight-hour boundary; a survivor still requires actual historical funding in the next stage.",
+    "winner_removal": "Remove exactly ceil(10% of positive 12bp event keys), not 10% of all trades, before complete global-slot rerouting at every reported stress path.",
+    "development_cell": "Only the single payoff cell frozen on the fit-account interval may be evaluated on 2023."
+  },
+  "scientific_outcome_observed": false,
+  "market_data_newly_opened": false,
+  "orders_permitted": false
+}

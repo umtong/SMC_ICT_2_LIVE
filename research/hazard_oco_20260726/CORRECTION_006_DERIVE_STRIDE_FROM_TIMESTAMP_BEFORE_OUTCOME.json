@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "correction_id": "COR-20260726-HAZARD-DECISION-TIME-006",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T19:05:00+09:00",
+  "timing": "Committed after workflow 30197380789 passed reconstruction, contract validation, source reuse and fit-trade acquisition but stopped before any label, model fit, model score, simulated order, trade path or PnL was produced.",
+  "observed_failure": "The corrected runner attempted to read a convenience column named bin from the retained parent Parquet. The parent state contract exposes decision_us as the authoritative completed-state clock; relying on bin was unnecessary and caused KeyError before model execution.",
+  "correction": "Remove bin from the source-column contract and numeric conversions. Derive the one-second decision stride exactly as ((decision_us // 100000) % 10) == 0.",
+  "unchanged": [
+    "market and source bytes",
+    "completed 100ms information clock",
+    "fit/calibration/account partitions",
+    "eight features",
+    "40bp within 30-second absolute first-passage label",
+    "one fixed HGBT and 99th-percentile score threshold",
+    "single local trigger and maximum one exchange entry order",
+    "three target/stop cells",
+    "100ms and 300ms entry-latency paths",
+    "12/18/24bp cost paths",
+    "risk, notional and participation caps",
+    "fit and development gates",
+    "2024-2026 seals"
+  ],
+  "original_runner_sha256": "b47d6a0f0ef7a007798bf64cc6102a364b42569739600eb898bbb8ea2e363f70",
+  "corrected_runner_sha256": "46b3ba0f1875ba66c827d3e48c044dabf3108890446fba9e3f0542e4ada3bb0d",
+  "corrected_runner_bytes": 32593,
+  "scientific_outcome_observed": false,
+  "orders_permitted": false
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-L2-HAZARD-LOCAL-TRIGGER-001",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "FIT_BELOW_GATE",
+  "ranking_role": "NONE_NOT_RANK_ELIGIBLE_SINGLE_DAY_FATAL_SCREEN",
+  "engine_version": "BYBIT-L2-HAZARD-LOCAL-TRIGGER-V3",
+  "scientific_question": "Can one symmetric top-five Bybit L2 model identify balance-to-displacement hazard strongly enough that the first exact local trade-through can select one market order and survive realistic latency and costs?",
+  "smc_ict_translation": "ML estimated whether balance was likely to expand. It did not choose direction. Local software watched equal internal buy-side and sell-side levels, and only the first exact Bybit trade-through could authorize one order in the revealed delivery direction.",
+  "decision": "RETIRE_EXACT_L2_ABSOLUTE_HAZARD_LOCAL_TRIGGER_WITHOUT_MODEL_FEATURE_THRESHOLD_PAYOFF_RISK_OR_LEVERAGE_TUNING",
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "single_model_only": true,
+    "features": [
+      "spread_bps",
+      "abs_microprice_skew_bps",
+      "abs_depth_imbalance_5",
+      "total_cancel_ratio",
+      "total_refill_ratio",
+      "abs_flow_1s",
+      "update_intensity_1s",
+      "volatility_30s_bps"
+    ],
+    "train_rows": 8550,
+    "train_positive_labels": 339,
+    "calibration_rows": 3430,
+    "calibration_auc": 0.7507988290218889,
+    "volatility_baseline_auc": 0.8117585718659115,
+    "auc_lift": -0.06095974284402261,
+    "score_threshold": 0.5350687067841436,
+    "fit_account_rows": 531
+  },
+  "entry_contract": {
+    "local_monitoring": true,
+    "resting_exchange_entry_orders": 0,
+    "maximum_exchange_entry_orders": 1,
+    "maximum_open_positions": 1,
+    "same_timestamp_two_sided_cross": "REJECT_NO_ORDER",
+    "entry_latency_paths_ms": [100, 300]
+  },
+  "fit_cells": {
+    "T40_S20": {
+      "100ms_18bp": {
+        "trade_count": 4,
+        "total_return": -0.007508625716733497,
+        "geometric_sample_day_growth": -0.007508625716733497,
+        "mean_net_bps": -39.05361402726158,
+        "median_net_bps": -38.889620817072796,
+        "profit_factor": 0.0,
+        "maximum_drawdown": 0.007508625716733497,
+        "winner_removed_return": -0.007508625716733497
+      },
+      "300ms_18bp": {
+        "trade_count": 4,
+        "total_return": -0.007328902626863254,
+        "geometric_sample_day_growth": -0.007328902626863254,
+        "mean_net_bps": -38.83844085492253,
+        "median_net_bps": -38.74736438783087,
+        "profit_factor": 0.0,
+        "unresolved_fraction": 0.25
+      },
+      "100ms_24bp_return": -0.008668239174183467
+    },
+    "T60_S25": {
+      "100ms_18bp": {
+        "trade_count": 3,
+        "total_return": -0.007230508172019645,
+        "geometric_sample_day_growth": -0.007230508172019645,
+        "mean_net_bps": -43.89902505903536,
+        "median_net_bps": -43.76070599637825,
+        "profit_factor": 0.0,
+        "unresolved_fraction": 0.3333333333333333
+      },
+      "300ms_18bp_return": -0.007192557861972593,
+      "100ms_24bp_return": -0.008213611503129714
+    },
+    "T80_S30": {
+      "100ms_18bp": {
+        "trade_count": 1,
+        "total_return": -0.004857520550159977,
+        "geometric_sample_day_growth": -0.004857520550159977,
+        "mean_net_bps": -47.99999999999999,
+        "median_net_bps": -47.99999999999999,
+        "profit_factor": 0.0,
+        "unresolved_fraction": 1.0
+      },
+      "300ms_18bp_return": -0.004857520550159977,
+      "100ms_24bp_return": -0.005464710618930058
+    }
+  },
+  "fit_gate_pass_count": 0,
+  "development_opened": false,
+  "prohibited_years_opened": [],
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "rank_eligible": false,
+  "dependencies": {
+    "parent_completed_state_artifact_id": 8626169763,
+    "fit_raw_trade_sha256": "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f",
+    "scientific_head_commit": "af2b7931761f949222823df97d6e618c35254d8c",
+    "corrected_runner_sha256": "46b3ba0f1875ba66c827d3e48c044dabf3108890446fba9e3f0542e4ada3bb0d",
+    "corrections": [
+      "COR-20260726-HAZARD-LOCAL-TRIGGER-005",
+      "COR-20260726-HAZARD-DECISION-TIME-006"
+    ]
+  },
+  "evidence": {
+    "workflow_run": 30197559374,
+    "artifact_id": 8630589328,
+    "artifact_digest": "sha256:8b260029bb824e8fd879dafbeaf7b28c99d97bf3ce31fe9b2768e1ec5ebc8ff3",
+    "result_sha256": "065dc1ae23324b6f6cf9bd30e2c545a0a7d5238554ab645dba43878987a179cf",
+    "fit_paths_sha256": "37b7e26ed0e5cf0cefefaffb14e8283a2bda4585f2abfaa39935de5c0096a8d6"
+  },
+  "known_limitations": [
+    "The fatal screen uses one pre-2024 UTC sample day and is not rank eligible.",
+    "The completed-state source is a registered third-party reconstruction; a survivor would require independent official-data reconstruction.",
+    "Actual historical funding is replaced by a conservative boundary reserve at this stage."
+  ]
+}

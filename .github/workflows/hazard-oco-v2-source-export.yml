@@ -1,0 +1,88 @@
+name: ML hazard OCO V2 source reuse export
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/hazard-oco-v2-source-export.yml"
+      - "research/hazard_oco_20260726/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hazard-oco-v2-source-export-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Recover and verify prior causal execution engine
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/old-hazard research_runs/hazard_oco_v2_source
+          git fetch --depth=1 origin agent/r11-hazard-oco-001
+          git --work-tree=/tmp/old-hazard checkout FETCH_HEAD -- \
+            research/hazard_oco_20260726/reconstruct.py \
+            research/hazard_oco_20260726/source_manifest.json \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part00 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part01 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part02 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part03 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part04 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part05 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part06 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part07 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part08 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part09 \
+            research/hazard_oco_20260726/run_v4_py.gz.b64.part10 \
+            research/hazard_oco_20260726/test_run_v4_py.gz.b64.part00 \
+            research/hazard_oco_20260726/test_run_v4_py.gz.b64.part01
+          python /tmp/old-hazard/research/hazard_oco_20260726/reconstruct.py \
+            | tee research_runs/hazard_oco_v2_source/reconstruction.log
+          cp /tmp/old-hazard/research/hazard_oco_20260726/reconstructed/run.py \
+            research_runs/hazard_oco_v2_source/prior_run.py
+          cp /tmp/old-hazard/research/hazard_oco_20260726/reconstructed/test_run.py \
+            research_runs/hazard_oco_v2_source/prior_test_run.py
+          python -m py_compile \
+            research_runs/hazard_oco_v2_source/prior_run.py \
+            research_runs/hazard_oco_v2_source/prior_test_run.py
+          echo "378ce2219b460829f93c201068cae7b4c1b192b6fc9d3ef59b64396ef93989ee  research_runs/hazard_oco_v2_source/prior_run.py" | sha256sum --check
+          echo "97268c8f2d6f8e2c9c8c137c5ac95b7b762e72f91a3f16de94a21eda5dd709b1  research_runs/hazard_oco_v2_source/prior_test_run.py" | sha256sum --check
+          sha256sum research_runs/hazard_oco_v2_source/prior_*.py \
+            > research_runs/hazard_oco_v2_source/SHA256SUMS.txt
+
+      - name: Assert no strategy outcome opened
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = {
+              "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+              "source_branch": "agent/r11-hazard-oco-001",
+              "source_run_sha256": "378ce2219b460829f93c201068cae7b4c1b192b6fc9d3ef59b64396ef93989ee",
+              "market_data_opened": False,
+              "future_label_opened": False,
+              "model_fitted": False,
+              "strategy_pnl_opened": False,
+              "orders_submitted": False,
+          }
+          Path("research_runs/hazard_oco_v2_source/ATTESTATION.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hazard-oco-v2-prior-engine-${{ github.sha }}
+          path: research_runs/hazard_oco_v2_source
+          if-no-files-found: error
+          retention-days: 14

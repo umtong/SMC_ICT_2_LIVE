@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T18:16:00+09:00",
+  "timing": "The byte-audit workflow showed deterministic reconstruction failed before any market artifact, raw trade stream, future label, model, score, simulated order, trade path or PnL was opened.",
+  "defect": "The single-line run_v2.py.gz.b64 repository write was truncated to 10,733 base64 data characters, which is not a valid multiple-of-four encoding and is shorter than the locally verified 14,776-character source transport.",
+  "correction": "Store the same immutable gzip payload as five ordered base64 part files, concatenate them in reconstruct_v2.py, and retain the original gzip SHA-256, raw source SHA-256 and raw byte count.",
+  "scientific_effect": "None. The reconstructed run_v2.py is still required to match gzip SHA 00c9dd356552d084adbcb701fa37eef62b9de0e76c35456808ed91fbf83acd1a and raw SHA a64365b5e9e14f54a8e9bbe141344d5f6beca754d21dc039720123fad7be76d1 before execution. No scientific dependency changed.",
+  "invalidated_runs": [30195621030, 30195779140, 30195957956],
+  "orders_permitted": false
+}

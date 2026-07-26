@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "result_id": "RES-20260726-HAZARD-OCO-V2-001",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "status": "HARD_INVALID_SUPERSEDED",
+  "hard_validity": "FAIL_GLOBAL_ENTRY_ORDER_CONTRACT",
+  "economic_status": "NOT_ADMISSIBLE",
+  "ranking_role": "NONE_HARD_INVALID",
+  "invalid_reason": "The engine represented the upper and lower conditional entries as two simultaneously live exchange new-entry orders. The project contract permits at most one unfilled new-entry order or one open position across the account, so the original 128-policy output is inadmissible regardless of its negative economics.",
+  "invalidated_runs": [
+    30195621030,
+    30195779140,
+    30195957956,
+    30196723484,
+    30198062051
+  ],
+  "superseded_by": {
+    "result_id": "RES-20260726-ML-L2-HAZARD-LOCAL-TRIGGER-001",
+    "engine_version": "BYBIT-L2-HAZARD-LOCAL-TRIGGER-V3",
+    "workflow_run": 30197559374,
+    "artifact_id": 8630589328,
+    "artifact_digest": "sha256:8b260029bb824e8fd879dafbeaf7b28c99d97bf3ce31fe9b2768e1ec5ebc8ff3",
+    "hard_validity_status": "PASS",
+    "economic_status": "FIT_BELOW_GATE",
+    "fit_gate_pass_count": 0
+  },
+  "correction_boundary": {
+    "frozen_before_scientific_outcome": true,
+    "local_monitoring_states": 1,
+    "resting_exchange_entry_orders": 0,
+    "maximum_exchange_entry_orders": 1,
+    "same_timestamp_two_sided_cross": "REJECT_NO_ORDER",
+    "unchanged_model_features_label_threshold_payoffs_costs_risk_and_dates": true
+  },
+  "decision": "Retain this record only to prevent reuse of the hard-invalid two-order output. The valid single-order replacement is economically negative and retires the exact L2 absolute-hazard local-trigger dependency without adjacent tuning.",
+  "orders_submitted": false,
+  "live_permission_changed": false
+}

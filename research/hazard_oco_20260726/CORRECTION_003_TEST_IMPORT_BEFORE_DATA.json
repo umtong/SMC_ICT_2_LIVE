@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T18:10:00+09:00",
+  "timing": "The first full workflow stopped during source reconstruction and adversarial tests. No state artifact, raw trade file, future label, model, score, simulated order, trade path or PnL was opened.",
+  "defect": "The compressed test module looked for the development filename hazard_run_v2.py, while deterministic reconstruction intentionally writes the scientific module as run_v2.py.",
+  "correction": "Change the test module's local import target to run_v2.py and update only its immutable gzip/raw hashes and byte count.",
+  "scientific_effect": "None. No feature, label, model, threshold, entry, exit, cost, account, gate or sealed-period rule changed.",
+  "invalidated_output": "Workflow run 30195621030 is infrastructure-only failure and contains no economic result.",
+  "orders_permitted": false
+}
