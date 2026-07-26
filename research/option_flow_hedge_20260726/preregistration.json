@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1037-OPTION-FLOW-001",
+  "probe_id": "DERIBIT-OPTION-FLOW-SOURCE-PROBE-20260726-V1",
+  "base_revision": 11,
+  "branch": "agent/r11-option-flow-hedge-001",
+  "research_stage": "source_schema_and_clock_probe_before_any_pnl",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "rank_eligibility": false,
+  "objective": "Determine whether point-in-time Deribit option transaction flow and Greeks can be joined causally to executable Bybit BTCUSDT/ETHUSDT quotes strongly enough to justify a frozen after-cost hedge-pressure screen.",
+  "distinct_scope": {
+    "primary_information": "completed option aggressor transactions mapped to signed delta demand and gamma pressure",
+    "excluded_option_information": [
+      "ATM implied-volatility level",
+      "DVOL level or IV-minus-realized-volatility premium",
+      "25-delta risk reversal",
+      "25-delta butterfly",
+      "surface term slopes"
+    ],
+    "signal_venue": "Deribit options",
+    "permitted_execution_venue": "Bybit USDT linear perpetual",
+    "permitted_execution_symbols": ["BTCUSDT", "ETHUSDT"],
+    "one_global_slot": true
+  },
+  "probe_contract": {
+    "date": "2023-01-01",
+    "datasets": [
+      {
+        "exchange": "deribit",
+        "data_type": "trades",
+        "symbol": "OPTIONS",
+        "role": "option aggressor transactions"
+      },
+      {
+        "exchange": "deribit",
+        "data_type": "options_chain",
+        "symbol": "OPTIONS",
+        "role": "point-in-time option Greeks and underlying price"
+      },
+      {
+        "exchange": "bybit",
+        "data_type": "quotes",
+        "symbol": "BTCUSDT",
+        "role": "executable BTC perpetual BBO"
+      },
+      {
+        "exchange": "bybit",
+        "data_type": "trades",
+        "symbol": "BTCUSDT",
+        "role": "BTC perpetual markout and flow"
+      },
+      {
+        "exchange": "bybit",
+        "data_type": "quotes",
+        "symbol": "ETHUSDT",
+        "role": "executable ETH perpetual BBO"
+      },
+      {
+        "exchange": "bybit",
+        "data_type": "trades",
+        "symbol": "ETHUSDT",
+        "role": "ETH perpetual markout and flow"
+      }
+    ],
+    "maximum_sample_rows_per_file": 5000,
+    "maximum_download_bytes_per_file": 67108864,
+    "strategy_pnl_opened": false,
+    "candidate_grid_opened": false
+  },
+  "required_schema": {
+    "option_trades": ["symbol", "timestamp", "local_timestamp", "side", "price", "amount"],
+    "option_chain_core": ["symbol", "timestamp", "local_timestamp", "underlying_price", "delta", "gamma"],
+    "bybit_quotes": ["symbol", "timestamp", "local_timestamp", "bid_price", "ask_price"],
+    "bybit_trades": ["symbol", "timestamp", "local_timestamp", "side", "price", "amount"]
+  },
+  "causal_design_if_probe_passes": {
+    "flow_windows_seconds": [5, 15, 60],
+    "minimum_post_window_delay_seconds": 2,
+    "diagnostic_markouts_seconds": [10, 30, 120, 300],
+    "families": [
+      "signed_delta_flow_continuation",
+      "short_gamma_momentum_amplification",
+      "long_gamma_or_failed_pressure_reversal",
+      "btc_eth_relative_option_flow_divergence"
+    ],
+    "cost_profiles_bps": [12, 18, 24],
+    "same_gross_path_replay": true,
+    "historical_bbo_required_before_rank_eligibility": true
+  },
+  "source_concept_contract": {
+    "hypothesis_only": [
+      "option market-maker delta hedging transmits option net buying pressure to the underlying",
+      "negative dealer gamma can create same-direction rebalancing pressure",
+      "positive dealer gamma can create opposing rebalancing pressure"
+    ],
+    "profitability_not_assumed": true,
+    "pre_cutoff_rules_only": true
+  },
+  "prohibitions": [
+    "no strategy PnL during the source probe",
+    "no 2024, 2025 or 2026 dataset access",
+    "no option orders",
+    "no same-message or pre-completion entry",
+    "no cross-region microsecond latency claim",
+    "no credentials or live orders",
+    "no ranking update from the probe"
+  ]
+}
