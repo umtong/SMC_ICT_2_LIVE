@@ -2,9 +2,10 @@
   "schema_version": 1,
   "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-STRICT-MACOS-QUEUE-004",
   "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T01:00:00+09:00",
   "recorded_before_source_or_market_outcome": true,
   "observed_before_correction": {
-    "validator_run_id": 30208827122,
+    "ubuntu_validator_runs": [30208827122, 30209326826],
     "validator_status": "QUEUED",
     "source_decision_opened": false,
     "market_data_opened": false,
@@ -13,17 +14,24 @@
     "official_2024_2026_opened": false,
     "orders_submitted": false
   },
-  "mechanical_change": "Use macos-15 for the temporary pull-request validator carrier to access an independent hosted-runner queue.",
+  "mechanical_change": "Use macos-15 for the temporary pull-request validator carrier to access an independent GitHub-hosted runner queue.",
+  "canonical_source_sha": "3631cf01a2a2b91d690b81160e14ba033a298f75",
+  "strict_engine_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "supersedes_source_sha": "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+  "scientific_changes": [],
   "unchanged": [
-    "source SHA 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
-    "strict engine SHA 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
     "USDT Issue/Redeem and USDC zero-address source semantics",
-    "source density and fail-closed rules",
-    "strict causal feature boundary",
+    "explicit-no-records-only, explicit-range-limit-only, otherwise fail-closed transport policy",
+    "12 and 64 block information availability",
+    "strict source-decision-second completed-bar boundary",
     "model, calibration, labels and action rule",
     "structural target and stop",
-    "cost and risk frontier",
-    "immediate official 2024H1 decision",
+    "one global BTC/ETH slot",
+    "12/18/24bp costs and preregistered risk/notional frontier",
+    "immediate official 2024H1 only for a complete positive no-liquidation pre-2024 survivor",
     "credential and order prohibition"
-  ]
+  ],
+  "source_result_observed_before_correction": false,
+  "market_outcome_observed_before_correction": false,
+  "orders_submitted": false
 }
