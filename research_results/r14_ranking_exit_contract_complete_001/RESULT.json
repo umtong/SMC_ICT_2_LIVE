@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-R14-RANKING-EXIT-CONTRACT-001",
+  "status": "COMPLETE_STATE_RECONCILIATION",
+  "hard_validity_status": "PASS_STATE_AND_EVIDENCE_RECONCILIATION",
+  "economic_status": "TARGET_NOT_MET",
+  "project_revision": 14,
+  "first_place": {
+    "id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
+    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+    "candidate_id": "a70626d9e484285f2cb4|all",
+    "elapsed_time_liquidation": false,
+    "paths": {
+      "12bps": {"geometric_daily_growth": 0.0009008544402622221, "total_return": 0.3891108327238735, "trades": 99, "profit_factor": 1.7959502897284196, "maximum_drawdown": 0.09719355993771106, "median_bps": -50.0, "top5_positive_share": 0.6510987302541201, "top10pct_removed_return": -0.26287077897662825},
+      "18bps": {"geometric_daily_growth": 0.0007941372483304399, "total_return": 0.33608682555253844, "trades": 99, "profit_factor": 1.707110923243576, "maximum_drawdown": 0.09779166915314708},
+      "24bps": {"geometric_daily_growth": 0.0007001887213879954, "total_return": 0.2910804833980871, "trades": 99, "profit_factor": 1.6274490829640196, "maximum_drawdown": 0.09855424618390096, "median_bps": -50.0, "top5_positive_share": 0.642218924348059, "top10pct_removed_return": -0.2694691324532831}
+    },
+    "exit_counts": {"channel_exit": 25, "stop": 74},
+    "median_holding_hours": 19.0,
+    "maximum_leverage_used_12bps": 0.8746582981355856
+  },
+  "removed": [
+    {"source_result_id": "RES-20260725-DYNAMIC-FACTOR-001", "reason": "maximum_hold_bars=96 and timeout-open exit"},
+    {"source_result_id": "RES-20260725-ABS-FLOW-001", "reason": "maximum_holding_minutes and scheduled horizon close"},
+    {"source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001", "reason": "candidate.hold, timeout_i and timeout exit"},
+    {"source_result_id": "RES-20260726-DVOL-XSEC-001", "reason": "maximum_hold_bars"},
+    {"source_result_id": "RES-20260725-ALPHA-HYP-001", "reason": "durable INVALID plus hold=48"},
+    {"source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001", "reason": "hold_minutes=30"}
+  ],
+  "inserted_structural_exit_results": ["RES-20260726-CME-GAP-ML-FATAL-001", "RES-20260726-LIQUIDITY-MASS-001", "RES-20260726-EXPIRY-SMT-FATAL-001", "RES-20260726-MMXM-LIFECYCLE-001", "RES-20260726-KRW-RELATIVE-FATAL-001", "RES-20260726-LIQUIDATION-REFILL-001"],
+  "ranked_candidate_count": 8,
+  "removed_for_elapsed_time_or_invalid_count": 6,
+  "market_rows_opened": false,
+  "model_fit_performed": false,
+  "parameters_changed": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "created_at": "2026-07-26T21:18:00+09:00"
+}
