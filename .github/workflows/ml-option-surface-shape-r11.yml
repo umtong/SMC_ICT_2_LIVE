@@ -1,0 +1,59 @@
+name: ML option-surface shape source gate
+
+on:
+  push:
+    branches: [agent/r11-ml-option-surface-shape-001]
+    paths:
+      - 'research/ml_option_surface_shape_20260726/**'
+      - '.github/workflows/ml-option-surface-shape-r11.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_option_surface_shape_20260726/**'
+      - '.github/workflows/ml-option-surface-shape-r11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed source-probe environment
+        run: python -m pip install 'gdown==5.2.0' 'pyarrow==17.0.0'
+      - name: Download immutable public parquet
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ml-option-surface-source
+          gdown --id 1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8 \
+            --output /tmp/ml-option-surface-source/btc_option_data_toshare.parquet
+          test "$(stat -c%s /tmp/ml-option-surface-source/btc_option_data_toshare.parquet)" = "57453783"
+      - name: Compile and run outcome-sealed source gate
+        run: |
+          set -euo pipefail
+          python -m py_compile research/ml_option_surface_shape_20260726/probe_public_parquet.py
+          python research/ml_option_surface_shape_20260726/probe_public_parquet.py \
+            --parquet /tmp/ml-option-surface-source/btc_option_data_toshare.parquet \
+            --output /tmp/ml-option-surface-source \
+            | tee /tmp/ml-option-surface-source/run.log
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          find /tmp/ml-option-surface-source -maxdepth 1 -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > /tmp/ml-option-surface-source/SHA256SUMS.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-option-surface-source-gate-${{ github.run_id }}
+          path: /tmp/ml-option-surface-source
+          if-no-files-found: error
+          retention-days: 30
