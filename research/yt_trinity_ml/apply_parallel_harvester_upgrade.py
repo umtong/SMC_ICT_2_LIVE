@@ -11,6 +11,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+PAYLOAD_SCHEMA_VERSION = 1
 
 SPECS = (
     {
@@ -56,7 +57,13 @@ def materialize(spec: dict[str, object]) -> dict[str, object]:
 
 def main() -> int:
     results = [materialize(spec) for spec in SPECS]
-    print(json.dumps({"schema_version": 1, "files": results}, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {"schema_version": PAYLOAD_SCHEMA_VERSION, "files": results},
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
