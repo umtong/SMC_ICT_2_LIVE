@@ -9,6 +9,8 @@ on:
       - research/data_foundation_20260727/**
       - scripts/market_data/**
       - tests/test_canonical_market_data.py
+      - instructions/project-instructions.md
+      - prompts/goal-worker.md
       - .github/workflows/canonical-bybit-halfyear-data.yml
       - .github/workflows/canonical-data-pr-diagnostics.yml
 
@@ -18,7 +20,7 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,6 +38,8 @@ jobs:
           echo $? > diagnostic/validate-project.exit
           python -m pytest -q tests/test_canonical_market_data.py > diagnostic/canonical-tests.log 2>&1
           echo $? > diagnostic/canonical-tests.exit
+          python -m pytest -q > diagnostic/full-tests.log 2>&1
+          echo $? > diagnostic/full-tests.exit
           python -m py_compile \
             scripts/market_data/build_canonical_bybit.py \
             scripts/market_data/bybit_client.py \
@@ -63,5 +67,6 @@ jobs:
         run: |
           test "$(cat diagnostic/validate-project.exit)" = 0
           test "$(cat diagnostic/canonical-tests.exit)" = 0
+          test "$(cat diagnostic/full-tests.exit)" = 0
           test "$(cat diagnostic/compile.exit)" = 0
           test "$(cat diagnostic/contract.exit)" = 0
