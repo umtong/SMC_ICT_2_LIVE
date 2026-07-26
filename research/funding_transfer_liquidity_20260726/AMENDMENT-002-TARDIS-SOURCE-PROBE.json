@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-FUNDING-TRANSFER-TARDIS-PROBE-002",
+  "claim_id": "CLM-20260726-1150-FUNDING-TRANSFER-001",
+  "registered_before_tardis_row_access": true,
+  "trigger": {
+    "workflow_run_id": 30191659134,
+    "status": "DATA_UNAVAILABLE",
+    "error_class": "All officially documented Bybit V5 global and local-site API domains returned HTTP 403 from the GitHub-hosted runner."
+  },
+  "permitted_probe": {
+    "provider": "Tardis public normalized Bybit sample",
+    "exchange": "bybit",
+    "data_type": "derivative_ticker",
+    "date": "2022-01-01",
+    "symbol": "BTCUSDT",
+    "url": "https://datasets.tardis.dev/v1/bybit/derivative_ticker/2022/01/01/BTCUSDT.csv.gz",
+    "read_scope": "CSV header, row count, source SHA-256, timestamp bounds, non-null counts and distinct-change counts for funding/index/mark/last fields. No strategy event, direction, return, PnL or candidate statistic."
+  },
+  "prohibitions": [
+    "No fit/development strategy PnL or candidate evaluation in the probe workflow.",
+    "No 2024-2026 data.",
+    "No family, threshold, cost or survivor-gate decision from probe values.",
+    "A separate date-role and sparse-sample amendment is mandatory before any outcome-bearing screen."
+  ]
+}
