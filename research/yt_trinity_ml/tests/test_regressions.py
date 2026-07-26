@@ -79,7 +79,7 @@ def test_canonical_asof_join_normalizes_nullable_integer_keys() -> None:
     decision_times = pd.to_datetime(["2023-01-01T00:01:00Z", "2023-01-01T00:02:00Z"])
     base = pd.DataFrame(
         {
-            "available_at_ms": pd.Series([1672531260000, 1672531320000], dtype="Int64"),
+            "available_at_ms": pd.array([1672531260000, 1672531320000], dtype="Int64"),
             "close": [100.0, 101.0],
         },
         index=decision_times,
