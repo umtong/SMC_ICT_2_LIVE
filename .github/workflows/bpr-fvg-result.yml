@@ -1,0 +1,93 @@
+name: Verify causal BPR FVG fatal result
+
+on:
+  push:
+    branches:
+      - agent/r11-bpr-fvg-001
+    paths:
+      - "research/bybit_bpr_fvg_20260726/**"
+      - ".github/workflows/bpr-fvg-result.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bpr-fvg-result-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Reconstruct immutable evaluator and result
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/bybit_bpr_fvg_20260726
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/evaluate.py"
+          python scripts/validate_project.py
+          test "$(sha256sum "$root/evaluate.py" | cut -d' ' -f1)" = "6a4dc5270cfd2a0240162628e302b119994c155a8918fd5832a6e4e9617fc9f1"
+          test "$(sha256sum "$root/result_bundle.zip" | cut -d' ' -f1)" = "82066394e77765e8130c791796888bc4ef7f17ca91d476d7c11942a1cdd98b69"
+          (cd "$root/observed" && sha256sum --check SHA256SUMS.txt)
+
+      - name: Enforce reported boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/bybit_bpr_fvg_20260726')
+          registered=json.loads((root/'RESULT.json').read_text())
+          observed=json.loads((root/'observed/RESULT.json').read_text())
+          assert registered == observed
+          assert observed['status'] == 'TESTED_BELOW_GATE'
+          assert observed['candidate_count'] == 64
+          assert observed['fit_gate_pass_count'] == 0
+          assert observed['development_gate_pass_count'] == 0
+          assert observed['development_dates_opened'] == []
+          assert observed['2024_opened'] is False
+          assert observed['2025_or_2026_opened'] is False
+          assert observed['funding_opened'] is False
+          assert observed['orders_submitted'] is False
+          best=observed['best_fit_candidate']
+          assert best['trades_12bps'] == 3
+          assert best['mean_net_bps_24bps'] < 0
+          assert best['median_net_bps_12bps'] < 0
+          assert best['top10_removed_total_return_12bps'] < 0
+          print(json.dumps({'status':observed['status'],'best':best},sort_keys=True))
+          PY
+
+      - name: Build evidence archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/bybit_bpr_fvg_20260726
+          mkdir -p evidence
+          cp "$root"/README.md evidence/
+          cp "$root"/preregistration.json evidence/
+          cp "$root"/IMPLEMENTATION_DETAIL_001.json evidence/
+          cp "$root"/IMPLEMENTATION_CORRECTION_001.json evidence/
+          cp "$root"/RESULT.json evidence/
+          cp "$root"/evaluate.py evidence/
+          cp -r "$root"/observed evidence/observed
+          find evidence -type f -print0 | sort -z | xargs -0 sha256sum > evidence/EVIDENCE_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bpr-fvg-fatal-${{ github.sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 9
