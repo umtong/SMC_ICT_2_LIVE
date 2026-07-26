@@ -1,0 +1,141 @@
+{
+  "account": {
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 3,
+    "participation_cap": 0.001,
+    "planned_risk_fraction": 0.01,
+    "top_positive_event_removal_fraction": 0.1
+  },
+  "calibration_gate_all_required": {
+    "accepted_trades_both_latencies": ">=20",
+    "auc_lift_over_structure_baseline": ">=0.01",
+    "brier_skill_over_structure_baseline": ">0",
+    "calibration_auc": ">=0.55",
+    "positive_date_count_both_latencies": ">=3",
+    "positive_mean_and_median_24bp_both_latencies": true,
+    "positive_top10_removed_return_both_latencies": true,
+    "resolved_calibration_rows": ">=80",
+    "resolved_fit_rows": ">=80",
+    "top_five_positive_pnl_share_both_latencies": "<=0.40",
+    "winner_removed_sample_day_geometric_growth_both_latencies": ">=0.01"
+  },
+  "chronology": {
+    "calibration": [
+      "2022-07-10",
+      "2022-08-14",
+      "2022-09-11",
+      "2022-10-09",
+      "2022-11-13",
+      "2022-12-11"
+    ],
+    "conditional_development": [
+      "2023-01-08",
+      "2023-02-12",
+      "2023-03-12",
+      "2023-04-09",
+      "2023-05-14",
+      "2023-06-11",
+      "2023-07-09",
+      "2023-08-13"
+    ],
+    "fit": [
+      "2022-01-09",
+      "2022-02-13",
+      "2022-03-13",
+      "2022-04-10",
+      "2022-05-08",
+      "2022-06-12"
+    ],
+    "prohibited_years": [
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "claim_id": "CLM-20260726-1906-SMT-CONTINUATION-ML-001",
+  "development_gate": "same economics with >=30 trades, positive on >=6/8 dates, and no unavailable accepted paths",
+  "engine_version": "SMT-CONTINUATION-ML-META-V1",
+  "event": {
+    "btc_horizons_seconds": [
+      1,
+      2,
+      5
+    ],
+    "direction": "original BTC displacement direction only",
+    "entry_state": "first completed residual contraction to 50% or less while remaining above 25%, followed by one completed second of original-direction follower aggressive flow",
+    "minimum_beta_residual_overdelivery_bps": 12,
+    "no_immediate_entry": true,
+    "prior_only_beta_attention_volatility": true
+  },
+  "execution": {
+    "cost_bps_round_trip": 24,
+    "elapsed_time_exit": false,
+    "entry_latencies_ms": [
+      100,
+      300
+    ],
+    "funding_reserve_bps_per_8h_boundary": 2,
+    "same_event_paths": true,
+    "source_boundary": "accepted unresolved position pays full structural stop plus cost"
+  },
+  "features": [
+    "btc_displacement_z",
+    "btc_activity_ratio",
+    "btc_aggressor_alignment",
+    "follower_aggressor_alignment_at_event",
+    "frozen_beta",
+    "initial_residual_gap_bps",
+    "overreaction_ratio",
+    "target_to_btc_trade_count_ratio_30m",
+    "target_to_btc_realized_volatility_ratio_15m",
+    "pullback_depth_ratio",
+    "milliseconds_event_to_pullback",
+    "reacceleration_flow_strength_1s",
+    "reacceleration_trade_count_1s",
+    "target_realized_volatility_10s",
+    "other_follower_residual_bps",
+    "leader_move_at_entry_bps"
+  ],
+  "label_and_route": {
+    "ambiguous": "adverse/negative",
+    "negative": "any fixed structural invalidation first",
+    "positive": "after fixed 100ms entry, 150% residual expansion is reached before 25% reclaim, adverse follower stop or BTC-origin failure",
+    "route": "trade only when calibrated probability implies positive expected value after 24bp and exceeds the structure baseline probability by at least 0.05"
+  },
+  "model": {
+    "C": 0.25,
+    "baseline": "structure-only logistic using gap, pullback depth, leader persistence and volatility",
+    "calibration": "one frozen isotonic map fitted on calibration only when both classes are present",
+    "class_weight": "balanced",
+    "family": "standardized L2 logistic regression",
+    "feature_grid": false,
+    "model_grid": false,
+    "single_model_only": true,
+    "solver": "lbfgs",
+    "threshold_grid": false
+  },
+  "orders_submitted": false,
+  "promotion_boundary": "Any survivor remains pre-2024 discovery; exact Bybit BBO/depth, funding and full sequential 2024-2026 replay are required before ranking.",
+  "result_id": "RES-20260726-SMT-CONTINUATION-ML-001",
+  "schema_version": 1,
+  "scientific_question": "After BTC displacement and SOL/XRP beta-residual overdelivery accept external liquidity, can one explainable ML meta-label identify which first 50% residual pullbacks reaccelerate to 150% expansion before reclaim/BTC-origin failure strongly enough to survive 24bp and one-global-slot account replay?",
+  "smc_ict_translation": [
+    "BTC displacement establishes delivery direction.",
+    "SOL or XRP extends beyond prior-only BTC beta fair value and accepts external liquidity, forming quantitative SMT overdelivery.",
+    "The first 50% residual pullback is a measurable FVG/OTE mitigation; it is the only admissible entry state.",
+    "One ML model accepts the trade only when pullback structure, flow, attention and leader persistence imply renewed distribution in the original direction.",
+    "Target is 150% residual expansion; invalidation is 25% residual reclaim, adverse follower displacement, BTC-origin failure or conservative source-boundary stop.",
+    "ML cannot choose direction, entry depth, target, stop, latency, risk or leverage."
+  ],
+  "universe": {
+    "execution": [
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "global_slot": 1,
+    "signal": [
+      "BTCUSDT"
+    ],
+    "venue": "Bybit USDT-linear perpetual public trade archives"
+  }
+}
