@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1142-TWOFACTOR-MICROSHOCK-001",
+  "created_at": "2026-07-26T11:42:00+09:00",
+  "base_revision": 11,
+  "status": "PREREGISTERED_BEFORE_ANY_CLAIM_DATE_ARCHIVE_BYTES_OR_CONTENT",
+  "question": "Do completed Bybit BTCUSDT and ETHUSDT consensus shocks or ETH-idiosyncratic shocks leave stable cost-sized causal underreaction or overreaction in SOLUSDT/XRPUSDT after prior-only two-factor response estimation?",
+  "venue": "Bybit USDT linear perpetual public trades",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "source_url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+  "stages": {
+    "family_screen_dates": ["2023-01-15", "2023-03-19", "2023-04-16"],
+    "conditional_confirmation_dates": ["2023-06-18", "2023-08-20", "2023-12-17"],
+    "2024_2026_sealed": true
+  },
+  "information_contract": {
+    "event_grid_ms": 100,
+    "decision": "Only after the full 1/2/5-second BTC, ETH and follower windows are complete.",
+    "mark_staleness_ms_max": 2000,
+    "no_imputation": true,
+    "all_rolling_features_end_before_shock_start": true,
+    "prior_return_grid_seconds": 1,
+    "rolling_beta_window_seconds": 1800,
+    "rolling_scale_window_seconds": 900,
+    "minimum_beta_pairs": 1200,
+    "minimum_scale_pairs": 600,
+    "minimum_nonzero_returns": 60
+  },
+  "factor_model": {
+    "eth_on_btc_beta": "Prior-only covariance(ETH,BTC)/variance(BTC), clipped to [0.2,2.0].",
+    "eth_idiosyncratic_return": "ETH H-second return minus prior ETH-on-BTC beta times BTC H-second return.",
+    "follower_btc_beta": "Prior-only covariance(follower,BTC)/variance(BTC), clipped to [0.0,3.0].",
+    "follower_eth_idio_loading": "Prior-only covariance(follower residual after BTC, ETH residual after BTC)/variance(ETH residual after BTC), clipped to [-2.0,3.0].",
+    "expected_follower_return": "Follower BTC beta times BTC H-second return plus follower ETH-idiosyncratic loading times ETH idiosyncratic H-second return."
+  },
+  "shock_families": {
+    "consensus": {
+      "same_direction_btc_eth_return": true,
+      "btc_return_z_min": 2.5,
+      "eth_return_z_min": 2.5,
+      "btc_direction_aligned_aggressive_imbalance_min": 0.3,
+      "eth_direction_aligned_aggressive_imbalance_min": 0.3,
+      "combined_leader_activity_ratio_min": 1.5
+    },
+    "eth_idiosyncratic": {
+      "eth_idiosyncratic_return_z_min": 3.0,
+      "btc_return_z_max": 1.5,
+      "eth_idiosyncratic_direction_aligned_aggressive_imbalance_min": 0.5,
+      "eth_idiosyncratic_move_must_exceed_btc_explained_component": true,
+      "eth_activity_ratio_min": 1.5
+    }
+  },
+  "follower_attention": {
+    "prior_30m_follower_to_geometric_mean_leader_trade_count_ratio_min": 0.75,
+    "prior_15m_follower_to_max_leader_realized_volatility_ratio_min": 0.8
+  },
+  "payoff_families": {
+    "underreaction": {
+      "direction_aligned_actual_to_expected_ratio_max": 0.75,
+      "direction_aligned_follower_aggressive_imbalance_max": 0.5,
+      "direction_aligned_expected_minus_actual_gap_floors": [0.0012, 0.0018, 0.0024]
+    },
+    "overreaction": {
+      "direction_aligned_actual_to_expected_ratio_min": 1.25,
+      "direction_aligned_follower_aggressive_imbalance_min": 0.5,
+      "direction_aligned_actual_minus_expected_gap_floors": [0.0012, 0.0018, 0.0024]
+    }
+  },
+  "event_horizons_seconds": [1, 2, 5],
+  "unique_event_rule": "Within each shock-payoff-follower-horizon family, no new event until the direction-aligned expected follower displacement from the event start is at most 25% of the detected expected move for ten consecutive 100ms states.",
+  "family_screen_gate": {
+    "minimum_unique_12bp_events_total": 15,
+    "minimum_unique_24bp_events_total": 4,
+    "minimum_dates_with_at_least_3_12bp_events": 2,
+    "minimum_follower_date_cells_with_at_least_3_12bp_events": 2,
+    "maximum_single_date_share_of_12bp_events": 0.7
+  },
+  "family_selector": "Among passing families choose highest 24bp count, then more dates with at least three 12bp events, then higher 12bp count, then lexical family name. No parameter or horizon is selected separately.",
+  "confirmation_gate": {
+    "minimum_unique_12bp_events_total": 15,
+    "minimum_unique_24bp_events_total": 4,
+    "minimum_dates_with_at_least_3_12bp_events": 2,
+    "minimum_follower_date_cells_with_at_least_3_12bp_events": 2,
+    "maximum_single_date_share_of_12bp_events": 0.6
+  },
+  "promotion_boundary": {
+    "pnl_computed": false,
+    "funding_opened": false,
+    "entry_exit_strategy_frozen": false,
+    "2024_2026_opened": false,
+    "risk_or_leverage_optimization": false,
+    "orders_submitted": false,
+    "if_confirmation_passes": "Freeze a separate one-global-slot 100/300ms state-exit PnL contract before opening any additional date.",
+    "if_no_family_or_confirmation_fails": "Retire the exact two-factor opportunity dependency without adjacent-threshold tuning."
+  }
+}
