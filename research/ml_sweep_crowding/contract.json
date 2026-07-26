@@ -9,6 +9,7 @@
     "bybit_1m_end": "2024-06-30T23:59:00Z",
     "bybit_source_mode": "immutable_bybit_derived_one_minute_mirror",
     "bybit_source_correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-1M-MIRROR-004",
+    "external_metric_source_correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-METRIC-START-005",
     "bybit_symbol_first_expected": {
       "BTCUSDT": "2021-01-01T00:00:00Z",
       "ETHUSDT": "2021-03-15T00:00:00Z"
@@ -25,6 +26,10 @@
       {
         "mode": "official_static_mt4_listing_aware",
         "failure": "monthly objects existed but BTCUSDT contained only 90.631254% of the continuous one-minute grid; no model or PnL opened"
+      },
+      {
+        "mode": "unpinned Binance metric mirror with price-listing coverage denominator",
+        "failure": "ETHUSDT metrics actually begin 2021-12-01, so requiring them from the 2021-03-15 Bybit listing date falsely reported 73.807698% whole-window coverage; no model or PnL opened"
       }
     ],
     "pinned_bybit_one_minute_mirror": {
@@ -63,8 +68,29 @@
       },
       "semantics": "the mirror stores the actual funding rate in open; high, low, close and volume are zero placeholders"
     },
-    "binance_metrics_mirror_pattern": "https://huggingface.co/datasets/linxy/USDT-M_Perpetual_Futures/resolve/main/{symbol}/{symbol}_metrics.parquet",
-    "binance_upstream": "https://data.binance.vision/data/futures/um/daily/metrics/{symbol}/{symbol}-metrics-YYYY-MM-DD.zip",
+    "pinned_binance_metrics_mirror": {
+      "dataset_id": "linxy/USDT-M_Perpetual_Futures",
+      "revision": "69ae9208fb762758b279e449684638c9e7bbd0c9",
+      "probe_id": "PROBE-20260727-BINANCE-METRICS-PINNED-001",
+      "files": {
+        "BTCUSDT": "BTCUSDT/BTCUSDT_metrics.parquet",
+        "ETHUSDT": "ETHUSDT/ETHUSDT_metrics.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "4bcba71bcd859654a81c2fa0ebb507f42b7f82068f8f6af35a6f811db3ebb83c",
+        "ETHUSDT": "dcd6b4f54803c2ec30bfd69368b1d208ef95f834083bef8dbce709e8050505f1"
+      },
+      "first_expected": {
+        "BTCUSDT": "2021-01-01T00:00:00Z",
+        "ETHUSDT": "2021-12-01T00:00:00Z"
+      },
+      "whole_source_coverage": {
+        "BTCUSDT": 0.9983740102671191,
+        "ETHUSDT_from_2021_12_01": "greater than 99%; every full month 2022-01 through 2024-06 is at least 98.503352%"
+      },
+      "minimum_clock_coverage_from_first_expected": 0.97,
+      "semantics": "five-minute Binance USD-M aggregate open interest, top/global long-short ratios and taker long-short volume ratio; one full observation delayed before model use"
+    },
     "minimum_one_minute_coverage": 0.995,
     "metrics_delay_bars": 1
   },
