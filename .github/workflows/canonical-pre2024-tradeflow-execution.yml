@@ -6,6 +6,7 @@ on:
       - agent/r22-canonical-halfyear-market-data-001
     paths:
       - .github/workflows/canonical-pre2024-tradeflow-execution.yml
+      - scripts/market_data/build_public_trade_segment_prelisting.py
 
 permissions:
   contents: read
@@ -31,16 +32,16 @@ jobs:
           cache: pip
       - name: Install pinned dependencies
         run: python -m pip install "pandas==2.2.3" "pyarrow==25.0.0" "requests==2.32.4"
-      - name: Build streamed official trade-flow segment
+      - name: Build pre-listing-aware streamed official trade-flow segment
         run: |
-          python scripts/market_data/build_public_trade_segment.py \
+          python scripts/market_data/build_public_trade_segment_prelisting.py \
             --segment "${{ matrix.segment }}" \
             --symbol "${{ matrix.symbol }}" \
             --out artifact \
             --timeout 300 \
             --max-attempts 8 \
             --chunksize 750000 \
-            --min-coverage 0.990
+            --min-coverage-after-first 0.990
       - name: Upload immutable annual trade-flow shard
         uses: actions/upload-artifact@v4
         with:
