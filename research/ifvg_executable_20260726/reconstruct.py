@@ -11,6 +11,13 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "source_bundle.tar.gz.b64"
 MANIFEST = ROOT / "bundle_manifest.json"
+PATCH_TARGET = "run_screen.py"
+PATCHES = (
+    (b"expected = bar_seconds * 2", b"expected = bar_seconds * 10"),
+    (b"np.all(np.diff(times) == 500_000)", b"np.all(np.diff(times) == 100_000)"),
+)
+PATCHED_SHA256 = "dd456caad328943f92a08ea914e98968d89a60bd2676989bd88d53882ff84405"
+PATCHED_BYTES = 32490
 
 
 def sha256(payload: bytes) -> str:
@@ -29,6 +36,7 @@ def main() -> int:
     if len(tar_bytes) != manifest["tar_bytes"] or sha256(tar_bytes) != manifest["tar_sha256"]:
         raise SystemExit("tar bundle mismatch")
     expected = set(manifest["files"])
+    emitted: dict[str, dict[str, object]] = {}
     with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as archive:
         members = archive.getmembers()
         if {member.name for member in members} != expected:
@@ -44,9 +52,25 @@ def main() -> int:
             spec = manifest["files"][member.name]
             if len(payload) != spec["bytes"] or sha256(payload) != spec["sha256"]:
                 raise SystemExit(f"source mismatch: {member.name}")
+            original_sha = sha256(payload)
+            patched = False
+            if member.name == PATCH_TARGET:
+                for old, new in PATCHES:
+                    if payload.count(old) != 1 or new in payload:
+                        raise SystemExit(f"unexpected source-frequency patch context: {old!r}")
+                    payload = payload.replace(old, new, 1)
+                if len(payload) != PATCHED_BYTES or sha256(payload) != PATCHED_SHA256:
+                    raise SystemExit("patched evaluator checksum mismatch")
+                patched = True
             compile(payload, str(ROOT / member.name), "exec")
             (ROOT / member.name).write_bytes(payload)
-    print(json.dumps({"status": "PASS", "files": manifest["files"]}, sort_keys=True))
+            emitted[member.name] = {
+                "original_sha256": original_sha,
+                "emitted_sha256": sha256(payload),
+                "emitted_bytes": len(payload),
+                "source_frequency_patch": patched,
+            }
+    print(json.dumps({"status": "PASS", "files": emitted}, sort_keys=True))
     return 0
 
 
