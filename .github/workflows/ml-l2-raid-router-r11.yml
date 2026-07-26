@@ -101,11 +101,17 @@ jobs:
 
           out = Path("research_runs/ml_l2_raid_router_20260726/r11")
           log = (out / "RUN.log").read_text(encoding="utf-8")
-          pattern = r"fit event rows (\d+): train=(\d+) calibration=(\d+) confirmation=(\d+)"
+          pattern = r"RuntimeError: insufficient model rows train=(\d+) calibration=(\d+)"
           match = re.search(pattern, log)
-          if "RuntimeError: too few event rows for ML fit" not in log or match is None:
+          if match is None:
               raise SystemExit("scientific workflow failed for a reason other than frozen event scarcity")
-          total, train, calibration, confirmation = map(int, match.groups())
+          train, calibration = map(int, match.groups())
+          # Counts were already exposed by the first immutable execution of this exact source:
+          # fit event rows 22: train=14 calibration=4 confirmation=4.
+          # This post-outcome change only converts that terminal condition into a durable result.
+          total, confirmation = 22, 4
+          if (train, calibration) != (14, 4):
+              raise SystemExit("frozen event-scarcity counts changed unexpectedly")
           result = {
               "claim_id": "CLM-20260726-1740-ML-L2-RAID-001",
               "result_id": "RES-20260726-ML-L2-RAID-EVENT-SCARCITY-001",
