@@ -7,6 +7,7 @@ on:
       - agent/r22-yt-trinity-ml-001
     paths:
       - .github/workflows/yt-trinity-pre2024-economic-screen.yml
+      - control/yt-trinity-pre2024-screen-trigger.json
 
 permissions:
   contents: read
@@ -44,16 +45,10 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install -q --upgrade pip
-          python -m pip install -q \
-            numpy pandas scikit-learn pyarrow pytest
+          python -m pip install -q numpy pandas scikit-learn pyarrow pytest
           python - <<'PY'
           import numpy, pandas, pyarrow, sklearn
-          print({
-              'numpy': numpy.__version__,
-              'pandas': pandas.__version__,
-              'pyarrow': pyarrow.__version__,
-              'scikit_learn': sklearn.__version__,
-          })
+          print({'numpy': numpy.__version__, 'pandas': pandas.__version__, 'pyarrow': pyarrow.__version__, 'scikit_learn': sklearn.__version__})
           PY
 
       - name: Download immutable corpus and canonical 2023 BTC/ETH artifacts
@@ -155,9 +150,7 @@ jobs:
           PY
           (
             cd output
-            find . -type f ! -name SHA256SUMS -print0 \
-              | LC_ALL=C sort -z \
-              | xargs -0 sha256sum > SHA256SUMS
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
           )
 
       - name: Upload immutable economic-screen evidence
