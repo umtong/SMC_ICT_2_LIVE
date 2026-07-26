@@ -1,0 +1,153 @@
+{
+  "base_branch": "main",
+  "base_revision": 11,
+  "branch": "agent/r11-funding-cash-oi-001",
+  "causal_state": {
+    "balance_sheet_stress": "transfer_notional divided by prior-only rolling median absolute 5-minute OI-notional change",
+    "entry": "first observed last_price within one second after T+10m or T+15m",
+    "exit": "first observed last_price within one second after entry boundary plus 15/30/60/120 minutes",
+    "funding_finalization": "first row carrying funding_timestamp T and final funding_rate whose local_timestamp is in [T,T+5m]",
+    "global_slot": "one accepted position across all eligible symbols; score then symbol tie break; no entry at or before prior exit",
+    "post_state": "one or two completed five-minute bars after settlement",
+    "pre_state": "completed [T-60m,T) price and OI state with 48-bar prior-only scales",
+    "transfer_notional": "abs(funding_rate) * causal open_interest * causal mark_price"
+  },
+  "claim_id": "CLM-20260726-1625-FUNDING-CASH-OI-001",
+  "data_contract": {
+    "availability_clock": "local_timestamp",
+    "development_dates": [
+      "2023-01-01",
+      "2023-02-01",
+      "2023-03-01",
+      "2023-04-01",
+      "2023-05-01",
+      "2023-06-01",
+      "2023-07-01",
+      "2023-08-01",
+      "2023-09-01",
+      "2023-10-01",
+      "2023-11-01",
+      "2023-12-01"
+    ],
+    "fit_dates": [
+      "2022-01-01",
+      "2022-02-01",
+      "2022-03-01",
+      "2022-04-01",
+      "2022-05-01",
+      "2022-06-01",
+      "2022-07-01",
+      "2022-08-01",
+      "2022-09-01",
+      "2022-10-01",
+      "2022-11-01",
+      "2022-12-01"
+    ],
+    "later_periods": "2024-2026 hard prohibited",
+    "provider": "Tardis public normalized Bybit derivative_ticker",
+    "symbol_eligibility": "at least 10 source dates and 18 complete non-midnight settlements in each partition; source completeness only",
+    "symbols_attempted": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "url_template": "https://datasets.tardis.dev/v1/bybit/derivative_ticker/{YYYY}/{MM}/01/{SYMBOL}.csv.gz"
+  },
+  "dependency_fingerprint": "3d5320459bb03beab0db1c4351bbe867ec0bca3bc366f57ee883524457cab73e",
+  "frozen_grid": {
+    "candidate_count": 512,
+    "confirmation_bars": [
+      1,
+      2
+    ],
+    "families": {
+      "payer_closure_cascade": "large transfer, post OI contraction and payer-direction displacement; trade payer-flush direction",
+      "prepaid_deleverage_reversal": "pre OI contraction and payer-direction move, post OI stall, extension and >=50% reclaim; trade opposite payer flush",
+      "receiver_releverage_impulse": "large transfer, post OI expansion and receiver-direction displacement; trade the same directional side as payer flush"
+    },
+    "horizons_minutes": [
+      15,
+      30,
+      60,
+      120
+    ],
+    "oi_thresholds": [
+      0.5,
+      1.0
+    ],
+    "post_price_thresholds": [
+      0.0,
+      0.25
+    ],
+    "pre_price_thresholds": [
+      0.5,
+      1.0
+    ],
+    "reversal_thresholds": [
+      0.0,
+      0.25
+    ],
+    "round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "transfer_metrics": [
+      "actual_notional",
+      "balance_sheet_stress"
+    ],
+    "transfer_quantiles": [
+      0.5,
+      0.75
+    ]
+  },
+  "non_overlap": [
+    "PR #90 funding-rate plus aligned-premium thresholds",
+    "PR #19 funding/premium/price fixed families",
+    "PR #74 instantaneous OI times aggressive flow",
+    "entry-price vulnerable-inventory map",
+    "cross-venue OI breadth",
+    "ordinary premium/session/liquidation/L2/wallet/options/cross-venue price lag"
+  ],
+  "objective": "Test whether actual funding-transfer notional and the exact-settlement OI balance-sheet reaction create a repeatable after-cost liquidity run or completed-sweep reversal.",
+  "prohibitions": [
+    "No 2024-2026 URL, row or outcome.",
+    "No symbol selection from returns or candidate performance.",
+    "No final funding value, OI or price before local arrival.",
+    "No same-boundary or favorable OHLC fill.",
+    "No family, metric, threshold, cost, gate or fallback change after outcomes.",
+    "No live credentials or orders.",
+    "No ranking promotion from this sparse proxy."
+  ],
+  "result_id": "RES-20260726-FUNDING-CASH-OI-001",
+  "schema_version": 1,
+  "smc_ict_translation": {
+    "displacement": "post-settlement price movement aligned with OI closure or creation",
+    "invalidation": "opposing reclaim/OI-state reversal for continuation or renewed payer contraction/loss of reclaim for reversal",
+    "liquidity_pool": "payer or receiver inventory defined by the funding sign",
+    "liquidity_pressure": "abs(final settled funding rate) multiplied by causally available open interest and mark price",
+    "liquidity_run": "payer closure cascade or receiver re-leveraging impulse",
+    "survivor_execution": "first causal displacement-imbalance/FVG retracement at exact BBO and depth",
+    "sweep_exhaustion": "prepaid OI contraction, extreme extension, stalled post OI contraction and at least half-range reclaim"
+  },
+  "status": "PREREGISTERED_BEFORE_OUTCOME_BEARING_EXECUTION",
+  "study_id": "BYBIT_FUNDING_CASH_NOTIONAL_OI_REACTION_V1",
+  "survivor_action": "Keep 2024 sealed; expand remaining pre-2024 continuous data, exact BBO/depth, first-imbalance entry, actual hold funding, structural exits, risk sizing and continuous NAV.",
+  "survivor_gate": {
+    "maximum_top5_positive_pnl_share_18bps": 0.5,
+    "maximum_unresolved_share": 0.01,
+    "minimum_development_profit_factor_18bps": 1.15,
+    "minimum_development_trades": 12,
+    "minimum_fit_matched_accuracy_lift": 1.05,
+    "minimum_fit_trades": 12,
+    "minimum_gross_direction_accuracy_strictly_above": 0.55,
+    "minimum_mean_gross_development_markout_bps_strictly_above": 12.0,
+    "minimum_positive_development_months": 7,
+    "positive_after_top10pct_positive_removal_18bps": true,
+    "positive_development_median_12bps": true,
+    "positive_development_return_18_and_24bps": true,
+    "positive_fit_return_18bps": true
+  },
+  "zero_survivor_action": "Retire the exact cash-notional by OI-reaction dependency without adjacent tuning."
+}
