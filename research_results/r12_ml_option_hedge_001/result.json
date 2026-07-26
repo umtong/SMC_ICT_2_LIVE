@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-OPTION-HEDGE-001",
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_SPARSE_PRE2024_SCREEN",
+  "summary": "One frozen HistGradientBoostingClassifier plus one isotonic calibrator translated causal Deribit BTC/ETH option delta demand and dealer gamma pressure into the probability that Bybit BTCUSDT or ETHUSDT would reach the frozen prior-30-minute external buy-side versus sell-side liquidity pool first. The sample-amended 2022 confirmation was reproducible and hard-valid, but the model added no predictive value beyond structural distance and every after-cost account gate failed. Untouched 2023 and all 2024-2026 periods remained unopened.",
+  "minimal_system": {
+    "model_family_count": 1,
+    "model_family": "HistGradientBoostingClassifier",
+    "calibration": "frozen isotonic",
+    "hyperparameter_grid": false,
+    "economic_decision_rule_count": 1,
+    "actions": ["LONG", "SHORT", "FLAT"],
+    "elapsed_time_exit": false,
+    "one_global_slot": true
+  },
+  "chronology": {
+    "training_dates": ["2022-01-01", "2022-02-01", "2022-03-01", "2022-04-01", "2022-05-01", "2022-06-01"],
+    "calibration_dates": ["2022-07-01", "2022-08-01"],
+    "confirmation_dates": ["2022-09-01", "2022-11-01"],
+    "development_dates_opened": [],
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "source_amendment": {
+    "amendment_id": "AMEND-20260726-ML-OPTION-SAMPLE-COVERAGE-002",
+    "original_source_sha256": "cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a",
+    "executed_source_sha256": "80d94063c427074b5c10896e659f06cf22a77acb94b9961c08587cd9f3b6905e",
+    "original_300_training_100_calibration_guard_retained": true,
+    "relaxed_guard_executed": false
+  },
+  "prediction": {
+    "confirmation_event_rows": 825,
+    "resolved_rows": 343,
+    "source_gap_rows": 482,
+    "ambiguous_rows": 0,
+    "prevalence_upper_first": 0.5247813411078717,
+    "model_auc": 0.9204839809134288,
+    "distance_only_auc": 0.9423653715064758,
+    "auc_lift_over_distance": -0.021881390593047056,
+    "model_brier": 0.1120873283318112,
+    "distance_only_brier": 0.10509462912786315,
+    "brier_skill_over_distance": -0.06653716999600823,
+    "log_loss": 0.37313497739002344,
+    "interpretation": "The option-flow feature set was directionally predictive in absolute terms, but it degraded both ranking and probability accuracy relative to the causal distance-only first-passage baseline."
+  },
+  "confirmation_account": {
+    "authorized_actions": 68,
+    "accepted_global_slot_trades": 41,
+    "trade_composition": {
+      "winners": 6,
+      "losers": 35,
+      "targets": 6,
+      "ordinary_stops": 5,
+      "conservative_source_boundary_stops": 30,
+      "longs": 4,
+      "shorts": 37,
+      "BTCUSDT": 6,
+      "ETHUSDT": 35
+    },
+    "paths": {
+      "12bps": {
+        "initial_nav": 10000.0,
+        "final_nav": 8903.222076719925,
+        "total_return": -0.10967779232800745,
+        "observed_two_sample_day_geometric_growth": -0.056431132522912986,
+        "profit_factor": 0.16834829174879481,
+        "median_net_return_bps": -47.685893071361406,
+        "maximum_drawdown": 0.10967779232800745,
+        "positive_confirmation_dates": 0,
+        "top10pct_removed_return": -0.11598009659778286,
+        "top_five_positive_pnl_share": 0.9975776920174622
+      },
+      "18bps": {
+        "initial_nav": 10000.0,
+        "final_nav": 8825.190586792993,
+        "total_return": -0.11748094132070075,
+        "observed_two_sample_day_geometric_growth": -0.06057514474051773,
+        "profit_factor": 0.12666772303364893,
+        "median_net_return_bps": -53.69659241967383,
+        "maximum_drawdown": 0.11748094132070075,
+        "positive_confirmation_dates": 0,
+        "top10pct_removed_return": -0.1226705023107495,
+        "top_five_positive_pnl_share": 0.99876263261762
+      },
+      "24bps": {
+        "initial_nav": 10000.0,
+        "final_nav": 8766.305666524991,
+        "total_return": -0.12336943334750083,
+        "observed_two_sample_day_geometric_growth": -0.06371448443730632,
+        "profit_factor": 0.096219560004366,
+        "median_net_return_bps": -59.70729176798624,
+        "maximum_drawdown": 0.12336943334750083,
+        "positive_confirmation_dates": 0,
+        "top10pct_removed_return": -0.1277259757097554,
+        "top_five_positive_pnl_share": 1.0
+      }
+    },
+    "gate_pass_count": 0,
+    "failed_gates": [
+      "AUC lift over distance baseline below +0.02",
+      "Brier skill over distance baseline non-positive",
+      "18-bps total return non-positive",
+      "24-bps total return non-positive",
+      "12-bps median trade non-positive",
+      "12-bps winner-removed return non-positive",
+      "zero of two confirmation dates positive at 18 bps",
+      "top-five positive-PnL share above 50 percent"
+    ]
+  },
+  "execution_contract": {
+    "signal_source": "Tardis Deribit OPTIONS trades",
+    "execution_source": "Tardis Bybit BTCUSDT/ETHUSDT top-of-book quotes",
+    "cross_provider_delay_seconds": 2,
+    "completed_state_ms": 100,
+    "observed_spread": true,
+    "additional_round_trip_cost_bps": [12, 18, 24],
+    "planned_nav_risk_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "entry_top_quote_participation": 0.05,
+    "funding_mode": "adverse 2-bp reserve per crossed UTC funding boundary",
+    "source_boundary_after_authorized_entry": "full structural stop"
+  },
+  "limitations": [
+    "Sparse first-day-monthly fatal screen; not rank eligible.",
+    "482 of 825 confirmation event paths did not resolve before the public source-day boundary.",
+    "Historical deeper queue and market impact were deferred because the predictive and economic gates failed.",
+    "Option Greeks were reconstructed from transaction premium and causally prior Bybit midpoint under zero rates.",
+    "Actual funding was conservatively reserved rather than reconstructed because the family failed before promotion."
+  ],
+  "reproducibility": {
+    "authoritative_workflow_run": 30196256036,
+    "authoritative_workflow_conclusion": "success",
+    "artifact_id": 8630210182,
+    "artifact_digest": "sha256:036b7a728eefad45e154d39a295ec142388d5c8ebf72ebeb79276ac2f75d76ba",
+    "workflow_head_sha": "e453b1209e7267aaf934900d94d5beb7749bd815",
+    "result_json_sha256": "466616b235b0dae9701b349e6aa6babae279a8b12641e04c062c2f27a49bcde6",
+    "fit_events_sha256": "ad4e828213d1b93a8fd8a50426aa6e8cb727332d2199489e56691ad3914b193b",
+    "fit_trades_12bps_sha256": "9c3feaa1a44016f60d0b986e0e8cb3f8fd41ae5151e5028dc90771216602f51b",
+    "fit_trades_18bps_sha256": "a636928d556851c325cb9ec6554094da16ab5d4bafaa5f8616a95785e9f13eb1",
+    "fit_trades_24bps_sha256": "1daff63e86a97f3cad3881e82187c62e144f1a9eba22d4485f911a9601575b69",
+    "independent_reproduction_artifact_id": 8630152355,
+    "scientific_outputs_identical_across_two_runs": true
+  },
+  "decision": "Retire the exact Deribit option delta/gamma flow to Bybit external-liquidity first-passage information unit. Do not tune adjacent option-flow features, Greek definitions, HGBT parameters, calibration, EV threshold, structural ranges, costs, risk or leverage. The source did not improve on causal structural distance and the trade path was negative even at 12 bps before any 2023 opening.",
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "created_at": "2026-07-26T18:23:00+09:00"
+}
