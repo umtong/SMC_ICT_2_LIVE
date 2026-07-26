@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260727-ML-XVENUE-TAKER-ABSORPTION-001",
+  "result_id": "RES-20260727-ML-XVENUE-TAKER-ABSORPTION-001",
+  "engine_version": "ML-XVENUE-TAKER-ABSORPTION-R22-V1",
+  "objective": "Discover a materially higher-growth after-cost payoff from external shock propagation and Bybit absorption or overshoot, using one causal ML system rather than rescuing prior strategies.",
+  "economic_thesis": {
+    "information_advantage": "A completed Binance Futures displacement and aggressor-flow state can lead the Bybit executable fair value, while an excessive Bybit response can create a short-lived reversal payoff.",
+    "action_advantage": "One model compares continuation and reversal structural payoffs and may choose flat; it does not force a direction from the signal name.",
+    "payoff": "Continuation targets a frozen cross-venue fair-value or 1.5 shock-leg measured move. Reversal targets the pre-shock Bybit origin or frozen fair value. Both use a resting structural stop plus external-reference or opposite-displacement exits; no elapsed-time liquidation exists.",
+    "why_it_can_scale_growth": "The information unit is sub-second, cross-symbol and repeatable. Large forced displacements can produce payoff distances materially above round-trip cost, while direct after-cost selection suppresses ordinary low-edge shocks."
+  },
+  "market_scope": {
+    "execution_exchange": "Bybit",
+    "execution_products": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "execution_contract": "USDT linear perpetual",
+    "signal_exchange": "Binance Futures",
+    "signal_products": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "global_pending_or_open_slots": 1,
+    "orders_submitted": false
+  },
+  "source_contract": {
+    "provider": "Tardis downloadable normalized CSV",
+    "availability_clock": "local_timestamp",
+    "state_frequency_ms": 100,
+    "quotes_fields": ["local_timestamp", "ask_amount", "ask_price", "bid_price", "bid_amount"],
+    "trades_fields": ["local_timestamp", "side", "price", "amount"],
+    "free_public_sample_dates": {
+      "train": "2022-07-01",
+      "calibration": "2023-03-01",
+      "untouched_confirmation": "2023-07-01"
+    },
+    "official_2024_2026_prohibited": true
+  },
+  "event_definition": {
+    "basis": "prior-only 10-minute EWM of log Bybit/Binance executable mids, shifted one completed 100ms state",
+    "volatility": "prior-only 10-minute EWM standard deviation of Binance 500ms returns and cross-venue fair-value gap",
+    "shock": "absolute completed Binance 500ms return exceeds both a symbol floor and 2.5 times prior volatility",
+    "symbol_floor_bps": {"BTCUSDT": 3, "ETHUSDT": 4, "SOLUSDT": 7, "XRPUSDT": 7},
+    "maximum_quote_age_ms": 1000,
+    "cooldown_ms_per_symbol": 2000,
+    "candidate_direction": "sign of the completed Binance 500ms shock",
+    "actions": ["continue shock direction", "fade shock direction", "flat"]
+  },
+  "execution_contract": {
+    "order_latency_ms": 500,
+    "signal_availability": "the 100ms signal state completes before the fixed 500ms latency starts",
+    "entry": "marketable Bybit BBO using a marketable-limit protection; the executable BBO immediately before activation is used and a reversal order expires if its frozen structural anchor was already delivered",
+    "position_capacity": "10% of displayed opposing Bybit best-quote notional",
+    "resting_target": "frozen at signal and entry from causal structural anchors",
+    "resting_stop": "maximum of 8bp, 0.75 times shock magnitude and 1.5 times prior 500ms volatility, capped only for the initial screen at 80/100/160/160bp by symbol",
+    "discretionary_exit_latency_ms": 500,
+    "discretionary_exits": ["external reference reversal", "opposite displacement"],
+    "source_boundary": "open exposure is marked to executable Bybit BBO for NAV and remains strategy-open; it is not force-closed",
+    "elapsed_time_exit": false,
+    "one_global_slot": "account arbitration sorts actual activation times across all symbols; an open position blocks every later entry"
+  },
+  "features": [
+    "shock magnitude and prior-volatility z-score",
+    "signed cross-venue fair-value gap and gap z-score",
+    "signed Binance 1s, 2s and 5s returns",
+    "signed Bybit 500ms, 1s and 2s response",
+    "500ms and 1s response ratios",
+    "signed Binance and Bybit aggressor flow",
+    "signed Binance and Bybit quote imbalance",
+    "Binance, Bybit and relative spread",
+    "one-second quote-update intensity",
+    "prior volatility and gap volatility",
+    "UTC hour sine/cosine",
+    "symbol one-hot indicators",
+    "candidate action indicator"
+  ],
+  "model": {
+    "family": "one HistGradientBoostingRegressor with absolute-error loss over resolved continuation and reversal action rows",
+    "hyperparameters": {"learning_rate": 0.05, "max_iter": 220, "max_leaf_nodes": 31, "min_samples_leaf": 40, "l2_regularization": 2.0, "random_state": 20260727},
+    "target": "gross structural action return in basis points; all-in cost is subtracted only at account authorization",
+    "calibration": "one isotonic map fitted only on the pre-2024 calibration date",
+    "action_selection": "highest calibrated gross payoff among continuation and reversal; flat unless predicted gross minus cost exceeds the frozen margin",
+    "margin_selection": "choose one margin from 0, 2, 4, 8, 12, 20 or 32bp by highest 24bp-cost account return on the second half of the calibration date, then winner-removed return, trade count and margin as deterministic tie breakers",
+    "no_feature_model_hyperparameter_search": true
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "planned_risk_fraction": 0.01,
+    "maximum_notional_leverage_initial_screen": 10.0,
+    "quantity_rule": "NAV risk budget divided by structural stop plus selected round-trip cost, then capped by leverage and 10% displayed-BBO capacity",
+    "costs_bps_round_trip": [12, 18, 24],
+    "winner_removal": "remove the largest positive 10% accepted event keys, at least one when positives exist, and rerun global-slot arbitration",
+    "funding": "not opened in the initial one-day pre-2024 screen; a survivor must add actual Bybit funding before rank eligibility",
+    "liquidation": "no forced liquidation is permitted"
+  },
+  "minimum_model_sample": {
+    "resolved_training_action_rows": 400,
+    "resolved_calibration_action_rows": 120,
+    "second_half_calibration_action_rows": 60
+  },
+  "decision": {
+    "advance": "The selected 24bp calibration path and untouched 24bp confirmation path are both positive and confirmation has no forced liquidation. Expand unchanged across additional pre-2024 dates, add actual funding and freeze before immediate official 2024H1.",
+    "retire": "Otherwise retire this exact taker propagation/absorption route without adjacent threshold, target, stop, feature, model, risk, leverage or latency rescue.",
+    "initial_ranking_role": "NONE_PRE2024_SCREEN"
+  }
+}
