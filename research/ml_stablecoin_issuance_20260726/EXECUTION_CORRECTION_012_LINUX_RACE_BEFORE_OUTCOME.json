@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-LINUX-RACE-012",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_or_model_outcome": true,
+  "reason": "The corrected macOS Blockscout job remained pending while the frozen economic continuation was already polling for a decision-ready PASS. The source contract is operating-system independent.",
+  "change": [
+    "Run the identical corrected Blockscout source gate on an Ubuntu runner in parallel with macOS.",
+    "Let the economic continuation consume the first SHA-identified decision-ready PASS artifact.",
+    "Treat duplicate PASS artifacts as transport replications, never as separate scientific evidence."
+  ],
+  "unchanged": [
+    "USDT Issue and Redeem plus USDC zero-address Transfer event schemas",
+    "Blockscout empty-topic-padding normalization",
+    "all 36 pre-2024 source months",
+    "12-block primary and 64-block stress availability",
+    "source density and token breadth gates",
+    "conditional HGBT, features, labels, costs, account rules and sequential 2024H1 contract",
+    "no credentials or orders"
+  ],
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
