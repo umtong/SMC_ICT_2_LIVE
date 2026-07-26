@@ -7,19 +7,14 @@ on:
     paths:
       - '.github/workflows/ml-direct-utility-gapfix-macos-r13.yml'
       - 'research/ml_direct_utility_20260726/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/ml-direct-utility-gapfix-macos-r13.yml'
-      - 'research/ml_direct_utility_20260726/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-direct-utility-gapfix-macos-r13-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ml-direct-utility-gapfix-macos-r13-authoritative
+  cancel-in-progress: false
 
 jobs:
   research:
@@ -34,6 +29,9 @@ jobs:
       MKL_NUM_THREADS: '2'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-direct-utility-gapfix-002
+          fetch-depth: 1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
