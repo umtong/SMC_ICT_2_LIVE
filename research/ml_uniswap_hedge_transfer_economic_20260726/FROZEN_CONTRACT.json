@@ -1,0 +1,96 @@
+{
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "continuation_id": "EXEC-20260726-ML-UNISWAP-ECONOMIC-001",
+  "engine_id": "UNISWAP_WETH_STABLE_HEDGE_RELAY_HGBT_V1",
+  "event": {
+    "bucket_seconds": 300,
+    "fit_quantile": 0.995,
+    "information_delay_seconds": 120,
+    "minimum_aligned_fraction": 0.7,
+    "minimum_notional": 5000000.0,
+    "minimum_structural_distance_bps": 12.0,
+    "minimum_transactions": 2
+  },
+  "execution": {
+    "costs_bps": [12.0, 18.0, 24.0],
+    "elapsed_time_liquidation": false,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "risk": 0.005,
+    "same_minute_dual_touch": "stop_first_in_replay_excluded_from_labels",
+    "symbol": "ETHUSDT Binance USD-M one-minute fatal proxy"
+  },
+  "features": [
+    "log_total_notional",
+    "signed_imbalance",
+    "aligned_fraction",
+    "swap_count",
+    "unique_tx_count",
+    "tx_hhi",
+    "fee500_fraction",
+    "pool_direction_consensus",
+    "tick_displacement",
+    "prior_15m_return",
+    "prior_60m_realized_vol",
+    "upper_distance_bps",
+    "lower_distance_bps"
+  ],
+  "history": ["2021-05-05T00:00:00+00:00", "2024-01-01T00:00:00+00:00"],
+  "model": {
+    "calibration": "isotonic when >=50 labels and both classes; otherwise raw probability",
+    "l2_regularization": 1.0,
+    "learning_rate": 0.05,
+    "max_iter": 120,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 20,
+    "random_state": 20260726,
+    "type": "HistGradientBoostingClassifier"
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "partitions": {
+    "calibration": ["2022-07-01T00:00:00+00:00", "2023-01-01T00:00:00+00:00"],
+    "confirmation": ["2023-01-01T00:00:00+00:00", "2023-07-01T00:00:00+00:00"],
+    "development": ["2023-07-01T00:00:00+00:00", "2024-01-01T00:00:00+00:00"],
+    "fit": ["2021-05-05T00:00:00+00:00", "2022-07-01T00:00:00+00:00"]
+  },
+  "pools": {
+    "WETH_USDC_3000": {
+      "address": "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8",
+      "fee": 3000,
+      "stable_index": 0,
+      "tick_orientation": -1.0,
+      "token0": "USDC",
+      "token1": "WETH",
+      "weth_index": 1
+    },
+    "WETH_USDC_500": {
+      "address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+      "fee": 500,
+      "stable_index": 0,
+      "tick_orientation": -1.0,
+      "token0": "USDC",
+      "token1": "WETH",
+      "weth_index": 1
+    },
+    "WETH_USDT_3000": {
+      "address": "0x4e68ccd3e89f51c3074ca5072bbac773960dfa36",
+      "fee": 3000,
+      "stable_index": 1,
+      "tick_orientation": 1.0,
+      "token0": "WETH",
+      "token1": "USDT",
+      "weth_index": 0
+    },
+    "WETH_USDT_500": {
+      "address": "0x11b815efb8f581194ae79006d24e0d814b7697f6",
+      "fee": 500,
+      "stable_index": 1,
+      "tick_orientation": 1.0,
+      "token0": "WETH",
+      "token1": "USDT",
+      "weth_index": 0
+    }
+  },
+  "schema_version": 1
+}
