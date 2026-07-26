@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 16
+- revision: 17
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-ML-HOURWEEK-XRP-0815-125`
 - first-place stage: `PROVISIONAL_CAUSAL_SEQUENTIAL_REFIT_SELECTED_DEVELOPMENT_BINANCE_PROXY`
@@ -26,39 +26,55 @@ The provisional first place is the causal Ridge UTC-state route `UTC08-15 / BOTH
 - exact top-10%-of-all-trades winner removal before slot rerouting: `3.6051x`, `0.175579%/day`, all four halves positive
 - 72-bp stress: `0.184867%/day`; 96-bp stress remains profitable overall but 2025H2 is slightly negative
 
-It replaces the former Donchian first place because its 24-bp growth is `3.185x` higher, its median trade is positive, concentration is lower, and the fully rerouted winner-removal paths remain strongly positive. It is not a final solution: the 720 filter tournament was selected on the complete 2024-2025 development path, market data are a Binance proxy, funding is a conservative proxy, exact Bybit BBO/depth and margin/liquidation distance are absent, and official 2026H1 remains sealed.
+It replaces Donchian because its 24-bp growth is `3.185x` higher, its median trade is positive and full winner-removal rerouting remains strongly positive. It remains provisional: 720 filters were selected on the complete 2024-2025 path, market data and funding are proxies, exact Bybit BBO/depth/margin/capacity are absent, only 58 trades exist and official 2026H1 is unopened.
+
+## Official 2024H1 sequential evidence consumed
+
+`RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001` evaluated a pre-2024 frozen Donchian HGBT filter immediately on the first official interval.
+
+- unfiltered 24-bp growth: `0.0100516%/day`, total return `+1.8461%`, 49 completed trades
+- HGBT-filtered 24-bp growth: `0.0387317%/day`, total return `+7.3021%`, 24 completed trades
+- filtered PF `1.8712`, MDD `10.1656%`, median completed trade `-50bp`
+- five positive winners supplied `100%` of positive PnL
+- exact winner-removal reroute: `-7.6610%`, `-0.0437839%/day`
+- official 2024H1 MAE skill versus a constant baseline: `-1.6897%`
+- one position remained open at June 30 and was marked with hypothetical exit cost rather than forcibly closed
+
+The result is hard-valid and independently reproduced, but economically weak and winner-dependent. The exact Donchian HGBT information unit is retired without threshold, feature, stop, risk or leverage rescue. 2024H1 is now seen sequential evidence and may not be relabeled fresh OOS for a modified Donchian strategy.
 
 ## Cumulative strategy ranking
 
-1. ML UTC08-15 XRP state machine — `0.223030%`/day at 24 bps; 58 trades; positive exact winner-removal path.
-2. Donchian all-breakout `a70626d9e484285f2cb4|all` — `0.0900854%`/day at 12 bps and `0.0700189%` at 24 bps; winner-removal failure.
-3. Donchian after-loser `a70626d9e484285f2cb4|after_loser` — `0.0829996%`/day at 12 bps; winner-removal failure.
-4. CME gap competing-risk ML — `0.0459425%`/day at 12 bps; negative median and winner concentration.
-5. Bybit liquidity-mass rejection — `0.0118550%`/day at 12 bps; 23 trades and complete top-five concentration.
-6. 08:00 option-settlement SMT — `0.0099556%`/day at 18 bps; 12 trades.
-7. Bybit MMXM lifecycle — `0.00575058%`/day at 12 bps; negative median and losing second half.
-8. KRW-relative regional SMT reversal — `0.00487483%`/day at 12 bps; two trades.
-9. Liquidation exhaustion reversal — `0.00358316%`/day at 18 bps; sparse and winner-removal failure.
+1. ML UTC08-15 XRP state machine — `0.223030%/day` at 24 bps; 58 trades; positive exact winner-removal path.
+2. Donchian all-breakout — `0.0700189%/day` at 24 bps; winner-removal failure.
+3. Donchian after-loser — `0.0631845%/day` at 24 bps; winner-removal failure.
+4. Official 2024H1 Donchian HGBT — `0.0387317%/day` at 24 bps; model MAE below baseline and winner-removal negative.
+5. CME gap competing-risk ML — `0.0334850%/day` at 24 bps; negative median and winner concentration.
+6. Bybit liquidity-mass rejection — `0.0118550%/day` at 12 bps; 23 trades and complete top-five concentration.
+7. 08:00 option-settlement SMT — `0.0099556%/day` at 18 bps; 12 trades.
+8. Bybit MMXM lifecycle — `0.00575058%/day` at 12 bps; negative median and losing second half.
+9. KRW-relative regional SMT reversal — `0.00487483%/day` at 12 bps; two trades.
+10. Liquidation exhaustion reversal — `0.00358316%/day` at 18 bps; sparse and winner-removal failure.
 
 All remain below the 1% reference and none has deployment authority. Rank creates no incumbency protection.
 
-## Selection and validation boundary
+## Selection, reproducibility and validation boundary
 
-The base model and hold/switch policy were selected on 2023. Each half-year model is causal, but the session/asset/side/threshold filter was selected after observing the full 2024-2025 path. Therefore this is selected development, not sealed OOS. The forward boundary is frozen at `2025-12-31 23:59:59 UTC`; official 2026H1 has not been opened.
+The XRP base policy was selected on 2023 and each half-year forecast is causal, but the session/asset/side/threshold filter was selected after observing all of 2024-2025. This is selected development, not sealed OOS. The forward boundary is frozen at `2025-12-31 23:59:59 UTC`.
 
-Fixed leverage is not used to inflate the rank. On the same path, 4x reaches only about `0.713%/day` with `97.5%` MDD and liquidation begins near `4.05x`. The unlevered one-times path is the ranking metric.
+The raw four-symbol source artifact and result/validation records are retained, but the exact portable model/account reproduction source is not yet present in canonical GitHub or linked Drive evidence. Official 2026H1 must not open until the frozen algorithm is independently reconstructed, fixed-quantity and turnover accounting are verified, and exact Bybit execution/funding/capacity/margin contracts are fixed.
+
+Fixed leverage is not used to inflate rank. The unlevered path is the comparison metric; about 4x produces approximately `0.713%/day` with `97.5%` MDD and liquidation begins near `4.05x`.
 
 ## Current objective
 
-Do not protect or polish the new first place. It is still about `4.48x` short of the 1% daily-growth reference. The highest-information next step is an unchanged exact-Bybit replay of the selected route across 2024-2025, followed by the first frozen 2026H1 evaluation only after data, execution, funding and account contracts are fixed.
-
-External forced-flow and inventory-transfer ML source routes remain active because a new route must still close the remaining objective gap rather than merely validate this provisional benchmark.
+Do not protect or polish the new first place. It is still about `4.48x` short of the 1% reference. The highest-information work is to harden or invalidate its claimed edge under a source-complete exact reproduction, exact Bybit replay and one frozen 2026H1 test, while continuing materially different forced-flow and inventory-transfer ML paths.
 
 ## Next exact action
 
-1. Reconstruct exact Bybit hourly BBO/depth, funding, capacity and liquidation-distance inputs for the frozen `UTC08-15 / XRP / 1.25` route without changing the model or filter.
-2. Verify the same 2024-2025 path under exact Bybit execution and continuous marked NAV.
-3. Freeze code and open official 2026H1 once; insert the result immediately whether it exceeds or loses the current first place.
-4. Continue materially distinct forced-flow and inventory-transfer ML paths in parallel; do not return to Donchian or generic completed-bar parameter grids.
+1. Publish or independently reconstruct the exact `UTC08-15 / XRP / 1.25` model, filter tournament and account replay from the retained SHA-identified raw artifact.
+2. Audit fixed quantity, turnover charges, mark-to-market NAV, funding, boundary positions, winner-removal rerouting and no-time-exit behavior; hard-invalidate the rank if parity cannot be reproduced.
+3. Reconstruct exact Bybit 2024-2025 BBO/depth, funding, capacity and liquidation-distance inputs without changing the model/filter, then freeze the forward contract.
+4. Open official 2026H1 exactly once and immediately insert, demote or retire the route.
+5. Continue external forced-flow and inventory-transfer ML sources in parallel; do not return to Donchian or generic completed-bar grids.
 
-Updated: 2026-07-26 22:12 KST
+Updated: 2026-07-26 22:38 KST
