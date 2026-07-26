@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "probe_id": "CME-CRYPTO-OPENING-GAP-SOURCE-PROBE-20260726-V1",
+  "provisional_result_id": "RES-20260726-CME-OPENING-GAP-FATAL-001",
+  "base_revision": 11,
+  "branch": "agent/r11-cme-opening-gap-001",
+  "research_stage": "source_probe_then_conditional_pre_2024_fatal_screen",
+  "rank_eligibility": false,
+  "objective": "Test whether the actual daily and weekly opening gaps of CME Bitcoin and Ether futures define fair-value arrays whose rebalancing or accepted rejection produces repeatable after-cost BTCUSDT/ETHUSDT perpetual alpha.",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "trader_explanation": {
+    "name": "CME NDOG/NWOG Delivery",
+    "sequence": [
+      "CME closes at 17:00 New York and reopens at 18:00, leaving a true interval with no futures trading.",
+      "The previous CME close and new CME open define an NDOG; Friday close to Sunday open defines an NWOG.",
+      "The percentage gap is mapped onto BTCUSDT or ETHUSDT at the futures reopen so the crypto execution chart carries the same fair-value array.",
+      "If the first completed crypto bars enter the gap and reclaim CE, trade toward the prior CME close equivalent.",
+      "If price displaces away and accepts outside the gap, trade in the gap direction toward known previous-day or previous-week external liquidity.",
+      "Entry is the next completed 15-minute open; stop invalidates the gap thesis; no elapsed-time liquidation is used."
+    ]
+  },
+  "source_concept_contract": {
+    "used_pre_cutoff_sources": [
+      {
+        "type": "youtube",
+        "video_id": "Sh-bDHWNpsk",
+        "title": "2023 ICT Mentorship - NDOG - New Day Opening Gap Part 1",
+        "published": "2023",
+        "role": "17:00 close to 18:00 open defines an NDOG; larger gaps are fair-value references and magnets, not standalone entries"
+      },
+      {
+        "type": "youtube",
+        "video_id": "BM1mqQv-ypk",
+        "title": "2023 ICT Mentorship - NWOG - New Week Opening Gap Part 2",
+        "published": "2023",
+        "role": "Friday close to Sunday open defines an NWOG; departure and failure to return distinguish trend from consolidation"
+      }
+    ],
+    "profitability_claimed_from_sources": false,
+    "translation": "Opening gaps define the state; completed lower-timeframe rebalancing or accepted rejection defines the entry."
+  },
+  "non_overlap": {
+    "session_and_silver_bullet": "No Asian/London/New York range or intraday kill-zone window defines the setup; only the CME exchange halt and reopen do.",
+    "crt": "The range is not an arbitrary prior candle; it is the actual untraded CME close-open interval.",
+    "fvg_unicorn_breaker_ote": "No three-candle FVG, order block, breaker, OTE or liquidity-raid lifecycle is required.",
+    "cross_venue_exact_arrival": "No microsecond lead-lag or simultaneous venue quote comparison is claimed; the gap is known at a scheduled institutional-market reopen and entry waits completed 15-minute confirmation.",
+    "ordinary_crypto_weekend_gap": "The signal is CME's closed-market gap, not a discontinuity in 24/7 crypto trading."
+  },
+  "stage_0_probe_contract": {
+    "no_strategy_pnl": true,
+    "no_candidate_metrics": true,
+    "coverage_period": [
+      "2021-01-01",
+      "2023-12-31"
+    ],
+    "sources": [
+      {
+        "name": "Yahoo Finance chart",
+        "btc_symbol": "BTC=F",
+        "eth_symbol": "ETH=F",
+        "endpoint": "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+        "required_fields": [
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "minimum_rows_per_symbol": 600
+      },
+      {
+        "name": "Nasdaq Data Link cross-check",
+        "btc_dataset": "CHRIS/CME_BTC1",
+        "eth_dataset": "CHRIS/CME_ETH1",
+        "endpoint": "https://data.nasdaq.com/api/v3/datasets/{dataset}.csv",
+        "required_for_probe_pass": false
+      }
+    ],
+    "binance_execution_source_probe": {
+      "archive": "https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/15m/{symbol}-15m-2021-01.zip",
+      "checksum_required": true,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ]
+    },
+    "probe_pass": "Yahoo BTC=F and ETH=F each provide >=600 finite, chronological daily rows covering all three years with open and close, and official Binance BTC/ETH 15m archives pass adjacent checksum verification.",
+    "if_probe_fails": "Close or replace the data source before any strategy PnL; do not infer gaps from 24/7 crypto prices alone."
+  },
+  "conditional_data_contract": {
+    "cme_source": "Yahoo Finance continuous front-contract daily OHLCV, raw JSON hashed; source is a fatal-screen proxy and not rank eligible.",
+    "execution_source": "Official Binance USD-M 15-minute and funding archives with adjacent CHECKSUM verification.",
+    "final_execution_venue_required": "Bybit USDT linear perpetual",
+    "symbols": [
+      {
+        "cme": "BTC=F",
+        "execution": "BTCUSDT"
+      },
+      {
+        "cme": "ETH=F",
+        "execution": "ETHUSDT"
+      }
+    ],
+    "fit_period": [
+      "2021-01-01",
+      "2021-12-31"
+    ],
+    "development_period": [
+      "2022-01-01",
+      "2022-12-31"
+    ],
+    "confirmation_period_if_development_survivor": [
+      "2023-01-01",
+      "2023-12-31"
+    ],
+    "official_2024_2025_2026_opened": false,
+    "source_integrity": "Record raw Yahoo JSON SHA-256, archive and checksum SHA-256, normalized hashes, row counts and timestamp diagnostics."
+  },
+  "causal_gap_contract": {
+    "session_clock": "America/New_York with historical DST",
+    "ndog": "For ordinary Tuesday-Friday CME trading dates, prior daily close to current daily open; mapped open time is the preceding calendar day at 18:00 New York.",
+    "nwog": "For ordinary Monday CME trading dates, prior Friday daily close to current Monday daily open; mapped open time is Sunday at 18:00 New York.",
+    "holiday_rule": "Use only consecutive ordinary Tuesday-Friday sessions or Friday-to-Monday sessions; skip any other date spacing.",
+    "roll_exclusion": "Exclude current and previous CME dates during the final five New York business days of each calendar month.",
+    "gap_return_bps": "10000 * log(current CME open / prior CME close)",
+    "crypto_halt_return_bps": "10000 * log(execution proxy 18:00 open / execution proxy 17:00 close)",
+    "roll_residual_bps": "gap_return_bps - crypto_halt_return_bps; candidate must satisfy a frozen absolute residual ceiling.",
+    "mapped_prior_close": "execution proxy 18:00 open / exp(CME gap return)",
+    "availability": "The gap is known only after the first CME opening print; crypto confirmation uses completed 15-minute bars from 18:00 New York onward.",
+    "entry": "Following 15-minute open after the completed confirmation bar.",
+    "one_global_slot": true,
+    "same_bar_exit": "Protective stop before target; adverse observed open for stop gaps.",
+    "unresolved": "No elapsed-time forced close; unresolved positions fail the stage gate."
+  },
+  "frozen_hypothesis_families": [
+    {
+      "family": "gap_rebalance",
+      "logic": "Price enters the mapped NDOG/NWOG and closes through the frozen trigger depth toward the prior CME close equivalent.",
+      "direction": "opposite CME gap direction",
+      "target": "mapped prior CME close",
+      "stop": "confirmation-window extreme beyond the CME open edge plus frozen ATR buffer"
+    },
+    {
+      "family": "gap_acceptance",
+      "logic": "Price holds outside the gap and produces direction-aligned displacement away from the CME open edge.",
+      "direction": "CME gap direction",
+      "target": "known prior-day or prior-week external liquidity in the gap direction",
+      "stop": "mapped gap consequent encroachment plus frozen ATR buffer"
+    }
+  ],
+  "frozen_candidate_grid": {
+    "gap_kind": [
+      "NDOG",
+      "NWOG",
+      "BOTH"
+    ],
+    "minimum_gap_absolute_fit_quantile": [
+      0.5,
+      0.75,
+      0.9
+    ],
+    "maximum_absolute_roll_residual_bps": [
+      15,
+      35
+    ],
+    "confirmation_bars": [
+      1,
+      2
+    ],
+    "stop_buffer_atr": [
+      0.0,
+      0.1
+    ],
+    "gap_rebalance_trigger": [
+      "consequent_encroachment",
+      "three_quarter_depth"
+    ],
+    "gap_acceptance_body_atr": [
+      0.25,
+      0.75
+    ],
+    "gap_acceptance_target": [
+      "previous_day",
+      "previous_week"
+    ],
+    "candidate_count": 432,
+    "threshold_learning": "Symbol and gap-kind minimum absolute gap thresholds are learned only from 2021 fit events."
+  },
+  "cost_and_account_contract": {
+    "same_gross_path_replay": true,
+    "all_in_round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "actual_historical_funding": true,
+    "initial_nav_for_diagnostic_account": 10000,
+    "fatal_screen_position": "fixed unit notional for alpha screening",
+    "risk_and_leverage_search": "only after fit, development and confirmation survival under a new exact-Bybit contract"
+  },
+  "fit_gate": {
+    "minimum_resolved_trades_at_18bp": 30,
+    "mean_trade_at_18bp": "> 0",
+    "median_trade_at_12bp": "> 0",
+    "total_return_at_24bp": "> 0",
+    "top_10_percent_positive_removed_return_at_18bp": "> 0",
+    "positive_half_year_fraction_at_18bp": "2/2",
+    "top_five_positive_trade_share_at_18bp": "<= 50%",
+    "unresolved_positions": 0
+  },
+  "development_and_confirmation_gate": {
+    "minimum_resolved_trades_at_18bp": 30,
+    "mean_trade_at_18bp": "> 0",
+    "median_trade_at_12bp": "> 0",
+    "total_return_at_24bp": "> 0",
+    "top_10_percent_positive_removed_return_at_18bp": "> 0",
+    "positive_quarter_fraction_at_18bp": ">= 3/4",
+    "top_five_positive_trade_share_at_18bp": "<= 50%",
+    "unresolved_positions": 0
+  },
+  "conditional_decision": {
+    "if_probe_fails": "Close source stage without strategy PnL.",
+    "if_zero_development_survivors": "Close the exact CME NDOG/NWOG rebalance and acceptance dependency without opening 2023 confirmation or 2024.",
+    "if_development_survivor_exists": "Open 2023 confirmation only for fit and development survivors under the same thresholds and rules.",
+    "if_confirmation_survivor_exists": "Freeze exact CME source identities and exact Bybit BBO/depth, funding, execution, sizing and NAV replay before official 2024."
+  },
+  "prohibitions": [
+    "no PnL before the source probe passes",
+    "no 2023 execution archive request unless a 2022 development survivor exists",
+    "no 2024, 2025 or 2026 request",
+    "no use of daily high, low or close from the current session in the opening decision",
+    "no roll-date event in the final five business days of month",
+    "no same-confirmation-bar entry",
+    "no elapsed-time forced exit",
+    "no credentials, option orders, paper, testnet or live orders",
+    "no cumulative ranking promotion from a Yahoo/Binance proxy screen"
+  ]
+}
