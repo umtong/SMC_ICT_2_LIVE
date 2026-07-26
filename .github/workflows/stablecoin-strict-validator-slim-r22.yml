@@ -82,7 +82,7 @@ jobs:
           p=Path('research_runs/stablecoin_strict_validator_slim_20260727/RESULT_SUMMARY.json')
           r=json.loads(p.read_text())
           assert r['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
-          assert r['source_sha']=='73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539'
+          assert r['source_sha']=='3631cf01a2a2b91d690b81160e14ba033a298f75'
           assert r['strict_sha']=='209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c'
           assert r['next_stage'] in {
             'CLOSE_SOURCE_OR_CHANGE_TRANSPORT_ONLY',
