@@ -1,0 +1,136 @@
+{
+  "artifact_name": "yt-trinity-public-archive-smoke-d455bcfa71ea88c3e12fbd86e088950bf7c58dff",
+  "candidate_count": 36139,
+  "configuration_sha256": "54630261d2c95e9234bc4948ca96fb35026b0e928f20bd0a87d4e84fa5a0d56e",
+  "known_limitations": [
+    "transcript corpus and rule ontology are not yet frozen or bound",
+    "historical funding is omitted",
+    "trade close is used as coarse mark proxy",
+    "spread is a configured floor rather than observed bid/ask",
+    "one-minute OHLC stop-first replay is not event-tape execution",
+    "passive partial fills and queue position are not observable",
+    "instrument quantity rules are engineering defaults, not time-versioned exchange snapshots"
+  ],
+  "resolved_label_count": 34927,
+  "result": {
+    "candidate_count": 17769,
+    "configuration": {
+      "identifier": "ENGINEERING_SMOKE_BTCUSDT_ETHUSDT_28D",
+      "instrument_rules": [
+        {
+          "minimum_quantity": 0.001,
+          "quantity_step": 0.001,
+          "symbol": "BTCUSDT"
+        },
+        {
+          "minimum_quantity": 0.01,
+          "quantity_step": 0.01,
+          "symbol": "ETHUSDT"
+        }
+      ],
+      "model": {
+        "calibration_fraction": 0.2,
+        "l2_regularization": 1.0,
+        "learning_rate": 0.05,
+        "lower_confidence_penalty": 0.35,
+        "max_iter": 250,
+        "max_leaf_nodes": 15,
+        "min_samples_leaf": 35,
+        "random_state": 20260727
+      },
+      "passive_fill_threshold": 0.55,
+      "risk": {
+        "liquidation_buffer_fraction": 0.0025,
+        "maintenance_margin_fraction": 0.005,
+        "maximum_leverage": 5.0,
+        "minimum_quantity": 0.0,
+        "quantity_step": 0.001,
+        "risk_fraction": 0.01
+      },
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "training_completion_lag_minutes": 15,
+      "update_cadence_days": 28
+    },
+    "metrics": {
+      "account_multiple": 0.7554158122471084,
+      "calendar_days": 181,
+      "completed_trades": 127,
+      "end_nav": 7554.158122471084,
+      "geometric_daily_growth": -0.0015484514936136007,
+      "liquidated_or_invalid": false,
+      "maximum_drawdown": 0.24804745061244804,
+      "median_trade_return": 0.0004633807668679062,
+      "profit_factor": 0.2548169468860562,
+      "start_nav": 10000.0,
+      "top_five_positive_pnl_share": 0.19317672161580904,
+      "total_return": -0.2445841877528916,
+      "win_rate": 0.6141732283464567,
+      "winner_removal_return": -0.2478073809928915
+    },
+    "scored_positive_count": 211,
+    "update_records": [
+      {
+        "latest_label_end": "2022-12-31T23:27:00+00:00",
+        "model_activated_at": "2023-01-01T00:00:00+00:00",
+        "training_rows": 17739,
+        "update_started_at": "2022-12-31T23:45:00+00:00"
+      },
+      {
+        "latest_label_end": "2022-12-31T23:27:00+00:00",
+        "model_activated_at": "2023-01-01T00:15:00+00:00",
+        "training_rows": 17739,
+        "update_started_at": "2023-01-01T00:00:00+00:00"
+      },
+      {
+        "latest_label_end": "2023-01-28T23:57:00+00:00",
+        "model_activated_at": "2023-01-29T00:15:00+00:00",
+        "training_rows": 20278,
+        "update_started_at": "2023-01-29T00:00:00+00:00"
+      },
+      {
+        "latest_label_end": "2023-02-25T23:46:00+00:00",
+        "model_activated_at": "2023-02-26T00:15:00+00:00",
+        "training_rows": 23138,
+        "update_started_at": "2023-02-26T00:00:00+00:00"
+      },
+      {
+        "latest_label_end": "2023-03-25T23:42:00+00:00",
+        "model_activated_at": "2023-03-26T00:15:00+00:00",
+        "training_rows": 25650,
+        "update_started_at": "2023-03-26T00:00:00+00:00"
+      },
+      {
+        "latest_label_end": "2023-04-22T23:59:00+00:00",
+        "model_activated_at": "2023-04-23T00:15:00+00:00",
+        "training_rows": 28236,
+        "update_started_at": "2023-04-23T00:00:00+00:00"
+      },
+      {
+        "latest_label_end": "2023-05-20T20:45:00+00:00",
+        "model_activated_at": "2023-05-21T00:15:00+00:00",
+        "training_rows": 30919,
+        "update_started_at": "2023-05-21T00:00:00+00:00"
+      },
+      {
+        "latest_label_end": "2023-06-17T23:55:00+00:00",
+        "model_activated_at": "2023-06-18T00:15:00+00:00",
+        "training_rows": 33690,
+        "update_started_at": "2023-06-18T00:00:00+00:00"
+      }
+    ]
+  },
+  "run_attempt": 1,
+  "run_id": 30219380664,
+  "schema_version": 1,
+  "source_sha": "d455bcfa71ea88c3e12fbd86e088950bf7c58dff",
+  "stage": "ENGINEERING_SMOKE_NOT_CORPUS_BOUND_NOT_RANKABLE",
+  "timings": {
+    "archive_load_seconds": 27.425,
+    "feature_and_candidate_seconds": 97.398,
+    "label_seconds": 16.464,
+    "walk_forward_and_replay_seconds": 166.86
+  }
+}
