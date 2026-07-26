@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-UNISWAP-PRICE-SHOCK-MARKED-NAV-001",
+  "claim_id": "CLM-20260726-2350-ML-UNISWAP-PRICE-SHOCK-001",
+  "timing": "before any source download, model fit, prediction, trade or PnL",
+  "changes": [
+    "make the action equation's frozen decision cost explicit at 18 basis points",
+    "compute maximum drawdown from UTC daily marked NAV plus realized exits rather than realized exits alone"
+  ],
+  "unchanged": [
+    "information source and semantics",
+    "features",
+    "event threshold",
+    "model and calibration",
+    "partitions",
+    "entry, structural target and stop",
+    "12/18/24bp account paths",
+    "risk and notional search",
+    "official-period rule"
+  ],
+  "market_outcome_opened": false,
+  "orders_submitted": false
+}
