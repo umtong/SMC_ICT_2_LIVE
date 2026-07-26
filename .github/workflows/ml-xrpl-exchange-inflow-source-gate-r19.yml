@@ -46,18 +46,20 @@ jobs:
         run: |
           set -euo pipefail
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$ROOT/CORRECTION_001_INTERNAL_TRANSFER_EXCLUSION_BEFORE_OUTCOME.json" >/dev/null
           python -m py_compile \
             "$ROOT/probe_xrpl_exchange_inflow.py" \
+            "$ROOT/probe_xrpl_exchange_inflow_authoritative.py" \
             "$ROOT/test_probe_xrpl_exchange_inflow.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_probe_xrpl_exchange_inflow.py"
-          PYTHONPATH="$ROOT" python "$ROOT/probe_xrpl_exchange_inflow.py" --self-test
+          PYTHONPATH="$ROOT" python "$ROOT/probe_xrpl_exchange_inflow_authoritative.py" --self-test
 
       - name: Run outcome-sealed official source gate
         run: |
           set -euo pipefail
           rm -rf "$OUT"
           mkdir -p "$OUT"
-          PYTHONPATH="$ROOT" python "$ROOT/probe_xrpl_exchange_inflow.py" \
+          PYTHONPATH="$ROOT" python "$ROOT/probe_xrpl_exchange_inflow_authoritative.py" \
             --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
 
       - name: Enforce outcome seal and frozen decision
@@ -121,7 +123,9 @@ jobs:
             "$ROOT/WORK_CLAIM.json" \
             "$ROOT/PREREGISTRATION.md" \
             "$ROOT/SOURCES.md" \
+            "$ROOT/CORRECTION_001_INTERNAL_TRANSFER_EXCLUSION_BEFORE_OUTCOME.json" \
             "$ROOT/probe_xrpl_exchange_inflow.py" \
+            "$ROOT/probe_xrpl_exchange_inflow_authoritative.py" \
             "$ROOT/test_probe_xrpl_exchange_inflow.py" \
             "$OUT/source/"
           find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
