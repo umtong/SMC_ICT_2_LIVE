@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import tempfile
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -70,7 +71,11 @@ def _find_shards(input_root: Path) -> dict[str, Path]:
     return found
 
 
-def _validate_shard(day: str, directory: Path, config_ids: set[str]) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
+def _validate_shard(
+    day: str,
+    directory: Path,
+    config_ids: set[str],
+) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
     result = json.loads((directory / "PILOT_RESULT.json").read_text(encoding="utf-8"))
     if result.get("causal_version") != v5d.CAUSAL_VERSION:
         raise ValueError(f"{day} causal version mismatch")
@@ -86,18 +91,21 @@ def _validate_shard(day: str, directory: Path, config_ids: set[str]) -> tuple[di
         raise ValueError(f"{day} order boundary violated")
 
     grid = pd.read_csv(directory / "PILOT_GRID.csv")
-    if set(grid["config_id"].astype(str)) != config_ids:
+    grid["config_id"] = grid["config_id"].astype(str)
+    if set(grid["config_id"]) != config_ids:
         raise ValueError(f"{day} grid configuration identities mismatch")
-    counts = grid.groupby(grid["config_id"].astype(str)).size()
+    counts = grid.groupby("config_id").size()
     if not (counts == len(FEE_LEVELS)).all():
         raise ValueError(f"{day} grid does not contain every frozen fee replay")
 
     ledger_path = directory / "PILOT_5BPS_LEDGERS.csv"
     ledger = pd.read_csv(ledger_path) if ledger_path.exists() else pd.DataFrame()
     if not ledger.empty:
-        if set(ledger["day"].astype(str)) != {day}:
+        ledger["config_id"] = ledger["config_id"].astype(str)
+        ledger["day"] = ledger["day"].astype(str)
+        if set(ledger["day"]) != {day}:
             raise ValueError(f"{day} ledger contains another date")
-        unknown = set(ledger["config_id"].astype(str)).difference(config_ids)
+        unknown = set(ledger["config_id"]).difference(config_ids)
         if unknown:
             raise ValueError(f"{day} ledger contains unknown configurations: {sorted(unknown)[:3]}")
     return result, grid, ledger
@@ -112,24 +120,26 @@ def run(input_root: Path, output: Path) -> dict:
 
     shards = _find_shards(input_root)
     day_results: list[dict] = []
-    day_grids: list[pd.DataFrame] = []
     day_ledgers: list[pd.DataFrame] = []
     event_counts = {config.config_id: 0 for config in configs}
 
     for day in v1.PILOT_DAYS:
         result, grid, ledger = _validate_shard(day, shards[day], config_ids)
         day_results.append(result)
-        day_grids.append(grid)
         if not ledger.empty:
             day_ledgers.append(ledger)
-        one = grid.drop_duplicates("config_id").set_index(grid.drop_duplicates("config_id")["config_id"].astype(str))
-        for config_id, row in one.iterrows():
-            event_counts[str(config_id)] += int(row["event_count"])
+        one = grid[["config_id", "event_count"]].drop_duplicates("config_id")
+        if len(one) != len(configs):
+            raise ValueError(f"{day} event-count rows are incomplete")
+        for row in one.itertuples(index=False):
+            event_counts[str(row.config_id)] += int(row.event_count)
 
     combined_ledger = pd.concat(day_ledgers, ignore_index=True) if day_ledgers else pd.DataFrame()
     if not combined_ledger.empty:
         day_order = {day: index for index, day in enumerate(v1.PILOT_DAYS)}
         combined_ledger["_day_order"] = combined_ledger["day"].astype(str).map(day_order)
+        if combined_ledger["_day_order"].isna().any():
+            raise ValueError("combined ledger contains a non-preregistered date")
         combined_ledger = combined_ledger.sort_values(
             ["config_id", "_day_order", "entry_us", "score", "symbol"],
             ascending=[True, True, True, False, True],
@@ -160,15 +170,17 @@ def run(input_root: Path, output: Path) -> dict:
     grid = pd.DataFrame(rows)
     grid.to_csv(output / "PILOT_GRID.csv", index=False)
     base = grid.loc[grid.fee_bps_per_side == 5.0].copy()
-    zero = grid.loc[grid.fee_bps_per_side == 0.0, [
-        "config_id", "mean_net_bps", "total_fixed_notional_return",
-    ]].rename(columns={
+    zero = grid.loc[
+        grid.fee_bps_per_side == 0.0,
+        ["config_id", "mean_net_bps", "total_fixed_notional_return"],
+    ].rename(columns={
         "mean_net_bps": "zero_fee_mean_bps",
         "total_fixed_notional_return": "zero_fee_total_return",
     })
-    stress = grid.loc[grid.fee_bps_per_side == 10.0, [
-        "config_id", "mean_net_bps", "total_fixed_notional_return",
-    ]].rename(columns={
+    stress = grid.loc[
+        grid.fee_bps_per_side == 10.0,
+        ["config_id", "mean_net_bps", "total_fixed_notional_return"],
+    ].rename(columns={
         "mean_net_bps": "ten_fee_mean_bps",
         "total_fixed_notional_return": "ten_fee_total_return",
     })
@@ -215,11 +227,16 @@ def run(input_root: Path, output: Path) -> dict:
         },
         "source_records": [record for result in day_results for record in result.get("source_records", [])],
         "source_latency_diagnostics": [
-            record for result in day_results for record in result.get("source_latency_diagnostics", [])
+            record
+            for result in day_results
+            for record in result.get("source_latency_diagnostics", [])
         ],
     })
     result_path = output / "PILOT_RESULT.json"
-    result_path.write_text(json.dumps(template, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    result_path.write_text(
+        json.dumps(template, indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
     (output / "PILOT_RESULT.sha256").write_text(
         f"{hashlib.sha256(result_path.read_bytes()).hexdigest()}  {result_path.name}\n",
         encoding="utf-8",
@@ -234,13 +251,15 @@ def run(input_root: Path, output: Path) -> dict:
         ).hexdigest(),
         "combined_ledger_sha256": (
             hashlib.sha256((output / "PILOT_5BPS_LEDGERS.csv").read_bytes()).hexdigest()
-            if (output / "PILOT_5BPS_LEDGERS.csv").exists() else hashlib.sha256(b"").hexdigest()
+            if (output / "PILOT_5BPS_LEDGERS.csv").exists()
+            else hashlib.sha256(b"").hexdigest()
         ),
         "scientific_dependencies_changed": False,
         "orders_submitted": False,
     }
     (output / "PARALLEL_EQUIVALENCE.json").write_text(
-        json.dumps(equivalence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(equivalence, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     print(json.dumps({
         "fatal_edge_pass_count": template["fatal_edge_pass_count"],
@@ -251,12 +270,69 @@ def run(input_root: Path, output: Path) -> dict:
     return template
 
 
+def self_test() -> None:
+    configs = v1.pilot_grid()
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        parts = root / "parts"
+        output = root / "aggregate"
+        for day in v1.PILOT_DAYS:
+            directory = parts / day
+            directory.mkdir(parents=True)
+            result = {
+                "schema_version": 1,
+                "claim_id": "CLM-20260725-1850-XVENUE-001",
+                "causal_version": v5d.CAUSAL_VERSION,
+                "causal_engine_version": v5d.ENGINE_VERSION,
+                "pilot_days": [day],
+                "configurations": len(configs),
+                "v1_v2_v3_v4_v4b_v5_v5b_v5c_outputs_admissible": False,
+                "funding_boundary_contract": "frozen",
+                "protective_stop_contract": "frozen",
+                "source_continuity_contract": "frozen",
+                "execution_gap_contract": "frozen",
+                "exit_floor_contract": "frozen",
+                "drawdown_contract": "frozen",
+                "orders_submitted": False,
+                "source_records": [],
+                "source_latency_diagnostics": [],
+            }
+            (directory / "PILOT_RESULT.json").write_text(
+                json.dumps(result, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            rows = [
+                {
+                    "config_id": config.config_id,
+                    "fee_bps_per_side": fee,
+                    "event_count": 1,
+                }
+                for config in configs
+                for fee in FEE_LEVELS
+            ]
+            pd.DataFrame(rows).to_csv(directory / "PILOT_GRID.csv", index=False)
+        result = run(parts, output)
+        grid = pd.read_csv(output / "PILOT_GRID.csv")
+        assert result["fatal_edge_pass_count"] == 0
+        assert result["pilot_days"] == list(v1.PILOT_DAYS)
+        assert len(grid) == len(configs) * len(FEE_LEVELS)
+        assert set(grid.event_count.astype(int)) == {len(v1.PILOT_DAYS)}
+        assert not (output / "PILOT_5BPS_LEDGERS.csv").exists()
+        print("V5D_DATE_PARALLEL_AGGREGATION_SELF_TEST_PASS")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-root", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("self-test")
+    run_parser = subparsers.add_parser("run")
+    run_parser.add_argument("--input-root", type=Path, required=True)
+    run_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    run(args.input_root, args.output)
+    if args.command == "self-test":
+        self_test()
+    else:
+        run(args.input_root, args.output)
     return 0
 
 
