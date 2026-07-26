@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "study_id": "BYBIT_L2_RESILIENCY_AGGRESSIVE_ALPHA_V1",
+  "result_id": "RES-20260726-BYBIT-L2-RESILIENCY-FATAL-001",
+  "claim_id": "CLM-20260726-BYBIT-L2-RESILIENCY-001",
+  "research_stage": "high_information_pre_2024_fatal_alpha_screen",
+  "rank_eligible": false,
+  "economic_objective": "Find a high-turnover Bybit-native edge whose realistic 24bp-stress account path can exceed 1% sample-day geometric growth before spending time on full official-period reconstruction.",
+  "hypothesis": {
+    "mechanism": "Displayed depth changes that cannot be explained by aggressive executions identify cancellation-led liquidity withdrawal or unusually fast replenishment. Their interaction with signed aggressive flow, microprice, depth imbalance and short-horizon price response forecasts continuation after a genuine liquidity vacuum and reversal after failed depletion with rapid refill.",
+    "why_cost_scale_can_be_large": "The screen selects only the strongest multivariate events, crosses the spread after explicit latency, and requires the predicted executable move to survive 24bp all-in cost rather than optimizing a sub-basis-point passive edge.",
+    "failure_condition": "No candidate with at least 50 trades has positive mean and median net return at 24bp, positive account return on every development date, and positive 1%-risk daily growth after counterfactual top-winner removal."
+  },
+  "data": {
+    "provider": "Tardis normalized CSV from captured Bybit public WebSocket feeds",
+    "exchange_id": "bybit",
+    "market": "USDT linear perpetual",
+    "symbols": ["BTCUSDT"],
+    "data_types": ["book_snapshot_5", "trades"],
+    "availability_clock": "local_timestamp in microseconds",
+    "fit_dates": ["2022-07-01"],
+    "development_dates": ["2023-07-01"],
+    "conditional_expansion": "Only a concentration-surviving candidate may open additional first-day samples before 2024 under the exact frozen feature/model/execution contract.",
+    "prohibited_dates": "2024-01-01 and later"
+  },
+  "causal_state": {
+    "bin_width_ms": 100,
+    "decision_time": "end of the completed 100ms bin",
+    "signal_frequency_ms": 500,
+    "maximum_book_state_age_ms": 500,
+    "depletion_decomposition": "bid and ask five-level depth decreases minus contemporaneous opposing aggressive trade amount",
+    "replenishment_decomposition": "five-level depth increases plus contemporaneous amount consumed by opposing aggressive trades",
+    "features": "signed aggressive flow, withdrawal and refill at 0.5/1/3 seconds, microprice, depth imbalance, price-response efficiency, update intensity, volatility and time of day",
+    "future_information_prohibition": "entry is one, three or five complete future 100ms bins after decision; labels are used only in the 2022 fit partition"
+  },
+  "model": {
+    "type": "HistGradientBoostingRegressor",
+    "separate_horizons_seconds": [5, 15, 30],
+    "prediction_absolute_quantiles": [0.9, 0.95, 0.975],
+    "event_strength_quantiles": [0.5, 0.75, 0.9],
+    "training_row_cap": 350000,
+    "candidate_count": 324
+  },
+  "execution": {
+    "entry": "aggressive buy at current ask or aggressive sell at current bid after 100/300/500ms latency",
+    "exit": "the preregistered forecast horizon, or first adverse executable BBO stop touch",
+    "forecast_horizons_seconds": [5, 15, 30],
+    "stop_bps": [10, 20, 40, 80],
+    "all_in_cost_bps": [12, 18, 24],
+    "one_global_pending_or_open_slot": true,
+    "same_signal_priority": "largest absolute model forecast; deterministic chronological replay",
+    "missing_or_stale_state": "signal and trade path rejected; no favorable forward fill"
+  },
+  "account_replay": {
+    "planned_risk_fractions": [0.005, 0.01, 0.02, 0.04, 0.08],
+    "position_notional_to_nav": "planned risk divided by stop-plus-cost fraction",
+    "gap_loss": "actual adverse BBO at first observed stop crossing",
+    "top_winner_stress": "remove the largest 10% of positive 12bp event keys before global-slot routing and rerun the account"
+  },
+  "development_gate": {
+    "minimum_trades": 50,
+    "mean_net_24bp": ">0",
+    "median_net_24bp": ">0",
+    "profit_factor_24bp": ">1",
+    "positive_development_dates": "all",
+    "counterfactual_top_winner_removed_mean_and_median_24bp": ">0",
+    "counterfactual_1pct_risk_sample_day_geometric_growth_24bp": ">=1%",
+    "account_path_valid": true
+  },
+  "prohibitions": [
+    "no 2024, 2025 or 2026 market data",
+    "no same-bin or pre-decision entry",
+    "no passive touch fill",
+    "no private credentials, paper, testnet or live orders",
+    "no ranking promotion from the two-day fatal screen"
+  ]
+}
