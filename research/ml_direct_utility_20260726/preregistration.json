@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "experiment_id": "BYBIT-DIRECT-AFTER-COST-UTILITY-POLICY-V1",
+  "scientific_question": "Can one pooled cost-aware ML state policy directly select and hold the highest expected after-cost position among Bybit BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT strongly enough to beat the current 0.0573077% geometric-daily first place without a named setup library?",
+  "economic_mechanism": "At each completed hour the model estimates the next executable-hour directional delivery for all four contracts. The account compares every long, short and flat action with its current one-slot position after explicit turnover and funding costs. It changes state only when another action has higher positive net utility; otherwise the position persists. Already-completed rolling 24-hour opposite liquidity is the emergency invalidation and trails only toward price.",
+  "trader_translation": [
+    "The completed 24-hour high and low are the nearest higher-timeframe external liquidity and invalidation references.",
+    "Continuous displacement, path efficiency, volatility, volume and cross-asset breadth describe whether current delivery is likely to continue.",
+    "ML ranks the four markets and both directions by expected net delivery after the cost of leaving the current position.",
+    "The one global slot is assigned only to the highest positive expected utility; no setup name or second model can authorize a trade.",
+    "A position is not liquidated because an hour elapsed. It remains open until the cost-aware policy changes or the causal structural stop is reached."
+  ],
+  "source": {
+    "provider": "Bybit public historical data and public V5 market API",
+    "contract": "USDT-linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "kline_path": "https://public.bybit.com/kline_for_metatrader4/{symbol}/{year}/{symbol}_60_{month_start}_{month_end}.csv.gz",
+    "funding_endpoint": "GET /v5/market/funding/history",
+    "start": "2021-10-01T00:00:00Z",
+    "end_exclusive": "2024-01-01T00:00:00Z",
+    "availability": "A source bar is usable only after its full UTC hour is complete; entry uses the following hourly open.",
+    "funding_fallback": "When complete historical funding cannot be retrieved, every crossed UTC 00/08/16 settlement is charged an adverse 2bp reserve rather than omitted."
+  },
+  "model": {
+    "family": "HistGradientBoostingRegressor",
+    "single_model_only": true,
+    "fixed_parameters": {
+      "loss": "squared_error",
+      "learning_rate": 0.04,
+      "max_iter": 300,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 100,
+      "l2_regularization": 4.0,
+      "random_state": 20260726
+    },
+    "calibration": "One non-negative zero-intercept least-squares scale fitted only on the calibration partition and clipped to [0,2].",
+    "feature_grid": false,
+    "hyperparameter_grid": false,
+    "feature_columns": [
+      "ret1", "ret6", "ret24", "ret168", "rv_ratio", "atr_pct", "range_atr", "body_atr", "close_location", "trend_eff24", "dist_high24_atr", "dist_low24_atr", "volume_z168", "market_ret6", "market_ret24", "residual_ret6", "breadth24", "symbol_code"
+    ],
+    "target": "log of the following executable hourly open divided by the entry hourly open",
+    "direction_and_symbol": "The one model score is evaluated for long and short on every symbol; no separate direction model exists."
+  },
+  "policy": {
+    "actions": "FLAT plus LONG or SHORT on exactly one of the four symbols",
+    "global_slot": 1,
+    "turnover_cost": "Half of the frozen round-trip cost for each exited or entered unit of notional; a reversal or symbol switch pays both sides.",
+    "decision_utility": "predicted directional account return minus 2 times immediate turnover cost minus a 2bp adverse settlement reserve when applicable",
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "elapsed_time_exit": false,
+    "structural_stop": "already-known rolling 24-hour opposite extreme; after entry it can trail only toward the position",
+    "source_boundary": "Any open position receives the full remaining structural-stop loss and exit cost.",
+    "same_hour_rule": "Only the structural stop is intrahour; if crossed, the stop is applied before the next hourly mark.",
+    "top_trade_counterfactual": "Remove the largest positive 10% completed episode start keys and rerun the full state and one-slot path."
+  },
+  "chronology": {
+    "training": ["2021-10-01T00:00:00Z", "2022-07-01T00:00:00Z"],
+    "calibration": ["2022-07-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "untouched_confirmation": ["2023-01-01T00:00:00Z", "2023-07-01T00:00:00Z"],
+    "conditional_development": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "prohibited": [2024, 2025, 2026],
+    "opening_rule": "Development is read only after every confirmation gate passes. Official 2024-2026 data are not accessed in this fatal screen."
+  },
+  "confirmation_gate_all_required": {
+    "prediction_spearman": ">0",
+    "mae_skill_over_confirmation_mean": ">0",
+    "completed_trades_at_24bp": ">=100",
+    "total_return_at_24bp": ">0",
+    "median_completed_trade_at_24bp": ">0",
+    "both_confirmation_halves_at_18bp": ">0",
+    "positive_confirmation_months_at_18bp": ">=4 of 6",
+    "top_10_percent_winner_removed_return_at_12bp": ">0",
+    "account_ruin": false
+  },
+  "conditional_risk_and_leverage_search": {
+    "opening": "Only after the complete confirmation gate passes.",
+    "risk_fractions": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.12, 0.20, 0.30, 0.40, 0.60],
+    "notional_caps": [1, 2, 3, 5, 10, 20, 40, 80, 100],
+    "quantity": "risk fraction divided by entry-to-structural-stop distance, capped by the tested notional multiple",
+    "selection_cost": "24bp",
+    "selection": "highest confirmation geometric daily growth among paths with positive ordinary and winner-removed return, at least 50 trades, no ruin and MDD below 80%",
+    "reason": "Risk and leverage are not restricted before evidence; they are explored widely only after the frozen information unit has robust positive after-cost expectancy."
+  },
+  "development_gate_all_required": {
+    "total_return_at_24bp": ">0",
+    "median_completed_trade_at_24bp": ">0",
+    "both_development_halves_at_24bp": ">0",
+    "top_10_percent_winner_removed_return_at_24bp": ">0",
+    "geometric_daily_growth_at_24bp": ">0.0573077%",
+    "total_return_at_18bp": ">0",
+    "account_ruin": false
+  },
+  "authority": {
+    "initial_rank_eligibility": false,
+    "credentials": false,
+    "paper_orders": false,
+    "testnet_orders": false,
+    "live_orders": false,
+    "next_if_survivor": "Freeze the selected model, calibrator, policy and risk rule, then replay causal half-year Bybit account paths from 2024 through 2026 with exact BBO/depth, actual funding, latency, capacity and liquidation-distance stress."
+  }
+}
