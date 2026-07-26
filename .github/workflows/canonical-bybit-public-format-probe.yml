@@ -1,0 +1,37 @@
+name: Canonical Bybit public archive format probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/market_data/probe_public_archive_format.py
+      - .github/workflows/canonical-bybit-public-format-probe.yml
+  push:
+    branches:
+      - agent/r22-canonical-halfyear-market-data-001
+    paths:
+      - scripts/market_data/probe_public_archive_format.py
+      - .github/workflows/canonical-bybit-public-format-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install "requests==2.32.4"
+      - run: python scripts/market_data/probe_public_archive_format.py --out artifact/format_probe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-public-archive-format-probe
+          path: artifact/format_probe
+          if-no-files-found: error
+          retention-days: 30
