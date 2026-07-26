@@ -28,7 +28,7 @@ def _candidate(*, entry: float = 100.0, stop: float = 90.0, target: float = 110.
     )
 
 
-def test_long_passive_queue_uses_bid_depth_not_ask_depth() -> None:
+def test_long_passive_queue_uses_bid_depth_and_opposing_aggressor_flow() -> None:
     engine = ExecutionEngine(
         ExecutionConfig(
             activation_latency_ms=500,
@@ -37,6 +37,7 @@ def test_long_passive_queue_uses_bid_depth_not_ask_depth() -> None:
             base_slippage_bps=0.0,
             passive_queue_multiple=1.0,
             passive_through_fraction_at_touch=0.0,
+            unknown_aggressor_volume_fraction=0.0,
         )
     )
     account = AccountState(1000.0)
@@ -50,6 +51,7 @@ def test_long_passive_queue_uses_bid_depth_not_ask_depth() -> None:
             "trade_volume": 11.0,
             "bid_size": 10.0,
             "ask_size": 1000.0,
+            "aggressor_side": -1,
         }
     )
     engine.process_entry_row(account, pd.Timestamp("2023-01-01T00:00:01Z"), row)
@@ -65,6 +67,7 @@ def test_target_touch_exits_marketable_instead_of_assuming_full_maker_fill() -> 
             maker_fee_rate=0.0,
             taker_fee_rate=0.0,
             base_slippage_bps=0.0,
+            impact_bps_per_one_percent_depth=0.0,
         )
     )
     account = AccountState(1000.0)
