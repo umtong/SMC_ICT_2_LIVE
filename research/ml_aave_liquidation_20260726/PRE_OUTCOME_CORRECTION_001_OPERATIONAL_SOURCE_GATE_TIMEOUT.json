@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1952-ML-AAVE-LIQUIDATION-001",
+  "correction_id": "PRE-OUTCOME-CORRECTION-001-OPERATIONAL-SOURCE-GATE-TIMEOUT",
+  "created_at": "2026-07-26T21:14:00+09:00",
+  "trigger": "The keyless historical Ethereum RPC source gate consumed the original 45-minute job budget without producing PROBE_RESULT.json.",
+  "change": "The unchanged source probe receives a 900-second wall-clock budget. If the pinned keyless endpoints cannot prove address bytecode, historical block timestamps, LiquidationCall logs and decoding within that budget, the exact unauthenticated source route is recorded SOURCE_UNAVAILABLE and closed before market outcomes.",
+  "unchanged": [
+    "Aave V2 and V3 canonical pool addresses",
+    "LiquidationCall ABI and event topic",
+    "seven frozen probe dates",
+    "minimum four nonzero dates and 25 decoded logs",
+    "future ETH first-passage hypothesis",
+    "model, calibration and account contract",
+    "prohibition on all ETH prices, labels, actions, trades and PnL during the source gate",
+    "official 2024-2026 seal",
+    "credential and order prohibition"
+  ],
+  "outcome_state_before_correction": {
+    "source_gate_result_created": false,
+    "eth_price_opened": false,
+    "label_created": false,
+    "model_fit_performed": false,
+    "model_metric_computed": false,
+    "trade_generated": false,
+    "pnl_computed": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "decision_rule": "A source that cannot be reconstructed reproducibly and keylessly inside the bounded gate is not operationally reusable; do not repeat or loosen it."
+}
