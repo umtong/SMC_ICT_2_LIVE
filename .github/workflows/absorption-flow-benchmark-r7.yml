@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   verify:
-    if: github.head_ref != 'agent/r15-donchian-2024h1-visible-004'
+    if: github.head_ref != 'agent/r15-donchian-visible-harness-004'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -105,7 +105,7 @@ jobs:
           retention-days: 30
 
   donchian-2024h1:
-    if: github.head_ref == 'agent/r15-donchian-2024h1-visible-004'
+    if: github.head_ref == 'agent/r15-donchian-visible-harness-004'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
