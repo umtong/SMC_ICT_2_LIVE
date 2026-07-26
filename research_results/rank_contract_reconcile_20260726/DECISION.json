@@ -9,7 +9,7 @@
     "strategy_replayed": false
   },
   "claim_id": "CLM-20260726-2014-RANK-CONTRACT-RECONCILE-001",
-  "decision": "REMOVE_FORMER_FIRST_AND_PROMOTE_DONCHIAN_PROVISIONALLY",
+  "decision": "REMOVE_FORMER_FIRST_AND_PROMOTE_DONCHIAN_ALL_BREAKOUT_PROVISIONALLY",
   "follow_up": [
     "Stop the fixed 2024 portfolio claim because one frozen component is contract-ineligible before 2024 outcomes are opened.",
     "Audit lower legacy ranked candidates for prohibited horizon exits using existing evidence only.",
@@ -35,23 +35,32 @@
     "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001"
   },
   "new_first": {
-    "candidate_id": "a70626d9e484285f2cb4",
+    "candidate_id": "a70626d9e484285f2cb4|all",
     "comparison_confidence": "VERY_LOW",
     "cost_bps": 24,
-    "first_place_id": "FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9",
-    "geometric_daily_growth": 0.0006318446194384375,
-    "maximum_drawdown": 0.1102976476441001,
+    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9",
+    "geometric_daily_growth": 0.0007001887213879954,
+    "independent_reproduction": "research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json",
+    "maximum_drawdown": 0.09855424618390096,
     "median_account_return_bps": -50.0,
-    "profit_factor": 1.6226240830708625,
-    "ranking_basis": "24-bp daily growth exceeds the former first place's 12-bp daily growth and the exit is channel/stop logic rather than elapsed-time liquidation.",
+    "profit_factor": 1.6274490829640196,
+    "ranking_basis": "Highest fully reproduced 24-bp growth among current-contract-compatible strategies.",
     "source_result_blob_sha": "31453a4b313412549f9d78a505d1329d4528436a",
     "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-    "target_gap": 0.009368155380561563,
-    "top10pct_removed_return": -0.26306178630598,
-    "top5_positive_share": 0.6735035238367593,
-    "total_return": 0.259293006748736,
-    "trade_count": 89
+    "target_gap": 0.009299811278612005,
+    "top10pct_removed_return": -0.2694691324532831,
+    "top5_positive_share": 0.642218924348059,
+    "total_return": 0.2910804833980871,
+    "trade_count": 99
   },
+  "new_ranking_revision": 14,
   "schema_version": 1,
-  "status": "DECISION_READY"
+  "second_place": {
+    "candidate_id": "a70626d9e484285f2cb4|after_loser",
+    "first_place_id": "SECOND-20260726-DONCHIAN-AFTER-LOSER-A70626D9",
+    "geometric_daily_growth_24bps": 0.0006318446194384375,
+    "reason": "Lower growth than its all-breakout comparator; dependence effect not established."
+  },
+  "status": "DECISION_READY",
+  "updated_at": "2026-07-26T20:39:00+09:00"
 }

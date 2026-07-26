@@ -1,8 +1,8 @@
 # Current state
 
-- revision: 13
+- revision: 14
 - phase: ACTIVE_RESEARCH
-- current first place: `FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9`
+- current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
 - target_status: `NOT_MET`
 - live_order_permission: none
@@ -10,64 +10,57 @@
 
 ## Ranking correction
 
-The former first place, dynamic state-exit `021fbab613517a31ad98` from `RES-20260725-DYNAMIC-FACTOR-001`, is removed from the current-contract ranking.
+The former first place, dynamic state-exit `021fbab613517a31ad98`, is removed from the active ranking because its immutable engine exits surviving trades after a fixed `hold_bars` horizon. That elapsed-time liquidation violates the current project contract.
 
-Its immutable implementation stores `hold_bars`, computes the terminal index as `entry + hold`, and exits any surviving trade at that fixed future bar. That is an elapsed-time liquidation and conflicts with the fixed project rule that exits must arise from strategy logic rather than a maximum holding period. The historical result remains in the Result Registry but is not a valid current first place.
+Revision 13 initially placed the fully recorded Donchian after-loser path first while its higher-growth matched all-breakout comparator lacked expanded metrics in the compact result. Revision 14 independently reproduced the comparator from the exact registered snapshot and source, so incomplete evidence no longer justifies suppressing it.
 
 ## Current first place
 
-The provisional first place is Donchian after-loser `a70626d9e484285f2cb4` from `RES-20260726-DONCHIAN-DEPENDENCE-001` / PR #61.
+The provisional first place is Donchian all-breakout `a70626d9e484285f2cb4|all`.
 
-- rule: completed 60-minute Donchian channel, entry lookback 96, exit channel 48, failsafe entry channel 240, after-loser mode
-- 24-bps geometric daily growth: `0.0631845%`
-- 1% target gap: `0.9368155 percentage points per UTC calendar day`
-- target fraction: `6.31845%`
-- total return: `+25.9293%`
-- maximum drawdown: `11.0298%`
-- trades: `89`
-- profit factor: `1.6226`
+- rule: completed 60-minute Donchian channel, entry lookback 96, exit channel 48, all breakouts
+- 12-bps geometric daily growth: `0.0900854%`
+- 18-bps geometric daily growth: `0.0794137%`
+- 24-bps geometric daily growth: `0.0700189%`
+- 1% target gap at 24 bps: `0.9299811 percentage points per UTC calendar day`
+- total return at 24 bps: `+29.1080%`
+- maximum drawdown at 24 bps: `9.8554%`
+- trades: `99`
+- profit factor at 24 bps: `1.6274`
 - median account return: `-50.00 bps`
-- win rate: `17.98%`
-- top-five positive-PnL share: `67.35%`
-- top-10%-winner-removed return: `-26.3062%`
-- first-half / second-half return: `+20.0763% / +4.8744%`
+- win rate: `20.20%`
+- top-five positive-PnL share: `64.22%`
+- top-10%-winner-removed return: `-26.9469%`
+- first-half / second-half return: `+21.6612% / +6.1209%`
 
-It is first only because its fully recorded 24-bps daily growth exceeds the former first place's 12-bps daily growth while using channel and stop exit logic rather than elapsed-time liquidation.
+The comparison confidence is `VERY_LOW`: Binance proxy, funding omitted, no exact Bybit replay, no 2024+, and severe positive-tail dependence. It is also non-ML, so it is only the current performance benchmark, not a final-system candidate.
 
-The comparison confidence is `VERY_LOW`. The source is a Binance USD-M proxy, historical funding and Bybit execution were not replayed, no 2024 or later interval was opened, and the result is dominated by rare large winners. The matched all-breakout comparator recorded still higher 24-bps growth, so the after-loser dependency itself is not established.
+## Current provisional ranks
 
-## Lower provisional ranks
-
-1. Donchian after-loser `a70626d9e484285f2cb4` — `0.0631845%` daily at 24 bps.
-2. aligned continuation `33034b092ffd271a` — `0.0227977%` daily under its recorded base-cost contract; legacy exit-contract re-audit pending.
-3. perp overshoot reversal `191444bb0a4348e2a52b` — `0.0118976%` daily; legacy exit-contract re-audit pending.
-4. liquidation exhaustion reversal `0c0b773a5be4eab4` — `0.00358316%` daily, very sparse.
-5. DVOL low-VRP residual continuation — `0.0034002%` daily; legacy exit-contract re-audit pending.
-6. high-resistance sweep `c232ae43b7a1401d` — `0.0024555%` daily.
-7. fragmented-flow reversal `95f3b144d5a291abc61c` — `0.0020533%` daily, four trades.
-
-Economic-gate failure and ranking are separate, but a strategy that violates the fixed exit contract is not ranking-eligible.
-
-## Work stopped
-
-The fixed 2024 portfolio takeover that combined the now-ineligible dynamic state-exit with aligned continuation is stopped before any 2024 strategy outcome is opened. Replaying an invalid component would consume research budget without producing a ranking-eligible portfolio.
+1. Donchian all-breakout — `0.0700189%` daily at 24 bps.
+2. Donchian after-loser — `0.0631845%` daily at 24 bps.
+3. aligned continuation — `0.0227977%` daily; legacy exit audit pending.
+4. perp overshoot reversal — `0.0118976%` daily; legacy exit audit pending.
+5. liquidation exhaustion reversal — `0.00358316%` daily, very sparse.
+6. DVOL low-VRP residual continuation — `0.0034002%` daily; legacy exit audit pending.
+7. high-resistance sweep — `0.0024555%` daily.
+8. fragmented-flow reversal — `0.0020533%` daily, four trades.
 
 ## Current objective
 
-Do not protect the new first place. It remains only a provisional benchmark and is still roughly 15.83 times short of the 1% daily-growth objective.
+Rank does not determine research priority.
 
-Continue the retained high-information ML paths that have strategy-defined exits:
+Do not protect the new first place. It remains roughly `14.28` times short of the 1% daily-growth objective and fails concentration, exact-Bybit, funding, sequential-OOS and ML requirements.
+
+Consume the already-running high-information ML paths with strategy-defined exits:
 
 - Coinbase aggressive spot flow into delayed executable Bybit BBO;
 - Bybit mark/index acceptance after an executable liquidity raid;
-- funding-boundary movement-hazard OCO if its frozen source passes.
+- funding-boundary movement-hazard OCO;
+- external forced-flow paths only when source gates pass.
 
 A positive hard-valid result is inserted immediately. A negative result is retired without model, feature, threshold, stop, risk or leverage rescue.
 
-## Current blockers
-
-No candidate has robust sequential OOS evidence after realistic Bybit execution, funding, concentration removal and regime changes. The provisional first place has severe positive-tail dependence and no Bybit replay. The project still lacks a high-frequency, cost-sized ML information unit with repeatable positive median expectancy.
-
 ## Next exact action
 
-Consume the already-running Coinbase and mark/index ML workflows as soon as they become decision-ready. If neither survives 24-bps costs and winner removal, switch to a materially new forced-flow or inventory-transfer information source rather than extending the Donchian or legacy completed-bar grids.
+Finish Coinbase and mark/index ML. In parallel, complete exact-arrival V5D. Any candidate exceeding `0.0700189%` daily after comparable realistic cost and current-contract exits takes first place immediately.
