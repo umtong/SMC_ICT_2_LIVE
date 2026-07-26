@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "correction_id": "REPRO-CORRECTION-20260726-ML-HOURWEEK-PRE2024-SOL-001",
+  "claim_id": "CLM-20260726-2237-ML-HOURWEEK-PRE2024-001",
+  "reason": "The first CI reproduction used NumPy 2.2.6 and scikit-learn 1.6.1, while the result-generating local execution used NumPy 2.3.5, SciPy 1.17.0 and scikit-learn 1.8.0. The route, Q3/Q4 selection metrics, eligible-entry count and economic conclusion were identical, but Ridge predictions differed by about 5e-9 and changed serialized threshold bytes.",
+  "observed_ci_difference": {
+    "local_base_threshold": 0.0179551047702047,
+    "first_ci_base_threshold": 0.017955099466646716,
+    "local_minimum_session_prediction": -0.01119145604313856,
+    "first_ci_minimum_session_prediction": -0.011191450487452547,
+    "route_identical": true,
+    "selection_json_identical": true,
+    "eligible_entries_identical": 0,
+    "economic_result_identical": "ZERO_ACTION"
+  },
+  "correction": "Pin the result-generating library versions and rerun the unchanged evaluator against the immutable artifact. No source, feature, target, partition, route, threshold formula, cost, funding, account, official interval or decision changes.",
+  "frozen_environment": {
+    "python": "3.11",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scipy": "1.17.0",
+    "scikit_learn": "1.8.0",
+    "pythonhashseed": 0,
+    "blas_threads": 2
+  },
+  "orders_submitted": false,
+  "later_periods_opened": false
+}
