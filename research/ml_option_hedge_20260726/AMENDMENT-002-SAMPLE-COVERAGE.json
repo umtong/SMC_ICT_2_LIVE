@@ -2,6 +2,7 @@
   "schema_version": 1,
   "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
   "amendment_id": "AMEND-20260726-ML-OPTION-SAMPLE-COVERAGE-002",
+  "status": "FROZEN_BEFORE_MODEL_OR_ECONOMIC_RESULT",
   "created_after_workflow_run": 30195637056,
   "created_before_new_source_access": true,
   "observed_failure": {
@@ -18,16 +19,21 @@
     "strategy_pnl_observed": false,
     "development_2023_opened": false
   },
-  "cause": "The public first-day files end before most structural first-passage paths resolve. The fixed one-model implementation correctly rejected training rather than fitting to 205 resolved rows.",
+  "cause": "The public first-day files end before most structural first-passage paths resolve. The frozen implementation correctly rejected training before fitting a model.",
   "source_only_change": {
     "add_to_training_dates": ["2022-02-01", "2022-04-01", "2022-06-01"],
     "add_to_calibration_dates": ["2022-08-01"],
     "training_dates_after_amendment": ["2022-01-01", "2022-02-01", "2022-03-01", "2022-04-01", "2022-05-01", "2022-06-01"],
     "calibration_dates_after_amendment": ["2022-07-01", "2022-08-01"],
     "confirmation_dates_unchanged": ["2022-09-01", "2022-11-01"],
-    "conditional_development_dates_unchanged": ["2023-01-01", "2023-03-01", "2023-05-01", "2023-07-01", "2023-09-01", "2023-11-01"]
+    "conditional_development_dates_unchanged": ["2023-01-01", "2023-03-01", "2023-05-01", "2023-07-01", "2023-09-01", "2023-11-01"],
+    "original_source_sha256": "cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a",
+    "amended_source_sha256": "80d94063c427074b5c10896e659f06cf22a77acb94b9961c08587cd9f3b6905e",
+    "application_script": "apply_sample_amendment.py"
   },
   "unchanged": {
+    "minimum_resolved_training_rows_300": true,
+    "minimum_resolved_calibration_rows_100": true,
     "scientific_question": true,
     "model_family_and_hyperparameters": true,
     "feature_columns_and_greek_reconstruction": true,
