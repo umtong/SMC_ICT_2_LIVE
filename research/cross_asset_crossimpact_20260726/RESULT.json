@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-XASSET-CROSSIMPACT-FATAL-001",
+  "claim_id": "CLM-20260726-0948-XASSET-CROSSIMPACT-001",
+  "worker_id": "gpt-5.6-pro-20260726-0948",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_FATAL_SCREEN_ONLY",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NOT_RANK_ELIGIBLE_FATAL_SCREEN",
+  "scientific_code_commit": "3a30b36894ab6fe7283894784236d5f42e57563b",
+  "implementation_sha256": "43002e7aad3701e55181b6b80d0fcbe8a88b4957dc198cf3bfaf9df5d5683ec8",
+  "evaluation_contract_sha256": "c729cd69e30e866a14701d10592dc48c7172ce712d6859fc088144a25af726f3",
+  "fit_contract_sha256": "bb023647cbd7bbec32eccd38a9da9e4c83eb1684bc562cc7cf8d17ab8481606a",
+  "source_manifest_sha256": "311c8ece18fcd37a16013aff26a757c622b95a0d46c73de3ff0896932324c69c",
+  "dependency_fingerprint": "2f1bc64b25c3347e69dc79b7419ef0f387c4ec1eaf3e31c3de0a470ff1bbf6c1",
+  "scientific_fingerprint": "0d828f4c8e3d0f21e79af15fd2f623fee0be1aa4bdd5b7869d8effb94a136f22",
+  "screen": {
+    "candidate_count": 576,
+    "development_event_rows": 237,
+    "development_gate_pass_count": 0,
+    "nonzero_trade_candidate_count": 304,
+    "maximum_trade_count": 30,
+    "candidate_count_at_least_10_trades": 74,
+    "candidate_count_at_least_20_trades": 13,
+    "candidate_count_at_least_60_trades": 0,
+    "positive_total_return_count": {
+      "12bp": 20,
+      "18bp": 12,
+      "24bp": 10
+    },
+    "positive_top_10_percent_removed_count": {
+      "12bp": 0,
+      "18bp": 0,
+      "24bp": 0
+    },
+    "positive_total_return_with_at_least_10_trades_count": {
+      "12bp": 0,
+      "18bp": 0,
+      "24bp": 0
+    },
+    "later_periods_opened": false
+  },
+  "best_raw_18bp": {
+    "candidate_id": "ac124d831a2f26ba4070",
+    "family": "catchup_continuation",
+    "bucket_ms": 5000,
+    "shock_quantile": 0.995,
+    "minimum_leader_control": 0.6,
+    "response_threshold": 0.5,
+    "horizon_seconds": 180,
+    "target_scope": "BOTH",
+    "trade_count": 1,
+    "mean_bps": 37.80025400599875,
+    "total_return": 0.0037800254005999623,
+    "top_10_percent_removed_return": 0.0,
+    "top_five_positive_pnl_share": 1.0
+  },
+  "best_18bp_with_at_least_10_trades": {
+    "candidate_id": "1d30c77a7438b5efb101",
+    "family": "catchup_continuation",
+    "bucket_ms": 250,
+    "trade_count": 12,
+    "mean_bps": -8.2279940521041,
+    "median_bps": -2.095845961736826,
+    "total_return": -0.0098609114228888,
+    "profit_factor": 0.3411204317086392,
+    "maximum_drawdown": 0.0140352101716645,
+    "top_10_percent_removed_return": -0.0145911973749572,
+    "positive_symbol_date_fraction": 0.3333333333333333
+  },
+  "maximum_trade_candidate_18bp": {
+    "candidate_id": "ea923394c11b5905ebca",
+    "trade_count": 30,
+    "mean_bps": -15.582368261366664,
+    "median_bps": -16.559283913996953,
+    "total_return": -0.0457102297828612,
+    "profit_factor": 0.0,
+    "maximum_drawdown": 0.0457102297828612,
+    "top_10_percent_removed_return": -0.0457102297828612
+  },
+  "data": {
+    "provider": "Bybit official public trading archive",
+    "symbols": ["BTCUSDT", "SOLUSDT", "XRPUSDT"],
+    "fit_dates": ["2023-02-05", "2023-04-09", "2023-06-11"],
+    "development_dates": ["2023-08-13", "2023-10-15", "2023-12-10"],
+    "archive_count": 18,
+    "trade_rows": 5374585,
+    "compressed_bytes": 201569672,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "artifacts": {
+    "github_actions_run": 30182858677,
+    "github_actions_artifact": 8626109546,
+    "github_actions_artifact_sha256": "6d8bb5adc8d0dd61b184d9f3fccdf1274a3236f2a4461b7a4f7db02f6cd33e7f",
+    "drive_artifact": "https://drive.google.com/file/d/1lBI89mmYx57vBfySfoRKpRuKGysR9AsI/view"
+  },
+  "decision": "No policy passed the frozen development gate. All positive nominal paths were tiny-sample and every policy with at least ten trades lost after 12/18/24bp. No policy remained positive after top-10-percent winner removal. Retire this exact directional BTC-to-SOL/XRP sparse cross-impact formulation and move to a structurally different payoff, specifically cross-asset movement-hazard monetization rather than adjacent threshold tuning.",
+  "orders_submitted": false,
+  "paper_or_live_started": false,
+  "created_at": "2026-07-26T10:27:00+09:00"
+}
