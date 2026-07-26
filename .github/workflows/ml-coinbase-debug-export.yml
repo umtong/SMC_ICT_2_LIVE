@@ -7,13 +7,18 @@ on:
     paths:
       - ".github/workflows/ml-coinbase-debug-export.yml"
       - "research/ml_coinbase_spot_leader_20260726/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/ml-coinbase-debug-export.yml"
+      - "research/ml_coinbase_spot_leader_20260726/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-coinbase-debug-export-${{ github.ref }}
+  group: ml-coinbase-debug-export-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
