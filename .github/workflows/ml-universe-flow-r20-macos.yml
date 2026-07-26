@@ -1,0 +1,118 @@
+name: ML broad-universe flow diffusion macOS
+
+on:
+  push:
+    branches:
+      - agent/r20-ml-universe-flow-diffusion-001
+    paths:
+      - '.github/workflows/ml-universe-flow-r20-macos.yml'
+      - 'research/ml_universe_flow_diffusion_20260726/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-universe-flow-r20-macos.yml'
+      - 'research/ml_universe_flow_diffusion_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-universe-flow-r20-macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate-macos:
+    runs-on: macos-15
+    timeout-minutes: 330
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.1.3 pandas==2.2.3 requests==2.32.4 \
+            scikit-learn==1.6.1 pytest==8.3.5
+      - name: Validate exact frozen engine
+        run: |
+          set -euo pipefail
+          root=research/ml_universe_flow_diffusion_20260726
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/run.py" "$root/test_run.py" "$root/reconstruct.py"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py"
+          PYTHONPATH="$root" python "$root/run.py" self-test
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_001_MACOS_PARALLEL_BEFORE_OUTCOME.json" >/dev/null
+      - name: Run identical causal pre-2024 screen and conditional official 2024H1
+        shell: bash
+        run: |
+          set -u
+          root=research/ml_universe_flow_diffusion_20260726
+          out=research_runs/ml_universe_flow_diffusion_20260726
+          cache="$RUNNER_TEMP/binance-universe-flow-cache"
+          mkdir -p "$out" "$cache"
+          set +e
+          PYTHONPATH="$root" python "$root/run.py" run --cache "$cache" --output "$out" 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
+          test -f "$out/RESULT.json"
+          python -m json.tool "$out/RESULT.json" >/dev/null
+      - name: Enforce unchanged scientific authority
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_universe_flow_diffusion_20260726
+          python - <<'PY' "$out/RESULT.json"
+          import json, sys
+          r=json.load(open(sys.argv[1]))
+          assert r['claim_id']=='CLM-20260726-2325-ML-UNIVERSE-FLOW-001'
+          assert r['orders_submitted'] is False
+          if r['status']=='OFFICIAL_2024H1_COMPLETED':
+              assert r['pre2024_base_gate'] is True
+              assert r['risk_search']['selected'] is not None
+              assert r['official_2024h1_opened'] is True
+              print('DECISION=COMPARE_AND_RANK_OFFICIAL_2024H1')
+          elif r['status']=='PRE2024_FAILED_CHANGE_ALPHA':
+              assert r['official_2024h1_opened'] is False
+              print('DECISION=CHANGE_ALPHA')
+          else:
+              print('DECISION=EXECUTION_FAILURE')
+          print(json.dumps({'status':r['status'],'official_2024h1_opened':r.get('official_2024h1_opened',False)},sort_keys=True))
+          PY
+      - name: Freeze immutable evidence and portable hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_universe_flow_diffusion_20260726
+          out=research_runs/ml_universe_flow_diffusion_20260726
+          mkdir -p "$out/inputs"
+          cp "$root"/{WORK_CLAIM.json,README.md,reconstruct.py,run.py,test_run.py,EXECUTION_CORRECTION_001_MACOS_PARALLEL_BEFORE_OUTCOME.json} "$out/inputs/"
+          cp "$root"/*.gz.b64.part* "$out/inputs/"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root=Path('research_runs/ml_universe_flow_diffusion_20260726')
+          lines=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-universe-flow-r20-macos-${{ github.sha }}
+          path: research_runs/ml_universe_flow_diffusion_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
