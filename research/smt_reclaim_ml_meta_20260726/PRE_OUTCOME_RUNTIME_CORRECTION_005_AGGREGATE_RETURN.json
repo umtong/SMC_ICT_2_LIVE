@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "PRE_OUTCOME_RUNTIME_CORRECTION_005_AGGREGATE_RETURN",
+  "timing": "after completed source aggregation, before leader/follower feature use, event detection, matrix rows, model fit, scores, actions or PnL",
+  "failed_workflow_run": 30197706857,
+  "failure": "The current shared aggregate helper returns a tuple containing the feature mapping plus diagnostics; the frozen extractor expected the historical direct feature-mapping return.",
+  "correction": "Accept a direct mapping unchanged, or select the unique tuple/list member containing the required mark and trade_count feature arrays. Diagnostics are not used by the frozen strategy and no array value is altered.",
+  "outcome_access": {
+    "matrix_rows_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "unchanged": [
+    "all source bytes and dates",
+    "shared aggregate mathematics and produced arrays",
+    "overreaction, MSS, feature and outcome definitions",
+    "models, score quantiles, latency, cost and structural payoff",
+    "risk, global slot, concentration tests and economic gates"
+  ],
+  "orders_submitted": false
+}
