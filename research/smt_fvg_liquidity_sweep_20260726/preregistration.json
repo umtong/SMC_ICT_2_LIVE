@@ -1,0 +1,122 @@
+{
+  "base_revision": 11,
+  "branch": "agent/r11-smt-fvg-liquidity-sweep-001",
+  "candidate_grid": {
+    "candidate_count": 3072,
+    "catchup_candidates": 1024,
+    "confirmation_seconds": [
+      3,
+      10
+    ],
+    "costs_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
+    "pivot_spans": [
+      2,
+      4
+    ],
+    "pool_modes": [
+      "single",
+      "equal"
+    ],
+    "reversal_candidates": 2048
+  },
+  "causal_contract": {
+    "confirmation_seconds": [
+      3,
+      10
+    ],
+    "entry_latency_ms": 100,
+    "equal_tolerance_bps": 6.0,
+    "one_global_slot": "One pending decision/open position across BTCUSDT and ETHUSDT per candidate; slot competition is resolved by decision time, then entry time and stable symbol ordering.",
+    "pivot_spans": [
+      2,
+      4
+    ],
+    "pool_modes": [
+      "single",
+      "equal"
+    ],
+    "same_second_exit": "Adverse stop has priority when a completed bar contains both stop and target.",
+    "source_boundary": "An unresolved position at the end of a sparse source day is charged its full structural stop rather than deleted or favorably marked.",
+    "trade_bars": "One-second bars are available only at sec+1. Swing bars are completed five-second bars."
+  },
+  "claim_id": "CLM-20260726-1539-SMT-FVG-SWEEP-001",
+  "conditional_next_stage": {
+    "if_survivor": "Freeze the family, reconstruct broader continuous pre-2024 data, then validate exact Bybit BBO/depth, fills, funding, structural exits, risk sizing and continuous NAV before any 2024 opening.",
+    "if_zero_survivors": "Register reusable negative evidence, keep 2024-2026 sealed and do not tune adjacent SMT/FVG thresholds."
+  },
+  "data_contract": {
+    "base_url": "https://public.bybit.com/trading",
+    "development_dates": [
+      "2023-07-16",
+      "2023-09-17",
+      "2023-11-19"
+    ],
+    "fit_dates": [
+      "2023-01-15",
+      "2023-03-19",
+      "2023-05-21"
+    ],
+    "integrity": "Raw gzip transport magic, CRC-readable CSV, row count, byte size and SHA-256 recorded before use.",
+    "later_periods_opened": false,
+    "market": "USDT linear perpetual public historical trades",
+    "required_fields": [
+      "timestamp",
+      "symbol",
+      "side",
+      "size",
+      "price"
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "venue": "Bybit"
+  },
+  "development_gate": {
+    "mean_net_bps_at_18bp": "> 0",
+    "median_net_bps_at_12bp": "> 0",
+    "minimum_trades_at_18bp": 12,
+    "positive_date_fraction_at_18bp": ">= 2/3",
+    "top_10_percent_removed_return_at_18bp": "> 0",
+    "top_five_positive_trade_share_at_18bp": "<= 50%",
+    "total_return_at_24bp": "> 0"
+  },
+  "families": [
+    {
+      "logic": "One market raids external liquidity while the paired market does not; the sweeper reclaims, opposing aggressor flow appears, displacement/MSS forms and optional FVG mitigation triggers reversal.",
+      "name": "smt_sweep_reclaim_fvg_reversal"
+    },
+    {
+      "logic": "The sweeper holds beyond liquidity with aligned flow while the paired market still has same-side liquidity overhead/underfoot; trade the laggard toward that pool.",
+      "name": "accepted_sweep_liquidity_transfer"
+    }
+  ],
+  "objective": "Discover a causal, SMC/ICT-explainable Bybit USDT-linear perpetual strategy that converts correlated-market SMT divergence at pre-existing liquidity pools into after-cost reversal or liquidity-transfer continuation, with explicit information timing, one global slot, and no 2024+ opening before a pre-2024 economic gate.",
+  "prohibitions": [
+    "No 2024, 2025 or 2026 download.",
+    "No pivot before right-side confirmation.",
+    "No level already consumed before confirmation.",
+    "No same-bar favorable entry or exit ordering.",
+    "No missing-price interpolation or favorable source-boundary mark.",
+    "No credentials, option orders, paper orders, testnet orders or live orders.",
+    "No cumulative ranking promotion from this sparse trade-print fatal screen."
+  ],
+  "provisional_result_id": "RES-20260726-SMT-FVG-SWEEP-FATAL-001",
+  "rank_eligibility": false,
+  "research_stage": "sparse_pre_2024_fatal_alpha_screen",
+  "schema_version": 1,
+  "smc_ict_translation": {
+    "SMT_divergence": "BTCUSDT takes corresponding high/low liquidity while ETHUSDT leaves its own same-side pool unswept, or vice versa.",
+    "external_liquidity": "The latest causally confirmed 5-second swing high/low, or a pair of confirmed equal highs/lows within 6bp. A pivot is usable only after its right-side bars have completed.",
+    "fair_value_gap": "A causal three-bar one-second non-overlap created inside the completed confirmation window.",
+    "invalidation": "Reversal stop is beyond the sweep extreme; catch-up stop is derived from the distance to the unswept liquidity target. No elapsed-time position liquidation is used.",
+    "liquidity_sweep": "The first post-confirmation inside-to-outside trade-bar crossing of that pool. A level already crossed before confirmation is never treated as a new sweep.",
+    "liquidity_transfer": "If the sweep is accepted instead of reclaimed, enter the paired laggard toward its still-unswept pool after aligned flow confirmation.",
+    "market_structure_shift": "After the raid, price reclaims the pool and displaces away from the sweep extreme relative to prior completed one-second ranges.",
+    "reversal_entry": "Either the first trade 100ms after completed sweep-reclaim/MSS confirmation, or the first market entry 100ms after a later completed bar mitigates the FVG midpoint."
+  }
+}
