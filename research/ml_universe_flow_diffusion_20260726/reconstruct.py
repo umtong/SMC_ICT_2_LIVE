@@ -7,15 +7,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 FILES = {
-    "run.py": {
-        "parts": ["run.py.gz.b64.part00", "run.py.gz.b64.part01"],
-        "gzip_sha256": "1e9cb1d249ea87c83a241e6822458ff175ffed57b7b49178a705116a83092603",
-        "sha256": "dfa359a0547c3312535be92aa9d43b7e4ae49a403ff1d4804e43d73a5111cefa",
+    'run.py': {
+        "parts": ['run.py.gz.b64.part00', 'run.py.gz.b64.part01'],
+        "gzip_sha256": '5280e318b3aa402fd419486072f3cf1a4940db311784c1d9929d469ee9400582',
+        "sha256": 'e960e30c3abdfac238925d2f2cc6720118c98054867b6ff52aab443ef75138fd',
     },
-    "test_run.py": {
-        "parts": ["test_run.py.gz.b64.part00"],
-        "gzip_sha256": "28782b6b42b3aea9903ce799de62378cf7165c2d2db986c43f3bb33cb9a3d817",
-        "sha256": "e610ccec4b64b73d3a4609dde0bd04a1be4e0e2704c1a0e75c8d41dc02b216ce",
+    'test_run.py': {
+        "parts": ['test_run.py.gz.b64.part00'],
+        "gzip_sha256": '70943e5e8374b1f364b6803f7b8e9e69b381d1c506f7abae54e458dcc3e76fa0',
+        "sha256": '665d9c047a35ecc9e827fa5599d10b0fef35d6b0528a4a9ea2c8acc7b1d05924',
     },
 }
 

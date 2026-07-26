@@ -16,7 +16,7 @@ The direction is rule-owned by the sign of the external diffusion state. A singl
 6. Freeze the complete route at 2023-12-31.
 7. Open official 2024H1 immediately without feature, model, threshold, target, stop, cost, risk or leverage changes.
 
-All rolling normalizers are shifted by one completed bar. Entry is the next bar open. Same-bar target/stop ambiguity is stop-first, adverse gaps fill at the open, and no elapsed-time liquidation exists. One global pending/open slot is enforced. The initial run is a Binance USD-M completed-bar execution proxy; exact Bybit BBO/depth/funding remains mandatory before deployment.
+All rolling normalizers are shifted by one completed bar. Entry is the next bar open. The entry bar is processed immediately; same-bar target/stop ambiguity is stop-first, adverse gaps fill at the open, and no elapsed-time liquidation exists. One global pending/open slot is enforced. End-boundary open-position mark-to-market is included in profit factor, concentration and exact winner-removal reruns. The initial run is a Binance USD-M completed-bar execution proxy; exact Bybit BBO/depth/funding remains mandatory before deployment.
 
 ## Decision gate
 
