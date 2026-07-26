@@ -7,8 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SOURCE_PATH = ROOT / "run_impl.py.gz.b64"
-EXPECTED_COMPRESSED_SHA256 = "2948efdb675465241277445be5faedb4388c2201a8d4bcb8245fb00027b10010"
-EXPECTED_SOURCE_SHA256 = "7bd5f6787a6676535123efd6398dc1c997020099d0fdf62b8c8c0edf7b28ecb7"
+EXPECTED_COMPRESSED_SHA256 = "8d73152bc26a55ea7b515bdb86a8d19c284461389bd9e35af8a8d72503fbf8ef"
+EXPECTED_SOURCE_SHA256 = "eb4ef78d7b226490288463bef5ae5bce15bc313c5a45fab6e95520a3acb1b735"
 
 encoded = "".join(SOURCE_PATH.read_text(encoding="utf-8").split())
 compressed = base64.b64decode(encoded, validate=True)
