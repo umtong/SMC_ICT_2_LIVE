@@ -1,0 +1,146 @@
+name: Bybit liquidation sweep MSS passive retest fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-liq-sweep-retest-001
+    paths:
+      - "research/liquidation_sweep_retest_20260726/**"
+      - ".github/workflows/liquidation-sweep-retest-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/liquidation_sweep_retest_20260726/**"
+      - ".github/workflows/liquidation-sweep-retest-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liquidation-sweep-retest-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+  TZ: UTC
+  CACHE: /tmp/liquidation-sweep-retest-r11
+  OUT: ${{ github.workspace }}/research_runs/liquidation_sweep_retest_20260726
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deterministic research environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
+
+      - name: Reconstruct registered liquidation-sweep dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r11-liq-sweep-mss-001
+          mkdir -p runtime/base runtime/study "$OUT"
+          for name in implementation_manifest.json implementation.py.gz.b64.part00 implementation.py.gz.b64.part01 implementation.py.gz.b64.part02 implementation.py.gz.b64.part03; do
+            git show "FETCH_HEAD:research/liquidation_sweep_mss_20260726/$name" > "runtime/base/$name"
+          done
+          python - <<'PY'
+          import base64,gzip,hashlib,json,pathlib
+          root=pathlib.Path('runtime/base')
+          manifest=json.loads((root/'implementation_manifest.json').read_text())
+          encoded=''.join(''.join((root/name).read_text().split()) for name in sorted(manifest['parts']))
+          assert len(encoded)==manifest['base64_bytes']
+          assert hashlib.sha256(encoded.encode()).hexdigest()==manifest['base64_sha256']
+          compressed=base64.b64decode(encoded,validate=True)
+          assert len(compressed)==manifest['gzip_bytes']
+          assert hashlib.sha256(compressed).hexdigest()==manifest['gzip_sha256']
+          source=gzip.decompress(compressed)
+          assert len(source)==manifest['raw_bytes']
+          assert hashlib.sha256(source).hexdigest()==manifest['raw_sha256']=='700273530173aabc8c97af59d77349ae261d75678fd31f4bc77f35f8c4a8c072'
+          pathlib.Path('runtime/study/liq_base.py').write_bytes(source)
+          print('base source sha256',hashlib.sha256(source).hexdigest())
+          PY
+          cp -R research/liquidation_sweep_retest_20260726/. runtime/study/
+          sha256sum runtime/study/liq_base.py runtime/study/run.py runtime/study/test_run.py runtime/study/implementation_manifest.json runtime/study/implementation.py.gz.b64.part* runtime/study/preregistration.json > "$OUT/INPUT_SHA256SUMS.txt"
+
+      - name: Verify passive order engine and causal boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/study
+          python -m py_compile liq_base.py run.py test_run.py
+          pytest -q test_run.py | tee "$OUT/tests.log"
+          python run.py self-test | tee "$OUT/self_test.log"
+          cd "$GITHUB_WORKSPACE"
+          python -m json.tool research/liquidation_sweep_retest_20260726/WORK_CLAIM.json >/dev/null
+          python -m json.tool research/liquidation_sweep_retest_20260726/preregistration.json >/dev/null
+          python scripts/validate_project.py
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/liquidation-sweep-retest-r11
+          key: liquidation-sweep-retest-r11-${{ runner.os }}-${{ hashFiles('research/liquidation_sweep_retest_20260726/preregistration.json') }}
+          restore-keys: |
+            liquidation-sweep-retest-r11-${{ runner.os }}-
+
+      - name: Run frozen fit and conditional development screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/study
+          python run.py run \
+            --cache "$CACHE" \
+            --output "$OUT/result" \
+            2>&1 | tee "$OUT/run.log"
+
+      - name: Enforce sealed research state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          summary=json.loads((Path(os.environ['OUT'])/'result'/'summary.json').read_text())
+          assert summary['hard_validity']=='PASS_FATAL_SCREEN_ONLY'
+          assert summary['candidate_count']==1024
+          assert summary['2024_opened'] is False
+          assert summary['2025_opened'] is False
+          assert summary['2026_opened'] is False
+          assert summary['orders_submitted'] is False
+          assert summary['ranking_eligible'] is False
+          if summary['fit_survivor_count']==0:
+              assert summary['development_opened'] is False
+              assert summary['development_survivor_count']==0
+          print('SEALED_RESEARCH_STATE_PASS')
+          print('DECISION_READY_RESULT='+json.dumps(summary,sort_keys=True,separators=(',',':')))
+          PY
+
+      - name: Record immutable output hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: liquidation-sweep-retest-${{ github.sha }}
+          path: research_runs/liquidation_sweep_retest_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
