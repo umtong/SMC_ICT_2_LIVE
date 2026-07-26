@@ -1,0 +1,251 @@
+name: YT Trinity browser caption probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-browser-caption-probe.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-browser-caption-probe-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: macos-14
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          node --version > node-version.txt
+          npm list --depth=0 > npm-freeze.txt
+      - name: Probe rendered caption tracks and transcript panel
+        shell: bash
+        run: |
+          mkdir -p artifact/browser/screenshots
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('node:fs');
+
+          const videos = {
+            chartbro: '0h9lpMUBSlE',
+            swipalnam: '-Tp2fhvVVGM',
+            indicator_sensei: '2U0s_i07vMY',
+            known_previous_success: 'F6wDs1HRTSo',
+          };
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+          const compact = value => String(value ?? '').replace(/\s+/g, ' ').trim();
+
+          function segmentCount(body, contentType) {
+            if (!body) return 0;
+            try {
+              if (contentType.includes('json') || body.trimStart().startsWith('{')) {
+                const payload = JSON.parse(body);
+                return Array.isArray(payload.events)
+                  ? payload.events.filter(event => Array.isArray(event.segs) && event.segs.some(seg => compact(seg.utf8))).length
+                  : 0;
+              }
+            } catch (_) {}
+            if (body.trimStart().startsWith('<')) return (body.match(/<(?:text|p)(?:\s|>)/g) || []).length;
+            return (body.match(/-->/g) || []).length;
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              locale: 'ko-KR',
+              timezoneId: 'Asia/Seoul',
+              viewport: { width: 1440, height: 1100 },
+              userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+            });
+            const rows = [];
+            let index = 0;
+            for (const [channel, videoId] of Object.entries(videos)) {
+              if (index++) await sleep(8000);
+              const page = await context.newPage();
+              const row = {
+                channel,
+                video_id: videoId,
+                navigation_ok: false,
+                challenge_detected: false,
+                track_count: 0,
+                caption_segments: 0,
+                ui_segments: 0,
+                tracks: [],
+                errors: [],
+              };
+              try {
+                const response = await page.goto(`https://www.youtube.com/watch?v=${videoId}&hl=ko`, {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 60000,
+                });
+                row.navigation_ok = Boolean(response && response.ok());
+                await page.waitForTimeout(5000);
+                for (const label of ['Accept all', 'I agree', '모두 수락', '동의']) {
+                  const button = page.getByRole('button', { name: label, exact: false });
+                  if (await button.count()) {
+                    await button.first().click({ timeout: 3000 }).catch(() => {});
+                    await page.waitForTimeout(1500);
+                    break;
+                  }
+                }
+                row.title = await page.title();
+                row.final_url = page.url().split('?')[0];
+                const bodyText = compact(await page.locator('body').innerText({ timeout: 10000 }).catch(() => ''));
+                row.body_prefix = bodyText.slice(0, 500);
+                row.challenge_detected = /sign in to confirm|not a bot|unusual traffic|봇이 아님|로그인하여/i.test(bodyText);
+
+                const tracks = await page.evaluate(() => {
+                  const candidates = [];
+                  const direct = globalThis.ytInitialPlayerResponse;
+                  if (direct) candidates.push(direct);
+                  for (const script of document.scripts) {
+                    const text = script.textContent || '';
+                    const marker = 'ytInitialPlayerResponse';
+                    const location = text.indexOf(marker);
+                    if (location < 0) continue;
+                    const start = text.indexOf('{', location);
+                    if (start < 0) continue;
+                    let depth = 0, quoted = false, escaped = false;
+                    for (let i = start; i < text.length; i++) {
+                      const ch = text[i];
+                      if (quoted) {
+                        if (escaped) escaped = false;
+                        else if (ch === '\\') escaped = true;
+                        else if (ch === '"') quoted = false;
+                        continue;
+                      }
+                      if (ch === '"') quoted = true;
+                      else if (ch === '{') depth++;
+                      else if (ch === '}' && --depth === 0) {
+                        try { candidates.push(JSON.parse(text.slice(start, i + 1))); } catch (_) {}
+                        break;
+                      }
+                    }
+                  }
+                  for (const candidate of candidates) {
+                    const found = candidate?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+                    if (Array.isArray(found)) return found.map(track => ({
+                      baseUrl: track.baseUrl,
+                      languageCode: track.languageCode,
+                      kind: track.kind || '',
+                      name: track.name?.simpleText || track.name?.runs?.map(run => run.text).join('') || '',
+                    }));
+                  }
+                  return [];
+                });
+                row.track_count = tracks.length;
+                row.tracks = tracks.map(track => ({ language_code: track.languageCode, kind: track.kind, name: track.name }));
+                tracks.sort((a, b) => {
+                  const score = track => track.languageCode === 'ko' ? 0 : track.languageCode?.startsWith('ko') ? 1 : track.languageCode === 'en' ? 2 : 10;
+                  return score(a) - score(b);
+                });
+                for (const track of tracks.slice(0, 4)) {
+                  try {
+                    const joiner = track.baseUrl.includes('?') ? '&' : '?';
+                    const target = track.baseUrl.includes('fmt=') ? track.baseUrl : `${track.baseUrl}${joiner}fmt=json3`;
+                    const captionResponse = await context.request.get(target, { timeout: 30000 });
+                    const body = await captionResponse.text();
+                    const count = segmentCount(body, captionResponse.headers()['content-type'] || '');
+                    row.caption_segments = Math.max(row.caption_segments, count);
+                    row.caption_http_status = captionResponse.status();
+                    row.caption_bytes = Buffer.byteLength(body);
+                    if (count > 0) break;
+                  } catch (error) {
+                    row.errors.push(`caption:${error.name}:${error.message}`.slice(-1000));
+                  }
+                }
+
+                if (row.caption_segments === 0) {
+                  for (const text of ['스크립트 표시', '대본 보기', 'Show transcript', 'Transcript']) {
+                    const target = page.getByText(text, { exact: false });
+                    if (await target.count()) {
+                      await target.first().click({ timeout: 5000 }).catch(() => {});
+                      await page.waitForTimeout(3000);
+                      break;
+                    }
+                  }
+                  const selectors = [
+                    'ytd-transcript-segment-renderer',
+                    'yt-formatted-string.segment-text',
+                    '[class*="segment-text"]',
+                  ];
+                  for (const selector of selectors) {
+                    const count = await page.locator(selector).count().catch(() => 0);
+                    row.ui_segments = Math.max(row.ui_segments, count);
+                  }
+                }
+                await page.screenshot({ path: `artifact/browser/screenshots/${channel}-${videoId}.png`, fullPage: false });
+              } catch (error) {
+                row.errors.push(`${error.name}:${error.message}`.slice(-2000));
+              } finally {
+                rows.push(row);
+                await page.close();
+              }
+            }
+            await context.storageState({ path: 'artifact/browser/storage-state.json' });
+            await browser.close();
+            const successful = rows.filter(row => row.caption_segments > 0 || row.ui_segments > 0);
+            const output = {
+              schema_version: 1,
+              run_id: Number(process.env.GITHUB_RUN_ID),
+              source_sha: process.env.GITHUB_SHA,
+              success_count: successful.length,
+              positive_control_passed: successful.some(row => row.video_id === 'F6wDs1HRTSo'),
+              successful,
+              rows,
+            };
+            fs.writeFileSync('artifact/browser/probe.json', JSON.stringify(output, null, 2) + '\n');
+            console.log(JSON.stringify({ success_count: output.success_count, positive_control_passed: output.positive_control_passed, successful }, null, 2));
+          })().catch(error => { console.error(error); process.exitCode = 1; });
+          JS
+          cp node-version.txt npm-freeze.txt artifact/browser/
+      - name: Hash browser evidence
+        if: always()
+        run: |
+          if [[ -d artifact/browser ]]; then
+            (
+              cd artifact/browser
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - name: Upload browser probe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-browser-caption-probe-${{ github.sha }}
+          path: artifact/browser
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist machine-readable browser result
+        if: always()
+        run: |
+          if [[ ! -f artifact/browser/probe.json ]]; then exit 0; fi
+          cp artifact/browser/probe.json research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_BROWSER.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_BROWSER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record browser caption probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
