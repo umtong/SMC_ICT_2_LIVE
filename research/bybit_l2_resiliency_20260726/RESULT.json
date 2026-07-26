@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-BYBIT-L2-RESILIENCY-FATAL-001",
+  "claim_id": "CLM-20260726-BYBIT-L2-RESILIENCY-001",
+  "worker_id": "gpt-5.6-pro-20260726-l2-resiliency",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "FATAL_SCREEN_NOT_RANK_ELIGIBLE",
+  "scope": "Cost-sensitive nonlinear Bybit BTCUSDT top-five LOB forecast using 2022-07-01 fit labels and untouched 2023-07-01 development, executable BBO entry after explicit latency, one global slot and 12/18/24bp replay.",
+  "candidate_count": 324,
+  "positive_mean_candidate_count_12bp": 0,
+  "positive_mean_candidate_count_24bp": 0,
+  "basic_positive_candidate_count_24bp": 0,
+  "concentration_survivor_count": 0,
+  "best_candidate": {
+    "candidate_id": "5e875c218b0a87bdc75e",
+    "horizon_seconds": 30,
+    "entry_latency_ms": 100,
+    "stop_bps": 10,
+    "prediction_quantile": 0.9,
+    "event_quantile": 0.5,
+    "trade_count": 3,
+    "mean_net_bps_12": -8.116593208458726,
+    "median_net_bps_12": -12.065442884722433,
+    "profit_factor_12": 0.10921318730468942,
+    "unlevered_return_12": -0.0024339511078474985,
+    "one_percent_risk_sample_day_growth_12": -0.011046825351972545,
+    "mean_net_bps_24": -20.116593208458724,
+    "median_net_bps_24": -24.065442884722433,
+    "profit_factor_24": 0.0,
+    "unlevered_return_24": -0.006023793626671048,
+    "one_percent_risk_sample_day_growth_24": -0.017653284214966924
+  },
+  "model_diagnostics": {
+    "training_rows_5s": 24921,
+    "training_rows_15s": 24805,
+    "training_rows_30s": 24655,
+    "absolute_prediction_threshold_97_5pct_5s_bps": 5.445657265172343,
+    "absolute_prediction_threshold_97_5pct_15s_bps": 12.581614815013127,
+    "absolute_prediction_threshold_97_5pct_30s_bps": 21.168659324173394,
+    "model_metadata_sha256": "5359171ff2cfde0f06ad9324f779a87c2f11b833d82fb1e75172821a958e4a73"
+  },
+  "source_files": [
+    {"date": "2022-07-01", "type": "trades", "bytes": 36158133, "sha256": "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"},
+    {"date": "2022-07-01", "type": "book_snapshot_5", "bytes": 50953798, "sha256": "7787c36c35a591c8fcf1bf629d8b82624ac61a6b970f09cdbcff01c9afb624b6"},
+    {"date": "2023-07-01", "type": "trades", "bytes": 7480525, "sha256": "0707925b9320626560a5aa2ce89c78666b27266c92626fc6a6ff5236a0d5b301"},
+    {"date": "2023-07-01", "type": "book_snapshot_5", "bytes": 15194559, "sha256": "4ed34a4de337e276e8e58df96780bbb8868d1ead3b9c49839d295fe532aa2753"}
+  ],
+  "workflow": {
+    "run_id": 30182786091,
+    "artifact_id": 8626087323,
+    "artifact_digest": "sha256:90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+    "head_commit": "8b31f917b712874b7528382c25f6e20d1c9c6d6f"
+  },
+  "implementation_correction": {
+    "before_economic_result": true,
+    "change": "Use pandas Series.dt for hour/minute/second after immutable source verification.",
+    "economic_contract_changed": false
+  },
+  "decision": "Retire this exact nonlinear taker-execution LOB model. Do not tune adjacent forecast or event quantiles. Change the payoff structure so spread and taker fees are not paid on every entry and exit.",
+  "2024_opened": false,
+  "2025_or_2026_opened": false,
+  "orders_submitted": false,
+  "created_at": "2026-07-26T10:24:03+09:00"
+}
