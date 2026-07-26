@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-HL-STRUCTURED-EVENT-LIST-007",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "status": "PRE_OUTCOME_SOURCE_ONLY",
+  "observed_source_fact": "The commit-pinned convert/parquet object exposes events as a LIST of STRUCT values, not a JSON VARCHAR. The prior source-only query failed in DuckDB before returning any event row because it applied trim(events).",
+  "correction": [
+    "Use COALESCE(list_count(events), 0) to identify nonempty structured event arrays.",
+    "Return the structured events column unchanged so the existing causal parser receives a Python list.",
+    "Run the authoritative source gate on the standard ubuntu-24.04 runner."
+  ],
+  "unchanged": [
+    "immutable dataset revision and exact Parquet sibling",
+    "same 36 frozen source identities",
+    "same documented ledgerLiquidation schema",
+    "same source-density and target-coin gates",
+    "same prohibition on market prices, future returns, labels, model metrics, PnL, official 2026 data, credentials and orders",
+    "same conditional HGBT, structural execution, costs, risk and no elapsed-time liquidation contract"
+  ],
+  "hyperliquid_event_row_opened_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "orders_submitted": false
+}
