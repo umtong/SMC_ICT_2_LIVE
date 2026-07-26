@@ -1,0 +1,113 @@
+name: Report ML Sweep-FVG maker result
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-sweep-fvg-maker-001
+    paths:
+      - "research/results/RES-20260726-ML-SWEEP-FVG-MAKER-001.json"
+      - ".github/workflows/ml-sweep-fvg-maker-report-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ml-sweep-fvg-maker-report-r11
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: ${{ !contains(github.event.head_commit.message || '', '[skip maker-report]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-ml-sweep-fvg-maker-001
+          fetch-depth: 1
+
+      - name: Build decision-ready report when result exists
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          result=research/results/RES-20260726-ML-SWEEP-FVG-MAKER-001.json
+          if [ ! -f "$result" ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          p=Path('research/results/RES-20260726-ML-SWEEP-FVG-MAKER-001.json')
+          r=json.loads(p.read_text())
+          fit=r['fit_confirmation']
+          pred=fit.get('prediction',{})
+          paths=fit.get('account_paths',{})
+          p12=paths.get('12_bps',{})
+          p18=paths.get('18_bps',{})
+          passed=bool(fit.get('gate_pass'))
+          status='CONFIRMATION_GATE_PASS' if passed else 'HARD_VALID_ECONOMIC_FAIL'
+          def pct(x):
+              try: return f"{100*float(x):+.6f}%"
+              except: return 'n/a'
+          def num(x, d=6):
+              try:
+                  x=float(x)
+                  return 'inf' if math.isinf(x) else f"{x:.{d}f}"
+              except: return 'n/a'
+          failures=', '.join(fit.get('gate_failures',[])) or 'none'
+          lines=[
+              '# ML Sweep–FVG queue-aware maker — decision',
+              '',
+              f"- Result: `{r['result_id']}`",
+              f"- Status: `{status}`",
+              f"- Decision: `{r['decision']}`",
+              f"- Total causal decisions: `{fit.get('decision_count','n/a')}`",
+              f"- Untouched confirmation decisions: `{fit.get('confirmation_count','n/a')}`",
+              f"- Selected confirmation actions: `{fit.get('selected_confirmation_actions','n/a')}`",
+              f"- 12 bp filled trades: `{p12.get('filled_trades','n/a')}`",
+              f"- 12 bp return: `{pct(p12.get('total_return'))}`; PF `{num(p12.get('profit_factor'),4)}`; median `{num(p12.get('median_net_return_bps_on_notional'),2)} bp`; winner-removed `{pct(p12.get('top10pct_winner_removed_return'))}`",
+              f"- 18 bp return: `{pct(p18.get('total_return'))}`; PF `{num(p18.get('profit_factor'),4)}`; median `{num(p18.get('median_net_return_bps_on_notional'),2)} bp`",
+              f"- Full log loss / structure-only: `{num(pred.get('full_log_loss'))}` / `{num(pred.get('baseline_log_loss'))}`",
+              f"- Full Brier / structure-only: `{num(pred.get('full_brier'))}` / `{num(pred.get('baseline_brier'))}`",
+              f"- Gate failures: `{failures}`",
+              f"- Calendar 2023 opened: `{str(r['sealed']['calendar_2023_opened']).lower()}`",
+              '- 2024–2026 opened: `false`',
+              '- Credentials or orders: `false`',
+              '',
+          ]
+          if passed:
+              lines += ['The single maker route passed its frozen confirmation gate. Only the already-opened, unchanged 2023-07-01 development result may now be judged; no adjacent tuning is authorized.']
+          else:
+              lines += ['The exact raid → MSS/FVG → 62% BBO post-only route is retired. No adjacent OTE/FVG, model, feature, threshold, risk or leverage tuning is authorized.']
+          report='\n'.join(lines)+'\n'
+          out=Path('research/ml_sweep_fvg_maker_20260726/observed/DECISION.md')
+          out.parent.mkdir(parents=True,exist_ok=True)
+          out.write_text(report)
+          Path('/tmp/decision.md').write_text(report)
+          Path('/tmp/title.txt').write_text(('Result: PASS — ' if passed else 'Result: FAIL — ')+'ML Sweep-FVG queue-aware maker')
+          PY
+
+      - name: Persist report and update claim conversation
+        if: steps.build.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title=$(cat /tmp/title.txt)
+          gh pr edit 143 --repo umtong/SMC_ICT_2_LIVE --title "$title" --body-file /tmp/decision.md
+          gh pr comment 143 --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/decision.md
+          gh issue comment 142 --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/decision.md
+          gh issue close 142 --repo umtong/SMC_ICT_2_LIVE --reason completed
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/ml_sweep_fvg_maker_20260726/observed/DECISION.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Record maker decision report [skip maker-report]"
+            git push origin HEAD:agent/r11-ml-sweep-fvg-maker-001
+          fi
