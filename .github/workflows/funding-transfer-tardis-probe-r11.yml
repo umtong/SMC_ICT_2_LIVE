@@ -1,0 +1,56 @@
+name: Funding-transfer Tardis derivative-ticker source probe
+
+on:
+  push:
+    branches:
+      - agent/r11-funding-transfer-liquidity-001
+    paths:
+      - "research/funding_transfer_liquidity_20260726/AMENDMENT-002-TARDIS-SOURCE-PROBE.json"
+      - "research/funding_transfer_liquidity_20260726/probe_tardis_derivative_ticker.py"
+      - ".github/workflows/funding-transfer-tardis-probe-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install probe dependency
+        run: python -m pip install "requests==2.32.4"
+      - name: Run frozen outcome-free schema probe
+        run: |
+          set -euo pipefail
+          root=research/funding_transfer_liquidity_20260726
+          python -m py_compile "$root/probe_tardis_derivative_ticker.py"
+          mkdir -p research_runs/funding_transfer_tardis_probe
+          python "$root/probe_tardis_derivative_ticker.py" \
+            --output research_runs/funding_transfer_tardis_probe
+          (cd research_runs/funding_transfer_tardis_probe && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("research_runs/funding_transfer_tardis_probe/PROBE.json").read_text())
+          assert result["status"] == "SOURCE_SCHEMA_PROBE_PASS"
+          assert result["strategy_outcomes_read"] is False
+          assert result["candidate_pnl_computed"] is False
+          assert result["orders_submitted"] is False
+          assert result["2024_opened"] is False
+          assert result["2025_or_2026_opened"] is False
+          assert result["row_count"] > 0
+          print(json.dumps(result["field_summary"], sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: funding-transfer-tardis-schema-probe-${{ github.sha }}
+          path: research_runs/funding_transfer_tardis_probe
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
