@@ -64,6 +64,9 @@ jobs:
   stablecoin-source-economic:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
+    concurrency:
+      group: stablecoin-visible-causal-${{ github.sha }}
+      cancel-in-progress: false
     env:
       PYTHONHASHSEED: '0'
       PYTHONUNBUFFERED: '1'
@@ -102,6 +105,8 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$ECONOMIC_SHA"
           git archive "$ECONOMIC_SHA" "$ECON_ROOT" | tar -x
           python -m json.tool "$EXEC_ROOT/EXECUTION_CORRECTION.json" >/dev/null
+          python -m json.tool "$EXEC_ROOT/EXECUTION_CORRECTION_CAUSAL_019.json" >/dev/null
+          python -m json.tool "$ECON_ROOT/CORRECTION_006_CAUSAL_FEATURE_AND_BOUNDARY_MARK_BEFORE_OUTCOME.json" >/dev/null
       - name: Validate corrected source and causal economic engines
         run: |
           set -euo pipefail
