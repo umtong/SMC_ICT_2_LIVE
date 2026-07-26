@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-SYNTHETIC-CROSSRATE-UPPERBOUND-001",
+  "claim_id": "CLM-20260726-1036-SYNTHETIC-CROSSRATE-001",
+  "worker_id": "gpt-5.6-pro-20260726-1036",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "FATAL_FIT_UPPER_BOUND_BELOW_GATE",
+  "ranking_role": "NONE",
+  "qualification": "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE",
+  "summary": "Hard-valid algebraic synthetic cross-rate executable upper-bound screen. Across 324 frozen configurations, 262 produced zero fit trades, 48 produced one and 14 produced two. Only 32 executable entry outcomes from 13 unique broad events survived all target-spread, synthetic-spread, latency, capacity and marketable-limit gates, and every outcome occurred on 2023-05-01. Zero candidates passed the fit upper-bound gate. The best mean future-information 30-second executable oracle had one ETHUSDT trade and +12.7283 bp at 18 bp cost, while its causal fixed 10-second exit lost 18.8287 bp. Every executable outcome had negative fixed-10-second return at 18 bp. Development and all 2024-2026 periods remained unopened. The exact Binance ALT/BTC x BTC/USDT to Bybit ALTUSDT lag dependency is economically closed without adjacent threshold, exit, risk or leverage polishing.",
+  "metrics": {
+    "candidate_count": 324,
+    "fit_survivor_count": 0,
+    "survivor_count": 0,
+    "development_opened": false,
+    "event_outcome_rows": 32,
+    "unique_broad_events": 13,
+    "outcome_day_counts": {
+      "2023-03-01": 0,
+      "2023-05-01": 32,
+      "2023-07-01": 0
+    },
+    "outcome_symbol_counts": {
+      "ETHUSDT": 24,
+      "SOLUSDT": 4,
+      "XRPUSDT": 4
+    },
+    "candidate_trade_count_distribution": {
+      "zero_trades": 262,
+      "one_trade": 48,
+      "two_trades": 14,
+      "maximum": 2
+    },
+    "all_executable_fixed_10s_18bps_negative": true,
+    "best_fixed_10s_18bps_outcome_bps": -7.22320822426868,
+    "best_mean_oracle_candidate": {
+      "candidate_id": "f27c6c339f0437ed349a",
+      "parameters": {
+        "observation_ms": 1000,
+        "impulse_bps": 3.0,
+        "gap_bps": 5.0,
+        "follower_fraction": 0.25,
+        "latency_ms": 250,
+        "limit_spreads": 1.0
+      },
+      "trade_count": 1,
+      "symbol_counts": {
+        "ETHUSDT": 1
+      },
+      "oracle_30s_12bps_mean_bps": 18.728282741959283,
+      "oracle_30s_18bps_mean_bps": 12.728282741959283,
+      "oracle_30s_24bps_mean_bps": 6.728282741959283,
+      "fixed_10s_18bps_mean_bps": -18.828667835789684,
+      "fixed_30s_18bps_mean_bps": 9.544077079080004,
+      "positive_calendar_day_fraction": 0.3333333333333333
+    },
+    "best_two_trade_candidate": {
+      "candidate_id": "29f9ee140d52398ffaac",
+      "parameters": {
+        "observation_ms": 1000,
+        "impulse_bps": 3.0,
+        "gap_bps": 5.0,
+        "follower_fraction": 0.25,
+        "latency_ms": 100,
+        "limit_spreads": 1.0
+      },
+      "trade_count": 2,
+      "symbol_counts": {
+        "ETHUSDT": 1,
+        "SOLUSDT": 1
+      },
+      "oracle_30s_18bps_mean_bps": 10.672369019276333,
+      "fixed_10s_18bps_mean_bps": -18.539618775124268,
+      "fixed_30s_18bps_mean_bps": 3.9682191302892846
+    },
+    "official_target_met": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "engine": {
+    "version": "SYNTHETIC_CROSSRATE_V1_EXECUTABLE_BBO",
+    "raw_bytes": 41582,
+    "raw_sha256": "1aa1f4d93ec4d5500491a923812ed210997b2fb026129ecbb2d3a44af4e21339"
+  },
+  "execution_contract": {
+    "target": "Bybit USDT linear perpetual",
+    "target_symbols": ["ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "leader_cross_symbols": ["ETHBTC", "SOLBTC", "XRPBTC"],
+    "leader_conversion_symbol": "BTCUSDT",
+    "synthetic_bid": "ALT/BTC bid x BTC/USDT bid",
+    "synthetic_ask": "ALT/BTC ask x BTC/USDT ask",
+    "signal_clock": "completed 100 ms Tardis local_timestamp buckets using final reconstructed same-timestamp BBO",
+    "entry_latencies_ms": [100, 250, 500],
+    "fixed_notional_usdt": 10000.0,
+    "spread": "explicit target bid/ask crossing and executable component bid/ask synthetic fair value",
+    "impact": "convex target top-quote participation impact",
+    "marketable_limit_rejection": true,
+    "adverse_equal_timestamp_execution": true,
+    "one_global_slot": true,
+    "extra_roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "oracle_note": "The best executable exit within 30 seconds is a future-label upper bound with impossible zero exit-decision latency and is not a strategy rule."
+  },
+  "source_ids": [
+    "tardis:bybit-quotes:first-day-monthly-2023-fit",
+    "tardis:binance-spot-quotes:first-day-monthly-2023-fit"
+  ],
+  "dataset_ids": [
+    "DS-TARDIS-BINANCE-SPOT-CROSSRATE-BYBIT-PERP-202303-202307-R1"
+  ],
+  "code_commit": "1b3f037d5739251d529709e6f446c84f77f36b76",
+  "evaluation_contract_sha256": "204b4b3287e3e0ac91d6508f3c85ab903e3941a9df43e806f5cdaa0a7c24eb97",
+  "preregistration_sha256": "4c0c95e8deb8ee792299da9abd866b087ce45a2e9983526e8655fd578456a2e1",
+  "source_manifest_sha256": "9c1b85a0468b09783f068dc0fab50f653e850c81fae6174a6842f46c999a4a29",
+  "artifact_fingerprint": "539627eadc74de2799d25c8fe45f4412859a4094480f454db42f3b802462472b",
+  "dependency_fingerprint": "965d98ff4b46efb5b121ac838cf8f6773b9e7d7c6e93f08ada6f2c41f1415925",
+  "output_hashes": {
+    "summary_json": "5295b4341db36251a6a0b7eba7e48899a22f24eae6cf73d0d71c932e540f045a",
+    "candidate_results_json": "4b56d44acbb6af985fb8514c9525190c01af494bf897684ec7c592eebd8ed0b1",
+    "event_outcomes_csv_gz": "d17a5a10d07b6070499b9d48bd0c1e9a07558756054e08a4bc55122391a3cfc1"
+  },
+  "artifacts": [
+    {
+      "path": "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30183559039/artifacts/8626347020",
+      "sha256": "539627eadc74de2799d25c8fe45f4412859a4094480f454db42f3b802462472b"
+    }
+  ],
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/80",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30183559039"
+  ],
+  "orders_submitted": false,
+  "paper_or_live_enabled": false,
+  "created_at": "2026-07-26T10:53:00+09:00"
+}
