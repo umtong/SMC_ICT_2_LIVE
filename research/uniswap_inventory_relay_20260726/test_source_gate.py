@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import types
 from pathlib import Path
 
 import pandas as pd
 
-import source_gate as s
+import source_gate_launcher as launcher
+
+
+s = types.ModuleType("source_gate_runtime_test")
+s.__file__ = str(launcher.SOURCE)
+exec(compile(launcher.corrected_source_text(), str(launcher.SOURCE), "exec"), s.__dict__)
 
 
 def test_parquet_entries() -> None:
