@@ -13,12 +13,15 @@ No video media is downloaded. Only public metadata and caption tracks are retain
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import contextlib
 import dataclasses
 import hashlib
 import html
 import json
 import random
 import re
+import signal
 import time
 import traceback
 import urllib.parse
@@ -74,6 +77,26 @@ class VerifiedNoCaption(HarvestError):
 
 class VideoUnavailable(HarvestError):
     pass
+
+
+@contextlib.contextmanager
+def time_limit(seconds: int | float, label: str):
+    """Bound a blocking inventory operation on POSIX runners."""
+    if seconds <= 0 or not hasattr(signal, "SIGALRM"):
+        yield
+        return
+    previous_handler = signal.getsignal(signal.SIGALRM)
+
+    def handle_timeout(signum: int, frame: Any) -> None:
+        raise TimeoutError(f"{label} exceeded {seconds}s")
+
+    signal.signal(signal.SIGALRM, handle_timeout)
+    signal.setitimer(signal.ITIMER_REAL, float(seconds))
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def utc_now() -> str:
@@ -396,7 +419,7 @@ def resolve_channel(channel: MutableMapping[str, Any], instances: Sequence[str])
         channel["resolved_channel_id"] = expected
         attempts.append(InventoryAttempt("configured_channel_id", "ok", expected, 1))
         return attempts
-    for method in (resolve_channel_id_ytdlp, resolve_channel_id_html):
+    for method in (resolve_channel_id_html, resolve_channel_id_ytdlp):
         resolved, detail = method(channel)
         attempts.append(InventoryAttempt(method.__name__, "ok" if resolved else "failed", detail, 1 if resolved else 0))
         if resolved:
@@ -423,8 +446,8 @@ def inventory_ytdlp(playlist_id: str, channel: Mapping[str, Any]) -> tuple[list[
         "ignoreerrors": True,
         "lazy_playlist": False,
         "socket_timeout": 30,
-        "retries": 5,
-        "extractor_retries": 5,
+        "retries": 2,
+        "extractor_retries": 2,
         "cachedir": False,
     }
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -495,7 +518,9 @@ def inventory_invidious(
     raise HarvestError("; ".join(errors)[-4000:] or "no usable Invidious instance")
 
 
-def optional_tab_inventory(channel: Mapping[str, Any]) -> tuple[dict[str, set[str]], list[InventoryAttempt]]:
+def optional_tab_inventory(
+    channel: Mapping[str, Any], timeout_s: int = 90
+) -> tuple[dict[str, set[str]], list[InventoryAttempt]]:
     try:
         import yt_dlp  # type: ignore
     except ImportError:
@@ -510,14 +535,15 @@ def optional_tab_inventory(channel: Mapping[str, Any]) -> tuple[dict[str, set[st
             "skip_download": True,
             "extract_flat": "in_playlist",
             "ignoreerrors": True,
-            "socket_timeout": 25,
-            "retries": 2,
-            "extractor_retries": 2,
+            "socket_timeout": 20,
+            "retries": 1,
+            "extractor_retries": 1,
             "cachedir": False,
         }
         try:
-            with yt_dlp.YoutubeDL(options) as ydl:
-                info = ydl.extract_info(url, download=False)
+            with time_limit(timeout_s, f"tab inventory {channel['slug']}:{tab}"):
+                with yt_dlp.YoutubeDL(options) as ydl:
+                    info = ydl.extract_info(url, download=False)
             ids = {
                 safe_text(entry.get("id") or entry.get("videoId"))
                 for entry in iter_entries(info)
@@ -527,7 +553,13 @@ def optional_tab_inventory(channel: Mapping[str, Any]) -> tuple[dict[str, set[st
             tab_ids[tab] = ids
             attempts.append(InventoryAttempt(f"tab:{tab}:yt_dlp", "ok", url, len(ids)))
         except Exception as exc:
-            attempts.append(InventoryAttempt(f"tab:{tab}:yt_dlp", "failed", f"{type(exc).__name__}: {exc}"[-2000:]))
+            attempts.append(
+                InventoryAttempt(
+                    f"tab:{tab}:yt_dlp",
+                    "failed",
+                    f"{type(exc).__name__}: {exc}"[-2000:],
+                )
+            )
     return tab_ids, attempts
 
 
@@ -633,8 +665,8 @@ def ytdlp_caption_segments(video_id: str) -> tuple[list[Segment], dict[str, Any]
         "no_warnings": True,
         "skip_download": True,
         "socket_timeout": 30,
-        "retries": 5,
-        "extractor_retries": 5,
+        "retries": 2,
+        "extractor_retries": 2,
         "cachedir": False,
     }
     try:
@@ -792,19 +824,263 @@ def transcript_payload(segments: Sequence[Segment]) -> bytes:
     return "".join(canonical_json(segment.as_dict()) + "\n" for segment in segments).encode("utf-8")
 
 
+def _attempt_rows_from_error(exc: Exception) -> list[dict[str, Any]]:
+    if str(exc).startswith("["):
+        try:
+            parsed = json.loads(str(exc))
+            if isinstance(parsed, list):
+                return [row for row in parsed if isinstance(row, dict)]
+        except Exception:
+            return []
+    return []
+
+
+def fetch_caption_outcome(
+    video_id: str, instances: Sequence[str], retries: int
+) -> dict[str, Any]:
+    try:
+        segments, metadata, attempts = caption_for_video(video_id, instances, retries)
+        return {
+            "status": "ok",
+            "segments": segments,
+            "metadata": metadata,
+            "attempts": attempts,
+        }
+    except VerifiedNoCaption as exc:
+        return {
+            "status": "no_caption",
+            "segments": [],
+            "metadata": {},
+            "attempts": _attempt_rows_from_error(exc),
+            "error": str(exc)[-4000:],
+        }
+    except VideoUnavailable as exc:
+        return {
+            "status": "unavailable",
+            "segments": [],
+            "metadata": {},
+            "attempts": _attempt_rows_from_error(exc),
+            "error": str(exc)[-4000:],
+        }
+    except Exception as exc:
+        return {
+            "status": "fetch_failed",
+            "segments": [],
+            "metadata": {},
+            "attempts": _attempt_rows_from_error(exc),
+            "error": f"{type(exc).__name__}: {exc}"[-4000:],
+            "traceback": traceback.format_exc(limit=5)[-8000:],
+        }
+
+
+def build_manifest(
+    config: Mapping[str, Any],
+    config_path: Path,
+    channel_summaries: Sequence[Mapping[str, Any]],
+    videos: Sequence[Mapping[str, Any]],
+    instances: Sequence[str],
+    final: bool,
+    limited: bool,
+) -> dict[str, Any]:
+    statuses = Counter(safe_text(video.get("caption_status")) for video in videos)
+    statuses.pop("", None)
+    provider_counts = Counter(
+        safe_text(video.get("caption_provider"))
+        for video in videos
+        if video.get("caption_status") == "ok"
+    )
+    provider_counts.pop("", None)
+    language_counts = Counter(
+        safe_text(video.get("caption_language_code"))
+        for video in videos
+        if video.get("caption_status") == "ok"
+    )
+    language_counts.pop("", None)
+    total_segments = sum(int(video.get("caption_segment_count") or 0) for video in videos)
+    total_chars = sum(int(video.get("caption_char_count") or 0) for video in videos)
+    canonical_corpus_rows = [
+        {
+            "video_id": video["video_id"],
+            "channel_slug": video["channel_slug"],
+            "caption_status": video.get("caption_status"),
+            "caption_sha256": video.get("caption_sha256"),
+            "title": video.get("title"),
+            "upload_date": video.get("upload_date"),
+        }
+        for video in sorted(videos, key=lambda row: (str(row.get("channel_slug")), str(row.get("video_id"))))
+    ]
+    inventory_complete = (
+        bool(channel_summaries)
+        and not limited
+        and all(bool(row.get("inventory_complete")) for row in channel_summaries)
+    )
+    resolved = sum(statuses.get(name, 0) for name in ("ok", "no_caption", "unavailable"))
+    caption_complete = final and statuses.get("fetch_failed", 0) == 0 and resolved == len(videos)
+    if inventory_complete and caption_complete:
+        decision = "PASS_COMPLETE"
+    elif final:
+        decision = "PARTIAL_REQUIRES_RETRY"
+    else:
+        decision = "IN_PROGRESS_CHECKPOINT"
+    return {
+        "schema_version": 2,
+        "work_claim_id": config.get("work_claim_id"),
+        "snapshot_as_of_utc": config.get("snapshot_as_of_utc"),
+        "manifest_generated_at_utc": utc_now(),
+        "config_sha256": sha256_bytes(config_path.read_bytes()),
+        "inventory_complete": inventory_complete,
+        "caption_attempt_complete": caption_complete,
+        "decision": decision,
+        "channel_count": len(channel_summaries),
+        "unique_public_video_count": len(videos),
+        "caption_status_counts": dict(sorted(statuses.items())),
+        "caption_provider_counts": dict(sorted(provider_counts.items())),
+        "caption_language_counts": dict(sorted(language_counts.items())),
+        "total_caption_segments": total_segments,
+        "total_caption_characters": total_chars,
+        "corpus_digest_sha256": sha256_text(canonical_json(canonical_corpus_rows)),
+        "invidious_instances_considered": list(instances),
+        "channels": list(channel_summaries),
+    }
+
+
+def write_checkpoint(
+    output: Path,
+    config: Mapping[str, Any],
+    config_path: Path,
+    channel_summaries: Sequence[Mapping[str, Any]],
+    videos: Sequence[Mapping[str, Any]],
+    attempt_rows: Sequence[Mapping[str, Any]],
+    inventory_log: Sequence[Mapping[str, Any]],
+    instances: Sequence[str],
+    final: bool,
+    limited: bool,
+) -> dict[str, Any]:
+    ordered_videos = sorted(
+        videos,
+        key=lambda value: (
+            str(value.get("channel_slug")),
+            str(value.get("upload_date") or ""),
+            str(value.get("video_id")),
+        ),
+    )
+    write_jsonl(output / "videos.jsonl", ordered_videos)
+    write_jsonl(output / "caption_attempts.jsonl", attempt_rows)
+    write_jsonl(output / "inventory_attempts.jsonl", inventory_log)
+    write_json(output / "channels.json", list(channel_summaries))
+    manifest = build_manifest(
+        config,
+        config_path,
+        channel_summaries,
+        ordered_videos,
+        instances,
+        final,
+        limited,
+    )
+    write_json(output / "manifest.json", manifest)
+    hashes: list[tuple[str, str]] = []
+    for path in sorted(output.rglob("*")):
+        if path.is_file() and path.name != "SHA256SUMS":
+            hashes.append((sha256_bytes(path.read_bytes()), str(path.relative_to(output))))
+    (output / "SHA256SUMS").write_text(
+        "".join(f"{digest}  {relative}\n" for digest, relative in hashes),
+        encoding="utf-8",
+        newline="\n",
+    )
+    return manifest
+
+
+def apply_caption_outcome(
+    video: MutableMapping[str, Any],
+    outcome: Mapping[str, Any],
+    output: Path,
+) -> list[dict[str, Any]]:
+    video_id = str(video["video_id"])
+    video["caption_attempted_at_utc"] = utc_now()
+    status = safe_text(outcome.get("status")) or "fetch_failed"
+    attempts = [row for row in outcome.get("attempts", []) if isinstance(row, dict)]
+    if status == "ok":
+        segments = list(outcome.get("segments", []))
+        metadata = dict(outcome.get("metadata", {}))
+        payload = transcript_payload(segments)
+        transcript_sha = sha256_bytes(payload)
+        transcript_dir = output / "transcripts" / str(video["channel_slug"])
+        jsonl_path = transcript_dir / f"{video_id}.jsonl"
+        text_path = transcript_dir / f"{video_id}.txt"
+        jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+        jsonl_path.write_bytes(payload)
+        text_path.write_text(
+            "".join(f"[{format_timestamp(segment.start_ms)}] {segment.text}\n" for segment in segments),
+            encoding="utf-8",
+            newline="\n",
+        )
+        video.update(
+            {
+                "caption_status": "ok",
+                "caption_provider": metadata.get("provider"),
+                "caption_language_code": metadata.get("language_code"),
+                "caption_is_generated": metadata.get("is_generated"),
+                "caption_segment_count": len(segments),
+                "caption_char_count": sum(len(segment.text) for segment in segments),
+                "caption_sha256": transcript_sha,
+                "transcript_jsonl": str(jsonl_path.relative_to(output)),
+                "transcript_text": str(text_path.relative_to(output)),
+            }
+        )
+        for target_key, source_key in (
+            ("title", "metadata_title"),
+            ("upload_date", "metadata_upload_date"),
+            ("duration_s", "metadata_duration_s"),
+            ("channel", "metadata_channel"),
+            ("channel_id", "metadata_channel_id"),
+        ):
+            if video.get(target_key) in (None, "") and metadata.get(source_key) not in (None, ""):
+                video[target_key] = metadata[source_key]
+    else:
+        video["caption_status"] = status
+        video["caption_error"] = safe_text(outcome.get("error"))[-4000:]
+        if outcome.get("traceback"):
+            video["caption_traceback"] = safe_text(outcome.get("traceback"))[-8000:]
+    return attempts
+
+
 def run_harvest(
-    config_path: Path, output: Path, retries: int, sleep_s: float, limit: int | None
+    config_path: Path,
+    output: Path,
+    retries: int,
+    sleep_s: float,
+    limit: int | None,
+    channel_slug: str | None = None,
+    workers: int = 4,
+    method_timeout_s: int = 120,
+    enumerate_tabs: bool = True,
 ) -> dict[str, Any]:
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    selected_channels = [
+        raw for raw in config["channels"] if channel_slug is None or raw.get("slug") == channel_slug
+    ]
+    if not selected_channels:
+        raise HarvestError(f"channel slug not found: {channel_slug!r}")
     output.mkdir(parents=True, exist_ok=True)
-    instances = invidious_instances()
+    instances = invidious_instances()[:4]
     all_videos: dict[str, dict[str, Any]] = {}
     channel_summaries: list[dict[str, Any]] = []
     inventory_log: list[dict[str, Any]] = []
 
-    for raw_channel in config["channels"]:
+    for raw_channel in selected_channels:
         channel: dict[str, Any] = dict(raw_channel)
-        attempts = resolve_channel(channel, instances)
+        print(f"inventory:start channel={channel['slug']}", flush=True)
+        try:
+            with time_limit(method_timeout_s, f"channel resolution {channel['slug']}"):
+                attempts = resolve_channel(channel, instances)
+        except Exception as exc:
+            attempts = [
+                InventoryAttempt(
+                    "resolve_channel",
+                    "failed",
+                    f"{type(exc).__name__}: {exc}"[-4000:],
+                )
+            ]
         channel_id = safe_text(channel.get("resolved_channel_id"))
         expected = safe_text(channel.get("expected_channel_id"))
         identity_ok = bool(channel_id and (not expected or channel_id == expected))
@@ -820,22 +1096,50 @@ def run_harvest(
                 ("uploads_playlist:invidious", lambda: inventory_invidious(uploads_playlist_id, channel, instances)),
             ]
             for method_name, method in methods:
+                print(f"inventory:try channel={channel['slug']} method={method_name}", flush=True)
                 try:
-                    inventory, playlist_title = method()
+                    with time_limit(method_timeout_s, f"{channel['slug']} {method_name}"):
+                        inventory, playlist_title = method()
                     attempts.append(InventoryAttempt(method_name, "ok", playlist_title, len(inventory)))
                     canonical_method = method_name
+                    print(
+                        f"inventory:ok channel={channel['slug']} method={method_name} videos={len(inventory)}",
+                        flush=True,
+                    )
                     break
                 except Exception as exc:
-                    attempts.append(InventoryAttempt(method_name, "failed", f"{type(exc).__name__}: {exc}"[-4000:]))
+                    attempts.append(
+                        InventoryAttempt(
+                            method_name,
+                            "failed",
+                            f"{type(exc).__name__}: {exc}"[-4000:],
+                        )
+                    )
+                    print(
+                        f"inventory:failed channel={channel['slug']} method={method_name} error={type(exc).__name__}",
+                        flush=True,
+                    )
         else:
-            attempts.append(InventoryAttempt("identity_check", "failed", f"expected={expected!r}; resolved={channel_id!r}"))
+            attempts.append(
+                InventoryAttempt(
+                    "identity_check",
+                    "failed",
+                    f"expected={expected!r}; resolved={channel_id!r}",
+                )
+            )
 
-        tab_ids, tab_attempts = optional_tab_inventory(channel) if channel_id else ({}, [])
+        if channel_id and enumerate_tabs:
+            tab_ids, tab_attempts = optional_tab_inventory(channel, timeout_s=max(30, method_timeout_s // 2))
+        else:
+            tab_ids, tab_attempts = {}, [
+                InventoryAttempt("tab_inventory", "skipped", "disabled or unresolved channel")
+            ]
         attempts.extend(tab_attempts)
         for video in inventory:
             for tab, ids in tab_ids.items():
                 if video["video_id"] in ids:
                     video["source_tabs"].append(tab)
+            video["caption_status"] = "pending"
             existing = all_videos.get(video["video_id"])
             if existing is None:
                 all_videos[video["video_id"]] = video
@@ -843,7 +1147,17 @@ def run_harvest(
                 merge_video(existing, video)
         inventory_complete = bool(identity_ok and inventory and canonical_method)
         summary = {
-            **{key: channel.get(key) for key in ("slug", "display_name", "base_url", "expected_channel_id", "resolved_channel_id", "uploads_playlist_id")},
+            **{
+                key: channel.get(key)
+                for key in (
+                    "slug",
+                    "display_name",
+                    "base_url",
+                    "expected_channel_id",
+                    "resolved_channel_id",
+                    "uploads_playlist_id",
+                )
+            },
             "identity_ok": identity_ok,
             "inventory_complete": inventory_complete,
             "canonical_inventory_method": canonical_method,
@@ -853,141 +1167,116 @@ def run_harvest(
             "attempts": [attempt.as_dict() for attempt in attempts],
         }
         channel_summaries.append(summary)
-        inventory_log.extend({"channel_slug": channel["slug"], **attempt.as_dict()} for attempt in attempts)
+        inventory_log.extend(
+            {"channel_slug": channel["slug"], **attempt.as_dict()} for attempt in attempts
+        )
 
-    videos = sorted(all_videos.values(), key=lambda value: (value["channel_slug"], value.get("upload_date") or "", value["video_id"]))
+    videos = sorted(
+        all_videos.values(),
+        key=lambda value: (
+            value["channel_slug"],
+            value.get("upload_date") or "",
+            value["video_id"],
+        ),
+    )
+    limited = limit is not None and len(videos) > limit
     if limit is not None:
         videos = videos[:limit]
-
-    statuses: Counter[str] = Counter()
-    provider_counts: Counter[str] = Counter()
-    language_counts: Counter[str] = Counter()
-    total_segments = 0
-    total_chars = 0
     attempt_rows: list[dict[str, Any]] = []
-
-    for index, video in enumerate(videos, start=1):
-        video_id = video["video_id"]
-        video["caption_attempted_at_utc"] = utc_now()
-        try:
-            segments, caption_meta, attempts = caption_for_video(video_id, instances, retries)
-            payload = transcript_payload(segments)
-            transcript_sha = sha256_bytes(payload)
-            transcript_dir = output / "transcripts" / video["channel_slug"]
-            jsonl_path = transcript_dir / f"{video_id}.jsonl"
-            text_path = transcript_dir / f"{video_id}.txt"
-            jsonl_path.parent.mkdir(parents=True, exist_ok=True)
-            jsonl_path.write_bytes(payload)
-            text_path.write_text(
-                "".join(f"[{format_timestamp(segment.start_ms)}] {segment.text}\n" for segment in segments),
-                encoding="utf-8",
-                newline="\n",
-            )
-            video.update(
-                {
-                    "caption_status": "ok",
-                    "caption_provider": caption_meta.get("provider"),
-                    "caption_language_code": caption_meta.get("language_code"),
-                    "caption_is_generated": caption_meta.get("is_generated"),
-                    "caption_segment_count": len(segments),
-                    "caption_char_count": sum(len(segment.text) for segment in segments),
-                    "caption_sha256": transcript_sha,
-                    "transcript_jsonl": str(jsonl_path.relative_to(output)),
-                    "transcript_text": str(text_path.relative_to(output)),
-                }
-            )
-            for target_key, source_key in (
-                ("title", "metadata_title"),
-                ("upload_date", "metadata_upload_date"),
-                ("duration_s", "metadata_duration_s"),
-                ("channel", "metadata_channel"),
-                ("channel_id", "metadata_channel_id"),
-            ):
-                if video.get(target_key) in (None, "") and caption_meta.get(source_key) not in (None, ""):
-                    video[target_key] = caption_meta[source_key]
-            statuses["ok"] += 1
-            provider_counts[safe_text(caption_meta.get("provider"))] += 1
-            language_counts[safe_text(caption_meta.get("language_code"))] += 1
-            total_segments += len(segments)
-            total_chars += video["caption_char_count"]
-        except VerifiedNoCaption as exc:
-            attempts = json.loads(str(exc)) if str(exc).startswith("[") else []
-            video.update({"caption_status": "no_caption", "caption_error": str(exc)[-4000:]})
-            statuses["no_caption"] += 1
-        except VideoUnavailable as exc:
-            attempts = json.loads(str(exc)) if str(exc).startswith("[") else []
-            video.update({"caption_status": "unavailable", "caption_error": str(exc)[-4000:]})
-            statuses["unavailable"] += 1
-        except Exception as exc:
-            attempts = []
-            try:
-                parsed = json.loads(str(exc))
-                if isinstance(parsed, list):
-                    attempts = parsed
-            except Exception:
-                pass
-            video.update(
-                {
-                    "caption_status": "fetch_failed",
-                    "caption_error": f"{type(exc).__name__}: {exc}"[-4000:],
-                    "caption_traceback": traceback.format_exc(limit=5)[-8000:],
-                }
-            )
-            statuses["fetch_failed"] += 1
-        for row in attempts:
-            attempt_rows.append({"video_id": video_id, "channel_slug": video["channel_slug"], **row})
-        if sleep_s > 0 and index < len(videos):
-            time.sleep(sleep_s + random.random() * min(0.25, sleep_s))
-
-    write_jsonl(output / "videos.jsonl", videos)
-    write_jsonl(output / "caption_attempts.jsonl", attempt_rows)
-    write_jsonl(output / "inventory_attempts.jsonl", inventory_log)
-    write_json(output / "channels.json", channel_summaries)
-
-    canonical_corpus_rows = [
-        {
-            "video_id": video["video_id"],
-            "channel_slug": video["channel_slug"],
-            "caption_status": video.get("caption_status"),
-            "caption_sha256": video.get("caption_sha256"),
-            "title": video.get("title"),
-            "upload_date": video.get("upload_date"),
-        }
-        for video in videos
-    ]
-    inventory_complete = bool(channel_summaries) and all(row["inventory_complete"] for row in channel_summaries)
-    caption_complete = statuses["fetch_failed"] == 0 and sum(statuses.values()) == len(videos)
-    manifest = {
-        "schema_version": 1,
-        "work_claim_id": config.get("work_claim_id"),
-        "snapshot_as_of_utc": config.get("snapshot_as_of_utc"),
-        "harvest_started_or_completed_at_utc": utc_now(),
-        "config_sha256": sha256_bytes(config_path.read_bytes()),
-        "inventory_complete": inventory_complete,
-        "caption_attempt_complete": caption_complete,
-        "decision": "PASS_COMPLETE" if inventory_complete and caption_complete else "PARTIAL_REQUIRES_RETRY",
-        "channel_count": len(channel_summaries),
-        "unique_public_video_count": len(videos),
-        "caption_status_counts": dict(sorted(statuses.items())),
-        "caption_provider_counts": dict(sorted(provider_counts.items())),
-        "caption_language_counts": dict(sorted(language_counts.items())),
-        "total_caption_segments": total_segments,
-        "total_caption_characters": total_chars,
-        "corpus_digest_sha256": sha256_text(canonical_json(canonical_corpus_rows)),
-        "invidious_instances_considered": instances,
-        "channels": channel_summaries,
-    }
-    write_json(output / "manifest.json", manifest)
-
-    hashes: list[tuple[str, str]] = []
-    for path in sorted(output.rglob("*")):
-        if path.is_file() and path.name != "SHA256SUMS":
-            hashes.append((sha256_bytes(path.read_bytes()), str(path.relative_to(output))))
-    (output / "SHA256SUMS").write_text(
-        "".join(f"{digest}  {relative}\n" for digest, relative in hashes),
-        encoding="utf-8",
-        newline="\n",
+    write_checkpoint(
+        output,
+        config,
+        config_path,
+        channel_summaries,
+        videos,
+        attempt_rows,
+        inventory_log,
+        instances,
+        final=False,
+        limited=limited,
     )
+    print(
+        f"captions:start channels={len(channel_summaries)} videos={len(videos)} workers={workers}",
+        flush=True,
+    )
+
+    workers = max(1, int(workers))
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+    futures: dict[concurrent.futures.Future[dict[str, Any]], dict[str, Any]] = {}
+    try:
+        for video in videos:
+            futures[executor.submit(fetch_caption_outcome, video["video_id"], instances, retries)] = video
+            if sleep_s > 0:
+                time.sleep(max(0.0, sleep_s) / workers)
+        for completed, future in enumerate(concurrent.futures.as_completed(futures), start=1):
+            video = futures[future]
+            try:
+                outcome = future.result()
+            except Exception as exc:
+                outcome = {
+                    "status": "fetch_failed",
+                    "attempts": [],
+                    "error": f"worker {type(exc).__name__}: {exc}"[-4000:],
+                    "traceback": traceback.format_exc(limit=5)[-8000:],
+                }
+            attempts = apply_caption_outcome(video, outcome, output)
+            for row in attempts:
+                attempt_rows.append(
+                    {
+                        "video_id": video["video_id"],
+                        "channel_slug": video["channel_slug"],
+                        **row,
+                    }
+                )
+            if completed % 10 == 0 or completed == len(videos):
+                write_checkpoint(
+                    output,
+                    config,
+                    config_path,
+                    channel_summaries,
+                    videos,
+                    attempt_rows,
+                    inventory_log,
+                    instances,
+                    final=False,
+                    limited=limited,
+                )
+                status_counts = Counter(str(row.get("caption_status")) for row in videos)
+                print(
+                    f"captions:checkpoint completed={completed}/{len(videos)} statuses={dict(sorted(status_counts.items()))}",
+                    flush=True,
+                )
+    except BaseException:
+        executor.shutdown(wait=False, cancel_futures=True)
+        write_checkpoint(
+            output,
+            config,
+            config_path,
+            channel_summaries,
+            videos,
+            attempt_rows,
+            inventory_log,
+            instances,
+            final=False,
+            limited=limited,
+        )
+        raise
+    else:
+        executor.shutdown(wait=True)
+
+    manifest = write_checkpoint(
+        output,
+        config,
+        config_path,
+        channel_summaries,
+        videos,
+        attempt_rows,
+        inventory_log,
+        instances,
+        final=True,
+        limited=limited,
+    )
+    print(f"harvest:final decision={manifest['decision']}", flush=True)
     return manifest
 
 
@@ -1022,6 +1311,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--sleep-seconds", type=float, default=0.25)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--channel")
+    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--method-timeout-seconds", type=int, default=120)
+    parser.add_argument("--skip-tab-enumeration", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
     if args.self_test:
@@ -1030,7 +1323,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if not args.config or not args.output:
         parser.error("--config and --output are required unless --self-test is used")
-    manifest = run_harvest(args.config, args.output, args.retries, args.sleep_seconds, args.limit)
+    manifest = run_harvest(
+        args.config,
+        args.output,
+        args.retries,
+        args.sleep_seconds,
+        args.limit,
+        channel_slug=args.channel,
+        workers=args.workers,
+        method_timeout_s=args.method_timeout_seconds,
+        enumerate_tabs=not args.skip_tab_enumeration,
+    )
     print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
     return 0
 
