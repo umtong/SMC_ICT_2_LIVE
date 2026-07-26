@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1630-CRT-001",
+  "created_at": "2026-07-26T16:33:00+09:00",
+  "status": "FROZEN_BEFORE_ANY_CRT_STRATEGY_OUTCOME",
+  "details": {
+    "fixed_bars": "Parent and child candles are UTC-aligned non-overlapping slots. Open/close are first/last actual trades and high/low are actual extrema. A slot with no trade is unavailable.",
+    "parent_range_size": "Prior parent range basis points equals (high-low)/prior parent close times 10000.",
+    "raid": "Depth is max(one observed tick, registered range fraction times prior range). A child raiding both prior boundaries is ambiguous and invalidates that parent. Only the first one-side raid is used.",
+    "raid_extreme": "Update the adverse extreme from first raid through confirmation; the structural stop is one tick beyond that completed extreme.",
+    "same_child_confirmation": "The raid child may confirm reclaim or CISD because its high/low/close and flow are available together only after that child closes.",
+    "cisd_reference": "At the first raid, freeze the open of the most recent completed child with body opposite the proposed reversal, including the raid child if it has that body. Do not update the reference after the raid.",
+    "opposite_raid_invalidation": "Before confirmation, any qualifying raid of the opposite prior-candle boundary invalidates the setup.",
+    "entry": "Use the first actual trade of the exact next UTC second after confirmation. No later substitute fill is allowed.",
+    "entry_second_exit": "From the entry second itself, structural stop wins a stop/target tie. Target-only or stop-only hits are honored at their frozen levels.",
+    "source_boundary": "A filled unresolved position exits at its structural stop. An unfilled setup has no PnL.",
+    "global_slot": "Route by confirmation/entry timestamp. Same-time priority is deeper raid basis points, larger target-to-stop ratio, then lexical setup id. A setup confirmed while another position is open is discarded.",
+    "top_winner_removal": "Remove the largest ceiling(10%) positive 12bp setup ids from the raw setup set and rerun the global account route from the beginning."
+  },
+  "scientific_grid_changed": false,
+  "dates_changed": false,
+  "costs_changed": false,
+  "orders_submitted": false
+}
