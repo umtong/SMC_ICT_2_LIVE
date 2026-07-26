@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-SMT-CONTINUATION-ML-ALL-SUNDAYS-002",
+  "claim_id": "CLM-20260726-1906-SMT-CONTINUATION-ML-001",
+  "recorded_at": "2026-07-26T19:16:00+09:00",
+  "trigger": {
+    "known_parent_result": "RES-20260726-SMT-ACCEPTANCE-CONTINUATION-FATAL-001",
+    "parent_physical_events": 14,
+    "parent_sample_days": 4,
+    "expected_events_per_sample_day": 3.5,
+    "reason": "The original twelve-day chronology would be expected to contain roughly forty-two physical events, which is inadequate for one regularized model plus clean score calibration and untouched confirmation. Sample breadth is expanded before any new market row, label, score or PnL is opened."
+  },
+  "market_rows_opened_before_amendment": false,
+  "model_fit_before_amendment": false,
+  "candidate_metrics_before_amendment": false,
+  "strategy_pnl_before_amendment": false,
+  "chronology": {
+    "fit": "every UTC Sunday from 2022-01-02 through 2022-06-26 inclusive",
+    "score_calibration_only": "every UTC Sunday from 2022-07-03 through 2022-09-25 inclusive",
+    "untouched_fit_confirmation": "every UTC Sunday from 2022-10-02 through 2022-12-25 inclusive",
+    "conditional_development": "every UTC Sunday from 2023-01-01 through 2023-08-27 inclusive",
+    "expected_counts": {"fit":26,"score_calibration":13,"fit_confirmation":13,"development":35},
+    "prohibited_years": [2024,2025,2026]
+  },
+  "unchanged": [
+    "BTC displacement and SOL/XRP beta-residual overdelivery event definition",
+    "12bp minimum overdelivery floor and all prior-only thresholds",
+    "first 50-75% residual pullback entry state",
+    "one L2 logistic model, one structure baseline and one isotonic map",
+    "all model features",
+    "150% expansion target and fixed structural invalidations",
+    "100ms and 300ms latency",
+    "24bp cost",
+    "one global slot",
+    "1% planned risk, 3x notional cap and winner removal",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ],
+  "scientific_effect": "Increase independent pre-2024 calendar breadth without adding a strategy, parameter, model, feature, threshold or payoff choice.",
+  "new_scope_fingerprint": "9225346dd0f2403993c15138623e002c2203a29af5f1d7252b6359476a02dbc4",
+  "orders_submitted": false
+}
