@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2350-ML-UNISWAP-PRICE-SHOCK-001",
+  "information_unit": {
+    "dataset": "arthurneuron/USDC-WETH-Uniswap-V3-2021-to-2023",
+    "fields": ["Block", "USDC", "WETH", "Transactions", "Price"],
+    "interpretation": "completed cumulative-state differences define unsigned activity; only completed Price change defines direction",
+    "explicitly_prohibited_interpretation": "USDC/WETH as pool balances or signed amount0/amount1 inventory flow",
+    "availability": "completed UTC five-minute bucket end plus 120 seconds",
+    "event_threshold": "fit-only max(5,000,000 USDC increment, 99.5th percentile of positive five-minute USDC increments)",
+    "event_requirements": [
+      "positive USDC and WETH increments",
+      "at least two transaction increments",
+      "nonzero finite completed pool-price return",
+      "both frozen ETHUSDT external-liquidity pools at least 12bp from entry"
+    ]
+  },
+  "features": [
+    "log1p_usdc_increment",
+    "log1p_weth_increment",
+    "signed_pool_return",
+    "absolute_pool_return",
+    "pool_impact_efficiency",
+    "transaction_increment",
+    "usdc_to_weth_value_ratio_log",
+    "prior_completed_15m_eth_return",
+    "prior_completed_60m_eth_realized_volatility",
+    "prior_completed_60m_path_efficiency",
+    "pool_to_eth_basis_z",
+    "upper_external_liquidity_distance",
+    "lower_external_liquidity_distance"
+  ],
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 120,
+      "max_leaf_nodes": 7,
+      "min_samples_leaf": 20,
+      "l2_regularization": 1.0,
+      "random_state": 20260726
+    },
+    "calibration": "one isotonic map only when calibration has >=50 resolved labels and both classes; otherwise raw probability",
+    "baseline": "lower_distance / (upper_distance + lower_distance)"
+  },
+  "chronology": {
+    "fit": ["2021-07-01T00:00:00Z", "2022-06-30T23:59:59Z"],
+    "calibration": ["2022-07-01T00:00:00Z", "2022-12-31T23:59:59Z"],
+    "confirmation": ["2023-01-01T00:00:00Z", "2023-06-30T23:59:59Z"],
+    "development": ["2023-07-01T00:00:00Z", "2023-12-31T23:59:59Z"],
+    "official_2024H1": ["2024-01-01T00:00:00Z", "2024-06-30T23:59:59Z"]
+  },
+  "execution": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbol": "ETHUSDT",
+    "entry": "first exact contiguous five-minute open strictly after decision availability",
+    "target_stop": "nearest still-unconsumed confirmed two-left/two-right 15-minute swing high and low from prior 14 days, frozen before entry",
+    "same_bar": "stop_first",
+    "gap_stop": "adverse_open",
+    "one_global_slot": true,
+    "elapsed_time_liquidation": false,
+    "cost_bps": [12, 18, 24],
+    "funding": "historical Bybit funding when complete, otherwise adverse 1bp per eight-hour boundary",
+    "base_risk_fraction": 0.005,
+    "base_notional_cap_multiple": 3
+  },
+  "action": {
+    "equations": [
+      "EV_LONG = p_up*upper_distance - (1-p_up)*lower_distance - cost",
+      "EV_SHORT = (1-p_up)*lower_distance - p_up*upper_distance - cost"
+    ],
+    "rule": "choose the larger strictly positive action; otherwise FLAT"
+  },
+  "minimal_progression": {
+    "confirmation_required": "at least 50 resolved labels and both classes; no prediction metric is an opening barrier",
+    "development_cost_possibility": "positive 24bp total return, at least 20 completed trades and no forced liquidation",
+    "risk_search_after_cost_possibility": {
+      "risk_fraction": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+      "notional_cap_multiple": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+      "selection": "highest 24bp geometric daily growth among no-liquidation paths; 1% is not a cap"
+    },
+    "official_rule": "freeze the highest-growth pre-2024 path and open 2024H1 immediately; structurally distant 2024H1 retires the information unit"
+  },
+  "seals": {
+    "no_future_feature_or_label_leakage": true,
+    "2024H2_2026H1_initially_unopened": true,
+    "credentials_used": false,
+    "orders_submitted": false
+  }
+}
