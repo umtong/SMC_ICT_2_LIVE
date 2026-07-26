@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: macos-14
+    runs-on: ubuntu-24.04
     timeout-minutes: 390
     env:
       PYTHONHASHSEED: "0"
@@ -24,7 +24,6 @@ jobs:
       OMP_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
-      VECLIB_MAXIMUM_THREADS: "2"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,7 +33,9 @@ jobs:
       - name: Install test dependency
         run: python -m pip install "pytest>=8"
       - name: Validate project structure and execute any frozen authority hook
-        run: python scripts/validate_project.py
+        run: |
+          python -m json.tool research/execution/stablecoin_profit_v5_20260727/EXECUTION_CORRECTION_006_STANDARD_LINUX_VISIBLE_RUNNER_BEFORE_OUTCOME.json >/dev/null
+          python scripts/validate_project.py
       - name: Run tests
         run: python -m pytest
       - name: Build hot context bundle
