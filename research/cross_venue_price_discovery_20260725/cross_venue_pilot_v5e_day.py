@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import cross_venue_pilot as v1
+import cross_venue_pilot_v2 as v2
 import cross_venue_pilot_v5d as v5d
+import cross_venue_prepare_v5d as prepared_v5d
 import cross_venue_signals_v5d as signals
 
 
@@ -55,6 +57,7 @@ def run(
     day: str,
     output: Path,
     cache: Path,
+    prepared_root: Path,
     shard_index: int,
     shard_count: int,
 ) -> dict:
@@ -67,12 +70,39 @@ def run(
     if not selected:
         raise ValueError(f"empty config shard {shard_index}/{shard_count}")
 
+    frames, prepared_manifest = prepared_v5d.load_prepared(prepared_root, day)
+    latency_diagnostics = [
+        record
+        for symbol in v1.SYMBOLS
+        for record in prepared_manifest["frames"][symbol]["latency_diagnostics"]
+    ]
+    source_records_by_symbol = {
+        symbol: prepared_manifest["frames"][symbol]["source_records"]
+        for symbol in v1.SYMBOLS
+    }
+    manifest_path = prepared_root / "PREPARED_MANIFEST.json"
+    manifest_sha256 = prepared_v5d.sha256_file(manifest_path)
+
     original_grid = v1.pilot_grid
+    original_loader = v1.load_day
+    latency_emitted = False
+
+    def prepared_loader(_cache, _session, date: str, symbol: str):
+        nonlocal latency_emitted
+        if date != day or symbol not in frames:
+            raise ValueError(f"unexpected prepared source request: {date} {symbol}")
+        if not latency_emitted:
+            v2.LATENCY_DIAGNOSTICS.extend(latency_diagnostics)
+            latency_emitted = True
+        return frames[symbol], list(source_records_by_symbol[symbol])
+
     v1.pilot_grid = lambda: list(selected)
+    v1.load_day = prepared_loader
     try:
         result = v5d.run(output, cache, (day,))
     finally:
         v1.pilot_grid = original_grid
+        v1.load_day = original_loader
 
     selected_ids = [config.config_id for config in selected]
     result.update({
@@ -85,10 +115,20 @@ def run(
         "shard_config_ids_sha256": hashlib.sha256(
             "\n".join(selected_ids).encode()
         ).hexdigest(),
+        "prepared_manifest_sha256": manifest_sha256,
+        "prepared_frame_hashes": {
+            symbol: prepared_manifest["frames"][symbol]["file_sha256"]
+            for symbol in v1.SYMBOLS
+        },
         "parallel_shard_contract": (
             "one frozen UTC sample day and a disjoint set of complete semantic "
             "signal/execution groups; every registered config ID is evaluated once "
             "per day and no global slot can cross either a config or date boundary"
+        ),
+        "source_reuse_contract": (
+            "the exact local-arrival aligned date frames and causal rolling caches are "
+            "constructed once, hash-verified after pickle roundtrip and reused unchanged "
+            "by every config shard; no strategy metric is computed during preparation"
         ),
         "performance_contract": (
             f"this shard preserves {len(selected)} registered config IDs in "
@@ -144,6 +184,7 @@ def main() -> int:
     run_parser.add_argument("--shard-count", type=int, required=True)
     run_parser.add_argument("--output", type=Path, required=True)
     run_parser.add_argument("--cache", type=Path, required=True)
+    run_parser.add_argument("--prepared-root", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "self-test":
         self_test()
@@ -152,6 +193,7 @@ def main() -> int:
         args.day,
         args.output,
         args.cache,
+        args.prepared_root,
         args.shard_index,
         args.shard_count,
     )
