@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-DIRECT-UTILITY-SINGLE-ARM-006",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "timing": "BEFORE_ANY_MODEL_FIT_OR_MARKET_RESULT",
+  "observed_problem": "Two equivalent workflow entry points were queued concurrently on x86 runners. No model, metric, action, trade, PnL, development period or official period had opened.",
+  "changes": [
+    "Make the gap-safe workflow the only automatic branch/PR executor.",
+    "Use ubuntu-24.04-arm for the gap-safe workflow to obtain an available runner.",
+    "Leave the legacy duplicate workflow available only through explicit workflow_dispatch."
+  ],
+  "unchanged": [
+    "all source bytes and cryptographic identities",
+    "source-gap no-imputation policy",
+    "model family, hyperparameters, features and target",
+    "chronology and stage gates",
+    "KEEP_SWITCH_FLAT account policy",
+    "costs, funding reserve, structural stop and winner-removal replay",
+    "conditional risk and leverage ladder",
+    "current-rank hurdle",
+    "2024-2026 seals",
+    "order permission"
+  ],
+  "scientific_outcome_opened_before_change": false,
+  "orders_submitted": false
+}
