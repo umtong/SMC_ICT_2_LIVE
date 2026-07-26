@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "worker_id": "gpt-5.6-pro-20260726-2020",
+  "status": "SOURCE_COVERAGE_FAIL",
+  "hard_validity_status": "PASS_OUTCOME_SEALED_OFFICIAL_LISTING",
+  "economic_status": "NOT_OPENED",
+  "ranking_role": "NONE_SOURCE_FAILURE",
+  "source_contract": {
+    "provider": "Binance Vision official S3 ListObjectsV2",
+    "dataset": "COIN-M daily liquidationSnapshot",
+    "source_symbols": ["BTCUSD_PERP", "ETHUSD_PERP"],
+    "signal_to_bybit": {
+      "BTCUSD_PERP": "BTCUSDT",
+      "ETHUSD_PERP": "ETHUSDT"
+    },
+    "requested_start": "2021-01-01",
+    "requested_end": "2023-12-31",
+    "requested_utc_dates": 1095,
+    "minimum_date_coverage": 0.8,
+    "checksum_pair_required": true,
+    "snapshot_semantics": "censored lower-bound publication rather than a complete liquidation ledger"
+  },
+  "observed": {
+    "BTCUSD_PERP": {
+      "total_keys": 944,
+      "zip_archives": 472,
+      "checksum_keys": 472,
+      "first_archive_date": "2023-06-25",
+      "last_archive_date": "2024-10-14",
+      "archive_dates_2021": 0,
+      "archive_dates_2022": 0,
+      "archive_dates_2023": 187,
+      "requested_period_date_coverage": 0.17077625570776256,
+      "coverage_gate_passed": false
+    },
+    "ETHUSD_PERP": {
+      "total_keys": 948,
+      "zip_archives": 474,
+      "checksum_keys": 474,
+      "first_archive_date": "2023-06-25",
+      "last_archive_date": "2024-10-14",
+      "archive_dates_2021": 0,
+      "archive_dates_2022": 0,
+      "archive_dates_2023": 186,
+      "requested_period_date_coverage": 0.16986301369863013,
+      "coverage_gate_passed": false
+    }
+  },
+  "summary": "Official Binance Vision listing evidence shows that the required COIN-M daily liquidationSnapshot history begins only on 2023-06-25. BTC and ETH cover 17.0776% and 16.9863% of the frozen 2021-2023 interval, far below the preregistered 80% minimum. The exact continuous pre-2024 information unit is therefore unavailable and closes before market prices, labels, model fitting, actions, PnL, risk or official evaluation.",
+  "decision": "RETIRE_EXACT_CONTINUOUS_COINM_LIQUIDATION_SNAPSHOT_ROUTE",
+  "reopen_condition": "A materially different point-in-time forced-flow source with adequate information available before 2024; do not rescue this route by lowering coverage or selecting only the available late-2023 regime.",
+  "model_fitted": false,
+  "market_prices_opened": false,
+  "labels_opened": false,
+  "actions_opened": false,
+  "strategy_pnl_opened": false,
+  "risk_leverage_search_opened": false,
+  "official_2024H1_account_opened": false,
+  "opened_periods": [],
+  "unopened_periods": ["pre2024_model", "2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+  "orders_submitted": false,
+  "paper_live_started": false,
+  "source_pr": 259,
+  "source_branch_head_before_result": "fad4ef4e420be471672b85e6559e2bfaa16cbd54",
+  "evaluation_contract_sha256": "51d16088230234806dfd349f90d1b15bca84891fea3a4605fc42c85ee56d9e9a",
+  "artifact_fingerprint": "634fbcf26ea367679ea5252b2a97a964dc2024fdcde80ea772f5c4ad85953fed",
+  "dependency_fingerprint": "fddb56f85a13774eb3a1f72200f8b3217ad470c05fca0478430cc5830a30cc60",
+  "evidence_acquired_at": "2026-07-26T23:58:00+09:00",
+  "registered_at": "2026-07-27T00:36:00+09:00"
+}
