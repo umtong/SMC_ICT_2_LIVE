@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-PO3-STATE-001",
+  "claim_id": "CLM-20260726-1712-ML-PO3-STATE-001",
+  "worker_id": "gpt-5.6-pro-20260726-1712",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS",
+  "economic_status": "CALIBRATION_BELOW_GATE",
+  "ranking_role": "FATAL_NEGATIVE_NOT_RANKED",
+  "rank_eligible": false,
+  "decision": "Reject the frozen one-model ML Power-of-Three reversal route under the tested completed-bar information unit. Do not tune adjacent states, features, probability thresholds or PO3 entry details under the same dependency fingerprint.",
+  "strategy": {
+    "model_count": 1,
+    "model": "shared three-state diagonal-Gaussian Markov model",
+    "state_count": 3,
+    "state_names": [
+      "accumulation",
+      "manipulation",
+      "distribution"
+    ],
+    "feature_count": 5,
+    "features": [
+      "prior-normalized return",
+      "prior-normalized true range",
+      "body efficiency",
+      "wick skew",
+      "taker-buy quote imbalance"
+    ],
+    "strategy_route_count": 1,
+    "route": "frozen accumulation box -> exactly one boundary raid/reclaim -> causal manipulation-to-distribution reversal -> next-five-minute-open entry -> opposite box boundary target",
+    "probability_thresholds": [
+      0.45,
+      0.6,
+      0.75
+    ],
+    "selected_threshold": null,
+    "elapsed_time_exit": null
+  },
+  "stages": {
+    "training": "2021",
+    "calibration": "2022",
+    "development_2023_opened": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false,
+    "calibration_survivor_count": 0
+  },
+  "data": {
+    "provider": "Binance Vision official public archives",
+    "market": "USD-M perpetual futures proxy",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "timeframe": "5m",
+    "archive_count": 96,
+    "compressed_bytes": 36506500,
+    "rows": 838080,
+    "source_manifest_sha256": "422c52a1cfb17d786d74a635381f4e82acbf206d5e1a6dc456ff3160d980c2cd",
+    "causal_availability": "A five-minute candle is usable only after close. Prior normalization denominators are shifted one bar. Causal forward filtering only; no Viterbi, smoothing or future labels. Gaps are not bridged."
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "planned_risk_fraction": 0.01,
+    "maximum_notional_to_nav": 3.0,
+    "one_global_slot": true,
+    "cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "funding_proxy": "adverse 2bp reserve at each crossed UTC eight-hour boundary",
+    "same_bar_ambiguity": "stop first",
+    "orders_submitted": false,
+    "paper_live_enabled": false
+  },
+  "model_evidence": {
+    "model_sha256": "6edd68d5996d9fab844d62d4c9cf8fb7be0d3b62d5053a14a2586cd1ab9a5feb",
+    "state_mapping": {
+      "accumulation": {
+        "state": 2,
+        "ret_z": -0.07447,
+        "range_ratio": 0.77956,
+        "body_eff": -0.05006,
+        "wick_skew": 0.39001,
+        "flow_imb": -0.00371
+      },
+      "manipulation": {
+        "state": 1,
+        "ret_z": -0.76116,
+        "range_ratio": 1.0552,
+        "body_eff": -0.45686,
+        "wick_skew": -0.20561,
+        "flow_imb": -0.16178
+      },
+      "distribution": {
+        "state": 0,
+        "ret_z": 0.92713,
+        "range_ratio": 1.09192,
+        "body_eff": 0.56867,
+        "wick_skew": -0.03205,
+        "flow_imb": 0.12328
+      }
+    }
+  },
+  "calibration_results": [
+    {
+      "threshold": 0.45,
+      "raw_signal_count": 96,
+      "trade_count": 94,
+      "metrics_12bps": {
+        "total_return": -0.2841795,
+        "geometric_daily_growth": -0.000915542,
+        "maximum_drawdown": 0.2841795,
+        "median_trade_return": -0.00569861,
+        "profit_factor": 0.32416
+      },
+      "metrics_24bps": {
+        "total_return": -0.4487714,
+        "geometric_daily_growth": -0.001630465,
+        "maximum_drawdown": 0.448771,
+        "median_trade_return": -0.00929861,
+        "profit_factor": 0.11341,
+        "positive_month_count": 0
+      }
+    },
+    {
+      "threshold": 0.6,
+      "trade_count": 62,
+      "metrics_12bps": {
+        "total_return": -0.211545,
+        "geometric_daily_growth": -0.000650966,
+        "maximum_drawdown": 0.211545,
+        "profit_factor": 0.29837
+      },
+      "metrics_24bps": {
+        "total_return": -0.331303,
+        "geometric_daily_growth": -0.001101924,
+        "maximum_drawdown": 0.331303,
+        "median_trade_return": -0.00950541,
+        "profit_factor": 0.10759,
+        "positive_month_count": 0
+      }
+    },
+    {
+      "threshold": 0.75,
+      "raw_signal_count": 37,
+      "trade_count": 37,
+      "metrics_12bps": {
+        "total_return": -0.1453846,
+        "geometric_daily_growth": -0.000430329,
+        "maximum_drawdown": 0.152302,
+        "median_trade_return": -0.00591063,
+        "profit_factor": 0.21765,
+        "positive_month_count": 3
+      },
+      "metrics_18bps": {
+        "total_return": -0.187619,
+        "geometric_daily_growth": -0.000569115,
+        "maximum_drawdown": 0.190298,
+        "profit_factor": 0.12361
+      },
+      "metrics_24bps": {
+        "ending_nav_usdt": 7754.0819,
+        "total_return": -0.2245918,
+        "geometric_daily_growth": -0.00069665,
+        "maximum_drawdown": 0.225665,
+        "mean_trade_return": -0.00683777,
+        "median_trade_return": -0.00951063,
+        "profit_factor": 0.07358,
+        "first_half_return": -0.101813,
+        "second_half_return": -0.136696,
+        "positive_month_count": 1,
+        "top5_positive_pnl_share": 1.0
+      },
+      "top10pct_positive_event_removed_18bps": {
+        "trade_count": 36,
+        "total_return": -0.200704,
+        "geometric_daily_growth": -0.000613576
+      }
+    }
+  ],
+  "failure_reason": "All three frozen probability thresholds lost after 12bp and became worse at 18bp and 24bp. The least-negative threshold, 0.75, lost 14.54% at 12bp and 22.46% at 24bp with a negative median trade and top-five positive-PnL share of 100%. The basic expectancy failed before any sequential development or exact Bybit execution expansion.",
+  "known_limitations": [
+    "Initial market is a checksum-verified Binance USD-M proxy rather than final Bybit execution.",
+    "Funding is represented by a conservative adverse boundary reserve rather than exact historical Bybit funding.",
+    "The result rejects only this one-model, five-feature, one-route dependency; it does not reject all ML or all SMC/ICT formulations."
+  ],
+  "reproducibility": {
+    "branch": "agent/r11-ml-po3-state-router-integrated-001",
+    "pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/132",
+    "code_commit": "bc212c165719525ac35395326ed24f9a26302900",
+    "source_sha256": "26c9d2f349f9af0d52cd8056cd1fc0c694b357f01f5e19af44ff6daad37e027c",
+    "workflow_run_id": 30195641376,
+    "workflow_artifact_id": 8630059610,
+    "workflow_artifact_sha256": "f030eab06c202e5cbf00ddd0f62d6ceb7306e9a0fccf8decb897599872412085",
+    "summary_sha256": "e0702cd65bcb4776884e77ea7a6a081693507c20b8cb8c8936e6c83aa873d1cd",
+    "evaluation_contract_sha256": "4a279c5ba924dc1c906ab26ce22943afe34cd9c94c6e81f1ecd9ae7cf89f24a3",
+    "dependency_fingerprint": "5d89450adaa492b80459753f4fdf8637e33b39a3ba0ab021162e480e230548fc"
+  },
+  "current_first_place_changed": false,
+  "live_order_permission_changed": false,
+  "created_at": "2026-07-26T18:09:36+09:00"
+}
