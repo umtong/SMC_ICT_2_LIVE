@@ -4,6 +4,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import source_gate_blockscout as base
 
@@ -24,10 +25,30 @@ class BoundarySafeBlockscoutClient(OriginalBlockscoutClient):
         observed = super().block_by_time(timestamp, closest)
         return eligible_boundary_block(observed, timestamp, closest)
 
+    def _log_params(
+        self,
+        address: str,
+        direction: str,
+        start_block: int,
+        end_block: int,
+    ) -> dict[str, Any]:
+        # USDT supply changes are canonical Issue/Redeem events, not
+        # zero-address Transfer logs. USDC retains Circle FiatToken's ERC20
+        # zero-address Transfer semantics.
+        if address.lower() != base.auth.CONTRACTS["USDT"]["address"].lower():
+            return super()._log_params(address, direction, start_block, end_block)
+        topics = base.auth.event_filter_topics("USDT", direction)
+        return {
+            "module": "logs",
+            "action": "getLogs",
+            "fromBlock": start_block,
+            "toBlock": end_block,
+            "address": address,
+            "topic0": topics[0],
+        }
 
-# Preserve the original transport implementation while ensuring the last
-# included event can be confirmed under both +12 and +64 block rules before
-# the 2024 source boundary. The source module resolves this global at run time.
+
+# Resolve these globals at source-gate execution time.
 base.BlockscoutClient = BoundarySafeBlockscoutClient
 
 source_gate = base.source_gate
@@ -51,13 +72,28 @@ def self_test() -> None:
     if eligible_boundary_block(18_000_000, boundary - 1, "after") != 18_000_000:
         raise AssertionError("non-boundary block was altered")
 
+    client = BoundarySafeBlockscoutClient()
+    issue_params = client._log_params(
+        base.auth.CONTRACTS["USDT"]["address"], "MINT", 10, 20
+    )
+    if issue_params.get("topic0") != base.auth.ISSUE_TOPIC:
+        raise AssertionError(issue_params)
+    if "topic1" in issue_params or "topic2" in issue_params:
+        raise AssertionError("USDT Issue query incorrectly imposed address topics")
+    redeem_params = client._log_params(
+        base.auth.CONTRACTS["USDT"]["address"], "BURN", 10, 20
+    )
+    if redeem_params.get("topic0") != base.auth.REDEEM_TOPIC:
+        raise AssertionError(redeem_params)
+    usdc_params = client._log_params(
+        base.auth.CONTRACTS["USDC"]["address"], "MINT", 10, 20
+    )
+    if usdc_params.get("topic0") != base.auth.TRANSFER_TOPIC or usdc_params.get("topic1") != base.auth.ZERO_TOPIC:
+        raise AssertionError(usdc_params)
+
     fake = {
         "address": base.auth.CONTRACTS["USDT"]["address"],
-        "topics": [
-            base.auth.TRANSFER_TOPIC,
-            base.auth.ZERO_TOPIC,
-            "0x" + "0" * 24 + "12" * 20,
-        ],
+        "topics": [base.auth.ISSUE_TOPIC],
         "data": hex(1_000_000 * 10**6),
         "blockNumber": "0x10",
         "transactionHash": "0x" + "ab" * 32,
@@ -69,7 +105,21 @@ def self_test() -> None:
         raise AssertionError(row["amount_usd"])
     if base.log_timestamp(fake) != expected:
         raise AssertionError("log timestamp parsing failed")
-    print("authoritative boundary-safe Blockscout source self-test passed")
+
+    ordinary = dict(fake)
+    ordinary["topics"] = [
+        base.auth.TRANSFER_TOPIC,
+        base.auth.ZERO_TOPIC,
+        "0x" + "0" * 24 + "12" * 20,
+    ]
+    try:
+        base.auth.decode_log("USDT", "MINT", ordinary)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ordinary USDT Transfer accepted as Issue")
+
+    print("authoritative boundary-safe token-specific Blockscout self-test passed")
 
 
 def parse_args() -> argparse.Namespace:
