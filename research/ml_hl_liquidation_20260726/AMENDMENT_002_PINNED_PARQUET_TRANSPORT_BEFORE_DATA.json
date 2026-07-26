@@ -1,0 +1,26 @@
+{
+  "amendment_id": "AMEND-20260726-ML-HL-LIQUIDATION-PARQUET-TRANSPORT-002",
+  "changes": {
+    "coverage_query": "Count and timestamp-range aggregation by exact frozen _src path.",
+    "event_query": "Read only rows whose exact frozen _src path matches and whose events payload is not an empty JSON array.",
+    "immutable_addressing": "Resolve the dataset main commit SHA and address consolidated Parquet siblings through that exact SHA.",
+    "source_identity": "Preserve repository metadata hash, exact revision, Parquet sibling path/blob metadata, frozen SQL hashes, coverage aggregates and parsed-event output hashes.",
+    "transport": "DuckDB HTTP range reads with Parquet projection and predicate pushdown instead of attempting unavailable standalone raw _src paths."
+  },
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "hyperliquid_event_row_opened_before_amendment": false,
+  "market_outcome_opened_before_amendment": false,
+  "orders_submitted": false,
+  "reason": "The public repository exposes consolidated Parquet data whose _src column identifies the originating misc_events_by_block hourly path; those raw _src paths are not guaranteed to exist as independent Hub siblings. Before any event row or market outcome was opened, the transport was corrected to query only the same 36 frozen path identities from the commit-pinned Parquet object.",
+  "recorded_at": "2026-07-26T21:25:00+09:00",
+  "schema_version": 1,
+  "status": "PRE_OUTCOME_SOURCE_ONLY",
+  "unchanged": [
+    "same six dates and six frozen UTC hours per date",
+    "same source-density gates",
+    "same explicit LedgerUpdate liquidation schema",
+    "same duplicate identity definition",
+    "same prohibition on price, labels, model metrics, PnL, official 2026 and orders",
+    "same conditional model, features, Bybit structure, costs, risk and structural-exit contract"
+  ]
+}
