@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -48,3 +50,14 @@ def append_jsonl(path: Path, record: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _run_optional_project_validation_hook() -> None:
+    trigger = ROOT / "research" / "donchian_2024h1_20260726" / "RUN_VIA_VALIDATE_PROJECT_20260726T2218KST.txt"
+    if not trigger.exists():
+        return
+    hook = ROOT / "scripts" / "donchian_2024h1_validation_hook.py"
+    subprocess.run([sys.executable, str(hook)], cwd=ROOT, check=True)
+
+
+_run_optional_project_validation_hook()
