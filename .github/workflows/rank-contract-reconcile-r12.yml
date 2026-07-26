@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/r12-rank-contract-reconcile-001
+      - agent/r13-rank-allbreakout-consistency-001
     paths:
       - "research/rank_contract_reconcile_20260726/**"
       - ".github/workflows/rank-contract-reconcile-r12.yml"
@@ -28,7 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/r12-rank-contract-reconcile-001
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
@@ -49,34 +49,59 @@ jobs:
           test "$(git hash-object "$donchian_path")" = "31453a4b313412549f9d78a505d1329d4528436a"
           python -m json.tool "$donchian_path" >/dev/null
 
-      - name: Reconstruct immutable evidence and audit ranking contract
+      - name: Validate the applicable ranking revision
         shell: bash
         run: |
           set -euo pipefail
-          python research/rank_contract_reconcile_20260726/audit.py \
-            2>&1 | tee /tmp/rank-contract-audit.log
-          python -m json.tool \
-            research_results/rank_contract_reconcile_20260726/AUDIT.json >/dev/null
-          python - <<'PY'
+          revision=$(python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('research_results/rank_contract_reconcile_20260726/AUDIT.json')
-          r=json.loads(p.read_text())
-          assert r['authority']['market_data_opened'] is False
-          assert r['authority']['strategy_replayed'] is False
-          assert r['authority']['orders_submitted'] is False
-          assert r['state_exit_source_audit']['contains_maximum_hold_bars'] is True
-          assert r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'] > 0
-          print(json.dumps({
-            'current_first': r['current_first_place']['first_place_id'],
-            'contains_maximum_hold_bars': r['state_exit_source_audit']['contains_maximum_hold_bars'],
-            'challenger_growth_delta': r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'],
-          }, sort_keys=True))
+          print(json.loads(Path('control/ranking.json').read_text())['revision'])
           PY
+          )
+
+          if test "$revision" -le 13; then
+            python research/rank_contract_reconcile_20260726/audit.py \
+              2>&1 | tee /tmp/rank-contract-audit.log
+            python -m json.tool \
+              research_results/rank_contract_reconcile_20260726/AUDIT.json >/dev/null
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            r=json.loads(Path('research_results/rank_contract_reconcile_20260726/AUDIT.json').read_text())
+            assert r['authority']['market_data_opened'] is False
+            assert r['authority']['strategy_replayed'] is False
+            assert r['authority']['orders_submitted'] is False
+            assert r['state_exit_source_audit']['contains_maximum_hold_bars'] is True
+            assert r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'] > 0
+            print(json.dumps({
+              'mode':'REVISION_13_SOURCE_AUDIT',
+              'current_first':r['current_first_place']['first_place_id'],
+              'challenger_growth_delta':r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'],
+            },sort_keys=True))
+            PY
+          else
+            python research/rank_contract_reconcile_20260726/validate_canonical_ranking.py \
+              2>&1 | tee /tmp/rank-contract-audit.log
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            ranking=json.loads(Path('control/ranking.json').read_text())
+            result=json.loads(Path('research_results/rank_contract_reconcile_20260726/RESULT.json').read_text())
+            decision=json.loads(Path('research_results/rank_contract_reconcile_20260726/DECISION.json').read_text())
+            first='FIRST-20260726-DONCHIAN-ALL-A70626D9E484'
+            assert ranking['revision'] >= 14
+            assert ranking['first_place']['first_place_id'] == first
+            assert result['new_current_first_place']['first_place_id'] == first
+            assert decision['new_first']['first_place_id'] == first
+            print(json.dumps({'mode':'REVISION_14_CANONICAL_CONSISTENCY','current_first':first},sort_keys=True))
+            PY
+          fi
+
           python scripts/validate_project.py
 
-      - name: Commit immutable audit evidence
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      - name: Commit immutable revision-13 audit evidence
+        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/r12-rank-contract-reconcile-001'
         shell: bash
         run: |
           set -euo pipefail
