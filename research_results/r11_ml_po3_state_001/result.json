@@ -1,0 +1,107 @@
+{
+  "artifact_fingerprint": "f030eab06c202e5cbf00ddd0f62d6ceb7306e9a0fccf8decb897599872412085",
+  "artifact_id": 8630059610,
+  "claim_id": "CLM-20260726-1712-ML-PO3-STATE-001",
+  "code_commit": "bc212c165719525ac35395326ed24f9a26302900",
+  "created_at": "2026-07-26T18:08:00+09:00",
+  "dataset_ids": [
+    "DS-BINANCE-USDM-BTCETHSOLXRP-5M-2021-2022-ML-PO3-R1"
+  ],
+  "decision": "RETIRE_EXACT_SHARED_3STATE_GAUSSIAN_MARKOV_PO3_V1",
+  "dependency_fingerprint": "a39cad8305a630ba68c00effca116ad1e3fd38dc8f4aa8b86159811446f96da9",
+  "economic_status": "CALIBRATION_BELOW_GATE",
+  "evaluation_contract_sha256": "4d4ad2a2580496d980e6f5118199e4b93971b166370f8633264a7d3876df0139",
+  "hard_validity_status": "PASS",
+  "known_limitations": [
+    "Binance USD-M 5-minute data and adverse fixed funding are fatal-screen proxies, not exact Bybit BBO/depth and actual funding.",
+    "The exact PO3 state machine lost money at every threshold and every cost; this is not a marginal execution failure.",
+    "2023 development and official 2024-2026 remained unopened."
+  ],
+  "metrics": {
+    "calibration_survivor_count": 0,
+    "development_opened": false,
+    "model_count": 1,
+    "selected_threshold": null,
+    "source_file_count": 96,
+    "state_count": 3,
+    "strategy_route_count": 1,
+    "threshold_0_45": {
+      "12bp": {
+        "daily_growth": -0.0009155419126330999,
+        "median_account_return": -0.005698610903287445,
+        "mdd": 0.2841795174451087,
+        "positive_months": 0,
+        "profit_factor": 0.3241607673386002,
+        "total_return": -0.2841795174451087,
+        "trades": 94
+      },
+      "18bp": {
+        "daily_growth": -0.001306147420157111,
+        "h1_return": -0.20726259762754684,
+        "h2_return": -0.2171327768138217,
+        "mean_account_return": -0.00504232250654975,
+        "median_account_return": -0.007498610903287446,
+        "mdd": 0.3793918710888535,
+        "positive_months": 0,
+        "profit_factor": 0.1917798056388062,
+        "top10_removed_total_return": -0.4057582544052649,
+        "top5_positive_pnl_share": 0.554833327078865,
+        "total_return": -0.3793918710888535,
+        "trades": 94
+      },
+      "24bp": {
+        "daily_growth": -0.0016304654883707581,
+        "median_account_return": -0.009298610903287444,
+        "mdd": 0.4487713551606928,
+        "positive_months": 0,
+        "profit_factor": 0.11340755554155106,
+        "total_return": -0.4487713551606928,
+        "trades": 94
+      }
+    },
+    "threshold_0_60_18bp": {
+      "daily_growth": -0.0008941712854075856,
+      "median_account_return": -0.007705410417518249,
+      "mdd": 0.2785689879127303,
+      "positive_months": 0,
+      "profit_factor": 0.17742610409859716,
+      "top10_removed_total_return": -0.30005836601903235,
+      "total_return": -0.2785689879127303,
+      "trades": 62
+    },
+    "threshold_0_75_18bp": {
+      "daily_growth": -0.0005691149084625646,
+      "median_account_return": -0.007710633556729558,
+      "mdd": 0.1902984715825028,
+      "positive_months": 2,
+      "profit_factor": 0.12361381610241333,
+      "top10_removed_total_return": -0.20070390981125008,
+      "total_return": -0.18761919272262062,
+      "trades": 37
+    }
+  },
+  "model_sha256": "6edd68d5996d9fab844d62d4c9cf8fb7be0d3b62d5053a14a2586cd1ab9a5feb",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "output_hashes": {
+    "calibration_2022_0p45.json": "8652d31224a085346e647ffa4b478f44f2e20c6889856e092a2fc0c69b9d5f27",
+    "calibration_2022_0p6.json": "9aa0e1943f640a7856249e134655335f82d8cbdc50226819ab329e162223d58d",
+    "calibration_2022_0p75.json": "b2e167fd60bad611ffc9c400fbe3147e711dfc4de97cb3d132f841c759163d2b",
+    "model_2021.json": "6edd68d5996d9fab844d62d4c9cf8fb7be0d3b62d5053a14a2586cd1ab9a5feb",
+    "source_manifest.json": "422c52a1cfb17d786d74a635381f4e82acbf206d5e1a6dc456ff3160d980c2cd",
+    "summary.json": "e0702cd65bcb4776884e77ea7a6a081693507c20b8cb8c8936e6c83aa873d1cd"
+  },
+  "paper_live_enabled": false,
+  "ranking_role": "NONE_FATAL_PROXY_SCREEN",
+  "result_id": "RES-20260726-ML-PO3-STATE-001",
+  "schema_version": 1,
+  "source_ids": [
+    "binance-vision:usdm:official-5m-archives"
+  ],
+  "source_manifest_sha256": "422c52a1cfb17d786d74a635381f4e82acbf206d5e1a6dc456ff3160d980c2cd",
+  "status": "TESTED_BELOW_GATE",
+  "strategy_explanation": "One shared causal three-state Gaussian Markov model learns accumulation, manipulation and distribution from five completed 5-minute features. A trade requires an accumulation box, a one-sided liquidity raid/reclaim and learned distribution confirmation; entry is next open, stop beyond the raid and target the untouched opposite box boundary.",
+  "summary": "Hard-valid minimal causal ML PO3 screen. All three fixed 2022 thresholds failed. Threshold 0.45 produced 94 trades but lost 28.42%/37.94%/44.88% at 12/18/24bp; at 18bp no month was positive, median account return was -0.7499%, PF 0.1918, both half-years lost and top-10%-positive-event removal returned -40.58%. Thresholds 0.60 and 0.75 also lost at every cost. Zero survivor, no 2023 or official 2024-2026 opening, exact dependency retired without more states, features or thresholds.",
+  "worker_id": "gpt-5.6-pro-20260726-1712",
+  "workflow_run": 30195641376
+}
