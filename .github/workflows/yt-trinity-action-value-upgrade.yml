@@ -4,14 +4,14 @@ on:
   push:
     branches: [agent/r22-yt-trinity-ml-001]
     paths:
-      - .github/workflows/yt-trinity-action-value-upgrade.yml
+      - control/yt-trinity-action-value-upgrade-trigger.json
 
 permissions:
   contents: write
 
 concurrency:
   group: yt-trinity-action-value-upgrade
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   apply-test-commit:
@@ -132,6 +132,7 @@ jobs:
             .github/workflows/yt-trinity-source-snapshot.yml
           git rm -f research/yt_trinity_ml/upgrade_chunks/action_value*
           git rm -f .github/workflows/yt-trinity-action-value-upgrade.yml
+          git rm -f control/yt-trinity-action-value-upgrade-trigger.json
 
       - uses: actions/setup-python@v5
         with:
