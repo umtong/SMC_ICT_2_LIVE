@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-KRW-RELATIVE-FATAL-001",
+  "claim_id": "CLM-20260726-1616-KRW-RELATIVE-001",
+  "worker_id": "gpt-5.6-pro-20260726-1616",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_PROXY_NON_RANK_ELIGIBLE",
+  "economic_status": "FIT_FATAL_BELOW_GATE",
+  "ranking_role": "NONE_FATAL_PROXY_SCREEN",
+  "study": "Upbit KRW-XRP/KRW-BTC relative demand and liquidity versus global XRPUSDT/BTCUSDT relative non-confirmation",
+  "policy_count": 192,
+  "fit_period": ["2022-01-01T00:00:00Z", "2022-12-31T23:59:59Z"],
+  "development_opened": false,
+  "2024_2026_opened": false,
+  "orders_submitted": false,
+  "source_kind": "UPBIT_KRW_PRIMARY_PLUS_BINANCE_VISION_EXECUTION_PROXY",
+  "rank_eligibility_reason": "Binance USD-M one-minute bars are a Bybit execution proxy. Exact Bybit BBO/depth replay and official causal walk-forward remained closed.",
+  "selected_policy": {
+    "policy_id": "297bb96ecbf036bb",
+    "family": "REVERSAL",
+    "lookback": 5,
+    "range_minutes": 60,
+    "gap_bps": 30.0,
+    "shock_z": 2.0,
+    "target_close_fraction": 0.5,
+    "stop_window": 30,
+    "stop_buffer_atr": 0.1
+  },
+  "fit_metrics": {
+    "12": {
+      "trades": 2,
+      "total_return": 0.01795192635204379,
+      "geometric_daily_growth": 0.000048748293338896076,
+      "maximum_drawdown": 0.001146260944002396,
+      "median_trade_account_return": 0.008986921490208806,
+      "profit_factor": 16.680411231372243,
+      "top10_positive_removed_return": -0.0011462609440023863,
+      "top5_positive_share": 1.0,
+      "positive_quarters": 1,
+      "h1_return": 0.01795192635204379,
+      "h2_return": 0.0
+    },
+    "18": {
+      "trades": 2,
+      "total_return": 0.014219466581889995,
+      "geometric_daily_growth": 0.000038683811819373304,
+      "maximum_drawdown": 0.0014555504840486956,
+      "median_trade_account_return": 0.007121157809247086,
+      "profit_factor": 10.784831082518256,
+      "top10_positive_removed_return": -0.0014555504840486622,
+      "top5_positive_share": 1.0,
+      "positive_quarters": 1,
+      "h1_return": 0.014219466581889995,
+      "h2_return": 0.0
+    },
+    "24": {
+      "trades": 2,
+      "total_return": 0.011228787307672405,
+      "geometric_daily_growth": 0.000030592830872144816,
+      "maximum_drawdown": 0.0017439604604051041,
+      "median_trade_account_return": 0.005625725395530867,
+      "profit_factor": 7.451666219799681,
+      "top10_positive_removed_return": -0.0017439604604050363,
+      "top5_positive_share": 1.0,
+      "positive_quarters": 1,
+      "h1_return": 0.011228787307672405,
+      "h2_return": 0.0
+    }
+  },
+  "implementation_sha256": "3dd9c0037adc68459acefe4c1d0a912f5e1832a48ebddf662d2bb80a514aaee1",
+  "observed_result_sha256": "b029fc7f5dd36dd8c6bb5529ff3f39241676e15a1e45b730a1a6ca5f7cb9df5c",
+  "source_hashes": {
+    "upbit_krw_xrp": "971f2d6a1b2c517fbc8883a02b3db99986ed78a449fc37dedc35336827b432a0",
+    "upbit_krw_btc": "3d05a90df09e563c9d951078dba1c78990cae1d50bcf61c05057242380702a14",
+    "binance_xrpusdt": "bd19aca06808ef4db682a6d76bd3d8aff9abe58ea269b1d8308e4d3c7ee480cf",
+    "binance_btcusdt": "d34ebc5132b18780ed86ace1301725377edc0e9e31318ceab62d2023ce10660b"
+  },
+  "drive_run_report_id": "10AHLANOZ2VgNtigIte-iZJUplLsEo4KmGDy-xmbS9i4",
+  "decision": "Retire the exact KRW relative-demand regional-SMT catch-up/reversal dependency. Two trades, one positive quarter, 100% top-five concentration and negative winner-removal performance are not repeatable after-cost alpha. Do not open 2023 or tune adjacent thresholds, risk or leverage."
+}
