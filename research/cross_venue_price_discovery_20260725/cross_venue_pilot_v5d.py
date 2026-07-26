@@ -9,15 +9,19 @@ import cross_venue_execution_v5d as v5d
 import cross_venue_failclosed_v5d as failclosed_v5d
 import cross_venue_performance_v5d as performance_v5d
 import cross_venue_pilot as v1
+import cross_venue_pilot_cache_v5d as pilot_cache_v5d
 import cross_venue_pilot_v5c as pilot_v5c
 
 
 def run(output: Path, cache: Path, days: tuple[str, ...] = v1.PILOT_DAYS) -> dict:
-    # Performance patch only memoizes the immutable executable-quote index.
-    # Apply it before the causal patches so every V5D entry/exit lookup uses
-    # the same exact arrays without rescanning the full day for every event.
+    # These patches alter only repeated computation, never the scientific path:
+    # 1. build the immutable executable-quote index once per aligned frame;
+    # 2. replay each semantically unique signal/execution path once and copy
+    #    the resulting immutable trades to duplicate Cartesian-grid config IDs.
     performance_v5d.patch()
     failclosed_v5d.patch()
+    pilot_cache_v5d.clear()
+    pilot_cache_v5d.patch()
     result = pilot_v5c.run(output, cache, tuple(days))
     result["stage"] = "MICROSECOND_LOCAL_ARRIVAL_FATAL_EDGE_PILOT_V5D"
     result["causal_engine_version"] = v5d.ENGINE_VERSION
@@ -33,7 +37,7 @@ def run(output: Path, cache: Path, days: tuple[str, ...] = v1.PILOT_DAYS) -> dic
     result["exit_floor_contract"] = "no economic 10%-of-quote floor; numerical positive floor only"
     result["drawdown_contract"] = "single chronological marked account path without closed-plus-intratrade double counting"
     result["performance_contract"] = (
-        "immutable first-executable-quote positions/times are computed once per aligned frame and reused exactly"
+        "immutable first-executable-quote indices are cached per frame; 768 registered rows are reproduced from 288 semantically unique gross execution paths"
     )
     result["v1_v2_v3_v4_v4b_v5_v5b_v5c_outputs_admissible"] = False
     result["ranking_eligible"] = False
