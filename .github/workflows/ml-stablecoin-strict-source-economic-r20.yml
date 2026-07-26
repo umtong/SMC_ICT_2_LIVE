@@ -1,4 +1,4 @@
-name: Stablecoin strict causal source-economic decision
+name: Stablecoin strict causal V4 source-economic decision
 
 on:
   push:
@@ -54,13 +54,14 @@ jobs:
       - name: Materialize exact fail-closed source snapshot
         run: |
           set -euo pipefail
+          mkdir -p "$OUT_ROOT"
           git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
           rm -rf "$SOURCE_ROOT"
           git archive "$SOURCE_SHA" "$SOURCE_ROOT" | tar -x
-          printf '%s\n' "$SOURCE_SHA" > "$OUT_ROOT.PINNED_SOURCE_SHA.txt"
+          printf '%s\n' "$SOURCE_SHA" > "$OUT_ROOT/PINNED_SOURCE_SHA.txt"
 
-      - name: Prove fail-closed source and strict V3 before network access
+      - name: Prove fail-closed source and strict V4 before network access
         run: |
           set -euo pipefail
           mkdir -p "$OUT_ROOT/source" "$OUT_ROOT/economic"
@@ -71,7 +72,7 @@ jobs:
           python -m json.tool "$FIX_ROOT/CORRECTION_001_ENTRY_BAR_LOOKAHEAD_AND_UNRESOLVED_PATH_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$FIX_ROOT/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$FIX_ROOT/EXECUTION_CORRECTION_003_FAILCLOSED_SOURCE_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$FIX_ROOT/EXECUTION_CORRECTION_004_SINGLE_ARM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$FIX_ROOT/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json" >/dev/null
           python -m py_compile \
             "$SOURCE_ROOT"/source_gate*.py \
             "$SOURCE_ROOT/run_pinned_snapshot_source.py" \
@@ -86,15 +87,15 @@ jobs:
           python -m py_compile \
             "$ECON_ROOT/run.py" "$ECON_ROOT/run_causal.py" \
             "$ECON_ROOT/test_run.py" "$ECON_ROOT/test_run_causal.py" \
-            "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/causal_guard.py" \
-            "$FIX_ROOT/test_causal_guard.py"
+            "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/strict_guard_v4.py" \
+            "$FIX_ROOT/causal_guard.py" "$FIX_ROOT/test_causal_guard.py"
           PYTHONPATH="$ECON_ROOT:$FIX_ROOT" pytest -q \
             "$ECON_ROOT/test_run.py" \
             "$ECON_ROOT/test_run_causal.py" \
             "$FIX_ROOT/test_causal_guard.py" \
             2>&1 | tee "$OUT_ROOT/economic/STRICT_TESTS.log"
-          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/strict_guard.py" self-test \
-            2>&1 | tee "$OUT_ROOT/economic/STRICT_SELF_TEST.log"
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/strict_guard_v4.py" self-test \
+            2>&1 | tee "$OUT_ROOT/economic/STRICT_V4_SELF_TEST.log"
 
       - name: Run complete corrected 2021-2023 source gate
         id: source
@@ -112,7 +113,7 @@ jobs:
           if [[ ! -f "$OUT_ROOT/source/run/SOURCE_GATE_RESULT.json" ]]; then
             python "$SOURCE_ROOT/write_transport_failure.py" \
               --output "$OUT_ROOT/source/run" \
-              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V3-FAILCLOSED-021 \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V4-FAILCLOSED-022 \
               --exit-code "$rc"
           fi
           python - <<'PY'
@@ -126,11 +127,8 @@ jobs:
               'FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE',
               'SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE',
           }
-          assert result['market_outcome_opened'] is False
-          assert result['model_fit'] is False
-          assert result['trade_or_pnl_opened'] is False
-          assert result['official_2024_2026_opened'] is False
-          assert result['orders_submitted'] is False
+          for key in ('market_outcome_opened','model_fit','trade_or_pnl_opened','official_2024_2026_opened','orders_submitted'):
+              assert result[key] is False
           authorized=result['status']=='PASS'
           if authorized:
               manifest=json.loads((root/'SOURCE_MANIFEST.json').read_text())
@@ -145,8 +143,7 @@ jobs:
               assert manifest['source_schema_id']==result['source_schema_id']
               assert manifest['source_correction_id']==result['source_correction_id']
               assert manifest['transport_response_policy_correction']==result['transport_response_policy_correction']
-              checks=result.get('pass_checks',{})
-              assert checks and all(value is True for value in checks.values())
+              assert result['pass_checks'] and all(result['pass_checks'].values())
               assert result['event_semantics']['ordinary_usdt_transfer_excluded'] is True
               assert int(result['event_count'])>=120
               assert len(result['months_with_events'])>=24
@@ -177,9 +174,9 @@ jobs:
         if: steps.source.outputs.authorized == 'true'
         with:
           path: ${{ env.MARKET_CACHE }}
-          key: stablecoin-strict-market-2020-12-2023-12-v3-failclosed
+          key: stablecoin-strict-market-2020-12-2023-12-v4-failclosed
 
-      - name: Run strict causal V3 pre-2024 economic screen immediately
+      - name: Run strict causal V4 pre-2024 economic screen immediately
         if: steps.source.outputs.authorized == 'true'
         shell: bash
         run: |
@@ -187,7 +184,7 @@ jobs:
           rm -rf "$OUT_ROOT/economic/run"
           mkdir -p "$OUT_ROOT/economic/run" "$MARKET_CACHE"
           set +e
-          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/strict_guard.py" run \
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/strict_guard_v4.py" run \
             --events "${{ steps.source.outputs.events }}" \
             --market-cache "$MARKET_CACHE" \
             --output "$OUT_ROOT/economic/run" 2>&1 | tee "$OUT_ROOT/economic/run/RUN.log"
@@ -201,7 +198,7 @@ jobs:
           test -f "$OUT_ROOT/economic/run/RESULT.json"
           test -f "$OUT_ROOT/economic/run/FULL_RESULT.json"
 
-      - name: Enforce strict authority and sequential decision
+      - name: Enforce strict V4 authority and sequential decision
         if: always()
         run: |
           set -euo pipefail
@@ -235,6 +232,12 @@ jobs:
           assert guard['entry_open_used_for_realized_execution_only'] is True
           assert guard['stage_boundary_positions_marked_not_closed'] is True
           assert guard['fatal_validity_violation'] is False
+          v4=result['simultaneous_event_and_liquidation_guard']
+          assert v4['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-EVENT-LIQUIDATION-DISTANCE-004'
+          assert v4['simultaneous_event_prior_rule']=='STRICTLY_EARLIER_AVAILABILITY_SECOND_GROUPED_BEFORE_APPEND'
+          assert v4['planned_quantity_rule']=='PREENTRY_EXPECTED_STOP_DISTANCE_PLUS_COST'
+          assert v4['liquidation_test_rule']=='ACTUAL_FILL_TO_STRUCTURAL_STOP_OR_ADVERSE_STOP_GAP'
+          assert v4['fatal_validity_violation'] is False
           assert result['orders_submitted'] is False
           assert result['official_2024h1_opened'] is False
           assert result['official_2024_2026_opened'] is False
@@ -244,14 +247,22 @@ jobs:
           }
           serialized=json.dumps(full,sort_keys=True)
           assert '"exit_reason": "SOURCE_BOUNDARY"' not in serialized
+          ledger_rows=[]
           def walk(value):
               if isinstance(value,dict):
                   if 'forced_boundary_close' in value:
                       assert value['forced_boundary_close'] is False
+                  if {'event_id','leverage','account_return','stop_fraction'}.issubset(value):
+                      ledger_rows.append(value)
                   for child in value.values(): walk(child)
               elif isinstance(value,list):
                   for child in value: walk(child)
           walk(full)
+          for row in ledger_rows:
+              assert 'planned_stop_fraction' in row
+              assert 'actual_structural_stop_fraction' in row
+              assert 'liquidation_test_distance' in row
+              assert row['liquidation_distance_rule']=='ACTUAL_FILL_TO_STRUCTURAL_STOP_OR_ADVERSE_GAP'
           next_stage='CHANGE_ALPHA'
           if result['status']=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
               selected=result['risk_search']['selected']
@@ -264,6 +275,7 @@ jobs:
               'source':source['status'],
               'economic':result['status'],
               'engine':result['engine'],
+              'account_correction':v4['correction_id'],
               'development_gate':result['development_gate'].get('all'),
               'selected_risk_path':result.get('risk_search',{}).get('selected') if result.get('risk_search') else None,
               'next':next_stage,
@@ -289,8 +301,8 @@ jobs:
           cp "$SOURCE_ROOT/run_pinned_snapshot_source.py" "$OUT_ROOT/inputs/"
           cp "$FIX_ROOT/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
           cp "$FIX_ROOT/EXECUTION_CORRECTION_003_FAILCLOSED_SOURCE_AUTHORITY_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
-          cp "$FIX_ROOT/EXECUTION_CORRECTION_004_SINGLE_ARM_RUNNER_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
-          cp "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/test_causal_guard.py" "$OUT_ROOT/inputs/"
+          cp "$FIX_ROOT/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
+          cp "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/strict_guard_v4.py" "$FIX_ROOT/test_causal_guard.py" "$OUT_ROOT/inputs/"
           printf '%s\n' "$SOURCE_SHA" > "$OUT_ROOT/inputs/SOURCE_SHA.txt"
           find "$OUT_ROOT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
             | sort -z | xargs -0 sha256sum > "$OUT_ROOT/OUTPUT_SHA256SUMS.txt"
