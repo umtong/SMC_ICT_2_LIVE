@@ -1,0 +1,69 @@
+name: Cross-venue V5D focused diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/cross_venue_price_discovery_20260725/**"
+      - ".github/workflows/cross-venue-v5d-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-venue-v5d-diagnostic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
+
+      - name: Capture focused compile and test output
+        shell: bash
+        run: |
+          set +e
+          root=research/cross_venue_price_discovery_20260725
+          log="${RUNNER_TEMP}/v5d-focused-diagnostic.log"
+          {
+            python -m py_compile \
+              "$root/cross_venue_failclosed_v5d.py" \
+              "$root/cross_venue_execution_v5d.py" \
+              "$root/cross_venue_pilot_fast_exit_v5d.py" \
+              "$root/cross_venue_prepare_v5d.py"
+            PYTHONPATH="$root" pytest -vv --tb=long \
+              "$root/test_cross_venue_execution_v5d.py" \
+              "$root/test_cross_venue_development_v5d.py" \
+              "$root/test_cross_venue_performance_v5d.py" \
+              "$root/test_cross_venue_pilot_cache_v5d.py"
+          } >"$log" 2>&1
+          code=$?
+          echo "$code" >"${RUNNER_TEMP}/v5d-focused-diagnostic.exitcode"
+          tail -n 240 "$log"
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-venue-v5d-focused-diagnostic-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/v5d-focused-diagnostic.log
+            ${{ runner.temp }}/v5d-focused-diagnostic.exitcode
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
