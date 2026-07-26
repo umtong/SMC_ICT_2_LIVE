@@ -52,9 +52,10 @@ jobs:
             research/cme_opening_gap_20260726/probe.py \
             research/cme_opening_gap_20260726/run_screen.py \
             research/cme_opening_gap_20260726/run_ml_screen.py \
-            research/cme_opening_gap_20260726/run_ml_screen_v2.py
+            research/cme_opening_gap_20260726/run_ml_screen_v2.py \
+            research/cme_opening_gap_20260726/run_ml_screen_v3.py
           python research/cme_opening_gap_20260726/probe.py self-test
-          python research/cme_opening_gap_20260726/run_ml_screen_v2.py self-test
+          python research/cme_opening_gap_20260726/run_ml_screen_v3.py self-test
           python -m json.tool research/cme_opening_gap_20260726/preregistration.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_001_ml_core.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json >/dev/null
@@ -95,7 +96,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/cme-opening-gap-ml
-          key: cme-opening-gap-ml-v2-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json', 'research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json') }}
+          key: cme-opening-gap-ml-v3-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json', 'research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json') }}
 
       - name: Run one-policy chronological ML screen
         shell: bash
@@ -104,7 +105,7 @@ jobs:
           rm -rf artifacts/cme_opening_gap_ml
           mkdir -p artifacts/cme_opening_gap_ml
           set -o pipefail
-          python research/cme_opening_gap_20260726/run_ml_screen_v2.py run \
+          python research/cme_opening_gap_20260726/run_ml_screen_v3.py run \
             --cache /tmp/cme-opening-gap-ml \
             --output artifacts/cme_opening_gap_ml \
             2>&1 | tee artifacts/cme_opening_gap_ml/run.log
