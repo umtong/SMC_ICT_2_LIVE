@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-IFVG-SOURCE-FREQUENCY-001",
+  "claim_id": "CLM-20260726-1545-IFVG-EXEC-001",
+  "status": "IMPLEMENTATION_CORRECTION_BEFORE_VALID_ECONOMIC_OUTCOME",
+  "reason": "PR #72 emits every completed 100 ms state. The first IFVG evaluator incorrectly required bar_seconds*2 rows with 500000-us spacing, so every exact 1/3/5-second bar was rejected before the strategy state machine.",
+  "correction": {
+    "source_state_frequency_ms": 100,
+    "complete_bar_expected_rows": "bar_seconds * 10",
+    "required_state_spacing_us": 100000,
+    "patched_run_screen_sha256": "dd456caad328943f92a08ea914e98968d89a60bd2676989bd88d53882ff84405",
+    "patched_run_screen_bytes": 32490,
+    "market_rule_changes": false,
+    "candidate_grid_changes": false,
+    "date_changes": false,
+    "cost_or_account_changes": false
+  },
+  "invalidated_output": {
+    "result_id": "RES-20260726-IFVG-EXEC-FATAL-001",
+    "workflow_run_id": 30192043021,
+    "artifact_id": 8628893977,
+    "interpretation": "hard-invalid zero-event output; not negative alpha evidence"
+  },
+  "sealed_boundary": "Fit remains 2022-07-01; development remains conditional 2023-07-01; 2024-2026 remain prohibited."
+}
