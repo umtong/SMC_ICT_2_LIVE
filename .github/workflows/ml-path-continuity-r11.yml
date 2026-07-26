@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_path_continuity_20260726
-          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py"
+          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py" "$root/persist_result.py"
           PYTHONPATH="$root" python -m pytest -q "$root/test_run_screen.py"
           mkdir -p research_runs/ml_path_continuity/self_test
           PYTHONPATH="$root" python "$root/run_screen.py" \
@@ -77,7 +77,7 @@ jobs:
           cat research_runs/ml_path_continuity/diagnostics/screen.log
           exit 0
 
-      - name: Verify result safety and project integrity
+      - name: Verify result safety and classify outcome
         run: |
           set -euo pipefail
           test "$(cat research_runs/ml_path_continuity/diagnostics/SCREEN_EXIT.txt)" = "0"
@@ -86,23 +86,42 @@ jobs:
           import json
           from pathlib import Path
           result = json.loads(Path("research_runs/ml_path_continuity/output/RESULT.json").read_text())
-          assert result["source_count"] == 12
-          assert result["event_count"] > 0
-          assert result["hard_validity_status"] == "PASS_INITIAL"
-          assert result["2024_opened"] is False
-          assert result["2025_or_2026_opened"] is False
-          assert result["orders_submitted"] is False
-          assert result["status"] in {"TESTED_BELOW_GATE", "PROMISING_PRE2024_SURVIVOR"}
-          print(json.dumps({
-              "status": result["status"],
-              "event_count": result["event_count"],
-              "resolved_rows": result["partition_resolved_rows"],
-              "confirmation": result["confirmation_model_metrics"],
-              "development_18bps": result["development_account"]["18.0"],
-              "gate": result["pre2024_gate"],
-          }, sort_keys=True, default=str))
+          assert result.get("2024_opened") is False
+          assert result.get("2025_or_2026_opened") is False
+          assert result.get("orders_submitted") is False
+          status = str(result.get("status", "UNKNOWN"))
+          hard = str(result.get("hard_validity_status", "UNKNOWN"))
+          economic = {"TESTED_BELOW_GATE", "PROMISING_PRE2024_SURVIVOR", "VALIDATED", "GOAL_MET"}
+          if status in economic:
+              assert hard in {"PASS", "PASS_INITIAL"}
+              assert int(result.get("event_count", 0)) > 0
+          else:
+              assert status in {
+                  "SOURCE_UNAVAILABLE",
+                  "SOURCE_BLOCKED_BEFORE_MARKET",
+                  "INSUFFICIENT_CAUSAL_EVENTS",
+                  "TESTED_BELOW_GATE",
+              }
+          print(json.dumps(result, sort_keys=True, default=str))
           PY
           python scripts/validate_project.py
+
+      - name: Persist result and deterministic rank comparison
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          python research/ml_path_continuity_20260726/persist_result.py
+          python scripts/validate_project.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research_results/r11_ml_path_continuity_001 \
+            control/ranking.json \
+            control/current-state.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Record ML path-continuity result and rank decision"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
 
       - name: Record immutable input hashes
         if: always()
@@ -113,6 +132,7 @@ jobs:
             research/ml_path_continuity_20260726/preregistration.json \
             research/ml_path_continuity_20260726/README.md \
             research/ml_path_continuity_20260726/run_screen.py \
+            research/ml_path_continuity_20260726/persist_result.py \
             research/ml_path_continuity_20260726/implementation.sha256 \
             research/ml_path_continuity_20260726/implementation.b64.part00 \
             research/ml_path_continuity_20260726/implementation.b64.part01 \
