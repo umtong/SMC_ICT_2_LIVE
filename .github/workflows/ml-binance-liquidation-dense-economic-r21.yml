@@ -1,0 +1,262 @@
+name: ML Binance dense liquidation economic screen
+
+on:
+  push:
+    branches:
+      - agent/r21-ml-binance-liquidation-dense-economic-001
+    paths:
+      - 'research/ml_binance_liquidation_dense_20260726/**'
+      - 'research/ml_binance_liquidation_dense_economic_20260726/**'
+      - '.github/workflows/ml-binance-liquidation-dense-economic-r21.yml'
+  pull_request:
+    branches:
+      - agent/r11-ml-binance-liquidation-dense-001
+      - main
+    paths:
+      - 'research/ml_binance_liquidation_dense_20260726/**'
+      - 'research/ml_binance_liquidation_dense_economic_20260726/**'
+      - '.github/workflows/ml-binance-liquidation-dense-economic-r21.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-binance-liquidation-dense-economic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  economic:
+    runs-on: ubuntu-slim
+    timeout-minutes: 330
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r21-ml-binance-liquidation-dense-economic-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 \
+            scipy==1.15.3 scikit-learn==1.6.1 pytest==8.3.5
+
+      - name: Reconstruct and validate both frozen engines
+        run: |
+          set -euo pipefail
+          source_root=research/ml_binance_liquidation_dense_20260726
+          econ_root=research/ml_binance_liquidation_dense_economic_20260726
+          out=research_runs/ml_binance_liquidation_dense_economic_20260726/r21
+          mkdir -p "$out"
+          python "$source_root/reconstruct.py" 2>&1 | tee "$out/SOURCE_RECONSTRUCT.log"
+          python "$econ_root/reconstruct.py" 2>&1 | tee "$out/ECON_RECONSTRUCT.log"
+          python -m py_compile \
+            "$source_root/source_gate.py" "$source_root/test_source_gate.py" \
+            "$econ_root/run.py" "$econ_root/test_run.py"
+          PYTHONPATH="$source_root" pytest -q "$source_root/test_source_gate.py" \
+            2>&1 | tee "$out/SOURCE_PYTEST.log"
+          PYTHONPATH="$econ_root:$source_root" pytest -q "$econ_root/test_run.py" \
+            2>&1 | tee "$out/ECON_PYTEST.log"
+          PYTHONPATH="$econ_root:$source_root" python "$econ_root/run.py" --self-test \
+            2>&1 | tee "$out/SELF_TEST.log"
+          python -m json.tool "$econ_root/ECONOMIC_STAGE.json" >/dev/null
+
+      - id: source
+        name: Consume only the decision-ready current source HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_binance_liquidation_dense_economic_20260726/r21
+          mkdir -p "$out/source-artifact"
+          python - <<'PY'
+          import io
+          import json
+          import os
+          import time
+          import zipfile
+          from pathlib import Path
+
+          import requests
+
+          repo=os.environ['GITHUB_REPOSITORY']
+          token=os.environ['GITHUB_TOKEN']
+          headers={
+              'Accept':'application/vnd.github+json',
+              'Authorization':f'Bearer {token}',
+              'X-GitHub-Api-Version':'2022-11-28',
+              'User-Agent':'SMC-ICT-2-dense-liquidation-economic/1.0',
+          }
+          api=f'https://api.github.com/repos/{repo}'
+          branch='agent/r11-ml-binance-liquidation-dense-001'
+          workflow_name='ML Binance dense liquidation source gate'
+          destination=Path('research_runs/ml_binance_liquidation_dense_economic_20260726/r21/source-artifact')
+          selected=None
+          for attempt in range(180):
+              ref=requests.get(f'{api}/git/ref/heads/{branch}',headers=headers,timeout=30)
+              ref.raise_for_status()
+              head=ref.json()['object']['sha']
+              runs=requests.get(
+                  f'{api}/actions/runs',
+                  headers=headers,
+                  params={'branch':branch,'per_page':100},
+                  timeout=30,
+              )
+              runs.raise_for_status()
+              candidates=[
+                  item for item in runs.json()['workflow_runs']
+                  if item['name']==workflow_name
+                  and item['head_sha']==head
+                  and item['status']=='completed'
+              ]
+              if candidates:
+                  candidates.sort(key=lambda item:item['created_at'],reverse=True)
+                  run=candidates[0]
+                  artifacts=requests.get(
+                      f"{api}/actions/runs/{run['id']}/artifacts",
+                      headers=headers,timeout=30,
+                  )
+                  artifacts.raise_for_status()
+                  usable=[item for item in artifacts.json()['artifacts'] if not item['expired']]
+                  if not usable:
+                      raise RuntimeError(f"source run {run['id']} has no usable artifact")
+                  usable.sort(key=lambda item:item['created_at'],reverse=True)
+                  payload=requests.get(usable[0]['archive_download_url'],headers=headers,timeout=180)
+                  payload.raise_for_status()
+                  with zipfile.ZipFile(io.BytesIO(payload.content)) as archive:
+                      archive.extractall(destination)
+                  results=list(destination.rglob('SOURCE_GATE_RESULT.json'))
+                  if len(results)!=1:
+                      raise RuntimeError(f'expected one source result, observed {len(results)}')
+                  result=json.loads(results[0].read_text())
+                  selected={
+                      'branch_head':head,
+                      'run_id':run['id'],
+                      'conclusion':run['conclusion'],
+                      'artifact_id':usable[0]['id'],
+                      'artifact_digest':usable[0].get('digest'),
+                      'result_path':str(results[0]),
+                      'source_status':result.get('status'),
+                      'source_pass':bool(result.get('source_gate_pass',False)),
+                  }
+                  Path('research_runs/ml_binance_liquidation_dense_economic_20260726/r21/SOURCE_SELECTION.json').write_text(
+                      json.dumps(selected,indent=2,sort_keys=True)+'\n'
+                  )
+                  print(json.dumps(selected,sort_keys=True))
+                  break
+              print(f'current source HEAD has no completed result: attempt={attempt+1} head={head}',flush=True)
+              time.sleep(60)
+          if selected is None:
+              raise RuntimeError('timed out before current source HEAD produced a decision-ready artifact')
+          PY
+          result=$(find "$out/source-artifact" -type f -name SOURCE_GATE_RESULT.json -print -quit)
+          test -n "$result"
+          status=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$result")
+          pass=$(python -c 'import json,sys; print(str(bool(json.load(open(sys.argv[1])).get("source_gate_pass",False))).lower())' "$result")
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "authorized=$pass" >> "$GITHUB_OUTPUT"
+
+      - name: Run unchanged pre-2024 economic ML screen
+        shell: bash
+        run: |
+          set -u
+          source_root=research/ml_binance_liquidation_dense_20260726
+          econ_root=research/ml_binance_liquidation_dense_economic_20260726
+          out=research_runs/ml_binance_liquidation_dense_economic_20260726/r21
+          cache="$RUNNER_TEMP/dense-liquidation-economic"
+          mkdir -p "$out/economic" "$cache"
+          set +e
+          PYTHONPATH="$econ_root:$source_root" python "$econ_root/run.py" \
+            --source-result "${{ steps.source.outputs.result }}" \
+            --cache "$cache" \
+            --output "$out/economic" \
+            --market-workers 12 \
+            --liquidation-workers 24 \
+            2>&1 | tee "$out/economic/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$rc" > "$out/economic/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then exit "$rc"; fi
+          test -f "$out/economic/RESULT.json"
+
+      - name: Enforce scientific authority and next-stage decision
+        run: |
+          set -euo pipefail
+          result=research_runs/ml_binance_liquidation_dense_economic_20260726/r21/economic/RESULT.json
+          python - <<'PY' "$result"
+          import json,sys
+          r=json.load(open(sys.argv[1]))
+          assert r['claim_id']=='CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
+          assert r['orders_submitted'] is False
+          assert r['official_2024h1_opened'] is False
+          assert r['official_2024_2026_opened'] is False
+          if r['status']=='PRE2024_SURVIVOR_READY_FOR_EXACT_BYBIT_2024H1':
+              assert r['confirmation']['gate']['all'] is True
+              assert r['development']['gate']['all'] is True
+              assert r['development_opened'] is True
+              next_stage='FREEZE_EXACT_BYBIT_AND_OPEN_OFFICIAL_2024H1'
+          elif r['status']=='SOURCE_NOT_AUTHORIZED':
+              assert r['market_outcome_opened'] is False
+              assert r['model_fit'] is False
+              next_stage='CLOSE_SOURCE_ROUTE'
+          else:
+              next_stage='RETIRE_INFORMATION_UNIT_AND_CHANGE_ALPHA'
+          print(json.dumps({'status':r['status'],'decision':r['decision'],'next_stage':next_stage},sort_keys=True))
+          PY
+
+      - name: Record current project validation without blocking evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_binance_liquidation_dense_economic_20260726/r21
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+
+      - name: Freeze immutable hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          source_root=research/ml_binance_liquidation_dense_20260726
+          econ_root=research/ml_binance_liquidation_dense_economic_20260726
+          out=research_runs/ml_binance_liquidation_dense_economic_20260726/r21
+          mkdir -p "$out/inputs"
+          cp \
+            "$source_root/WORK_CLAIM.json" \
+            "$source_root/PREREGISTRATION.md" \
+            "$source_root/SOURCE_MANIFEST.json" \
+            "$source_root/reconstruct.py" \
+            "$source_root/test_source_gate.py" \
+            "$econ_root/ECONOMIC_STAGE.json" \
+            "$econ_root/README.md" \
+            "$econ_root/SOURCE_MANIFEST.json" \
+            "$econ_root/reconstruct.py" \
+            "$econ_root/test_run.py" \
+            "$out/inputs/"
+          cp "$source_root"/source_gate.py.gz.b64.part* "$out/inputs/"
+          cp "$econ_root"/run.py.gz.b64.part* "$out/inputs/"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-binance-liquidation-dense-economic-${{ github.run_id }}
+          path: research_runs/ml_binance_liquidation_dense_economic_20260726/r21
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
