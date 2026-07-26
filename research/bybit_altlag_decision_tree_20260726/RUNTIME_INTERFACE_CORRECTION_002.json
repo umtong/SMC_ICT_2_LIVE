@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1130-ALTLAG-DECISIONTREE-001",
+  "correction_id": "COR-20260726-ALTLAG-BASE-OBJECT-INTERFACE-002",
+  "status": "FROZEN_BEFORE_MARKET_RESULT",
+  "observed_failure": {
+    "workflow_run": 30191362116,
+    "exception": "AttributeError: module 'base_probe' has no attribute 'inspect_source'",
+    "market_result_produced": false,
+    "stage1_result_produced": false,
+    "pnl_produced": false
+  },
+  "root_cause": "The decision-tree adapter was authored against a draft dictionary/source-inspection interface. The registered dependency returns (DayArrays, SourceRecord), exposes DayArrays attributes, names the feature underreaction, and has no inspect_source or utc_start helper.",
+  "deterministic_adapter_changes": [
+    "Use day, record = base.aggregate(path, symbol, date) and retain both.",
+    "Access DayArrays through .mark and .trade_count attributes.",
+    "Alias the registered underreaction feature to the frozen decision-tree name under.",
+    "Attach the registered leader mark array to the event feature dictionary without changing values.",
+    "Compute UTC day start directly from the frozen date string instead of a nonexistent helper."
+  ],
+  "scientific_contract_unchanged": {
+    "hypothesis": true,
+    "dates": true,
+    "symbols": true,
+    "features_and_values": true,
+    "thresholds": true,
+    "event_rearm": true,
+    "latencies": true,
+    "costs": true,
+    "state_exits": true,
+    "global_slot": true,
+    "stage_gates": true
+  },
+  "sealed_periods": {"2024_opened": false, "2025_opened": false, "2026_opened": false},
+  "orders_submitted": false,
+  "created_at": "2026-07-26T15:42:00+09:00"
+}
