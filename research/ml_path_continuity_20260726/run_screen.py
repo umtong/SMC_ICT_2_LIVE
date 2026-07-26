@@ -29,12 +29,31 @@ _IMPL = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = _IMPL
 _SPEC.loader.exec_module(_IMPL)
 
+# Mechanical transport failover only. The scientific implementation, model,
+# features, partitions, costs, execution rules and gates remain SHA-frozen.
+# These are Bybit's documented mainnet and regional REST hosts. A request is
+# accepted only when the same frozen endpoint succeeds; no market row or
+# response is altered, merged or selected by outcome.
+_IMPL.API_BASES = (
+    "https://api.bybit.com",
+    "https://api.bytick.com",
+    "https://api.bybit.nl",
+    "https://api.bybit.tr",
+    "https://api.bybit.kz",
+    "https://api.bybitgeorgia.ge",
+    "https://api.bybit.ae",
+    "https://api.bybit.eu",
+    "https://api.bybit.id",
+    "https://api.manepa.jp",
+)
+
 for _name in dir(_IMPL):
     if not _name.startswith("__"):
         globals()[_name] = getattr(_IMPL, _name)
 
 IMPLEMENTATION_SHA256 = _OBSERVED
 IMPLEMENTATION_PART_COUNT = len(_PARTS)
+TRANSPORT_FAILOVER_HOSTS = _IMPL.API_BASES
 
 if __name__ == "__main__":
     raise SystemExit(_IMPL.main())
