@@ -11,44 +11,44 @@
   "first_place": {
     "candidate_type": "STRATEGY",
     "comparison_confidence": "VERY_LOW",
-    "first_place_id": "FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9",
+    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
     "known_weaknesses": [
+      "The compact result preserved comparator growth but not its complete trade ledger, maximum drawdown, profit factor or concentration fields.",
       "Binance USD-M price proxy rather than Bybit execution replay.",
-      "Historical funding was omitted after the fatal development-gate failure.",
+      "Historical funding was omitted.",
       "The completed-bar approximation does not reproduce original stop-order tick triggering.",
-      "Removing the largest 10% winning trades changes the 24-bp return to -26.3062%.",
-      "The median account return is -50 bps and the win rate is 17.98%.",
-      "The five largest winners contribute 67.35% of positive PnL.",
-      "The after-loser dependency is weaker than its matched all-breakout comparator.",
       "No 2024 or later interval was opened.",
+      "The surrounding Donchian family is dominated by rare large winners.",
+      "This is a non-ML baseline and cannot satisfy the final system's ML requirement.",
       "Daily growth remains far below the 1% target."
     ],
     "metrics": {
       "actual_funding_included": false,
-      "base_cost_bps": 24,
+      "base_cost_bps": 12,
       "bybit_execution_replayed": false,
-      "candidate_id": "a70626d9e484285f2cb4",
-      "family": "donchian_after_loser_60m_entry96_exit48_failsafe240",
-      "geometric_daily_growth": 0.0006318446194384375,
-      "h1_return": 0.20076326944627443,
-      "h2_return": 0.04874377722217682,
-      "matched_all_breakout_geometric_daily_growth_at_24bps": 0.0007001887213879954,
-      "maximum_drawdown": 0.1102976476441001,
-      "median_account_return_bps": -50.0,
-      "profit_factor": 1.6226240830708625,
-      "target_fraction": 0.06318446194384375,
-      "target_gap": 0.009368155380561563,
+      "candidate_id": "a70626d9e484285f2cb4|all",
+      "family": "donchian_all_breakout_60m_entry96_exit48",
+      "geometric_daily_growth": 0.0009008544402622221,
+      "geometric_daily_growth_at_24bps": 0.0007001887213879954,
+      "maximum_drawdown": null,
+      "median_account_return_bps": null,
+      "profit_factor": null,
+      "target_fraction": 0.09008544402622221,
+      "target_fraction_at_24bps": 0.07001887213879954,
+      "target_gap": 0.009099145559737778,
+      "target_gap_at_24bps": 0.009299811278612004,
       "target_geometric_daily_growth": 0.01,
-      "target_multiple_required": 15.826675882573262,
-      "top10pct_removed_return": -0.26306178630598,
-      "top5_positive_share": 0.6735035238367593,
-      "total_return": 0.259293006748736,
-      "trade_count": 89,
-      "win_rate": 0.1797752808988764
+      "target_multiple_required": 11.100571377733324,
+      "target_multiple_required_at_24bps": 14.281863790070096,
+      "top10pct_removed_return": null,
+      "top5_positive_share": null,
+      "total_return": null,
+      "trade_count": null
     },
+    "ml_requirement_status": "NOT_MET_NON_ML_BASELINE",
     "qualification_stage": "PRELIMINARY_CAUSAL_BINANCE_PROXY",
     "rank": 1,
-    "selection_reason": "The previous first place is removed because its immutable source exits surviving trades at entry_bar plus hold_bars, which violates the current project prohibition on elapsed-time liquidation. The Donchian after-loser path is the highest fully recorded remaining strategy with strategy-defined channel/stop exits. Even its 24-bp path has higher geometric daily growth than the former first place's 12-bp path. Ranking is provisional because execution is a Binance proxy, historical funding and Bybit replay are absent, and returns are highly concentrated.",
+    "selection_reason": "The former first place is removed because its immutable implementation uses a prohibited eight-hour elapsed-time liquidation. Among paths audited against the current exit contract, the Donchian all-breakout comparator has the highest recorded after-cost geometric daily growth: 0.0900854% at 12 bp and 0.0700189% at 24 bp. Missing risk and concentration fields force very-low confidence rather than silent exclusion.",
     "sequential_evidence": {
       "2026_opened": false,
       "confirmation_2025_opened": false,
@@ -62,20 +62,31 @@
   },
   "ranked_candidates": [
     {
-      "candidate_label": "Donchian after_loser 60m/96/48/240 a70626d9e484285f2cb4",
+      "candidate_label": "Donchian all-breakout comparator 60m/96/48 a70626d9e484285f2cb4",
       "comparison_confidence": "VERY_LOW",
-      "comparison_status": "PROVISIONAL_24BPS_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS",
-      "geometric_daily_growth": 0.0006318446194384375,
+      "comparison_status": "PROVISIONAL_COMPARATOR_GROWTH_RECORDED_RISK_FIELDS_INCOMPLETE_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS",
+      "geometric_daily_growth": 0.0009008544402622221,
+      "geometric_daily_growth_at_24bps": 0.0007001887213879954,
       "rank": 1,
       "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-      "target_gap": 0.009368155380561563
+      "target_gap": 0.009099145559737778
+    },
+    {
+      "candidate_label": "Donchian after-loser 60m/96/48/240 a70626d9e484285f2cb4",
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "PROVISIONAL_FULL_METRICS_12BPS_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS",
+      "geometric_daily_growth": 0.0008299955525170599,
+      "geometric_daily_growth_at_24bps": 0.0006318446194384375,
+      "rank": 2,
+      "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+      "target_gap": 0.00917000444748294
     },
     {
       "candidate_label": "aligned_continuation 33034b092ffd271a",
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
       "geometric_daily_growth": 0.00022797677403052496,
-      "rank": 2,
+      "rank": 3,
       "source_result_id": "RES-20260725-ABS-FLOW-001",
       "target_gap": 0.009772023225969475
     },
@@ -84,7 +95,7 @@
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
       "geometric_daily_growth": 0.0001189762570252828,
-      "rank": 3,
+      "rank": 4,
       "source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
       "target_gap": 0.009881023742974717
     },
@@ -93,7 +104,7 @@
       "comparison_confidence": "VERY_LOW",
       "comparison_status": "PROVISIONAL_SPARSE_FIRST_DAY_MONTHLY_DEVELOPMENT_WITH_FIT_SIGN_REVERSAL",
       "geometric_daily_growth": 0.0000358316,
-      "rank": 4,
+      "rank": 5,
       "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001",
       "target_gap": 0.0099641684
     },
@@ -102,7 +113,7 @@
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
       "geometric_daily_growth": 0.00003400166161160456,
-      "rank": 5,
+      "rank": 6,
       "source_result_id": "RES-20260726-DVOL-XSEC-001",
       "target_gap": 0.009965998338388396
     },
@@ -111,7 +122,7 @@
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT",
       "geometric_daily_growth": 0.0000245553331665,
-      "rank": 6,
+      "rank": 7,
       "source_result_id": "RES-20260725-ALPHA-HYP-001",
       "target_gap": 0.0099754446668335
     },
@@ -120,7 +131,7 @@
       "comparison_confidence": "VERY_LOW",
       "comparison_status": "PROVISIONAL_FOUR_TRADES_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
       "geometric_daily_growth": 0.00002053283367287051,
-      "rank": 7,
+      "rank": 8,
       "source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
       "target_gap": 0.00997946716632713
     },
@@ -129,7 +140,7 @@
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT",
       "geometric_daily_growth": -0.000719,
-      "rank": 8,
+      "rank": 9,
       "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
       "target_gap": 0.010719
     },
@@ -138,7 +149,7 @@
       "comparison_confidence": "LOW",
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT",
       "geometric_daily_growth": -0.01483,
-      "rank": 9,
+      "rank": 10,
       "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
       "target_gap": 0.02483
     }
@@ -162,10 +173,11 @@
     "survival_constraint": "a candidate with forced liquidation, irrecoverable account damage, or a prohibited elapsed-time liquidation cannot rank"
   },
   "reconciliation_notes": [
-    "Removed the former first place because its immutable simulation has a fixed hold_bars horizon exit, prohibited by the current project contract.",
-    "Inserted the fully recorded Donchian after-loser path as provisional rank 1 using its 24-bp geometric daily growth of 0.0631845%, which exceeds the former first place's 12-bp 0.0573077%.",
-    "Disclosure is mandatory: Donchian is a Binance proxy without historical funding or Bybit OOS, has 67.35% top-five concentration and becomes -26.31% after top-10% winner removal.",
-    "Lower legacy ranks remain provisional; candidates whose original contracts may contain horizon exits require separate evidence-only contract audits.",
+    "Removed the former first place because immutable state_exit.py uses maximum_hold_bars=96 and defaults surviving trades to the timeout open, prohibited by the current project contract.",
+    "Promoted the Donchian all-breakout comparator because it has the highest recorded growth among current-exit-contract-audited paths: 0.0900854% daily at 12 bp and 0.0700189% at 24 bp.",
+    "Inserted the fully recorded after-loser path at rank 2: 0.0829996% daily at 12 bp and 0.0631845% at 24 bp, but -26.31% after top-10% winner removal at 24 bp.",
+    "All-breakout risk and concentration fields were not preserved in the compact result; the candidate is ranked with VERY_LOW confidence rather than suppressed.",
+    "The new first is non-ML, a Binance proxy, lacks historical funding and Bybit OOS, and remains far below the target; it is a benchmark, not a protected research path.",
     "Target status and live-order permission remain unchanged."
   ],
   "revision": 13,
@@ -173,14 +185,18 @@
   "status": "ACTIVE",
   "unranked_results": [
     {
-      "reason": "Removed from the current-contract ranking. Immutable source Candidate contains hold_bars; simulation computes ti = entry_index + hold and exits surviving trades at the open at ti. This is a prohibited elapsed-time liquidation under the fixed project contract. The historical result remains recorded and may be reconsidered only through a separately frozen strategy-defined-exit formulation.",
+      "reason": "Removed from the current-contract ranking. Immutable verified state_exit.py contains maximum_hold_bars; the ranked candidate uses 96 five-minute bars and exits surviving trades at the timeout open. This is a prohibited eight-hour elapsed-time liquidation. Historical evidence remains recorded and may be reconsidered only through a separately frozen strategy-defined-exit formulation.",
       "source_evidence": {
-        "path": "research/dynamic_factor_residual_20260725/dynamic_factor_residual.py",
+        "artifact_digest": "sha256:d1677e1bb776dfe6d52db913d4a689b6bfd95a5bad648b1b8e92c7846ef7ad20",
+        "artifact_id": 8620014408,
+        "path": "state_exit.py",
         "relevant_lines": [
-          "31-34",
-          "96-116"
+          "44-48",
+          "62-74",
+          "126-142",
+          "146-190"
         ],
-        "sha256": "f46b87ef342e392b9226386edd5717def276e7c0"
+        "sha256": "7ed8ebda8e8744f4dcefb6405b5576582fe682b03ad586fc8576e89cf80eedb0"
       },
       "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001"
     },
@@ -205,5 +221,5 @@
       "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001"
     }
   ],
-  "updated_at": "2026-07-26T20:30:57+09:00"
+  "updated_at": "2026-07-26T20:40:00+09:00"
 }
