@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT-20260727-ML-COINM-MINIMAL-COST-POSSIBILITY-001",
+  "claim_id": "CLM-20260727-0015-ML-COINM-LIQ-ECONOMIC-001",
+  "parent_claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "observed_outcomes_before_amendment": false,
+  "purpose": "Remove nonessential pre-2024 barriers while preserving causal, cost and account validity. The target is profit discovery, not gate accumulation.",
+  "opening_conditions": {
+    "parent_source_gate": "PASS",
+    "confirmation_24bps": "positive total return and positive geometric daily growth with no forced liquidation or irrecoverable NAV loss",
+    "development_24bps": "positive total return and positive geometric daily growth with no forced liquidation or irrecoverable NAV loss"
+  },
+  "diagnostics_not_opening_barriers": [
+    "event count",
+    "ROC AUC versus structural-distance baseline",
+    "Brier skill",
+    "median trade",
+    "profit factor",
+    "quarter breadth",
+    "winner-removal performance",
+    "direction or symbol concentration"
+  ],
+  "risk_search": {
+    "opens_only_after_base_cost_possibility": true,
+    "planned_risk_fractions": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_caps": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+    "selection": "highest 24bp geometric daily growth among positive no-liquidation paths",
+    "one_percent_is_ceiling": false
+  },
+  "official_sequence": "Freeze the complete model, event threshold, action, risk/cap and execution method using information through 2023-12-31 and immediately open 2024H1. Weak 2024H1 retires the route; promising 2024H1 advances by the predetermined half-year update method.",
+  "unchanged": [
+    "one pooled HGBT",
+    "one calibration method",
+    "one global slot",
+    "12/18/24bp replay",
+    "structural target and stop",
+    "same-minute stop-first ambiguity",
+    "no elapsed-time liquidation",
+    "winner-removal rerouting as a reported diagnostic",
+    "credential and order prohibition"
+  ]
+}
