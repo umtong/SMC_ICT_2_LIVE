@@ -1,0 +1,43 @@
+name: Direct utility pre-outcome gapfix source export
+
+on:
+  push:
+    branches: [agent/r13-ml-direct-utility-gapfix-001]
+    paths:
+      - '.github/workflows/ml-direct-utility-gapfix-source-export-r13.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-direct-utility-gapfix-001
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reconstruct frozen runner and export bounded context
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=/tmp/direct-utility-gapfix-source
+          mkdir -p "$out"
+          python "$root/reconstruct.py"
+          cp "$root/run.py" "$root/test_run.py" "$root/source_manifest.json" "$out/"
+          sed -n '220,340p' "$root/run.py" > "$out/load_symbol_context.txt"
+          sed -n '340,620p' "$root/run.py" > "$out/feature_context.txt"
+          sed -n '840,960p' "$root/run.py" > "$out/run_context.txt"
+          sha256sum "$out"/* > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-utility-gapfix-source-${{ github.run_id }}
+          path: /tmp/direct-utility-gapfix-source
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
