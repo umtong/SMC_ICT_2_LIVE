@@ -1,0 +1,35 @@
+{
+  "amendment_id": "IMPLEMENTATION_CORRECTION_001",
+  "claim_id": "CLM-20260726-1900-ML-SWEEP-MSS-MAKER-001",
+  "observed_failure": {
+    "workflow_run": 30197911042,
+    "stage": "first fit-date queue simulation before model fitting or economic output",
+    "exception": "NameError: name 'trades' is not defined",
+    "result_json_written": false,
+    "model_fitted": false,
+    "strategy_or_pnl_result_observed": false
+  },
+  "correction": {
+    "original_run_py_sha256": "01eb44c9764b0dc2eb86f371b06cd303ebf4f063dec5fe8c497b61bba25ca2cf",
+    "corrected_run_py_sha256": "659a5a64c8acbd87a89d8f576c49d9ccfecc82191829599f971859c55306ce7c",
+    "replacements": [
+      {
+        "from": "for k in range(start, len(trades)):",
+        "to": "for k in range(start, len(t_us)):"
+      },
+      {
+        "from": "for k in range(fill_idx + 1, len(trades)):",
+        "to": "for k in range(fill_idx + 1, len(t_us)):"
+      }
+    ]
+  },
+  "unchanged": [
+    "dates and stage boundaries",
+    "SMC/ICT event definition",
+    "features and one multinomial logistic model",
+    "post-only queue and full-fill rules",
+    "latencies, costs, risk, capacity, global slot and gates",
+    "2024-2026 prohibition and no-order authority"
+  ],
+  "schema_version": 1
+}
