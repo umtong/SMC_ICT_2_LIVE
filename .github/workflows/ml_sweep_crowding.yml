@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/ml_sweep_crowding
-          key: ml-sweep-crowding-v2-${{ hashFiles('research/ml_sweep_crowding/contract.json') }}
+          key: ml-sweep-crowding-v3-${{ hashFiles('research/ml_sweep_crowding/contract.json') }}
 
       - name: Install pinned runtime
         run: |
@@ -59,11 +59,11 @@ jobs:
         run: |
           pytest -q \
             research/ml_sweep_crowding/test_run.py \
-            research/ml_sweep_crowding/test_source_v5.py
+            research/ml_sweep_crowding/test_source_static_hf.py
 
-      - name: Execute frozen source-to-account sequence
+      - name: Execute the sealed source-to-account sequence
         run: |
-          python -m research.ml_sweep_crowding.run_v5 \
+          python -m research.ml_sweep_crowding.run_static_hf_open \
             --contract research/ml_sweep_crowding/contract.json \
             --cache-dir .cache/ml_sweep_crowding \
             --output-dir research/results/ml_sweep_crowding
@@ -78,7 +78,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No result changes to publish."
           else
-            git commit -m "research: publish corrected ML sweep-crowding result"
+            git commit -m "research: publish source-valid ML sweep-crowding result"
             git push origin HEAD:${GITHUB_REF_NAME}
           fi
 
@@ -86,7 +86,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ml-sweep-crowding-result-v2
+          name: ml-sweep-crowding-result-v3
           path: research/results/ml_sweep_crowding
           if-no-files-found: warn
           retention-days: 30
