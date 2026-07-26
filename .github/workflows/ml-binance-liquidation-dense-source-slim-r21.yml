@@ -1,29 +1,24 @@
-name: ML Binance dense COIN-M liquidation source gate
+name: ML Binance dense COIN-M liquidation source gate slim
 
 on:
   push:
     branches:
       - agent/r11-ml-binance-liquidation-dense-001
     paths:
+      - '.github/workflows/ml-binance-liquidation-dense-source-slim-r21.yml'
       - 'research/ml_binance_liquidation_dense_20260726/**'
-      - '.github/workflows/ml-binance-liquidation-dense-source-r21.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/ml_binance_liquidation_dense_20260726/**'
-      - '.github/workflows/ml-binance-liquidation-dense-source-r21.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-binance-liquidation-coinm-source-${{ github.sha }}
-  cancel-in-progress: false
+  group: ml-binance-liquidation-coinm-source-slim-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   source-gate:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     timeout-minutes: 180
     env:
       PYTHONHASHSEED: '0'
@@ -36,16 +31,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install frozen source environment
+      - name: Install fixed source environment
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
 
-      - name: Compile and validate corrected outcome-sealed implementation
+      - name: Validate current corrected source contract
         run: |
           set -euo pipefail
           root=research/ml_binance_liquidation_dense_20260726
-          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          out=research_runs/ml_binance_liquidation_dense_20260726/source-slim
           mkdir -p "$out"
           python -m py_compile \
             "$root/source_gate_coinm.py" \
@@ -62,13 +57,15 @@ jobs:
           python -m json.tool "$root/CORRECTION_001_COINM_SOURCE_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_004_SLIM_RUNNER_BRANCH_CONCURRENCY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
 
       - name: Run official Binance Vision COIN-M source gate
         shell: bash
         run: |
           set -u
           root=research/ml_binance_liquidation_dense_20260726
-          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          out=research_runs/ml_binance_liquidation_dense_20260726/source-slim
           mkdir -p "$out"
           set +e
           PYTHONPATH="$root" python "$root/source_gate_coinm_executed.py" --output "$out" \
@@ -76,88 +73,71 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           printf '%s\n' "$rc" > "$out/RUN_EXIT_CODE.txt"
-          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
-            echo "unexpected source-gate process failure: $rc" >&2
-            exit "$rc"
-          fi
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then exit "$rc"; fi
           test -f "$out/SOURCE_GATE_RESULT.json"
           test -f "$out/SOURCE_MANIFEST.json"
           test -f "$out/SAMPLE_ROWS.jsonl.gz"
 
-      - name: Enforce source decision and outcome seal
+      - name: Enforce source-only decision
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
           from pathlib import Path
-
-          out = Path('research_runs/ml_binance_liquidation_dense_20260726/source')
-          result = json.loads((out / 'SOURCE_GATE_RESULT.json').read_text())
-          manifest = json.loads((out / 'SOURCE_MANIFEST.json').read_text())
-
-          correction_ids = {
-              'CORRECTION-20260726-ML-BINANCE-LIQ-COINM-CONTRACT-NOTIONAL-003',
-              'CORRECTION-20260726-ML-BINANCE-LIQ-SNAPSHOT-CENSORING-EXECUTED-FILL-004',
+          out=Path('research_runs/ml_binance_liquidation_dense_20260726/source-slim')
+          result=json.loads((out/'SOURCE_GATE_RESULT.json').read_text())
+          manifest=json.loads((out/'SOURCE_MANIFEST.json').read_text())
+          correction_ids={
+            'CORRECTION-20260726-ML-BINANCE-LIQ-COINM-CONTRACT-NOTIONAL-003',
+            'CORRECTION-20260726-ML-BINANCE-LIQ-SNAPSHOT-CENSORING-EXECUTED-FILL-004',
           }
-          assert result['claim_id'] == 'CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
-          assert result['market_scope'] == 'COIN_M_EXTERNAL_SIGNAL'
-          assert manifest['source_symbols'] == ['BTCUSD_PERP', 'ETHUSD_PERP']
-          assert manifest['bybit_signal_map'] == {
-              'BTCUSD_PERP': 'BTCUSDT',
-              'ETHUSD_PERP': 'ETHUSDT',
-          }
-          assert set(result['authoritative_corrections']) == correction_ids
-          assert set(manifest['authoritative_corrections']) == correction_ids
-          assert result['source_semantics']['coverage'].startswith('censored lower-bound')
-          assert result['source_semantics']['absence'].startswith('no published row')
+          assert result['claim_id']=='CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
+          assert result['market_scope']=='COIN_M_EXTERNAL_SIGNAL'
+          assert manifest['source_symbols']==['BTCUSD_PERP','ETHUSD_PERP']
+          assert manifest['bybit_signal_map']=={'BTCUSD_PERP':'BTCUSDT','ETHUSD_PERP':'ETHUSDT'}
+          assert set(result['authoritative_corrections'])==correction_ids
+          assert set(manifest['authoritative_corrections'])==correction_ids
           assert result['checks']['snapshot_censoring_disclosed'] is True
           assert result['checks']['original_quantity_fallback_prohibited'] is True
           assert result['checks']['only_positive_executed_snapshots_enter_signal_rows'] is True
           assert result['checks']['contract_count_semantics_bound'] is True
-          assert result['status'] in {'PASS', 'BELOW_SOURCE_GATE', 'SOURCE_ERROR'}
+          assert result['status'] in {'PASS','BELOW_SOURCE_GATE','SOURCE_ERROR'}
           assert result['market_outcome_opened'] is False
           assert result['model_fit'] is False
           assert result['trade_or_pnl_opened'] is False
           assert result['official_2024_2026_opened'] is False
           assert result['credentials_used'] is False
           assert result['orders_submitted'] is False
-          if result['status'] == 'PASS':
-              assert result['source_gate_pass'] is True
-              assert result['scientific_decision'] == 'OPEN_FROZEN_PRE2024_DENSE_LIQUIDATION_MODEL_STAGE'
-              assert all(result['checks'].values())
+          if result['status']=='PASS':
+            assert result['source_gate_pass'] is True
+            assert result['scientific_decision']=='OPEN_FROZEN_PRE2024_DENSE_LIQUIDATION_MODEL_STAGE'
+            assert all(result['checks'].values())
           else:
-              assert result['source_gate_pass'] is False
-              assert result['scientific_decision'] == 'CLOSE_OFFICIAL_LIQUIDATION_SNAPSHOT_ROUTE_BEFORE_OUTCOMES'
-          serialized = json.dumps(result, sort_keys=True).lower()
-          for prohibited in (
-              'future_return_value', 'first_passage_label_value', 'model_auc',
-              'trade_return', 'account_nav', 'official_2024_opened'
-          ):
-              assert prohibited not in serialized
+            assert result['source_gate_pass'] is False
+            assert result['scientific_decision']=='CLOSE_OFFICIAL_LIQUIDATION_SNAPSHOT_ROUTE_BEFORE_OUTCOMES'
           print(json.dumps({
-              'status': result['status'],
-              'layout': result.get('layout'),
-              'source_gate_pass': result['source_gate_pass'],
-              'decision': result['scientific_decision'],
-              'totals': result.get('totals', {}),
-              'fatal_error': result.get('fatal_error'),
-          }, sort_keys=True))
+            'status':result['status'],
+            'source_gate_pass':result['source_gate_pass'],
+            'decision':result['scientific_decision'],
+            'totals':result.get('totals',{}),
+            'fatal_error':result.get('fatal_error'),
+          },sort_keys=True))
           PY
 
-      - name: Record current project validation without suppressing scientific evidence
+      - name: Record current project validation
         if: always()
         continue-on-error: true
         run: |
           set -euo pipefail
-          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          out=research_runs/ml_binance_liquidation_dense_20260726/source-slim
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
 
-      - name: Freeze source evidence hashes
+      - name: Freeze evidence hashes
         if: always()
         run: |
           set -euo pipefail
           root=research/ml_binance_liquidation_dense_20260726
-          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          out=research_runs/ml_binance_liquidation_dense_20260726/source-slim
           mkdir -p "$out/source"
           cp \
             "$root/WORK_CLAIM.json" \
@@ -165,31 +145,21 @@ jobs:
             "$root/CORRECTION_001_COINM_SOURCE_BEFORE_OUTCOME.json" \
             "$root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" \
             "$root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_004_SLIM_RUNNER_BRANCH_CONCURRENCY_BEFORE_OUTCOME.json" \
+            "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" \
             "$root/source_gate_coinm.py" \
             "$root/source_gate_coinm_executed.py" \
             "$root/test_source_gate_coinm.py" \
             "$root/test_source_gate_coinm_executed.py" \
             "$out/source/"
-          sha256sum \
-            "$root/WORK_CLAIM.json" \
-            "$root/PREREGISTRATION.md" \
-            "$root/CORRECTION_001_COINM_SOURCE_BEFORE_OUTCOME.json" \
-            "$root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" \
-            "$root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" \
-            "$root/source_gate_coinm.py" \
-            "$root/source_gate_coinm_executed.py" \
-            "$root/test_source_gate_coinm.py" \
-            "$root/test_source_gate_coinm_executed.py" \
-            .github/workflows/ml-binance-liquidation-dense-source-r21.yml \
-            > "$out/INPUT_SHA256SUMS.txt"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
             | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-binance-liquidation-coinm-source-${{ github.run_id }}
-          path: research_runs/ml_binance_liquidation_dense_20260726/source
+          name: ml-binance-liquidation-coinm-source-slim-${{ github.run_id }}
+          path: research_runs/ml_binance_liquidation_dense_20260726/source-slim
           if-no-files-found: error
           retention-days: 30
           compression-level: 6

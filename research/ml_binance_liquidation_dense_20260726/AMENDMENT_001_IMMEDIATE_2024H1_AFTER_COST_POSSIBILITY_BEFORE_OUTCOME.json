@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT-20260726-ML-BINANCE-LIQ-DENSE-IMMEDIATE-2024H1-001",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "source_gate_result_observed": false,
+  "market_outcome_observed": false,
+  "model_fit_observed": false,
+  "official_2024H1_observed": false,
+  "orders_submitted": false,
+  "reason": "Pre-2024 data is used to establish causal model fit and after-cost possibility, not to create an expanding robustness barrier that indefinitely postpones the first official 2024H1 research interval.",
+  "unchanged": [
+    "COIN-M BTCUSD_PERP and ETHUSD_PERP liquidationSnapshot source identity",
+    "Bybit BTCUSDT and ETHUSDT execution universe",
+    "five-second operational delay after completed one-minute source state",
+    "one pooled HGBT and one isotonic calibration map",
+    "fourteen causal features",
+    "structural target and stop",
+    "one global slot",
+    "12/18/24-bp paths",
+    "no elapsed-time liquidation",
+    "2023-12-31 information cutoff"
+  ],
+  "pre2024_advancement": {
+    "requires": [
+      "outcome-sealed source gate PASS",
+      "causal model successfully fitted",
+      "positive calendar-2023 development total return after 24bp",
+      "no forced liquidation, bankruptcy or terminal NAV loss"
+    ],
+    "diagnostics_not_opening_barriers": [
+      "AUC lift over structural distance",
+      "Brier skill",
+      "positive median trade",
+      "minimum profit factor",
+      "minimum action or trade count",
+      "both chronological halves positive",
+      "positive exact top-10%-winner-removal return",
+      "concentration threshold"
+    ],
+    "diagnostic_use": "All diagnostics remain mandatory in the report and strongly determine whether 2024H1 is promising or structurally weak, but they do not add another pre-2024 purity gate."
+  },
+  "risk_search": {
+    "planned_stop_risk_fraction": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_cap_multiple": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+    "selection": "highest 24-bp geometric daily growth among no-liquidation paths with positive ending NAV",
+    "growth_cap": null,
+    "winner_removal": "reported for the selected path rather than used as a pre-2024 veto"
+  },
+  "official_2024H1": {
+    "opens_immediately_after_pre2024_freeze": true,
+    "information_cutoff": "2023-12-31T23:59:59Z",
+    "weak_result_action": "retire the exact forced-liquidation information unit and change alpha without adjacent tuning",
+    "promising_result_action": "use only information through 2024-06-30 and the predetermined update method to freeze the 2024H2 version",
+    "seen_interval_semantics": "an inspected interval may guide the next version but is never relabeled as fresh independent OOS for that modified version"
+  }
+}
