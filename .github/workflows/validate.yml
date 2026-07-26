@@ -12,6 +12,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,3 +27,14 @@ jobs:
         run: python -m pytest
       - name: Build hot context bundle
         run: python scripts/build_context_bundle.py
+      - name: Preserve optional execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-validation-evidence-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/stablecoin_strict_v3_validation_hook/output
+            ${{ runner.temp }}/stablecoin_strict_v3_validation_hook_summary.json
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
