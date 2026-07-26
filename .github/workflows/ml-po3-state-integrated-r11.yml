@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: ml-po3-state-integrated-r11-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   PYTHONHASHSEED: "0"
