@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-stablecoin-issuance-source-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ml-stablecoin-issuance-source-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source-gate:
@@ -56,6 +56,7 @@ jobs:
           python -m json.tool "$root/AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_002_END_EXCLUSIVE_BOUNDARY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_006_SLIM_RUNNERS_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_007_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
       - name: Run outcome-sealed source gate
         run: |
@@ -120,7 +121,7 @@ jobs:
           root=research/ml_stablecoin_issuance_20260726
           out=research_runs/ml_stablecoin_issuance_20260726/source_gate
           mkdir -p "$out/source"
-          cp "$root"/{WORK_CLAIM.json,preregistration.json,AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json,CORRECTION_002_END_EXCLUSIVE_BOUNDARY_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_006_SLIM_RUNNERS_BEFORE_OUTCOME.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,test_source_gate.py} "$out/source/"
+          cp "$root"/{WORK_CLAIM.json,preregistration.json,AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json,CORRECTION_002_END_EXCLUSIVE_BOUNDARY_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_006_SLIM_RUNNERS_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_007_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,test_source_gate.py} "$out/source/"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         if: always()
