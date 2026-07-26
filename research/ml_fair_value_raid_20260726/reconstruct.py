@@ -15,19 +15,19 @@ EXPECTED_PARTS = {
     "run.py.gz.b64.part01": "da69d2b6f00f3a5c723fa3023285b4b7ba8fd7e0880c62201f9e5fd5b64185ce",
     "run.py.gz.b64.part02": "c88ac54be1f1df99ed0607eba59ae0a2aecd8044cddcaab1c4d336ac8b7c856b",
     "run.py.gz.b64.part03": "62449652dc0ef3b84bbdf82c1e1418272351adb9009f16de2a24c2a42a086147",
-    "run.py.gz.b64.part04": "9e237b0712bcaa50f552bd551709a150903f3d839b8f6a6af86f7d87b5d02f32",
-    "run.py.gz.b64.part05": "36c34aa321b2e7c8222f6b058f4da5a659028282ab038096036488f609ff56a7",
-    "run.py.gz.b64.part06": "623e142dedf7539aed1405a8dcc84fa4f1a53c5e8565ce7b196aa92285bcda5c",
-    "run.py.gz.b64.part07": "cb7042ef124f492c609c75ded3a2a738086f1d97cbe5fe3d2e3cd2ca6f230d18"
+    "run.py.gz.b64.part04": "82672bd7abc68272e5dd11f44e43a52a96a30aab27265f0a6ba502c5e2b3dc4c",
+    "run.py.gz.b64.part05": "cfc137c47297d6c071976ea3c1d71f3c2354edecc041ad1b1c59591c5c908819",
+    "run.py.gz.b64.part06": "e9c56b17bd296e9ad8328c6d99472d3392eb7512cb0f06ddcce1dad4724a2204",
+    "run.py.gz.b64.part07": "eab9c03f47957f3d5c9918fd173962d3ff5dcf91d96bca2887e4b04f9b3ec8a0"
 }
 EXPECTED = {
     "part_count": 8,
-    "base64_bytes": 16085,
-    "base64_sha256": "a3ea86f2e8dff289a77ddff9b7a8934a5a7352e5bb18984d61f5b2ab107e1a64",
-    "gzip_bytes": 12063,
-    "gzip_sha256": "c842630e89cbc661f7e6200e7069c7e1fdc1bb17c597e2c92e6342f76fcaad51",
-    "raw_bytes": 49951,
-    "raw_sha256": "8cc765ecc379da4808599d95f91a5c44d3672483141d34d7781cf9c336fdc3c9"
+    "base64_bytes": 16104,
+    "base64_sha256": "1c1951c5577acd30b0ee41349dc26ba956365106382d0c5e6d34aa094f8d2acf",
+    "gzip_bytes": 12076,
+    "gzip_sha256": "9e7532bd5d3bdd3e15866f8d676afbae6f1843a91c494d313fbca634a5aff099",
+    "raw_bytes": 49994,
+    "raw_sha256": "3563ec0bb01b89a0051a411d62e2a353720b4ceafcb6c7d9961f81801c1a22b1"
 }
 
 
