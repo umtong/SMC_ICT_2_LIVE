@@ -4,18 +4,20 @@
 
 - Dataset mirror: `gionuibk/hyperliquid-misc-events`.
 - Canonical node producer: `hyperliquid-dex/node` with `--write-misc-events --batch-by-block`.
-- Batched row schema: `local_time`, `block_time`, `block_number`, `events`.
-- The workflow resolves the dataset repository `main` SHA before any event file is downloaded and then addresses every file through that immutable SHA.
-- Raw files are treated as LZ4-compressed JSONL. Each downloaded byte stream is SHA-256 hashed before parsing.
+- Batched row schema: `local_time`, `block_time`, `block_number`, `events`, with `_src` preserving the originating `misc_events_by_block/hourly/YYYYMMDD/H.lz4` identity.
+- The workflow resolves the dataset repository `main` SHA before any event row is read.
+- The public repository stores consolidated `data/*.parquet` objects rather than guaranteeing each `_src` raw path as a separate Hub sibling. The source gate therefore addresses the Parquet object through the exact resolved commit SHA and selects only the 36 frozen `_src` values.
+- DuckDB HTTP range reads use projection and Parquet predicate pushdown. A coverage query records every frozen path's row count, block range and local-time range; a second query reads only nonempty event payloads.
+- Source identity includes repository metadata SHA-256, exact repository revision, Parquet sibling/blob metadata, frozen SQL hashes, coverage aggregates and output hashes.
 
 ## Canonical liquidation schema
 
 Only explicit `LedgerUpdate` deltas with `type == "liquidation"` are accepted. Required fields:
 
-- `liquidatedNtlPos`;
-- `accountValue`;
+- `liquidatedNtlPos` greater than zero;
+- finite numeric `accountValue`, which may be negative at liquidation;
 - `leverageType` equal to `Cross` or `Isolated`;
-- nonempty `liquidatedPositions[{coin, szi}]`.
+- nonempty `liquidatedPositions[{coin, szi}]` with finite nonzero signed size.
 
 Signed position size is interpreted mechanically: positive `szi` is a liquidated long and forced sell flow; negative `szi` is a liquidated short and forced buy flow.
 
