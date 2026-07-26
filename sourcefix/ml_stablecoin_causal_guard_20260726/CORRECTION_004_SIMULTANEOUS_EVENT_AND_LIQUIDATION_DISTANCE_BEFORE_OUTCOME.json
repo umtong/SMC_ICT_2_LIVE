@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-EVENT-LIQUIDATION-DISTANCE-004",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_DECISION_READY_SOURCE_RESULT_OR_MARKET_OUTCOME",
+  "recorded_before_source_result_or_market_outcome": true,
+  "observed_problems": [
+    "Prior-event features were accumulated row by row after sorting by event_id inside the same availability second. Later rows at the same second could therefore treat simultaneous logs as past information while earlier rows could not, creating arbitrary order-dependent model inputs.",
+    "Position size used the pre-entry expected stop fraction, which is correct for a quantity fixed before market fill, but the liquidation test reused that expected distance instead of the actual fill-to-structural-stop distance. An inside-band entry gap could therefore hide a liquidation path or falsely classify one."
+  ],
+  "changes": [
+    "Sort events by the selected availability timestamp and event identity, calculate prior 60-minute same-direction and prior 24-hour net issuance from timestamps strictly earlier than the current second, assign the same prior state to every event finalized in that second, and only then add the simultaneous group to history.",
+    "Retain the pre-entry expected stop fraction for planned quantity and leverage sizing.",
+    "Calculate a separate actual fill-to-structural-stop distance for liquidation testing, augmented by any adverse stop-gap realized loss.",
+    "Treat ENTRY_GAP_INVALIDATED_COST_ONLY as immediate zero-gross exposure with zero structural liquidation-test distance.",
+    "Record planned stop distance, actual structural stop distance, adverse realized gap loss, liquidation-test distance and liquidation distance on every account ledger row."
+  ],
+  "unchanged": [
+    "source identities and availability delays",
+    "HGBT family, features, labels, calibration and split dates",
+    "pre-entry side and expected-value rule",
+    "structural target and stop prices",
+    "one global BTC/ETH slot and 12/18/24-bp costs",
+    "risk and notional search domain",
+    "immediate official 2024H1 rule for a pre-2024 survivor"
+  ],
+  "source_result_observed_before_change": false,
+  "market_archive_opened_before_change": false,
+  "model_metric_observed_before_change": false,
+  "trade_or_pnl_observed_before_change": false,
+  "official_2024_2026_opened_before_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
