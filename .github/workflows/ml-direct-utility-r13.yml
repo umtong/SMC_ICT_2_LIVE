@@ -1,0 +1,141 @@
+name: Direct after-cost ML utility policy
+
+on:
+  push:
+    branches:
+      - agent/r13-ml-direct-utility-001
+    paths:
+      - ".github/workflows/ml-direct-utility-r13.yml"
+      - "research/ml_direct_utility_20260726/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/ml-direct-utility-r13.yml"
+      - "research/ml_direct_utility_20260726/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-direct-utility-r13-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 \
+            pandas==2.2.3 \
+            requests==2.32.4 \
+            scipy==1.15.3 \
+            scikit-learn==1.6.1 \
+            pytest==8.3.5
+
+      - name: Validate one-model causal implementation
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/r13
+          mkdir -p "$out"
+          python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/run.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/ml-direct-utility-r13
+          key: ml-direct-utility-r13-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json') }}
+
+      - name: Run frozen pre-2024 direct-utility screen
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/r13
+          PYTHONPATH="$root" python "$root/run.py" \
+            --output "$out" \
+            --cache /tmp/ml-direct-utility-r13 \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Enforce minimal system and sealed periods
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/ml_direct_utility_20260726/r13')
+          result=json.loads((root/'RESULT.json').read_text())
+          contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2013-ML-DIRECT-UTILITY-001'
+          assert result['model_family_count']==1
+          assert result['hyperparameter_grid'] is False
+          assert result['one_global_slot'] is True
+          assert result['no_elapsed_time_liquidation'] is True
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          assert contract['one_model_family'] is True
+          assert contract['one_economic_decision_rule'] is True
+          assert contract['prohibited_years']==[2024,2025,2026]
+          if not result['confirmation']['gate_passed']:
+              assert result['development'] is None
+              assert result['selected_risk_config'] is None
+          print(json.dumps({
+              'status':result['status'],
+              'confirmation_gate':result['confirmation']['gate_passed'],
+              'development_opened':result['development_opened'],
+              'decision':result['decision'],
+          },sort_keys=True))
+          PY
+
+      - name: Record immutable hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/r13
+          mkdir -p "$out"
+          sha256sum \
+            "$root/WORK_CLAIM.json" \
+            "$root/preregistration.json" \
+            "$root/README.md" \
+            "$root/SOURCES.md" \
+            "$root/source_manifest.json" \
+            "$root/run.py.gz.b64" \
+            "$root/reconstruct.py" \
+            "$root/run.py" \
+            "$root/test_run.py" \
+            > "$out/INPUT_SHA256SUMS.txt" || true
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-direct-utility-r13-${{ github.sha }}
+          path: research_runs/ml_direct_utility_20260726/r13
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
