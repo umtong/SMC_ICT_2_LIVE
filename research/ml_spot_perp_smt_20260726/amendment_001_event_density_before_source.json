@@ -1,0 +1,39 @@
+{
+  "amendment_id": "AMEND-20260726-ML-SPOT-PERP-SMT-EVENT-DENSITY-001",
+  "claim_id": "CLM-20260726-1908-ML-SPOT-PERP-SMT-001",
+  "recorded_before": {
+    "binance_spot_source_acquired": false,
+    "candidate_generated": false,
+    "label_generated": false,
+    "model_fitted": false,
+    "pnl_computed": false
+  },
+  "reason": "The implementation must test a dense cash-market price-discovery signal rather than repeat the already-observed event-starvation defect of long named chart sequences.",
+  "supersedes": {
+    "spot_event_bar": "completed five-second acceptance",
+    "spot_external_pivot": "confirmed 60-second pivot",
+    "minimum_confirmation_events": 500,
+    "minimum_confirmation_trades": 100
+  },
+  "replacement": {
+    "spot_event_bar": "first completed one-second close accepting through the pool",
+    "spot_external_pivot": "confirmed 15-second pivot with two completed bars on each side",
+    "minimum_confirmation_events": 200,
+    "minimum_confirmation_trades": 80,
+    "one_event_per_pool": true
+  },
+  "unchanged": [
+    "BTCUSDT only",
+    "Binance spot local-arrival quotes and trades",
+    "Bybit 100 ms BBO execution",
+    "500 ms information delay",
+    "one HGBT and one isotonic calibrator",
+    "same-direction continuation only",
+    "frozen structural target and stop",
+    "12/18/24 bp replay",
+    "one global slot",
+    "2023 conditional opening",
+    "2024-2026 source prohibition",
+    "no credentials or orders"
+  ]
+}
