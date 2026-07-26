@@ -1,0 +1,95 @@
+name: Stablecoin strict V4 branch-push result authority
+
+on:
+  push:
+    branches:
+      - 'agent/r22-run-stablecoin-v4-*'
+    paths:
+      - 'research/triggers/stablecoin_strict_v4_push/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stablecoin-strict-v4-branch-push-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: '0'
+  PYTHONUNBUFFERED: '1'
+  PYTHONFAULTHANDLER: '1'
+  OMP_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '2'
+  MKL_NUM_THREADS: '2'
+  VECLIB_MAXIMUM_THREADS: '2'
+  PUBLISH_DIR: research_results/r22_stablecoin_strict_v4_001
+
+jobs:
+  decision:
+    runs-on: macos-14
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5 \
+            numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1 pyarrow==18.1.0
+
+      - name: Validate execution-only authority
+        run: |
+          set -euo pipefail
+          python -m json.tool research/execution/stablecoin_strict_v4_20260727/EXECUTION_CORRECTION_006_BRANCH_PUSH_RESULT_AUTHORITY_BEFORE_OUTCOME.json >/dev/null
+          python -m py_compile scripts/run_stablecoin_strict_v4_authority.py
+
+      - id: execute
+        name: Run fail-closed source and strict V4 economic decision
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/stablecoin_strict_v4_authority" "$PUBLISH_DIR"
+          python scripts/run_stablecoin_strict_v4_authority.py \
+            --work-dir "$RUNNER_TEMP/stablecoin_strict_v4_authority" \
+            --publish-dir "$PUBLISH_DIR" \
+            2>&1 | tee "$RUNNER_TEMP/STABLECOIN_STRICT_V4_AUTHORITY.log"
+
+      - name: Commit hash-identified decision back to execution branch
+        if: always()
+        run: |
+          set -euo pipefail
+          test -d "$PUBLISH_DIR"
+          test -f "$PUBLISH_DIR/DECISION.json" -o -f "$PUBLISH_DIR/EXECUTION_FAILURE.json"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$PUBLISH_DIR"
+          if git diff --cached --quiet; then
+            echo 'No new result files to commit.'
+          else
+            git commit -m 'Record strict V4 stablecoin source and economic decision'
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-v4-branch-push-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/STABLECOIN_STRICT_V4_AUTHORITY.log
+            ${{ runner.temp }}/stablecoin_strict_v4_authority
+            research_results/r22_stablecoin_strict_v4_001
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Fail only after preserving unexpected execution evidence
+        if: steps.execute.outcome == 'failure'
+        run: exit 1
