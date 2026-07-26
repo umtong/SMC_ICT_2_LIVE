@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "transport_id": "TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_outcome": true,
+  "reason": "Aave forced-flow research demonstrated that keyless archive-node preflight can pass while historical eth_getLogs fails. Stablecoin issuance must not depend on the same single transport failure mode.",
+  "source": "Blockscout Ethereum per-instance Etherscan-compatible API and REST block endpoint",
+  "endpoints": [
+    "https://eth.blockscout.com/api?module=block&action=getblocknobytime",
+    "https://eth.blockscout.com/api?module=logs&action=getLogs",
+    "https://eth.blockscout.com/api/v2/addresses/{address}",
+    "https://eth.blockscout.com/api/v2/blocks/{block_number}"
+  ],
+  "contract": {
+    "months": "2021-01 through 2023-12 inclusive",
+    "tokens": ["USDT", "USDC"],
+    "events": ["MINT", "BURN"],
+    "topic_filter": "ERC20 Transfer with indexed zero from/to address",
+    "maximum_logs_per_request": 1000,
+    "truncation_handling": "recursively split an inclusive block range whenever exactly 1000 logs are returned",
+    "availability": ["event block plus 12 blocks", "event block plus 64 blocks"],
+    "identity": "fixed contract address, matching returned log address and Blockscout is_contract response",
+    "deduplication": "contract plus transaction hash plus log index"
+  },
+  "unchanged_science": true,
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024_2026_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
