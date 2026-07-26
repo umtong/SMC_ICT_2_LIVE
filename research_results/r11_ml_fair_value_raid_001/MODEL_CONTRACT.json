@@ -1,0 +1,51 @@
+{
+  "baseline": "fixed five-feature logistic comparator",
+  "baseline_features": [
+    "abs_raid_distance_bps",
+    "fair_gap_d1",
+    "premium_bps",
+    "last_ret_5s_bps",
+    "oi_chg_5s_bps"
+  ],
+  "calibration": "one isotonic map on 2022-07 through 2022-09 only",
+  "costs_bps": [
+    12.0,
+    18.0,
+    24.0
+  ],
+  "entry_delay_seconds": 1,
+  "event_quantile": 0.995,
+  "features": [
+    "fair_gap_bps",
+    "last_mark_gap_bps",
+    "premium_bps",
+    "fair_gap_z",
+    "fair_gap_d1",
+    "fair_gap_d5",
+    "premium_d1",
+    "premium_d5",
+    "last_ret_1s_bps",
+    "last_ret_5s_bps",
+    "last_ret_30s_bps",
+    "index_ret_5s_bps",
+    "index_ret_30s_bps",
+    "mark_ret_5s_bps",
+    "oi_chg_5s_bps",
+    "oi_chg_30s_bps",
+    "oi_accel_bps",
+    "rv_30s_bps",
+    "funding_rate_bps",
+    "minutes_to_funding",
+    "update_age_seconds",
+    "last_price_age_seconds",
+    "mark_price_age_seconds",
+    "index_price_age_seconds",
+    "symbol_code"
+  ],
+  "model": "HistGradientBoostingClassifier",
+  "no_elapsed_time_exit": true,
+  "no_model_grid": true,
+  "no_risk_grid": true,
+  "no_threshold_grid": true,
+  "primary_cost_bps": 24.0
+}
