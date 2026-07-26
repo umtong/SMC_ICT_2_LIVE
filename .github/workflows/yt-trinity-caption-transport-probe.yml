@@ -1,0 +1,119 @@
+name: YT Trinity caption transport probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - control/yt-trinity-caption-probe-trigger.json
+      - .github/workflows/yt-trinity-caption-transport-probe.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-caption-transport-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install current YouTube extraction stack
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+          python -m yt_dlp --version
+          node --version
+      - name: Probe public subtitle transports
+        shell: bash
+        run: |
+          mkdir -p artifact
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          videos = {
+              "swipalnam": "UmEPMyzjQS8",
+              "chartbro": "DnGemQi1sOE",
+              "indicator_sensei": "18U0aD4K21I",
+          }
+          profiles = {
+              "default_no_web": "youtube:player_client=default,-web,-web_safari;player_skip=webpage,configs",
+              "tv_simply": "youtube:player_client=tv_simply;player_skip=webpage,configs",
+              "tv": "youtube:player_client=tv;player_skip=webpage,configs",
+              "ios": "youtube:player_client=ios;player_skip=webpage,configs",
+              "android_vr": "youtube:player_client=android_vr;player_skip=webpage,configs",
+              "web_embedded": "youtube:player_client=web_embedded;player_skip=webpage,configs",
+          }
+          rows = []
+          for channel, video_id in videos.items():
+              for profile, extractor_args in profiles.items():
+                  command = [
+                      sys.executable,
+                      "-m",
+                      "yt_dlp",
+                      "--dump-single-json",
+                      "--skip-download",
+                      "--ignore-no-formats-error",
+                      "--no-playlist",
+                      "--js-runtimes",
+                      "node",
+                      "--impersonate",
+                      "chrome",
+                      "--extractor-args",
+                      extractor_args,
+                      f"https://www.youtube.com/watch?v={video_id}",
+                  ]
+                  completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
+                  stdout = completed.stdout.strip()
+                  stderr = completed.stderr.strip()
+                  payload = None
+                  if stdout:
+                      try:
+                          payload = json.loads(stdout.splitlines()[-1])
+                      except Exception:
+                          payload = None
+                  subtitles = (payload or {}).get("subtitles") or {}
+                  automatic = (payload or {}).get("automatic_captions") or {}
+                  rows.append({
+                      "channel": channel,
+                      "video_id": video_id,
+                      "profile": profile,
+                      "returncode": completed.returncode,
+                      "title": (payload or {}).get("title"),
+                      "subtitles": sorted(subtitles),
+                      "automatic_captions": sorted(automatic),
+                      "track_count": sum(len(v or []) for v in subtitles.values()) + sum(len(v or []) for v in automatic.values()),
+                      "stderr_tail": stderr[-3000:],
+                      "stdout_prefix": stdout[:300],
+                  })
+          Path("artifact/probe.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          successful = [row for row in rows if row["track_count"] > 0]
+          Path("artifact/summary.json").write_text(
+              json.dumps({"successful_profiles": successful, "success_count": len(successful)}, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps({"success_count": len(successful), "successful_profiles": successful}, ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-caption-transport-probe-${{ matrix.os }}-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 14
