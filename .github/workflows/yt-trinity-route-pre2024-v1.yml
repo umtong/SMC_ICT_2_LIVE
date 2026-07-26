@@ -1,0 +1,443 @@
+name: YT Trinity route pre-2024 result
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-route-pre2024-v1.yml
+      - control/yt-trinity-route-pre2024-v1-trigger.json
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-route-pre2024-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout exact routing source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install deterministic research dependencies
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          python -m pip install -q --upgrade pip
+          python -m pip install -q numpy pandas scikit-learn pyarrow pytest
+
+      - name: Download immutable pre-2024 screen evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          python - <<'PY' > /tmp/screen_env
+          import json
+          from pathlib import Path
+          pointer = json.loads(Path('research/yt_trinity_ml/PRE2024_SCREEN_POINTER.json').read_text())
+          assert pointer['schema_version'] == 2, pointer
+          assert pointer['job_status'] == 'success', pointer
+          assert pointer['summary'] is not None, pointer
+          print(f"SCREEN_RUN_ID={pointer['run_id']}")
+          print(f"SCREEN_ARTIFACT={pointer['artifact_name']}")
+          PY
+          source /tmp/screen_env
+          mkdir -p inputs/pre2024
+          gh run download "${SCREEN_RUN_ID}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name "${SCREEN_ARTIFACT}" \
+            --dir inputs/pre2024
+          test -f inputs/pre2024/PRIMARY_SCREEN_SUMMARY.json
+          test -f inputs/pre2024/BYBIT_INSTRUMENT_RULES_SNAPSHOT.json
+          test -f inputs/pre2024/RUN_IDENTITY.json
+          sha256sum inputs/pre2024/PRIMARY_SCREEN_SUMMARY.json
+
+      - name: Freeze routing decision and selected pre-2024 configuration
+        id: decide
+        run: |
+          set -euo pipefail
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          pointer = json.loads(Path('research/yt_trinity_ml/PRE2024_SCREEN_POINTER.json').read_text())
+          artifact_summary_path = Path('inputs/pre2024/PRIMARY_SCREEN_SUMMARY.json')
+          artifact_raw = artifact_summary_path.read_bytes()
+          artifact_summary = json.loads(artifact_raw)
+          expected = pointer.get('summary_sha256')
+          actual = hashlib.sha256(artifact_raw).hexdigest()
+          assert expected == actual, (expected, actual)
+          assert pointer['summary'] == artifact_summary, 'pointer summary does not match immutable artifact'
+
+          def scalar_name(value):
+              if isinstance(value, str):
+                  return value
+              if isinstance(value, dict):
+                  for key in ('name', 'configuration', 'configuration_name', 'config', 'config_name'):
+                      candidate = value.get(key)
+                      if isinstance(candidate, str):
+                          return candidate
+              return None
+
+          def first_value(obj, names):
+              if isinstance(obj, dict):
+                  for name in names:
+                      if name in obj:
+                          return obj[name]
+                  for value in obj.values():
+                      found = first_value(value, names)
+                      if found is not None:
+                          return found
+              elif isinstance(obj, list):
+                  for value in obj:
+                      found = first_value(value, names)
+                      if found is not None:
+                          return found
+              return None
+
+          decision = first_value(
+              artifact_summary,
+              ('decision', 'screen_decision', 'primary_decision', 'recommendation'),
+          )
+          selected_raw = first_value(
+              artifact_summary,
+              ('best_configuration', 'selected_configuration', 'best_config', 'selected_config'),
+          )
+          selected = scalar_name(selected_raw)
+          if selected is None:
+              best_report = first_value(artifact_summary, ('best_report', 'selected_report'))
+              selected = scalar_name(best_report)
+          if selected is None:
+              raise RuntimeError(f'could not identify frozen configuration from keys={list(artifact_summary)}')
+
+          decision_text = str(decision or '').upper()
+          if any(token in decision_text for token in ('SWITCH', 'REJECT', 'FAIL', 'ABANDON')):
+              promote = False
+          elif any(token in decision_text for token in ('PROMOTE', 'GO_2024', 'CONTINUE', 'ADVANCE')):
+              promote = True
+          else:
+              promising = first_value(
+                  artifact_summary,
+                  ('promising', 'promote_2024h1', 'advance_to_2024h1'),
+              )
+              if not isinstance(promising, bool):
+                  raise RuntimeError(f'ambiguous pre-2024 routing decision={decision!r}')
+              promote = promising
+
+          route = {
+              'schema_version': 1,
+              'pre2024_screen_run_id': pointer['run_id'],
+              'pre2024_screen_source_sha': pointer['source_sha'],
+              'pre2024_summary_sha256': actual,
+              'original_decision': decision,
+              'promote_to_2024h1': promote,
+              'frozen_configuration': selected,
+              'selection_authority': 'PRE2024_2023H2_ONLY',
+              'rule': '2024H1 outcomes cannot alter the frozen configuration',
+          }
+          Path('output/PRE2024_ROUTE_DECISION.json').write_text(
+              json.dumps(route, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"promote={'true' if promote else 'false'}\n")
+              handle.write(f"configuration={selected}\n")
+          print(json.dumps(route, indent=2, sort_keys=True))
+          PY
+
+      - name: Checkout exact canonical-data loader
+        if: steps.decide.outputs.promote == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+
+      - name: Download immutable corpus, 2023 training data, and 2024H1 evaluation data
+        if: steps.decide.outputs.promote == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          mkdir -p \
+            inputs/corpus \
+            inputs/data/PRE_2024_2023/BTCUSDT \
+            inputs/data/PRE_2024_2023/ETHUSDT \
+            inputs/data/2024H1/BTCUSDT \
+            inputs/data/2024H1/ETHUSDT
+          gh run download 30222088904 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name yt-trinity-complete-corpus-9f410f8557ab10f26b28218a7c378cf84edc9ba2 \
+            --dir inputs/corpus
+          gh run download 30218767426 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name canonical-bybit-PRE_2024_2023-BTCUSDT \
+            --dir inputs/data/PRE_2024_2023/BTCUSDT
+          gh run download 30218767426 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name canonical-bybit-PRE_2024_2023-ETHUSDT \
+            --dir inputs/data/PRE_2024_2023/ETHUSDT
+          gh run download 30218767426 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name canonical-bybit-2024H1-BTCUSDT \
+            --dir inputs/data/2024H1/BTCUSDT
+          gh run download 30218767426 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name canonical-bybit-2024H1-ETHUSDT \
+            --dir inputs/data/2024H1/ETHUSDT
+          test -f inputs/corpus/yt-trinity-complete-corpus/manifest.json
+          test -f inputs/data/PRE_2024_2023/BTCUSDT/trade_bars/1m.parquet
+          test -f inputs/data/2024H1/BTCUSDT/trade_bars/1m.parquet
+          test -f inputs/data/2024H1/ETHUSDT/trade_bars/1m.parquet
+
+      - name: Recreate the frozen instrument-rule snapshot
+        if: steps.decide.outputs.promote == 'true'
+        run: |
+          set -euo pipefail
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          snapshot = json.loads(Path('inputs/pre2024/BYBIT_INSTRUMENT_RULES_SNAPSHOT.json').read_text())
+          rules = snapshot['symbols']
+          assert set(rules) == {'BTCUSDT', 'ETHUSDT'}, rules
+          Path('inputs/instrument_rules.json').write_text(
+              json.dumps(rules, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+
+      - name: Verify 2024H1 immutable evaluation manifests
+        if: steps.decide.outputs.promote == 'true'
+        run: |
+          set -euo pipefail
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for symbol in ('BTCUSDT', 'ETHUSDT'):
+              payload = json.loads(Path(f'inputs/data/2024H1/{symbol}/DATASET_MANIFEST.json').read_text())
+              assert payload['symbol'] == symbol, payload
+              assert payload['physical_segment'] == '2024H1', payload
+              assert payload['start'] == '2024-01-01T00:00:00Z', payload
+              assert payload['end_exclusive'] == '2024-07-01T00:00:00Z', payload
+              for stream in ('trade_price_1m', 'mark_price_1m', 'index_price_1m', 'premium_index_1m'):
+                  assert payload['coverage'][stream]['coverage'] == 1.0, (symbol, stream, payload['coverage'][stream])
+          PY
+
+      - name: Execute 2024H1 with pre-2024-frozen configuration set
+        if: steps.decide.outputs.promote == 'true'
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          mkdir -p output/2024H1
+          python research/yt_trinity_ml/run_primary_screen.py \
+            --repo-root canonical_repo \
+            --data-root inputs/data \
+            --corpus inputs/corpus/yt-trinity-complete-corpus \
+            --instrument-rules inputs/instrument_rules.json \
+            --output output/2024H1 \
+            --segments PRE_2024_2023 2024H1 \
+            --validation-start 2024-01-01T00:00:00Z \
+            --validation-end-exclusive 2024-07-01T00:00:00Z \
+            2>&1 | tee output/2024H1/STDOUT.log
+
+      - name: Extract only the pre-2024-frozen configuration from 2024H1
+        if: steps.decide.outputs.promote == 'true'
+        env:
+          FROZEN_CONFIGURATION: ${{ steps.decide.outputs.configuration }}
+        run: |
+          set -euo pipefail
+          exec > >(tee -a output/ROUTE.log) 2>&1
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          frozen = os.environ['FROZEN_CONFIGURATION']
+          summary_path = Path('output/2024H1/PRIMARY_SCREEN_SUMMARY.json')
+          summary = json.loads(summary_path.read_text())
+
+          def names(node):
+              if not isinstance(node, dict):
+                  return []
+              out = []
+              for key in ('name', 'configuration', 'configuration_name', 'config', 'config_name'):
+                  value = node.get(key)
+                  if isinstance(value, str):
+                      out.append(value)
+                  elif isinstance(value, dict):
+                      for subkey in ('name', 'configuration_name', 'config_name'):
+                          subvalue = value.get(subkey)
+                          if isinstance(subvalue, str):
+                              out.append(subvalue)
+              return out
+
+          matches = []
+          def walk(node, path='root'):
+              if isinstance(node, dict):
+                  if frozen in names(node):
+                      matches.append((path, node))
+                  for key, value in node.items():
+                      walk(value, f'{path}.{key}')
+              elif isinstance(node, list):
+                  for index, value in enumerate(node):
+                      walk(value, f'{path}[{index}]')
+          walk(summary)
+          if not matches:
+              raise RuntimeError(f'frozen configuration {frozen!r} not found in 2024H1 summary')
+          matches.sort(key=lambda item: len(json.dumps(item[1])), reverse=True)
+          selected_path, selected_report = matches[0]
+
+          result = {
+              'schema_version': 1,
+              'stage': '2024H1_COARSE_1M_FROZEN_CONFIGURATION',
+              'evaluation_start': '2024-01-01T00:00:00Z',
+              'evaluation_end_exclusive': '2024-07-01T00:00:00Z',
+              'frozen_configuration': frozen,
+              'configuration_selected_at': 'PRE2024_2023H2_ONLY',
+              'selection_path_in_diagnostic_summary': selected_path,
+              'selected_report': selected_report,
+              'other_2024h1_configuration_results_have_no_selection_authority': True,
+              'rankability': 'NOT_YET_RANKABLE_COARSE_1M',
+          }
+          Path('output/FROZEN_2024H1_RESULT.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
+
+      - name: Record switch-alpha route without opening 2024H1
+        if: steps.decide.outputs.promote != 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          route = json.loads(Path('output/PRE2024_ROUTE_DECISION.json').read_text())
+          payload = {
+              'schema_version': 1,
+              'stage': 'PRE2024_SWITCH_ALPHA',
+              'reason': route['original_decision'],
+              'frozen_configuration': route['frozen_configuration'],
+              '2024H1_opened': False,
+              'next_action': 'materially different corpus-derived alpha, not adjacent threshold tuning',
+          }
+          Path('output/SWITCH_ALPHA_RESULT.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+
+      - name: Bind and hash route outputs
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          payload = {
+              'schema_version': 1,
+              'source_sha': os.environ['GITHUB_SHA'],
+              'github_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'canonical_loader_commit': 'a2bb231966a517d29495bed7673e4d08ab8e30a9',
+              'pre2024_pointer_path': 'research/yt_trinity_ml/PRE2024_SCREEN_POINTER.json',
+              'fixed_activation_latency_ms': 500,
+          }
+          Path('output/ROUTE_RUN_IDENTITY.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload immutable route evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-route-pre2024-v1-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Persist compact route pointer
+        if: always()
+        env:
+          ROUTE_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def read(name):
+              path = Path('output') / name
+              return json.loads(path.read_text()) if path.exists() else None
+
+          log_path = Path('output/ROUTE.log')
+          log_tail = None
+          if log_path.exists():
+              log_tail = '\n'.join(log_path.read_text(errors='replace').splitlines()[-100:])[-30000:]
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'workflow': 'YT Trinity route pre-2024 result',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+              'job_status': os.environ['ROUTE_JOB_STATUS'],
+              'artifact_name': f"yt-trinity-route-pre2024-v1-{os.environ['GITHUB_SHA']}",
+              'route': read('PRE2024_ROUTE_DECISION.json'),
+              'frozen_2024h1_result': read('FROZEN_2024H1_RESULT.json'),
+              'switch_alpha_result': read('SWITCH_ALPHA_RESULT.json'),
+              'diagnostic_tail': log_tail,
+          }
+          target = Path('output/YT_TRINITY_ROUTE_POINTER.json')
+          target.write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          Path('/tmp/YT_TRINITY_ROUTE_POINTER.json').write_bytes(target.read_bytes())
+          PY
+
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          cp /tmp/YT_TRINITY_ROUTE_POINTER.json research/yt_trinity_ml/YT_TRINITY_ROUTE_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/YT_TRINITY_ROUTE_POINTER.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record YT Trinity pre-2024 route ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
