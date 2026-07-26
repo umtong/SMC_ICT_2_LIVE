@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-UNISWAP-INVENTORY-MACOS-003",
+  "claim_id": "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001",
+  "timing": "BEFORE_ANY_SOURCE_GATE_DECISION_OR_MARKET_OUTCOME",
+  "observed_problem": "The unchanged Ubuntu source-gate job remained queued or was cancelled by later pre-outcome transport commits. No source decision, Bybit price outcome, label, model metric, trade or PnL existed.",
+  "change": [
+    "Execute the identical frozen source_gate_launcher.py on a macOS runner in parallel.",
+    "Verify SHA256SUMS with Python rather than platform-specific sha256sum.",
+    "Use immutable github.sha concurrency without cancelling earlier scientific runs."
+  ],
+  "unchanged": [
+    "all source URLs and immutable identities",
+    "source coverage and pass gates",
+    "event availability delay",
+    "model, features, labels and action rule",
+    "risk and notional search",
+    "official half-year boundaries",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ],
+  "source_gate_decision_observed_before_change": false,
+  "market_outcome_observed_before_change": false,
+  "orders_submitted": false
+}
