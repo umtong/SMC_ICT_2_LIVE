@@ -1,0 +1,112 @@
+name: Stablecoin strict causal V3 validator hook slim
+
+on:
+  push:
+    branches:
+      - agent/r22-stablecoin-strict-validator-hook-002
+    paths:
+      - '.github/workflows/stablecoin-strict-validator-slim-r22.yml'
+      - 'research/execution/stablecoin_strict_validator_hook_20260727/**'
+      - 'scripts/stablecoin_strict_v3_validation_hook.py'
+      - 'scripts/common.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-strict-validator-slim-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  decision:
+    runs-on: ubuntu-slim
+    timeout-minutes: 360
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-stablecoin-strict-validator-hook-002
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate execution-only correction
+        run: |
+          set -euo pipefail
+          python -m json.tool \
+            research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION.json \
+            >/dev/null
+          python -m json.tool \
+            research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION_SLIM_RUNNER_003.json \
+            >/dev/null
+          python -m py_compile scripts/stablecoin_strict_v3_validation_hook.py
+          test -f research/execution/stablecoin_strict_validator_hook_20260727/RUN.txt
+
+      - name: Run immutable source and strict V3 decision
+        shell: bash
+        run: |
+          set -u
+          out=research_runs/stablecoin_strict_validator_slim_20260727
+          mkdir -p "$out"
+          set +e
+          python scripts/stablecoin_strict_v3_validation_hook.py 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$rc" > "$out/RUN_EXIT_CODE.txt"
+          work="${RUNNER_TEMP}/stablecoin_strict_v3_validation_hook"
+          if [[ -d "$work" ]]; then
+            cp -a "$work" "$out/work"
+          fi
+          marker="${RUNNER_TEMP}/stablecoin_strict_v3_validation_hook_summary.json"
+          if [[ -f "$marker" ]]; then
+            cp "$marker" "$out/RESULT_SUMMARY.json"
+          fi
+          test -f "$out/RESULT_SUMMARY.json"
+          exit "$rc"
+
+      - name: Enforce immutable decision envelope
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research_runs/stablecoin_strict_validator_slim_20260727/RESULT_SUMMARY.json')
+          r=json.loads(p.read_text())
+          assert r['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert r['source_sha']=='73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539'
+          assert r['strict_sha']=='209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c'
+          assert r['next_stage'] in {
+            'CLOSE_SOURCE_OR_CHANGE_TRANSPORT_ONLY',
+            'CHANGE_ALPHA',
+            'OFFICIAL_2024H1_IMMEDIATELY',
+          }
+          assert r['economic'].get('orders_submitted') in {None, False}
+          print(json.dumps(r,sort_keys=True))
+          PY
+
+      - name: Freeze output hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/stablecoin_strict_validator_slim_20260727
+          mkdir -p "$out"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-validator-slim-${{ github.run_id }}
+          path: research_runs/stablecoin_strict_validator_slim_20260727
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
