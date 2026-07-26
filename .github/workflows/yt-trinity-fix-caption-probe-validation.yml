@@ -1,0 +1,136 @@
+name: YT Trinity fix caption probe validation
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-fix-caption-probe-validation.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-fix-caption-probe-validation
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+
+      - name: Apply caption payload validation guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('research/yt_trinity_ml/probe_caption_transports.py')
+          text = path.read_text(encoding='utf-8')
+          anchor = '    result["body_prefix"] = re.sub(r"\\s+", " ", text[:240]).strip()\n'
+          guard = '''    is_html_document = (
+              "html" in content_type.lower()
+              or bool(re.search(r"<(?:!doctype\\s+html|html)(?:\\s|>)", stripped[:400], flags=re.IGNORECASE))
+          )
+          if not response.ok or is_html_document:
+              parsed_segments = int(result.get("segments") or 0)
+              if parsed_segments:
+                  result["rejected_segment_count"] = parsed_segments
+              result["segments"] = 0
+              result["caption_validation"] = "rejected_non_success_or_html"
+              if is_html_document:
+                  result["format"] = "html"
+          else:
+              result["caption_validation"] = "accepted_transport_payload"
+          result["body_prefix"] = re.sub(r"\\s+", " ", text[:240]).strip()
+'''
+          if guard in text:
+              print('guard already present')
+          elif anchor in text:
+              path.write_text(text.replace(anchor, guard, 1), encoding='utf-8')
+          else:
+              raise SystemExit('caption body evidence anchor not found')
+          PY
+
+      - name: Validate 404 HTML and real caption cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/yt_trinity_ml/probe_caption_transports.py
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          import requests
+
+          path = Path('research/yt_trinity_ml/probe_caption_transports.py')
+          spec = importlib.util.spec_from_file_location('caption_probe', path)
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
+
+          def response(status, content_type, body, url='https://example.test/api/timedtext'):
+              item = requests.Response()
+              item.status_code = status
+              item.headers['content-type'] = content_type
+              item._content = body.encode('utf-8')
+              item.url = url
+              return item
+
+          bogus = module.body_evidence(response(404, 'text/html; charset=UTF-8', '<!DOCTYPE html><html><p>a</p><p>b</p></html>'))
+          assert bogus['segments'] == 0, bogus
+          assert bogus['caption_validation'] == 'rejected_non_success_or_html', bogus
+          html_200 = module.body_evidence(response(200, 'text/html', '<html><p>challenge</p></html>'))
+          assert html_200['segments'] == 0, html_200
+          xml = module.body_evidence(response(200, 'text/xml', '<transcript><text start="0">hello</text><text start="1">world</text></transcript>'))
+          assert xml['segments'] == 2, xml
+          vtt = module.body_evidence(response(200, 'text/vtt', 'WEBVTT\n\n00:00.000 --> 00:01.000\nhello'))
+          assert vtt['segments'] == 1, vtt
+          print('caption payload validation: PASS')
+          PY
+
+      - name: Record audit correction for the false recovered pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          source = Path('research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_POINTER.json')
+          audit_path = Path('research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_AUDIT.json')
+          source_payload = json.loads(source.read_text(encoding='utf-8')) if source.exists() else None
+          audit = {
+              'schema_version': 1,
+              'audited_pointer_sha256': hashlib.sha256(source.read_bytes()).hexdigest() if source.exists() else None,
+              'audited_run_id': source_payload.get('run_id') if isinstance(source_payload, dict) else None,
+              'decision': 'REJECT_FALSE_POSITIVE',
+              'finding': 'HTTP 404 text/html error pages from video.google.com were parsed as two XML p segments; no caption bytes were recovered.',
+              'valid_recovered_video_count': 0,
+              'invalidated_profiles': ['direct'],
+          }
+          audit_path.write_text(json.dumps(audit, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+
+      - name: Commit atomic correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/yt-trinity-fix-caption-probe-validation.yml
+          git add \
+            research/yt_trinity_ml/probe_caption_transports.py \
+            research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_AUDIT.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Reject HTML error pages as caption evidence'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
