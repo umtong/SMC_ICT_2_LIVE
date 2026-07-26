@@ -1,0 +1,137 @@
+{
+  "claim_id": "CLM-20260726-1543-EXPIRY-SMT-001",
+  "issue": 92,
+  "branch": "agent/r11-expiry-smt-reversal-001",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "objective_fingerprint": "44c0bc68536119cff0b00564c0deb46949114f637398b10d0e8decc9a5ca0d38",
+  "scope_fingerprint": "1a77179e2707455e42be44d553f6040a464a1df5d07d778c6618df18a7bf2812",
+  "created_at": "2026-07-26T15:43:08+09:00",
+  "research_question": "Does a mechanically anchored 08:00 UTC option-settlement liquidity raid, confirmed by BTC/ETH SMT non-confirmation and post-settlement displacement, create repeatable Bybit BTCUSDT/ETHUSDT after-cost reversal alpha with a structural path materially closer to 1% daily geometric NAV growth?",
+  "economic_mechanism": {
+    "institutional_anchor": "Deribit final expiry delivery uses a 07:30-08:00 UTC index TWAP and expiring delta decays toward zero into 08:00 UTC.",
+    "smc_ict_translation": [
+      "external liquidity raid during the known settlement window",
+      "BTC/ETH intermarket SMT non-confirmation",
+      "causal post-08:00 displacement or micro market-structure break",
+      "next-open entry in the swept contract",
+      "structural stop beyond the raid",
+      "pre-range equilibrium or opposing external liquidity target"
+    ],
+    "failure_condition": "The mechanism is rejected if fit cannot pass concentration and temporal-breadth gates, or if the exact frozen rule fails 2023 development at 18/24 bp and materially exceeds neither the current first-place growth rate nor the precommitted 0.10% daily gate."
+  },
+  "sources": [
+    {
+      "source_id": "SRC-DERIBIT-SETTLEMENT-OFFICIAL",
+      "url": "https://support.deribit.com/hc/en-us/articles/29734325712413-Settlement",
+      "role": "Defines 08:00 UTC settlement, the 07:30-08:00 final-delivery TWAP, and expiry delta decay."
+    },
+    {
+      "source_id": "SRC-FRL-2026-OPTION-EXPIRY-REVERSAL",
+      "doi": "10.1016/j.frl.2026.110340",
+      "role": "Motivates the falsifiable reversal hypothesis around Bitcoin option expiry; it is not used as performance evidence for this strategy."
+    },
+    {
+      "source_id": "SRC-BYBIT-V5-KLINE-OFFICIAL",
+      "url": "https://bybit-exchange.github.io/docs/v5/market/kline",
+      "role": "Primary completed 5-minute BTCUSDT/ETHUSDT candle source."
+    }
+  ],
+  "data_contract": {
+    "primary_market_source": "Bybit V5 linear kline API",
+    "fallback_source": "Official Binance Vision USD-M 5-minute candles, diagnostic and non-rank-eligible only",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "interval_minutes": 5,
+    "download_start": "2021-12-15T00:00:00Z",
+    "download_end": "2023-12-31T23:55:00Z",
+    "fit": ["2022-01-01T00:00:00Z", "2022-12-31T23:59:59Z"],
+    "development": ["2023-01-01T00:00:00Z", "2023-12-31T23:59:59Z"],
+    "sealed_start": "2024-01-01T00:00:00Z",
+    "code_must_assert_2024_2026_unopened": true,
+    "funding": "Actual Bybit historical funding when available; otherwise conservative 1 bp charge at every crossed 8-hour boundary and non-rank-eligible status.",
+    "current_product_limit": "Current Bybit instrument max leverage is fetched and applied as a product bound; unavailable metadata falls back to a non-rank-eligible 100x diagnostic ceiling."
+  },
+  "information_timing": {
+    "prior_liquidity_window": "04:00-07:25 UTC completed 5-minute bars",
+    "settlement_window": "07:30-07:55 UTC completed 5-minute bars representing the official 07:30-08:00 interval",
+    "post_settlement_confirmation_window": "08:00-08:30 UTC",
+    "entry": "Open of the next 5-minute bar after all confirmation bars have completed",
+    "future_information_prohibited": [
+      "unclosed candles",
+      "future swing confirmation",
+      "future MFE or MAE",
+      "2024-2026 observations",
+      "same-bar favorable ordering"
+    ]
+  },
+  "policy_grid": {
+    "count": 384,
+    "event_filter": ["ALL", "FRIDAY"],
+    "sweep_threshold_atr": [0.05, 0.15, 0.30],
+    "peer_max_atr": [0.0, 0.10],
+    "smt_gap_atr": [0.10, 0.25],
+    "confirm_mode": ["MIDPOINT", "MICRO_BOS"],
+    "confirm_count": [1, 2],
+    "stop_buffer_atr": [0.05, 0.15],
+    "target_mode": ["PRE_RANGE_MID", "OPPOSITE_LIQUIDITY"],
+    "fixed_displacement_min_atr": 0.05,
+    "fixed_minimum_reward_risk": 0.75
+  },
+  "execution_contract": {
+    "global_slot": 1,
+    "entry_model": "next 5-minute open",
+    "exit_model": "structural stop or structural target only; no elapsed-time liquidation",
+    "same_bar_ambiguity": "stop first",
+    "adverse_stop_gap": "fill at bar open",
+    "favorable_target_gap": "fill at target, no favorable price improvement",
+    "terminal_open_position": "mark at final available close and flag terminal exit",
+    "all_in_roundtrip_cost_bps": [12, 18, 24],
+    "base_risk_fraction": 0.01,
+    "risk_sizing": "NAV risk budget divided by stop distance plus all-in cost plus 2 bp funding-loss buffer",
+    "risk_optimization": false,
+    "orders_submitted": false
+  },
+  "selection_and_gates": {
+    "fit_minimum_trades": {"ALL": 40, "FRIDAY": 12},
+    "fit_requirements_at_18bp": [
+      "positive total return",
+      "positive H1 and H2",
+      "positive median trade",
+      "positive return after removing the top 10% winning trades",
+      "zero terminal exits",
+      "no bankruptcy"
+    ],
+    "selection": "Among fit-gate passers, lexicographically maximize full-calendar geometric daily growth, then minimize MDD, then maximize trades, then policy id. If no fit policy passes, 2023 remains unopened.",
+    "development_requirements": [
+      "positive 18 bp and 24 bp economics",
+      "positive H1 and H2 at 18 bp",
+      "positive median trade",
+      "positive return after top-10%-winner removal at 18 and 24 bp",
+      "18 bp geometric daily growth at 1% risk >= 0.10%",
+      "18 bp geometric daily growth exceeds current first-place 0.0573077%",
+      "zero terminal exits and no bankruptcy"
+    ],
+    "risk_ladder_after_selection": [0.01, 0.02, 0.04, 0.08, 0.12],
+    "risk_ladder_role": "Feasibility diagnostic only; it cannot rescue a non-positive base edge."
+  },
+  "ranking": {
+    "initial_run_rank_eligible": false,
+    "reason": "Pre-2024 fatal screen; exact BBO/depth execution and official 2024-2026 causal evaluation remain closed.",
+    "current_first_geometric_daily_growth": 0.000573077,
+    "target_geometric_daily_growth": 0.01
+  },
+  "non_overlap": [
+    "option-surface risk reversal/butterfly/term-slope research",
+    "option transaction-flow and gamma-pressure research",
+    "generic session-range transitions",
+    "Bybit funding transfer and premium-anchor rules",
+    "FVG-SMT mitigation",
+    "rolling-range SMT",
+    "sub-second cross-asset microlead",
+    "cross-venue price/OI research",
+    "L2 maker and resiliency research",
+    "liquidation refill",
+    "movement-hazard OCO"
+  ],
+  "implementation_sha256": "51e2ed49aec3b94576eea32e9d3394384968711974c0bebcaccdc890322ef521"
+}
