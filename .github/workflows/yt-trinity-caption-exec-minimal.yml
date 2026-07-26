@@ -1,0 +1,232 @@
+name: YT Trinity minimal full caption execution
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/yt-trinity-caption-exec-minimal-001]
+    paths:
+      - control/yt-trinity-caption-exec-minimal-trigger.json
+      - .github/workflows/yt-trinity-caption-exec-minimal.yml
+      - research/yt_trinity_ml/channels.json
+      - research/yt_trinity_ml/build_public_inventory_union.py
+      - research/yt_trinity_ml/probe_ytt_api.py
+      - research/yt_trinity_ml/harvest_ytt_api.py
+      - research/yt_trinity_ml/merge_caption_shards.py
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: yt-trinity-caption-exec-minimal-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install current YouTube inventory transport
+        run: python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+      - name: Build exact uploads/videos/shorts/streams union
+        run: |
+          python research/yt_trinity_ml/build_public_inventory_union.py
+          mkdir -p artifact/inventory
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl artifact/inventory/
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json artifact/inventory/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-minimal-inventory-${{ github.sha }}
+          path: artifact/inventory
+          if-no-files-found: error
+          retention-days: 30
+
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Authenticate and verify transcript transport
+        shell: bash
+        run: python research/yt_trinity_ml/probe_ytt_api.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-minimal-auth-probe-${{ github.sha }}
+          path: YTT_AUTH_PROBE.json
+          if-no-files-found: error
+          retention-days: 14
+
+  harvest:
+    needs: [prepare, probe]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {channel: swipalnam, shard: 0, shards: 1, os: ubuntu-latest}
+          - {channel: chartbro, shard: 0, shards: 2, os: macos-14}
+          - {channel: chartbro, shard: 1, shards: 2, os: windows-latest}
+          - {channel: indicator_sensei, shard: 0, shards: 2, os: macos-14}
+          - {channel: indicator_sensei, shard: 1, shards: 2, os: windows-latest}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-minimal-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - name: Select a rate-safe shard
+        shell: bash
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ matrix.shards }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path('artifact/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl')
+          rows = [json.loads(line) for line in source.read_text(encoding='utf-8').splitlines() if line.strip()]
+          rows = sorted((row for row in rows if row['channel_slug'] == os.environ['CHANNEL']), key=lambda row: row['video_id'])
+          shard = int(os.environ['SHARD'])
+          shards = int(os.environ['SHARDS'])
+          selected = [row for index, row in enumerate(rows) if index % shards == shard]
+          if not selected or len(selected) > 49:
+              raise SystemExit(f'unsafe shard size: {len(selected)}')
+          Path('artifact/shard-inventory.jsonl').write_text(
+              ''.join(json.dumps(row, ensure_ascii=False, sort_keys=True) + '\n' for row in selected),
+              encoding='utf-8',
+          )
+          print(json.dumps({'channel': os.environ['CHANNEL'], 'shard': shard, 'videos': len(selected)}))
+          PY
+      - name: Fetch and classify every native caption state
+        shell: bash
+        continue-on-error: true
+        run: |
+          python research/yt_trinity_ml/harvest_ytt_api.py \
+            --inventory artifact/shard-inventory.jsonl \
+            --channel "${{ matrix.channel }}" \
+            --output "artifact/result/${{ matrix.channel }}-${{ matrix.shard }}" \
+            --attempts 2 \
+            --pace-seconds 6.4
+      - name: Hash shard evidence
+        if: always()
+        shell: bash
+        run: |
+          root="artifact/result/${{ matrix.channel }}-${{ matrix.shard }}"
+          if [[ -d "$root" ]]; then
+            (
+              cd "$root"
+              find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-minimal-${{ matrix.channel }}-${{ matrix.shard }}-${{ github.sha }}
+          path: artifact/result/${{ matrix.channel }}-${{ matrix.shard }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, probe, harvest]
+    if: always() && needs.prepare.result == 'success' && needs.probe.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-minimal-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-minimal-*-*-${{ github.sha }}
+          path: artifact/shards
+      - name: Merge exact caption outcomes
+        continue-on-error: true
+        run: |
+          python research/yt_trinity_ml/merge_caption_shards.py \
+            --inventory artifact/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl \
+            --shards-root artifact/shards \
+            --output artifact/corpus \
+            --run-id "${GITHUB_RUN_ID}" \
+            --source-sha "${GITHUB_SHA}"
+      - name: Hash full corpus
+        if: always()
+        run: |
+          if [[ -d artifact/corpus ]]; then
+            (
+              cd artifact/corpus
+              find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-minimal-full-caption-corpus-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact result pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path('artifact/corpus/manifest.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-minimal-full-caption-corpus-{os.environ['GITHUB_SHA']}",
+              'manifest': manifest,
+          }
+          Path('research/yt_trinity_ml/MINIMAL_CAPTION_EXEC_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/MINIMAL_CAPTION_EXEC_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record minimal YT Trinity caption execution ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
