@@ -10,6 +10,7 @@ on:
       - 'control/validation-cache.jsonl'
       - 'control/ranking.json'
       - 'control/current-state.md'
+      - 'schemas/ranking.schema.json'
   pull_request:
     branches: [main]
     paths:
@@ -19,6 +20,7 @@ on:
       - 'control/validation-cache.jsonl'
       - 'control/ranking.json'
       - 'control/current-state.md'
+      - 'schemas/ranking.schema.json'
   workflow_dispatch:
 
 permissions:
@@ -38,7 +40,7 @@ jobs:
       - name: Install fixed verification dependencies
         run: |
           python -m pip install --upgrade 'pip==25.1.1'
-          python -m pip install 'numpy==2.3.5' 'pandas==2.2.3' 'pyarrow==25.0.0' 'pytest==8.3.4'
+          python -m pip install 'numpy==2.3.5' 'pandas==2.2.3' 'pyarrow==25.0.0' 'pytest==8.3.4' 'jsonschema==4.25.1'
       - name: Reconstruct dollar-clock source package and prior baseline source
         run: |
           set -euo pipefail
@@ -58,22 +60,33 @@ jobs:
           python -m py_compile "$root"/research/*.py "$root"/tests/*.py
           pytest -q "$root/tests/test_dollar_bar_absorption_v2.py" "$root/tests/test_dollar_bar_fast_equivalence.py"
           python - <<'PY'
-          import json, pathlib
+          import json
+          import pathlib
+          import jsonschema
+
           root=pathlib.Path('research/absorption_flow_benchmark_r7')
           result=json.loads((root/'RESULT.json').read_text())
           validation=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
           ranking=json.loads(pathlib.Path('control/ranking.json').read_text())
+          schema=json.loads(pathlib.Path('schemas/ranking.schema.json').read_text())
+          jsonschema.Draft202012Validator.check_schema(schema)
+          jsonschema.validate(ranking, schema)
+
           assert result['status']=='VALID'
           assert result['baseline_screen']['candidate_count']==216
           assert result['dollar_bar_screen']['candidate_count']==324
           assert result['ranking_candidate']['base']['trades']==184
           assert result['ranking_candidate']['stress_2x']['trades']==183
-          assert result['ranking_decision']['rank']==2
-          assert ranking['first_place']['source_result_id']=='RES-20260725-DYNAMIC-FACTOR-001'
-          assert ranking['ranked_candidates'][1]['source_result_id']=='RES-20260725-ABS-FLOW-001'
+          assert result['ranking_decision']['rank']==2  # immutable historical revision-8 decision
+          assert ranking['revision']==13
+          assert ranking['first_place']['source_result_id']=='RES-20260726-DONCHIAN-DEPENDENCE-001'
+          assert ranking['ranked_candidates'][0]['rank']==1
+          assert ranking['ranked_candidates'][0]['geometric_daily_growth_at_24bps']==0.0007001887213879954
+          assert ranking['ranked_candidates'][2]['rank']==3
+          assert ranking['ranked_candidates'][2]['source_result_id']=='RES-20260725-ABS-FLOW-001'
           assert validation['status']=='PASS'
           assert not result['orders_submitted'] and not result['paper_or_live_started']
-          print('registered-result and revision-8 ranking checks passed')
+          print('registered result, live ranking schema and revision-13 assertions passed')
           PY
       - name: Validate repository contracts
         run: |
