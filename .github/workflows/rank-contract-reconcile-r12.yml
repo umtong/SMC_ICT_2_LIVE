@@ -7,13 +7,18 @@ on:
     paths:
       - "research/rank_contract_reconcile_20260726/audit.py"
       - ".github/workflows/rank-contract-reconcile-r12.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/rank_contract_reconcile_20260726/audit.py"
+      - ".github/workflows/rank-contract-reconcile-r12.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: rank-contract-reconcile-r12-${{ github.ref }}
+  group: rank-contract-reconcile-r12-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -57,6 +62,7 @@ jobs:
           python scripts/validate_project.py
 
       - name: Commit immutable audit evidence
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
           set -euo pipefail
