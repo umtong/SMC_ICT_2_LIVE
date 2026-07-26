@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002",
+  "claim_id": "CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001",
+  "worker_id": "gpt-5.6-pro-20260726-0616",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "FATAL_FIT_UPPER_BOUND_BELOW_GATE",
+  "ranking_role": "NONE",
+  "qualification": "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE",
+  "summary": "Hard-valid completed-message-group replay of a three-feed sub-second price-discovery hypothesis. Across 324 frozen BTCUSDT/ETHUSDT configurations, 304 produced zero fit trades, 16 produced one and four produced two. Zero candidates passed the fit executable-oracle gate, so the frozen 2023 development dates and all 2024-2026 periods remained unopened. The best future-information 30-second executable-exit upper bound had one ETHUSDT trade and +8.3270 bp at 18 bp cost, while the same candidate's causal fixed 10-second exit lost 20.6434 bp. The exact Binance-perpetual plus Bybit-spot consensus-lag dependency is economically closed without threshold or exit polishing.",
+  "engine": {
+    "version": "BYBIT_CONSENSUS_LAG_V1C_RECOVERED_COMPLETED_MESSAGE_GROUP",
+    "raw_bytes": 38958,
+    "raw_sha256": "d3ac04f629a6114247b16a69333e43c91312247dc3dcbdd120f054014e1cf29d",
+    "source_semantic_correction": "At each completed 100 ms boundary, consume all quote rows with local_timestamp strictly before the boundary and use the final reconstructed BBO row in the latest completed same-timestamp group; entry and exit groups remain adverse.",
+    "transport_repair": "One hash-bound base64 character at offset 3980 was repaired only when the complete checked-in fragment matched the preregistered damaged hash; combined base64, gzip and raw source hashes were then verified."
+  },
+  "metrics": {
+    "candidate_count": 324,
+    "fit_survivor_count": 0,
+    "development_opened": false,
+    "event_outcome_rows": 10,
+    "candidate_trade_count_distribution": {
+      "zero_trades": 304,
+      "one_trade": 16,
+      "two_trades": 4,
+      "maximum": 2
+    },
+    "best_candidate_id": "29f9ee140d52398ffaac",
+    "best_candidate_parameters": {
+      "observation_ms": 1000,
+      "impulse_bps": 3.0,
+      "gap_bps": 5.0,
+      "follower_fraction": 0.25,
+      "latency_ms": 100,
+      "limit_spreads": 1.0
+    },
+    "best_fit_oracle_30s_12bps": {
+      "trade_count": 1,
+      "mean_bps": 14.326983029845302,
+      "total_fixed_notional_return": 0.00143269830298453,
+      "positive_calendar_day_fraction": 0.3333333333333333
+    },
+    "best_fit_oracle_30s_18bps": {
+      "trade_count": 1,
+      "mean_bps": 8.326983029845302,
+      "total_fixed_notional_return": 0.0008326983029845301,
+      "positive_calendar_day_fraction": 0.3333333333333333
+    },
+    "best_fit_oracle_30s_24bps": {
+      "trade_count": 1,
+      "mean_bps": 2.3269830298453016,
+      "total_fixed_notional_return": 0.00023269830298453017,
+      "positive_calendar_day_fraction": 0.3333333333333333
+    },
+    "same_candidate_fixed_10s_18bps": {
+      "trade_count": 1,
+      "mean_bps": -20.64338026033809,
+      "total_fixed_notional_return": -0.002064338026033809,
+      "positive_calendar_day_fraction": 0.0
+    },
+    "same_candidate_fixed_30s_18bps": {
+      "trade_count": 1,
+      "mean_bps": 3.9682191302892846,
+      "total_fixed_notional_return": 0.00039682191302892845,
+      "positive_calendar_day_fraction": 0.3333333333333333
+    },
+    "official_target_met": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "execution_contract": {
+    "target": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "signal_clock": "completed 100 ms Tardis local_timestamp buckets",
+    "entry_latency_ms": [100, 250, 500],
+    "fixed_notional_usdt": 10000.0,
+    "spread": "explicit bid/ask crossing",
+    "impact": "convex top-quote participation impact",
+    "marketable_limit_rejection": true,
+    "adverse_equal_timestamp_execution": true,
+    "one_global_slot": true,
+    "extra_roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "oracle_note": "The 30-second best executable exit is a future-label upper bound with impossible zero exit-decision latency and is not a strategy rule."
+  },
+  "source_ids": [
+    "tardis:bybit-quotes:first-day-monthly-2023-fit",
+    "tardis:binance-futures-quotes:first-day-monthly-2023-fit",
+    "tardis:bybit-spot-quotes:first-day-monthly-2023-fit"
+  ],
+  "dataset_ids": [
+    "DS-TARDIS-BYBIT-BINANCEFUT-BYBITSPOT-BTCETH-QUOTES-202303-202307-R1"
+  ],
+  "code_commit": "41af88d8a53692b8be9f1f82dda4e7c3f17d7e16",
+  "evaluation_contract_sha256": "6e05f34a9879155b0863c4b87b57ddb7ac064286598d3f0d49924ef4955aec61",
+  "preregistration_sha256": "00567394199fa4379bf7bc75a8a8cf0cfcc1eebfcc56f06011eb86846fa36704",
+  "source_manifest_sha256": "6698ccf8239b6604a894916aac534b7d5de1f09738e99349debd564baa6924c3",
+  "artifact_fingerprint": "905724a99fd25c1b37b59ee5e3f710b2f4bda3af1da331a3edfede72ea6e44f8",
+  "dependency_fingerprint": "a729c29091b1588200fc24fd0651b54c56346796d6019fec69e7e61a81d9ab11",
+  "output_hashes": {
+    "summary_json": "ffe0adafdc15ba46fa275d1743117cd3d05bec15a63ade013bf7f70d932d4fe4",
+    "candidate_results_json": "8287b48eae1261457fc550f35cd0de6f62bcaf83560ec9f73f0a93bbbe8fc294",
+    "event_outcomes_csv_gz": "c2329d88ff32f6b0431b9a6f1eedf7baa2afd108cf8359c8b427d03b4aeaeede"
+  },
+  "artifacts": [
+    {
+      "path": "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30182824377/artifacts/8626108263",
+      "sha256": "905724a99fd25c1b37b59ee5e3f710b2f4bda3af1da331a3edfede72ea6e44f8"
+    }
+  ],
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/67",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30182824377"
+  ],
+  "orders_submitted": false,
+  "paper_or_live_enabled": false,
+  "created_at": "2026-07-26T10:30:29+09:00"
+}
