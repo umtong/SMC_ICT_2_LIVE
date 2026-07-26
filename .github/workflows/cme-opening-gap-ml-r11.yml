@@ -1,4 +1,4 @@
-name: CME opening-gap single-model ML screen
+name: CME opening-gap five-feature ML screen
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: cme-opening-gap-ml-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: cme-opening-gap-five-feature-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
           python -m pip install --disable-pip-version-check \
             "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4" "scikit-learn==1.5.2"
 
-      - name: Validate project and single-model contract
+      - name: Validate one-model five-feature contract
         run: |
           set -euo pipefail
           python scripts/validate_project.py
@@ -46,31 +46,34 @@ jobs:
             research/cme_opening_gap_20260726/probe.py \
             research/cme_opening_gap_20260726/run_screen.py \
             research/cme_opening_gap_20260726/run_ml_screen.py \
-            research/cme_opening_gap_20260726/run_ml_screen_v2.py \
-            research/cme_opening_gap_20260726/run_ml_screen_v3.py \
-            research/cme_opening_gap_20260726/run_ml_screen_v4.py
+            research/cme_opening_gap_20260726/run_ml_screen_v4.py \
+            research/cme_opening_gap_20260726/run_ml_screen_v5.py
           python research/cme_opening_gap_20260726/probe.py self-test
-          python research/cme_opening_gap_20260726/run_ml_screen_v4.py self-test
+          python research/cme_opening_gap_20260726/run_ml_screen_v5.py self-test
           python -m json.tool research/cme_opening_gap_20260726/preregistration.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_001_ml_core.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json >/dev/null
+          python -m json.tool research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
           core = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
           purge = json.loads(Path("research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json").read_text())
           winner = json.loads(Path("research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json").read_text())
+          five = json.loads(Path("research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json").read_text())
           assert core["active_model_contract"]["policy_count"] == 1
-          assert core["active_model_contract"]["model_selection"] == "NONE"
-          assert core["active_model_contract"]["hyperparameter_grid"] == "NONE"
           assert core["superseded_unopened_contract"]["legacy_grid_executed"] is False
-          assert core["chronological_contract"]["2024_2025_2026_opened"] is False
-          assert purge["parent_amendment_id"] == core["amendment_id"]
           assert purge["market_outcomes_opened_before_amendment"] is False
-          assert winner["parent_amendment_id"] == purge["amendment_id"]
           assert winner["market_outcomes_opened_before_amendment"] is False
-          print("CME_GAP_SINGLE_MODEL_CORRECTED_CONTRACT_PASS")
+          assert five["trigger"]["strategy_metrics_opened"] is False
+          assert five["model_contract"]["policy_count"] == 1
+          assert five["model_contract"]["model_selection"] == "NONE"
+          assert five["model_contract"]["hyperparameter_grid"] == "NONE"
+          assert five["model_contract"]["probability_threshold_grid"] == "NONE"
+          assert five["simplification"]["feature_count"] == 5
+          assert len(five["simplification"]["retained_features"]) == 5
+          print("CME_GAP_FIVE_FEATURE_CONTRACT_PASS")
           PY
 
       - name: Reconfirm source-only gate
@@ -95,21 +98,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/cme-opening-gap-ml
-          key: cme-opening-gap-ml-v4-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json', 'research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json', 'research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json') }}
+          key: cme-opening-gap-five-v1-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json', 'research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json', 'research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json', 'research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json') }}
 
-      - name: Run one-policy chronological ML screen
+      - name: Run one-policy annual-OOS ML screen
         shell: bash
         run: |
           set -euo pipefail
           rm -rf artifacts/cme_opening_gap_ml
           mkdir -p artifacts/cme_opening_gap_ml
           set -o pipefail
-          python research/cme_opening_gap_20260726/run_ml_screen_v4.py run \
+          python research/cme_opening_gap_20260726/run_ml_screen_v5.py run \
             --cache /tmp/cme-opening-gap-ml \
             --output artifacts/cme_opening_gap_ml \
             2>&1 | tee artifacts/cme_opening_gap_ml/run.log
 
-      - name: Verify causal, ML and stage boundaries
+      - name: Verify causal ML and stage boundaries
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -120,39 +123,38 @@ jobs:
           root = Path("artifacts/cme_opening_gap_ml")
           result = json.loads((root / "result_summary.json").read_text())
           manifest = json.loads((root / "source_manifest.json").read_text())
-          core = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
-          purge = json.loads(Path("research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json").read_text())
+          five = json.loads(Path("research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json").read_text())
           winner = json.loads(Path("research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json").read_text())
-          model = json.loads((root / "fit_model.json").read_text())
+          model = json.loads((root / "training_model.json").read_text())
 
-          assert result["claim_id"] == core["claim_id"]
-          assert result["result_id"] == core["provisional_result_id"]
-          assert result["scientific_contract"] == core["amendment_id"]
-          assert result["purge_amendment"] == purge["amendment_id"]
+          assert result["claim_id"] == five["claim_id"]
+          assert result["scientific_contract"] == five["amendment_id"]
           assert result["winner_removal_amendment"] == winner["amendment_id"]
           assert result["policy_count"] == 1
-          assert result["model_id"] == core["active_model_contract"]["model_id"]
+          assert result["feature_count"] == 5
+          assert result["feature_names"] == five["simplification"]["retained_features"]
+          assert result["model_id"] == five["model_contract"]["model_id"]
           assert result["legacy_432_rule_grid_executed"] is False
+          assert result["training_pnl_computed"] is False
           assert result["qualification"] == "FATAL_PROXY_ML_SCREEN_NOT_RANK_ELIGIBLE"
           assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
           assert result["orders_submitted"] is False
           assert result["paper_or_testnet_started"] is False
-          assert model["feature_names"] == core["active_model_contract"]["feature_names"]
-          assert model["training_labeled_count"] >= 40
-          assert pd.Timestamp(model["training_max_entry_ts"]) <= pd.Timestamp("2021-08-31T23:59:59Z")
-          assert pd.Timestamp(model["training_max_resolution_ts"]) <= pd.Timestamp("2021-08-31T23:59:59Z")
-          assert model["purge_amendment_id"] == purge["amendment_id"]
+          assert model["feature_names"] == five["simplification"]["retained_features"]
+          assert model["training_labeled_count"] >= five["simplification"]["minimum_training_labeled_events"]
+          assert pd.Timestamp(model["training_max_entry_ts"]) <= pd.Timestamp("2021-12-31T23:59:59Z")
+          assert pd.Timestamp(model["training_max_resolution_ts"]) <= pd.Timestamp("2021-12-31T23:59:59Z")
+          assert model["active_amendment_id"] == five["amendment_id"]
+          assert manifest["stages_opened"]["training_2021"] is True
+          assert manifest["stages_opened"]["development_2022"] is True
           assert manifest["stages_opened"]["official_2024"] is False
           assert manifest["stages_opened"]["official_2025"] is False
           assert manifest["stages_opened"]["official_2026"] is False
           assert manifest["orders_submitted"] is False
 
           stages = result["stage_results"]
-          assert "fit_holdout" in stages
-          if not result["fit_pass"]:
-              assert result["development_opened"] is False
-              assert "development" not in stages
-          if result["development_opened"] and not result["development_pass"]:
+          assert "development" in stages
+          if not result["development_pass"]:
               assert result["confirmation_opened"] is False
               assert "confirmation" not in stages
           for stage in stages.values():
@@ -163,15 +165,12 @@ jobs:
               assert counts[0] == counts[1] == counts[2]
               assert unresolved[0] == unresolved[1] == unresolved[2]
               assert totals[0] >= totals[1] >= totals[2]
-          print("CME_GAP_ML_CORRECTED_FROZEN_CONTRACT_PASS")
+          print("CME_GAP_FIVE_FEATURE_FROZEN_CONTRACT_PASS")
           print(json.dumps({
-            "fit_pass": result["fit_pass"],
-            "development_opened": result["development_opened"],
-            "development_pass": result["development_pass"],
-            "confirmation_opened": result["confirmation_opened"],
-            "confirmation_pass": result["confirmation_pass"],
-            "training_labeled_count": result["training_labeled_count"],
-            "purged_cross_boundary_label_count": result["purged_cross_boundary_label_count"],
+              "training_labeled_count": result["training_labeled_count"],
+              "development_pass": result["development_pass"],
+              "confirmation_opened": result["confirmation_opened"],
+              "confirmation_pass": result["confirmation_pass"],
           }, sort_keys=True))
           PY
 
@@ -189,7 +188,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cme-opening-gap-single-model-ml-${{ github.sha }}
+          name: cme-opening-gap-five-feature-ml-${{ github.sha }}
           path: |
             artifacts/cme_opening_gap_source_probe
             artifacts/cme_opening_gap_ml
