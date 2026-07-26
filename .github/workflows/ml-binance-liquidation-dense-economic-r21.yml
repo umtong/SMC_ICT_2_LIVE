@@ -1,0 +1,247 @@
+name: ML Binance dense COIN-M liquidation economic continuation
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-binance-liquidation-dense-001
+    paths:
+      - 'research/ml_binance_liquidation_dense_20260726/**'
+      - '.github/workflows/ml-binance-liquidation-dense-economic-r21.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_binance_liquidation_dense_20260726/**'
+      - '.github/workflows/ml-binance-liquidation-dense-economic-r21.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-binance-liquidation-coinm-economic-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  economic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen economic environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.1.3 pandas==2.2.3 requests==2.32.4 \
+            scikit-learn==1.6.1 pyarrow==18.1.0 pytest==8.3.5
+
+      - name: Reconstruct and test the complete frozen system
+        run: |
+          set -euo pipefail
+          root=research/ml_binance_liquidation_dense_20260726
+          out=research_runs/ml_binance_liquidation_dense_20260726/economic
+          mkdir -p "$out"
+          python "$root/reconstruct_economic.py" | tee "$out/RECONSTRUCT.log"
+          python -m py_compile \
+            "$root/economic_engine.py" \
+            "$root/test_economic_engine.py" \
+            "$root/source_gate_coinm.py" \
+            "$root/source_gate_coinm_executed.py"
+          PYTHONPATH="$root" pytest -q \
+            "$root/test_economic_engine.py" \
+            "$root/test_source_gate_coinm.py" \
+            "$root/test_source_gate_coinm_executed.py" \
+            2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/economic_engine.py" self-test \
+            2>&1 | tee "$out/SELF_TEST.log"
+          python -m json.tool "$root/SYSTEM_CONTRACT.json" >/dev/null
+          python -m json.tool "$root/ECONOMIC_BUNDLE_MANIFEST.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_005_NUMERIC_FEATURE_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
+
+      - id: source
+        name: Consume first authoritative executed-snapshot source decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_binance_liquidation_dense_20260726/economic
+          source_dir="$out/source"
+          mkdir -p "$source_dir" /tmp/coinm-source-download
+          selected=0
+          for attempt in $(seq 1 240); do
+            mapfile -t runs < <(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --branch agent/r11-ml-binance-liquidation-dense-001 \
+              --workflow ml-binance-liquidation-dense-source-r21.yml \
+              --limit 100 \
+              --json databaseId,status,conclusion,headSha,createdAt \
+              --jq '.[] | select(.status == "completed" and .conclusion == "success") | [.databaseId,.headSha] | @tsv')
+            for row in "${runs[@]:-}"; do
+              [ -n "$row" ] || continue
+              run_id=${row%%$'\t'*}
+              head_sha=${row#*$'\t'}
+              rm -rf /tmp/coinm-source-download/*
+              if ! gh run download "$run_id" \
+                --repo "$GITHUB_REPOSITORY" \
+                --name "ml-binance-liquidation-coinm-source-$run_id" \
+                --dir /tmp/coinm-source-download >/dev/null 2>&1; then
+                continue
+              fi
+              result=$(find /tmp/coinm-source-download -type f -name SOURCE_GATE_RESULT.json | head -n 1)
+              [ -n "$result" ] || continue
+              if python - <<'PY' "$result"
+          import json,sys
+          result=json.load(open(sys.argv[1]))
+          required={
+            'CORRECTION-20260726-ML-BINANCE-LIQ-COINM-CONTRACT-NOTIONAL-003',
+            'CORRECTION-20260726-ML-BINANCE-LIQ-SNAPSHOT-CENSORING-EXECUTED-FILL-004',
+          }
+          assert result['claim_id']=='CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
+          assert set(result.get('authoritative_corrections',[]))==required
+          assert result['checks']['original_quantity_fallback_prohibited'] is True
+          assert result['checks']['only_positive_executed_snapshots_enter_signal_rows'] is True
+          assert result['orders_submitted'] is False
+          PY
+              then
+                cp -a "$(dirname "$result")/." "$source_dir/"
+                printf '%s\n' "$run_id" > "$source_dir/PARENT_RUN_ID.txt"
+                printf '%s\n' "$head_sha" > "$source_dir/PARENT_HEAD_SHA.txt"
+                selected=1
+                break 2
+              fi
+            done
+            echo "authoritative source decision not yet available: attempt $attempt" >&2
+            sleep 60
+          done
+          if [ "$selected" != 1 ]; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('research_runs/ml_binance_liquidation_dense_20260726/economic/source/SOURCE_GATE_RESULT.json')
+          path.write_text(json.dumps({
+            'schema_version':1,
+            'claim_id':'CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001',
+            'status':'SOURCE_ERROR',
+            'source_gate_pass':False,
+            'market_outcome_opened':False,
+            'model_fit':False,
+            'trade_or_pnl_opened':False,
+            'official_2024_2026_opened':False,
+            'credentials_used':False,
+            'orders_submitted':False,
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          fi
+          echo "source_result=$source_dir/SOURCE_GATE_RESULT.json" >> "$GITHUB_OUTPUT"
+
+      - name: Execute source-conditional full pre-2024 causal screen
+        shell: bash
+        run: |
+          set -u
+          root=research/ml_binance_liquidation_dense_20260726
+          out=research_runs/ml_binance_liquidation_dense_20260726/economic
+          mkdir -p "$out" "$RUNNER_TEMP/coinm-source-cache" "$RUNNER_TEMP/coinm-market-cache"
+          set +e
+          PYTHONPATH="$root" python "$root/economic_engine.py" pre2024 \
+            --source-result "${{ steps.source.outputs.source_result }}" \
+            --source-cache "$RUNNER_TEMP/coinm-source-cache" \
+            --market-cache "$RUNNER_TEMP/coinm-market-cache" \
+            --output "$out" \
+            --source-workers 8 \
+            2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$rc" > "$out/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
+            exit "$rc"
+          fi
+          test -f "$out/RESULT.json"
+          test -f "$out/FULL_RESULT.json"
+
+      - name: Enforce economic and sequential decision contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result=json.loads(Path('research_runs/ml_binance_liquidation_dense_20260726/economic/RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
+          assert result['orders_submitted'] is False
+          assert result.get('official_2024h1_opened',False) is False
+          assert result['status'] in {
+            'SOURCE_GATE_DID_NOT_PASS',
+            'PRE2024_MODEL_POPULATION_FAILURE',
+            'PRE2024_BELOW_GATE',
+            'PRE2024_SURVIVOR_READY_FOR_EXACT_BYBIT_AND_SEQUENTIAL_2024H1',
+          }
+          if result['status']=='PRE2024_SURVIVOR_READY_FOR_EXACT_BYBIT_AND_SEQUENTIAL_2024H1':
+            assert result['base_positive_calendar_2023_24bp'] is True
+            assert result['risk_search']['selected'] is not None
+            assert result['risk_search']['selected']['liquidation'] is False
+            print('IMMEDIATE_NEXT_STAGE=EXACT_BYBIT_AND_OFFICIAL_2024H1')
+          else:
+            print('IMMEDIATE_NEXT_STAGE=RETIRE_OR_CLOSE_SOURCE')
+          print(json.dumps({
+            'status':result['status'],
+            'source_event_count':result.get('source_event_count'),
+            'event_row_count':result.get('event_row_count'),
+            'base_positive_calendar_2023_24bp':result.get('base_positive_calendar_2023_24bp'),
+            'selected_risk':(result.get('risk_search') or {}).get('selected'),
+          },sort_keys=True))
+          PY
+
+      - name: Record current project validation without blocking economic evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_binance_liquidation_dense_20260726/economic
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+
+      - name: Freeze economic evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_binance_liquidation_dense_20260726
+          out=research_runs/ml_binance_liquidation_dense_20260726/economic
+          mkdir -p "$out/inputs"
+          cp \
+            "$root/SYSTEM_CONTRACT.json" \
+            "$root/ECONOMIC_BUNDLE_MANIFEST.json" \
+            "$root/reconstruct_economic.py" \
+            "$root/economic_engine.py.gz.b64.part00" \
+            "$root/economic_engine.py.gz.b64.part01" \
+            "$root/economic_engine.py.gz.b64.part02" \
+            "$root/test_economic_engine.py" \
+            "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_005_NUMERIC_FEATURE_SCHEMA_BEFORE_OUTCOME.json" \
+            "$out/inputs/"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-binance-liquidation-coinm-economic-${{ github.run_id }}
+          path: research_runs/ml_binance_liquidation_dense_20260726/economic
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
