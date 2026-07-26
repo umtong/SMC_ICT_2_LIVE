@@ -56,6 +56,8 @@ jobs:
           text=p.read_text()
 
           replacements=[
+              ("                    'z':float(f['z'][i]),'gap':gap,'expected':float(f['expected'][i]),\n",
+               "                    'z':float(f['z'][i]),'gap':gap,\n"),
               ("                    'follower_return':float(f['follower_return'][i]),'under':float(f['under'][i]),\n",
                "                    'under':float(f['under'][i]),\n"),
               ("        status,payload,error=base._download(session,url,target)\n",
@@ -79,14 +81,14 @@ jobs:
               if count<1:
                   raise SystemExit(f'expected adapter token not found: {old!r}')
               text=text.replace(old,new)
-          forbidden=('inspect_source(',"leader['mark']","follower['mark']","base.utc_start(date)")
+          forbidden=('inspect_source(',"f['expected']","f['follower_return']","leader['mark']","follower['mark']","base.utc_start(date)")
           if any(token in text for token in forbidden):
               raise SystemExit(f'interface adapter left forbidden token: {[x for x in forbidden if x in text]}')
           p.write_text(text)
           PY
           python -m py_compile runtime/base_probe.py runtime/decision_tree.py
           python scripts/validate_project.py
-          sha256sum runtime/base_probe.py runtime/decision_tree.py research/bybit_altlag_decision_tree_20260726/preregistration.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_001.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_002.json > research_runs/bybit_altlag_decision_tree_20260726/INPUT_SHA256SUMS.txt
+          sha256sum runtime/base_probe.py runtime/decision_tree.py research/bybit_altlag_decision_tree_20260726/preregistration.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_001.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_002.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_003.json > research_runs/bybit_altlag_decision_tree_20260726/INPUT_SHA256SUMS.txt
 
       - name: Run fixed causal decision tree after registered interface correction
         shell: bash
