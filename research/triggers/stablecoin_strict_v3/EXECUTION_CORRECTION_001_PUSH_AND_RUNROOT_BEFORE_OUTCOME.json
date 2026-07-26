@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-STRICT-V3-PUSH-RUNROOT-001",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:45:00+09:00",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "observed_failure": "The main-installed pull_request path trigger did not create the dedicated strict V3 workflow run. Static inspection also found that PINNED_SOURCE_SHA.txt and PINNED_STRICT_SHA.txt were written before RUN_ROOT was created, and project validation could block source access despite being unrelated to the frozen source/model contract.",
+  "correction": [
+    "Add an exact push trigger for agent/r22-stablecoin-strict-v3-trigger-exact-001 and the registered trigger/workflow paths.",
+    "Create RUN_ROOT before writing immutable source and strict-engine SHA identities.",
+    "Move current project-control validation to an always, continue-on-error step so it is recorded but cannot block frozen source or economic evidence."
+  ],
+  "unchanged": [
+    "source SHA 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+    "strict engine SHA 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+    "USDT Issue/Redeem and USDC zero-address Transfer semantics",
+    "complete 2021-2023 source range and 12/64-block availability",
+    "one HGBT, features, labels, structural action rule and one global BTC/ETH slot",
+    "12/18/24bp costs and prewritten risk/notional frontier",
+    "strict pre-entry information boundary and no elapsed-time liquidation",
+    "immediate official 2024H1 after a positive no-liquidation pre-2024 survivor",
+    "no credentials and no orders"
+  ],
+  "source_result_observed_before_correction": false,
+  "market_outcome_observed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
