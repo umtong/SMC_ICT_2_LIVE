@@ -1,0 +1,81 @@
+{
+  "account": {
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "global_slot_count": 1,
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 3.0,
+    "planned_risk_fraction": 0.01,
+    "top_quote_participation": 0.05,
+    "top_winner_counterfactual": "exclude the largest positive 10 percent of 12-bp event keys before complete slot and NAV replay"
+  },
+  "claim_id": "CLM-20260726-1740-ML-L2-RAID-001",
+  "data": {
+    "conditional_development_date": "2023-07-01",
+    "fit_date": "2022-07-01",
+    "information_clock": "completed 100 ms Bybit local-arrival state",
+    "parent_artifact_digest": "sha256:90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+    "parent_artifact_id": 8626087323,
+    "parent_workflow_run": 30182786091,
+    "product": "Bybit USDT-linear BTCUSDT perpetual",
+    "prohibited_years": [2024, 2025, 2026],
+    "state_sha256": {
+      "2022-07-01": "da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b",
+      "2023-07-01": "8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f"
+    }
+  },
+  "engine_version": "ML-L2-RAID-ACCEPTANCE-V1",
+  "event": {
+    "acceptance_destination": "half the complete prior five-minute range beyond the raided boundary",
+    "decision_delay": "one complete second after the first executable BBO raid",
+    "entry": "first valid executable BBO at least 100 ms after the completed decision state",
+    "external_liquidity": "immediately preceding complete five-minute high and low",
+    "first_raid_only": true,
+    "rejection_destination": "complete prior five-minute equilibrium",
+    "same_state_dual_touch": "ambiguous for model fitting and structural stop in account replay",
+    "source_gap_or_day_boundary": "structural stop",
+    "time_exit": false
+  },
+  "features": [
+    "raid-direction-normalized top-five depth imbalance",
+    "raid-direction-normalized microprice skew",
+    "raid-direction-normalized one-second aggressive flow",
+    "raid-direction-normalized one-second withdrawal",
+    "raid-direction-normalized one-second refill",
+    "raid-direction-normalized one-second flow efficiency",
+    "raid-direction-normalized one-second imbalance change",
+    "spread bps",
+    "thirty-second volatility bps",
+    "raid depth bps at decision"
+  ],
+  "fit_gate_all_required": {
+    "auc_lift_over_distance_baseline": ">=0.02",
+    "both_confirmation_halves_positive_at_18bps": true,
+    "brier_skill_over_distance_baseline": ">0",
+    "model_auc": ">=0.55",
+    "positive_median_trade_at_12bps": true,
+    "positive_total_return_at_18bps": true,
+    "positive_total_return_at_24bps": true,
+    "positive_winner_removed_return_at_12bps": true,
+    "resolved_confirmation_rows": ">=40",
+    "trade_count_at_18bps": ">=20",
+    "winner_removed_sample_day_growth_at_24bps": ">=1%"
+  },
+  "model": {
+    "calibration": "one frozen isotonic map",
+    "family": "HistGradientBoostingClassifier",
+    "feature_subset_grid": false,
+    "hyperparameter_grid": false,
+    "minimum_probability_advantage_over_exact_break_even": 0.05,
+    "probability_threshold_grid": false,
+    "signal_cost_bps": 24,
+    "single_model_only": true
+  },
+  "partitions": {
+    "calibration": "fit day 12:00-18:00 UTC; labels resolve before 18:00",
+    "confirmation": "fit day 18:00-24:00 UTC",
+    "conditional_development": "entire 2023-07-01, read only after every fit gate passes",
+    "training": "fit day 00:00-12:00 UTC; labels resolve before 12:00"
+  },
+  "scientific_source_sha256": "444d0a8158bb3c61e80f658f213005f88ae88b41f0958c354971aded50e8a54d",
+  "test_source_sha256": "7345d60190aa400acbc9a42dd67cbc1fd5a59922c7d7843dba18c2526423cc18"
+}
