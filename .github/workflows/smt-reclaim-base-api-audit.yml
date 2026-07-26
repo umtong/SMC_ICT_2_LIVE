@@ -32,6 +32,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install frozen import environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+
       - name: Reconstruct frozen shared source and record exact API
         shell: bash
         run: |
