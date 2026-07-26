@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2036-ML-XVENUE-MAKER-001",
+  "result_id": "RES-20260726-ML-XVENUE-MAKER-001",
+  "engine_version": "ML-XVENUE-MAKER-FAIRVALUE-R13-V1",
+  "objective": "Discover a materially higher-turnover after-cost payoff by combining external Binance Futures price discovery with queue-aware passive Bybit entry, while retaining one global slot and strategy-defined exits only.",
+  "economic_thesis": {
+    "information_advantage": "A completed Binance Futures top-book and aggressor-flow shock can move the executable cross-venue fair value before Bybit BTCUSDT reprices.",
+    "execution_advantage": "Join the stale Bybit best quote post-only instead of paying taker cost at entry; abandon the order immediately when the external fair-value premise invalidates.",
+    "payoff": "A filled position exits at frozen fair-value catch-up or external-reference reversal. There is no elapsed-time liquidation.",
+    "why_it_can_scale_growth": "The information unit is sub-second, repeatable and potentially high-turnover; cost reduction occurs on every authorized entry rather than through leverage rescue."
+  },
+  "market_scope": {
+    "execution_exchange": "Bybit",
+    "execution_product": "BTCUSDT USDT linear perpetual",
+    "signal_exchange": "Binance Futures",
+    "signal_product": "BTCUSDT USD-M perpetual",
+    "global_pending_or_open_slots": 1,
+    "orders_submitted": false
+  },
+  "source_contract": {
+    "provider": "Tardis downloadable normalized CSV",
+    "availability_clock": "local_timestamp",
+    "state_frequency_ms": 100,
+    "quotes_fields": ["local_timestamp", "ask_amount", "ask_price", "bid_price", "bid_amount"],
+    "trades_fields": ["local_timestamp", "side", "price", "amount"],
+    "same_timestamp_order": "provider capture order",
+    "free_public_sample_dates": {
+      "train": "2022-07-01",
+      "calibration": "2023-03-01",
+      "untouched_confirmation": "2023-07-01"
+    },
+    "official_2024_2026_prohibited": true
+  },
+  "event_definition": {
+    "basis": "prior-only 10-minute EWM of log Bybit/Binance executable mids, shifted one completed state",
+    "binance_shock_min_bps_500ms": 3.0,
+    "aligned_stale_bybit_gap_min_bps": 1.25,
+    "maximum_quote_age_ms": 1000,
+    "cooldown_ms": 2000,
+    "direction": "sign of the completed Binance shock and aligned fair-value gap",
+    "frozen_target": "90% of the signal-time cross-venue fair-value gap",
+    "reference_reversal": "Binance executable mid returns through its pre-shock 500ms origin"
+  },
+  "execution_contract": {
+    "placement_latencies_ms": [100, 300],
+    "signal_availability": "signal bucket must complete before latency starts",
+    "order": "one-sided Bybit post-only order at the last known best bid for long or best ask for short immediately before activation",
+    "post_only_validity": "cancel if the displayed best quote leaves the frozen order price or would cross the opposite quote",
+    "queue_ahead": "displayed best-quote size immediately before activation",
+    "modeled_order_size": "5% of displayed best-quote size",
+    "fill": "later opposing aggressive volume fills only after consuming initial displayed queue plus modeled order",
+    "ambiguous_trade_price_rule": "count a 100ms bin only when every same-side trade in that bin executed at or through the order price",
+    "cancellations_ahead": "ignored; no queue improvement credit",
+    "pending_cancel": "fair-value gap decays below 25% of signal gap, Binance reference reverses, target is reached before fill, or top-quote identity is lost",
+    "filled_exit": "fair-value catch-up or Binance reference reversal after one completed exit bucket plus 100ms exit latency",
+    "source_boundary": "full frozen structural stop",
+    "elapsed_time_exit": false,
+    "one_global_slot": "pending and filled states occupy the slot; arbitration uses actual placement time"
+  },
+  "features": [
+    "absolute fair-value gap",
+    "signed Binance 500ms and 1s return",
+    "signed Binance 500ms and 1s aggressor flow",
+    "signed Binance and Bybit quote imbalance",
+    "Bybit and relative spread",
+    "Bybit/Binance 500ms response ratio",
+    "Binance and Bybit one-second quote-update intensity",
+    "displayed queue ahead",
+    "frozen target distance",
+    "frozen structural stop distance"
+  ],
+  "model": {
+    "fill_model": "one HistGradientBoostingClassifier",
+    "fill_calibration": "one isotonic map fitted only on the calibration date",
+    "conditional_catchup_model": "one HistGradientBoostingClassifier on filled training events",
+    "conditional_calibration": "one isotonic map fitted only on filled calibration events",
+    "no_feature_model_threshold_grid": true,
+    "authorization": "p_fill times conditional target/stop expectancy must exceed the selected round-trip cost by 2bp"
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "planned_risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "capacity": "5% of displayed Bybit best-quote notional",
+    "costs_bps_round_trip": [12, 18, 24],
+    "winner_removal": "remove the largest positive 10% accepted event keys before global-slot arbitration and rerun the entire account",
+    "funding": "not opened in the initial sub-day fatal screen; a survivor must add actual Bybit funding before ranking",
+    "liquidation": false
+  },
+  "minimum_model_sample": {
+    "training_events": 200,
+    "calibration_events": 100,
+    "filled_training_events": 50,
+    "filled_calibration_events": 25,
+    "confirmation_events": 100,
+    "confirmation_fills": 40
+  },
+  "per_latency_confirmation_gates": {
+    "fill_auc_min": 0.55,
+    "conditional_catchup_auc_min": 0.55,
+    "total_return_positive_at_24bp": true,
+    "median_net_trade_positive_at_24bp": true,
+    "top10_positive_event_removed_return_positive_at_24bp": true,
+    "sample_day_geometric_growth_above_current_contract_first": 0.000631845,
+    "maximum_drawdown_below": 0.25
+  },
+  "combined_decision": {
+    "advance": "Both 100ms and 300ms paths pass every frozen gate; then expand the unchanged information unit over additional pre-2024 dates and add actual funding before any ranking claim.",
+    "retire": "Either latency path fails the economic/model gate after adequate samples, or the exact information unit is sub-cost or concentration-dependent. Do not tune adjacent thresholds, models, latency, queue participation, risk or leverage.",
+    "initial_ranking_role": "NONE_NOT_RANK_ELIGIBLE_PRE2024_FATAL_SCREEN"
+  }
+}

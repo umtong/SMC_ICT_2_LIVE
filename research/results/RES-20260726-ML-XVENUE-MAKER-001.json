@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-XVENUE-MAKER-001",
+  "claim_id": "CLM-20260726-2036-ML-XVENUE-MAKER-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_PRE_MODEL_EVENT_OR_CLASS_SCARCITY",
+  "economic_status": "BELOW_GATE_PRE_MODEL",
+  "ranking_role": "NONE_NOT_RANK_ELIGIBLE_PRE2024_FATAL_SCREEN",
+  "decision": "RETIRE_EXACT_XVENUE_MAKER_INFORMATION_UNIT",
+  "summary": "Hard-valid queue-aware Binance Futures fair-value shock to Bybit post-only entry screen. Event counts were ample on train/calibration but actual conservative fills were too sparse and unstable to fit the frozen two-stage model. At 100ms, train/calibration/confirmation produced 3385/507/52 events and 28/6/0 fills. At 300ms, 3238/485/51 events produced 15/0/0 fills. The filled training paths were far below even the minimum 12bp cost: mean gross 0.3863bp at 100ms and 0.7635bp at 300ms. The exact information unit is retired without threshold, queue, latency, model, target, risk or leverage tuning.",
+  "market_scope": {
+    "execution": "Bybit BTCUSDT USDT linear perpetual",
+    "signal": "Binance Futures BTCUSDT USD-M perpetual",
+    "global_pending_or_open_slots": 1
+  },
+  "dates": {
+    "train": "2022-07-01",
+    "calibration": "2023-03-01",
+    "untouched_confirmation": "2023-07-01",
+    "official_2024_2026_opened": false
+  },
+  "latencies": {
+    "100ms": {
+      "events": {"train": 3385, "calibration": 507, "confirmation": 52},
+      "fills": {"train": 28, "calibration": 6, "confirmation": 0},
+      "fill_rates": {"train": 0.00827178729689808, "calibration": 0.011834319526627219, "confirmation": 0.0},
+      "filled_train_gross_mean_bps": 0.3863068318715349,
+      "filled_train_gross_median_bps": -0.777504075619162,
+      "filled_calibration_gross_mean_bps": -0.10827946624325506,
+      "filled_calibration_gross_median_bps": 1.8818394701070054,
+      "failure_reason": "insufficient filled outcomes for conditional model",
+      "result_sha256": "43920fa9cdd885653361ca5153b06425b9b9ace82162428dda48016389255ef3"
+    },
+    "300ms": {
+      "events": {"train": 3238, "calibration": 485, "confirmation": 51},
+      "fills": {"train": 15, "calibration": 0, "confirmation": 0},
+      "fill_rates": {"train": 0.004632489190858555, "calibration": 0.0, "confirmation": 0.0},
+      "filled_train_gross_mean_bps": 0.7635028970787903,
+      "filled_train_gross_median_bps": 1.286372173197048,
+      "failure_reason": "fill outcome has only one class",
+      "result_sha256": "8d60a5b2dad77da942219aac2f3759d0e2c804c65e7372c8d2314aae5fa0c818"
+    }
+  },
+  "cost_diagnostic": {
+    "minimum_tested_round_trip_bps": 12,
+    "100ms_train_mean_after_12bp_bps": -11.613693168128464,
+    "300ms_train_mean_after_12bp_bps": -11.23649710292121,
+    "economic_interpretation": "Passive entry removed one taker leg in concept, but conservative queue fills occurred only after the external edge had mostly decayed; gross filled expectancy remained less than one basis point and could not support the cost contract."
+  },
+  "reproducibility": {
+    "scientific_head": "64099e66311c072da1768c1bfcd1a47b936e1e91",
+    "workflow_run": 30201099148,
+    "workflow_artifact": 8631724100,
+    "workflow_artifact_sha256": "24267c8352f384f7b61f20e4daac17ccd3b3a3f70fe2ad314e79a5673943788e",
+    "combined_result_sha256": "14539d315546c0d8776b2c5a3dd8646827ce54a061a7783b9d1cc7c42281bf49",
+    "runner_source_sha256": "96a1434f6c7c8585ba4f7383bacf57c4ca125803c274191edf5e915275009444",
+    "audit_status": "PASS"
+  },
+  "causal_and_safety_flags": {
+    "completed_state_before_latency": true,
+    "queue_ahead_cancellation_credit": false,
+    "global_slot_by_actual_placement_time": true,
+    "elapsed_time_exit": false,
+    "orders_submitted": false,
+    "credentials_used": false
+  },
+  "retirement_boundary": "Do not tune adjacent shock/gap thresholds, queue participation, quote-identity rule, latency, model, calibration, target, stop, risk or leverage under this information unit. The repeated lesson is structural: at current public best-quote queue priority, fill arrives after edge decay. A subsequent passive-entry hypothesis must materially change queue priority or venue/order mechanism, not loosen this screen."
+}
