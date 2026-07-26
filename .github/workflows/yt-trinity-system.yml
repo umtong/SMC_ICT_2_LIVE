@@ -58,11 +58,13 @@ jobs:
             python -m json.tool research/yt_trinity_ml/INSTRUMENT_RULES.schema.json >/dev/null
             pytest -q -x --junitxml=artifact/system-test/junit.xml research/yt_trinity_ml/tests/test_yt_trinity_system.py
           } 2>&1 | tee artifact/system-test/pytest.log
-      - name: Upload causal-system diagnostics
+      - name: Upload causal-system diagnostics and source snapshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: yt-trinity-system-test-${{ github.sha }}
-          path: artifact/system-test
+          path: |
+            artifact/system-test
+            research/yt_trinity_ml
           if-no-files-found: warn
           retention-days: 30
