@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1612-ALT-OVERREACTION-PNL-001",
+  "status": "FROZEN_BEFORE_OUTCOME_ACCESS",
+  "created_at": "2026-07-26T16:12:00+09:00",
+  "base_revision": 11,
+  "dependency": {
+    "source_claim": "CLM-20260726-1130-ALTLAG-DECISIONTREE-001",
+    "source_artifact_id": 8628934229,
+    "source_artifact_sha256": "709499df9c8d68baefc8706274260ee62e3985396c6177e050c26dc56f06df70",
+    "source_result": "OVERREACTION_OPPORTUNITY PASS: 121 unique 12bp opportunities, 61 unique 24bp opportunities, all four dates represented",
+    "reused_without_retuning": [
+      "BTC displacement z >= 3",
+      "leader flow alignment >= 0.5",
+      "activity >= 2",
+      "prior follower/BTC trade-count ratio >= 1",
+      "prior follower/BTC realised-volatility ratio >= 1.5",
+      "follower overreaction ratio >= 1.25",
+      "follower flow alignment >= 0.5",
+      "beta-relative excess floor >= 12bp",
+      "1/2/5-second completed horizons and causal rearm"
+    ]
+  },
+  "hypothesis": "After a completed BTC displacement, a high-attention SOLUSDT or XRPUSDT follower that moves at least 12bp beyond its prior-beta-implied response has raided relative external liquidity. If BTC fails to confirm further and the follower causally reclaims part of the excess, the follower should reverse toward relative equilibrium after realistic costs.",
+  "smc_ict_translation": [
+    "BTC creates the displacement and dealing-range direction.",
+    "The follower extends beyond the beta-implied move and raids relative external liquidity.",
+    "BTC non-confirmation plus a completed follower residual reclaim is the relational MSS/SMT confirmation.",
+    "Entry is against the follower extension after confirmation and explicit latency.",
+    "Stop is beyond the post-raid extreme; target is beta-implied relative equilibrium."
+  ],
+  "data_contract": {
+    "venue": "Bybit public trades",
+    "symbols": ["BTCUSDT", "SOLUSDT", "XRPUSDT"],
+    "untouched_dates": ["2023-12-25", "2023-12-27", "2023-12-29", "2023-12-31"],
+    "decision_clock": "completed 100ms trade bins",
+    "raw_execution": "first observed follower trade at or after confirmation plus 100ms or 300ms",
+    "source_gaps": "never compressed or forward-filled",
+    "2024_2026_opened": false
+  },
+  "candidate_grid": [
+    {"candidate_id": "C25_S10", "confirm_fraction": 0.25, "confirm_run_bins": 5, "target_fraction": 0.10, "target_run_bins": 5, "stop_buffer_fraction": 0.10, "leader_extension_fraction": 0.25},
+    {"candidate_id": "C25_S25", "confirm_fraction": 0.25, "confirm_run_bins": 5, "target_fraction": 0.10, "target_run_bins": 5, "stop_buffer_fraction": 0.25, "leader_extension_fraction": 0.25},
+    {"candidate_id": "C50_S10", "confirm_fraction": 0.50, "confirm_run_bins": 5, "target_fraction": 0.10, "target_run_bins": 5, "stop_buffer_fraction": 0.10, "leader_extension_fraction": 0.25},
+    {"candidate_id": "C50_S25", "confirm_fraction": 0.50, "confirm_run_bins": 5, "target_fraction": 0.10, "target_run_bins": 5, "stop_buffer_fraction": 0.25, "leader_extension_fraction": 0.25}
+  ],
+  "execution_contract": {
+    "position_direction": "opposite the follower overextension",
+    "global_slot": "one pending or open SOLUSDT/XRPUSDT position total",
+    "latency_ms": [100, 300],
+    "round_trip_cost_bp": [12, 18, 24],
+    "elapsed_time_exit": false,
+    "target": "relative excess <= 10% of event excess for five completed 100ms bins",
+    "stop": "post-event signed follower extreme plus 10% or 25% of event excess",
+    "funding_boundary": "charge full structural stop before any unsettled funding boundary",
+    "source_boundary": "charge full structural stop for any accepted unresolved position",
+    "same_state_ambiguity": "structural stop evaluated before equilibrium target",
+    "risk_leverage_optimisation": false,
+    "orders_submitted": false
+  },
+  "development_gate": {
+    "applies_at_both_latency_settings": true,
+    "minimum_trades": 20,
+    "18bp_mean_net_positive": true,
+    "18bp_median_net_positive": true,
+    "18bp_profit_factor_minimum": 1.10,
+    "18bp_top_10_percent_winner_removed_total_positive": true,
+    "18bp_positive_dates_minimum": 3,
+    "18bp_largest_five_winner_share_maximum": 0.50,
+    "24bp_mean_net_positive": true,
+    "boundary_full_stop_share_maximum": 0.20
+  },
+  "selection_rule": "Among full gate survivors only, maximise the worse of 100ms and 300ms total net bps at 18bp; then the worse total net bps at 24bp; then candidate_id. No outcome-driven parameter amendment is permitted.",
+  "promotion_boundary": "A survivor freezes one rule and may open a separate exact continuous Bybit BBO/depth/funding account replay starting 2024-01-01. This sparse pre-2024 screen is not ranking eligible and cannot authorise live trading.",
+  "failure_boundary": "If no candidate passes, retire this exact BTC-to-alt overreaction residual-reclaim payoff. Do not tune adjacent thresholds; change information source or payoff mechanism.",
+  "objective_fingerprint": "2f788410086478dff3f56712ee453551417315d553472500e9f0bab5d70493a0",
+  "scope_fingerprint": "0d612fa4b788dc5603e0dd228f45a239b88a5f174049235cebca2f9fa834b54d"
+}
