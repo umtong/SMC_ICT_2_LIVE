@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-HL-LIQUIDATION-SHA-SCOPED-003",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "timing": "BEFORE_ANY_HYPERLIQUID_EVENT_ROW_OR_MARKET_OUTCOME",
+  "observed_problem": "Two outcome-sealed source-gate runs were cancelled because branch/PR-scoped concurrency used cancel-in-progress while transport-only commits were still being added. No source result, event count, Bybit market row, model metric, trade or PnL existed.",
+  "change": [
+    "Scope concurrency to immutable github.sha.",
+    "Set cancel-in-progress to false so a later metadata commit cannot terminate a running source gate."
+  ],
+  "unchanged": [
+    "resolved repository and Parquet revision policy",
+    "six calendar-rule dates and six frozen UTC hours per date",
+    "36 _src identities",
+    "explicit LedgerUpdate liquidation predicate",
+    "signed target position validation",
+    "source density and breadth gates",
+    "all conditional model, account and objective rules",
+    "official 2026H1 seal",
+    "order permission"
+  ],
+  "source_rows_opened_before_change": false,
+  "market_outcomes_opened_before_change": false,
+  "orders_submitted": false
+}
