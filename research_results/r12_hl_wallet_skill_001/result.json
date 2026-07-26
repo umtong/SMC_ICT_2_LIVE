@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-HL-WALLET-SKILL-001",
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_PRE_2026_IDENTITY_PREMISE_GATE",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_PRE_STRATEGY_PREMISE_SCREEN",
+  "decision": "RETIRE_IDENTITY_SKILL_DEPENDENCY_BEFORE_FLOW_OPTIMIZATION",
+  "scientific_question": "Does prior-only wallet-coin taker-flow markout skill persist across two independent development partitions strongly enough to justify an identity-conditioned strategy grid?",
+  "source": {
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "canonical_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "prevalidation_file_count": 36,
+    "validation_file_count_read": 0
+  },
+  "screen": {
+    "candidate_count": 16,
+    "gate_survivor_count": 0,
+    "placebo_run": false,
+    "identity_flow_grid_opened": false,
+    "strategy_pnl_computed": false,
+    "bybit_execution_opened": false
+  },
+  "best_candidate": {
+    "candidate_id": "h60-n50-s50-q050",
+    "skill_horizon_seconds": 60,
+    "minimum_prior_episodes": 50,
+    "shrinkage_n0": 50,
+    "cohort_tail_fraction": 0.05,
+    "combined_wallet_day_count": 353,
+    "combined_mean_signed_markout_bp": 1.0380133531362052,
+    "combined_median_signed_markout_bp": 1.1577437621536573,
+    "combined_top_minus_bottom_spread_bp": 1.0701414496451167,
+    "combined_score_return_correlation": 0.11742016412257231,
+    "combined_top_10pct_positive_removed_mean_signed_bp": -0.12452535081486786,
+    "development_a_wallet_day_count": 205,
+    "development_a_mean_signed_markout_bp": 1.1533266015481558,
+    "development_a_top_minus_bottom_spread_bp": 1.143188515730599,
+    "development_a_top_10pct_positive_removed_mean_signed_bp": -0.21307983143849,
+    "development_b_wallet_day_count": 148,
+    "development_b_mean_signed_markout_bp": 0.8782889212142466,
+    "development_b_top_minus_bottom_spread_bp": 0.9954675143676464,
+    "development_b_top_10pct_positive_removed_mean_signed_bp": 0.055083708453031566,
+    "gate_failures": [
+      "development_a_spread_at_least_4bp",
+      "development_b_spread_at_least_4bp",
+      "combined_top10_removed_positive"
+    ]
+  },
+  "interpretation": "Prior wallet rankings showed a small positive average markout but did not separate upper and lower cohorts by the preregistered four-basis-point minimum and reversed after removing the largest positive observations. Wallet identity as a prior-only skill ranking is therefore too weak and concentrated to justify flow-rule optimization or Bybit execution work.",
+  "retirement_boundary": "Do not tune adjacent skill horizons, minimum episode counts, shrinkage constants or tail fractions under this source dependency. Identity may re-enter only through a materially different contemporaneous mechanism such as observable parent-order cadence, not through prior performance ranking.",
+  "reproducibility": {
+    "workflow_run": 30197050667,
+    "artifact_id": 8630445658,
+    "artifact_digest": "sha256:79ff15431599d859bca3bb77b653fbb16b0b0fcc309f059f37aa936574ddea0d",
+    "result_sha256": "a7e1a104e9fdd20f6c6886b3c7f2531b19d0771a263555e1370ebcf7b916bd8f",
+    "candidate_ledger_sha256": "c43fdb214ea6e87d0651b5f22b4f9088039e3e16fc676f9d316a38a10586b3cf",
+    "download_manifest_sha256": "edc614af2b1664743dd9bb7a3e9005c91a7a870ae5703765ebaf901e21a88bc1"
+  },
+  "official_2026_opened": false,
+  "orders_submitted": false
+}
