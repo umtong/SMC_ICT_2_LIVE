@@ -1,0 +1,84 @@
+name: ML Donchian official 2024H1 sequential result
+
+on:
+  push:
+    branches: [agent/r16-register-donchian-2024h1-sequential-001]
+    paths:
+      - 'research/ml_donchian_2024h1_sequential_20260726/**'
+      - 'research/results/RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001.json'
+      - 'control/current-state.md'
+      - 'control/ranking.json'
+      - 'control/result-registry.jsonl'
+      - '.github/workflows/ml-donchian-2024h1-sequential-r16.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_donchian_2024h1_sequential_20260726/**'
+      - 'research/results/RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001.json'
+      - 'control/current-state.md'
+      - 'control/ranking.json'
+      - 'control/result-registry.jsonl'
+      - '.github/workflows/ml-donchian-2024h1-sequential-r16.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify durable result and state transition
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+
+          result_path=Path('research/results/RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001.json')
+          result=json.loads(result_path.read_text())
+          ranking=json.loads(Path('control/ranking.json').read_text())
+          state=Path('control/current-state.md').read_text()
+          rows=[json.loads(line) for line in Path('control/result-registry.jsonl').read_text().splitlines() if line.strip()]
+
+          assert result['result_id']=='RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001'
+          assert result['status']=='TESTED_2024H1_SEQUENTIAL_BELOW_GATE'
+          assert result['hard_validity_status']=='PASS_CAUSAL_BINANCE_PROXY_INDEPENDENT_RERUN_IDENTICAL'
+          assert result['chronology']['official_first_research_interval']=='2024H1'
+          assert result['chronology']['2024H2_opened'] is False
+          assert result['orders_submitted'] is False
+          p24=result['account_paths']['24bps']
+          assert p24['completed_trade_count']==24
+          assert math.isclose(p24['geometric_daily_growth'],0.0003873170703223572,rel_tol=0,abs_tol=1e-15)
+          assert math.isclose(p24['winner_removed_reroute']['total_return'],-0.07661046043680741,rel_tol=0,abs_tol=1e-15)
+          assert result['reproduction']['rerun_result_identical'] is True
+          assert result['reproduction']['rerun_summary_identical'] is True
+          assert result['reproduction']['rerun_predictions_identical'] is True
+
+          assert ranking['revision']==16
+          assert ranking['first_place']['sequential_evidence']['official_2024H1_opened'] is True
+          rank3=ranking['ranked_candidates'][2]
+          assert rank3['rank']==3
+          assert rank3['source_result_id']==result['result_id']
+          assert math.isclose(rank3['geometric_daily_growth'],p24['geometric_daily_growth'],rel_tol=0,abs_tol=1e-15)
+          assert any(row['result_id']==result['result_id'] for row in rows)
+          assert '2024H1 is now seen sequential evidence' in state
+          assert 'Rank does not determine research priority.' in state
+          print(json.dumps({
+              'result_id':result['result_id'],
+              'rank':rank3['rank'],
+              'growth_24bps':p24['geometric_daily_growth'],
+              'winner_removed_return':p24['winner_removed_reroute']['total_return'],
+              'decision':result['decision'],
+          },sort_keys=True))
+          PY
+      - name: Validate project harness
+        run: |
+          python scripts/validate_project.py
+          python scripts/build_context_bundle.py
