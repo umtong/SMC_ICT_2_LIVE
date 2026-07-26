@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-BLOCKSCOUT-MACOS-009",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "reason": "The corrected Linux Blockscout source jobs remained queued after the causal 64-block boundary test was repaired. Before any stablecoin event, market price, label, model, trade or PnL was opened, an identical macOS execution surface was added to obtain an available standard runner.",
+  "change": "Run the unchanged Blockscout source gate and tests on macos-14; use shasum -a 256 only for platform-compatible evidence hashing.",
+  "unchanged": [
+    "all 36 source months from 2021-01 through 2023-12",
+    "USDT and USDC zero-address mint and burn identities",
+    "12-block primary and 64-block stress availability",
+    "64-block pre-2024 eligibility boundary",
+    "source density and token breadth gates",
+    "conditional HGBT, features, labels, costs, structural exits and one global slot",
+    "immediate sequential 2024H1 rule after a frozen pre-2024 survivor",
+    "credential and order prohibition"
+  ],
+  "stablecoin_event_opened_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fit_before_correction": false,
+  "orders_submitted": false
+}
