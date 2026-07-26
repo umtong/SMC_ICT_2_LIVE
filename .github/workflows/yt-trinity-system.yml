@@ -7,6 +7,7 @@ on:
       - research/yt_trinity_ml/system/**
       - research/yt_trinity_ml/run_research.py
       - research/yt_trinity_ml/extract_rule_ontology.py
+      - research/yt_trinity_ml/apply_timestamp_unit_patch.py
       - research/yt_trinity_ml/system_contract.json
       - research/yt_trinity_ml/SYSTEM_DESIGN.md
       - research/yt_trinity_ml/INSTRUMENT_RULES.schema.json
@@ -18,6 +19,7 @@ on:
       - research/yt_trinity_ml/system/**
       - research/yt_trinity_ml/run_research.py
       - research/yt_trinity_ml/extract_rule_ontology.py
+      - research/yt_trinity_ml/apply_timestamp_unit_patch.py
       - research/yt_trinity_ml/system_contract.json
       - research/yt_trinity_ml/SYSTEM_DESIGN.md
       - research/yt_trinity_ml/INSTRUMENT_RULES.schema.json
@@ -25,7 +27,7 @@ on:
       - .github/workflows/yt-trinity-system.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: yt-trinity-system-${{ github.ref }}
@@ -37,6 +39,18 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Normalize datetime indexes to nanoseconds
+        run: python research/yt_trinity_ml/apply_timestamp_unit_patch.py
+      - name: Persist timestamp-unit compatibility on the work branch
+        if: github.event_name == 'push'
+        run: |
+          if ! git diff --quiet -- research/yt_trinity_ml/system/coarse.py research/yt_trinity_ml/system/event_tape.py; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/yt_trinity_ml/system/coarse.py research/yt_trinity_ml/system/event_tape.py
+            git commit -m "Normalize replay timestamps for pandas 3"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
