@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-LIQ-SWEEP-MSS-001",
+  "result_id": "RES-20260726-LIQ-SWEEP-MSS-FATAL-001",
+  "engine_version": "LIQ_SWEEP_MSS_V1",
+  "hypothesis": "A prior external-liquidity raid has positive reversal expectancy only when exchange-reported forced liquidation is followed by opposite aggressive flow, depleted-side BBO refill, range reclaim and a completed micro-structure shift before entry.",
+  "smc_ict_mapping": {
+    "external_liquidity": "prior completed 300- or 900-second rolling high/low",
+    "liquidity_sweep": "first trade-through of that level by at least 2 or 5 bp",
+    "forced_delivery": "same-direction exchange-reported liquidation notional above a fit-only 90th or 97th percentile",
+    "absorption": "opposite signed trade notional fraction and destination-side BBO refill",
+    "reclaim": "completed midprice returns inside the raided level",
+    "mss_cisd": "completed price breaks the opposite prior 3- or 10-second micro swing",
+    "invalidation": "actual observed sweep extreme plus max(one spread, 1 bp)",
+    "objective": "prior range equilibrium or 2R structural target"
+  },
+  "data_contract": {
+    "provider": "Tardis public first-day monthly samples",
+    "exchange": "bybit",
+    "data_types": ["quotes", "trades", "liquidations"],
+    "availability_clock": "local_timestamp",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "fit_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "development_dates": ["2023-07-01", "2023-09-01", "2023-11-01"],
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "parameter_grid": {
+    "lookback_seconds": [300, 900],
+    "micro_pivot_seconds": [3, 10],
+    "minimum_sweep_bps": [2.0, 5.0],
+    "fit_liquidation_quantile": [0.90, 0.97],
+    "maximum_confirmation_seconds": [3, 5, 10],
+    "minimum_opposite_flow_fraction": [0.0, 0.30],
+    "minimum_refill_ratio": [0.8, 1.2],
+    "entry_and_exit_latency_ms": [100, 300],
+    "target_mode": ["equilibrium", "two_r"],
+    "candidate_count": 768
+  },
+  "execution_contract": {
+    "decision_information": "completed one-second states only",
+    "entry": "first executable BBO quote after completed MSS plus configured latency",
+    "exit": "first executable opposite BBO quote after structural stop or target trigger plus configured latency",
+    "same_second_ambiguity": "stop first",
+    "global_slot": 1,
+    "source_gap": "entry rejected or full-stop exit",
+    "source_boundary": "unresolved position receives full stop",
+    "forced_time_exit": false,
+    "additional_roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "funding_reserve_bps_per_boundary": 2.0,
+    "planned_nav_risk": 0.005
+  },
+  "fit_gate": {
+    "minimum_trades_at_18bp": 12,
+    "positive_mean_at_18bp": true,
+    "positive_median_at_12bp": true,
+    "positive_total_return_at_24bp": true,
+    "positive_12bp_return_after_top_10pct_event_exclusion_and_reroute": true,
+    "positive_dates_at_18bp": 2,
+    "maximum_top5_positive_share": 0.50,
+    "maximum_unresolved_fraction": 0.10,
+    "maximum_drawdown": 0.25
+  },
+  "development_gate": {
+    "minimum_trades_at_18bp": 15,
+    "other_requirements": "identical to fit gate"
+  },
+  "staging": {
+    "fit": "all 768 cells",
+    "development": "only up to the twelve highest-growth complete fit survivors, frozen without parameter changes",
+    "later_pre2024": "only after a development survivor",
+    "official_2024": "prohibited by this claim"
+  },
+  "top_trade_removal": "Identify the largest 10% of positive 12-bp event keys, exclude them before global-slot competition and rerun from initial NAV.",
+  "promotion_boundary": "This sparse fatal screen is never ranking eligible. A survivor must be expanded under the exact frozen rule across every remaining pre-2024 first-day sample with exact funding and deeper execution before 2024 can open.",
+  "implementation_sha256": "700273530173aabc8c97af59d77349ae261d75678fd31f4bc77f35f8c4a8c072",
+  "orders_submitted": false,
+  "created_at": "2026-07-26T16:00:00+09:00"
+}
