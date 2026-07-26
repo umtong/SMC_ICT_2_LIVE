@@ -41,7 +41,7 @@ async function fetchDirect(instrument, fromDate, toDate, maxAttempts) {
         dates: { from: fromDate, to: toDate },
         timeframe: "m1",
         priceType: "bid",
-        format: "json",
+        format: "array",
       });
       if (!Array.isArray(data) || data.length === 0) {
         throw new Error(`no rows returned for ${instrument} ${isoDate(fromDate)} ${isoDate(toDate)}`);
