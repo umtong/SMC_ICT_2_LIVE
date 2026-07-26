@@ -15,6 +15,7 @@ concurrency:
 env:
   ROOT: research/cross_venue_price_discovery_20260725
   RUNROOT: research_runs/cross_venue_price_discovery_20260725/exact_arrival_v5d_parallel
+  SHARD_COUNT: "4"
   PYTHONHASHSEED: "0"
   PYTHONUNBUFFERED: "1"
   PYTHONFAULTHANDLER: "1"
@@ -77,18 +78,20 @@ jobs:
             "$ROOT/test_cross_venue_performance_v5d.py" \
             "$ROOT/test_cross_venue_pilot_cache_v5d.py"
           PYTHONPATH="$ROOT" python "$ROOT/source_probe_v2.py" --self-test --output /tmp/xvenue-v5d-probe-self-test
+          PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_day.py" self-test
           PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_aggregate.py" self-test
           python scripts/validate_project.py
 
-  pilot-day:
+  pilot-shard:
     needs: validate
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 16
       matrix:
         day: ["2022-01-01", "2022-07-01", "2023-01-01", "2023-07-01"]
+        shard: [0, 1, 2, 3]
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:
@@ -106,19 +109,21 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/xvenue-v5d-${{ matrix.day }}
-          key: xvenue-v5d-${{ matrix.day }}-${{ hashFiles('research/cross_venue_price_discovery_20260725/*.py', 'research/cross_venue_price_discovery_20260725/*.md') }}
+          path: ${{ runner.temp }}/xvenue-v5d-${{ matrix.day }}-${{ matrix.shard }}
+          key: xvenue-v5d-${{ matrix.day }}-${{ matrix.shard }}-${{ hashFiles('research/cross_venue_price_discovery_20260725/*.py', 'research/cross_venue_price_discovery_20260725/*.md') }}
 
-      - name: Replay one frozen date with the exact V5D engine
+      - name: Replay one date and one complete semantic config shard
         shell: bash
         run: |
           set -euo pipefail
-          out="$RUNROOT/pilot_shards/${{ matrix.day }}"
-          cache="${RUNNER_TEMP}/xvenue-v5d-${{ matrix.day }}"
+          out="$RUNROOT/pilot_shards/${{ matrix.day }}/shard-${{ matrix.shard }}"
+          cache="${RUNNER_TEMP}/xvenue-v5d-${{ matrix.day }}-${{ matrix.shard }}"
           rm -rf "$out"
           mkdir -p "$out"
-          PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_day.py" \
+          PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_day.py" run \
             --day "${{ matrix.day }}" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count "$SHARD_COUNT" \
             --output "$out" \
             --cache "$cache" \
             2>&1 | tee "$out/run.log"
@@ -127,14 +132,14 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cross-venue-v5d-pilot-${{ matrix.day }}-${{ github.sha }}
-          path: ${{ env.RUNROOT }}/pilot_shards/${{ matrix.day }}
+          name: cross-venue-v5d-pilot-${{ matrix.day }}-s${{ matrix.shard }}-${{ github.sha }}
+          path: ${{ env.RUNROOT }}/pilot_shards/${{ matrix.day }}/shard-${{ matrix.shard }}
           if-no-files-found: error
           retention-days: 14
           compression-level: 6
 
   aggregate-and-develop:
-    needs: [validate, pilot-day]
+    needs: [validate, pilot-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 340
     steps:
@@ -154,7 +159,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          pattern: cross-venue-v5d-pilot-*-${{ github.sha }}
+          pattern: cross-venue-v5d-pilot-*-s*-${{ github.sha }}
           path: ${{ env.RUNROOT }}/pilot_parts
           merge-multiple: false
 
@@ -170,6 +175,7 @@ jobs:
           PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_aggregate.py" run \
             --input-root "$RUNROOT/pilot_parts" \
             --output "$pilot" \
+            --shard-count "$SHARD_COUNT" \
             2>&1 | tee "$pilot/aggregate.log"
 
           fatal=$(python - <<'PY'
@@ -257,7 +263,10 @@ jobs:
               "confirmation_opened": False,
               "2026_opened": False,
               "causal_engine_version": "5D",
-              "performance_contract": "disjoint-date parallel replay followed by exact gross-ledger aggregation",
+              "performance_contract": (
+                  "disjoint-date and complete-semantic-config parallel replay "
+                  "followed by exact gross-ledger aggregation"
+              ),
           }
           (root / "environment.json").write_text(
               json.dumps(environment, indent=2, sort_keys=True) + "\n"
