@@ -20,10 +20,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install frozen import environment
+      - name: Install frozen import and lint environment
         run: |
           python -m pip install --disable-pip-version-check \
-            "numpy==2.1.3" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+            "numpy==2.1.3" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "joblib==1.4.2" "pyflakes==3.2.0"
       - name: Reconstruct and audit actual transported source
         shell: bash
         run: |
@@ -32,44 +33,45 @@ jobs:
           out=research_runs/smt_continuation_development_gate_audit
           mkdir -p "$out"
           python "$root/reconstruct.py"
+          python -m py_compile "$root/train.py"
+          python -m pyflakes "$root/train.py" 2>&1 | tee "$out/pyflakes.log"
           PYTHONPATH="$root" python - <<'PY' 2>&1 | tee "$out/audit.log"
-          import ast
           import inspect
           import json
           from pathlib import Path
           import train
 
-          fn = train.development_gate
-          source = inspect.getsource(fn)
-          signature = str(inspect.signature(fn))
-          print("SIGNATURE", signature)
-          print("SOURCE_BEGIN")
-          print(source)
-          print("SOURCE_END")
+          functions = []
+          for name, value in sorted(vars(train).items()):
+              if not inspect.isfunction(value) or value.__module__ != train.__name__:
+                  continue
+              if not any(token in name.lower() for token in ("gate", "develop", "evaluate", "metric", "result")):
+                  continue
+              source = inspect.getsource(value)
+              functions.append({
+                  "name": name,
+                  "signature": str(inspect.signature(value)),
+                  "source": source,
+              })
+              print(f"FUNCTION {name}{inspect.signature(value)}")
+              print(source)
 
-          tree = ast.parse(source)
-          function = next(node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)))
-          arguments = {arg.arg for arg in function.args.args + function.args.kwonlyargs}
-          locals_defined = set(arguments)
-          loaded = set()
-          for node in ast.walk(function):
-              if isinstance(node, ast.Name):
-                  if isinstance(node.ctx, (ast.Store, ast.Param)):
-                      locals_defined.add(node.id)
-                  elif isinstance(node.ctx, ast.Load):
-                      loaded.add(node.id)
-          module_globals = set(vars(train))
-          builtins = set(__builtins__) if isinstance(__builtins__, dict) else set(dir(__builtins__))
-          unresolved = sorted(loaded - locals_defined - module_globals - builtins)
-          suspicious_path = "path" in loaded and "path" not in locals_defined and "path" not in module_globals
+          full_source = Path(train.__file__).read_text()
+          suspicious = []
+          for token in (
+              'path["authorization_diagnostics"]',
+              "path['authorization_diagnostics']",
+              'path["metrics"]',
+              "path['metrics']",
+          ):
+              if token in full_source:
+                  suspicious.append(token)
+
           result = {
-              "schema_version": 1,
-              "function": "development_gate",
-              "signature": signature,
-              "loaded_names": sorted(loaded),
-              "locally_defined_names": sorted(locals_defined),
-              "unresolved_names": unresolved,
-              "suspicious_undefined_path": suspicious_path,
+              "schema_version": 2,
+              "train_file": str(train.__file__),
+              "candidate_functions": functions,
+              "suspicious_path_subscripts": suspicious,
               "market_data_opened": False,
               "model_fit": False,
               "pnl_computed": False,
@@ -78,9 +80,10 @@ jobs:
           Path("research_runs/smt_continuation_development_gate_audit/audit.json").write_text(
               json.dumps(result, indent=2, sort_keys=True) + "\n"
           )
-          print(json.dumps(result, sort_keys=True))
-          if suspicious_path:
-              raise SystemExit("undefined local name path detected in development_gate")
+          print(json.dumps({
+              "function_names": [item["name"] for item in functions],
+              "suspicious_path_subscripts": suspicious,
+          }, sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
