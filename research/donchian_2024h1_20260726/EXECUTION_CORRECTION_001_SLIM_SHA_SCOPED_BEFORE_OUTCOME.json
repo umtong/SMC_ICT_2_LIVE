@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-DONCHIAN-2024H1-SLIM-001",
+  "claim_id": "CLM-20260726-2139-DONCHIAN-2024H1-001",
+  "timing": "BEFORE_ANY_2024H1_BAR_DOWNLOAD_OR_STRATEGY_OUTCOME",
+  "observed_problem": "The first workflow definition produced no scientific job on the claim head while only the shared project harness queued. No official 2024H1 bar, funding row, trade, NAV or metric was opened.",
+  "change": [
+    "Run the identical frozen workflow on ubuntu-slim.",
+    "Scope concurrency to immutable github.sha and disable cancellation."
+  ],
+  "unchanged": [
+    "official 2024H1 period and December 2023 warm-up",
+    "96-hour entry and 48-hour channel exit",
+    "two-ATR20 structural stop and no elapsed-time liquidation",
+    "one global slot and arbitration",
+    "0.5 percent planned risk and 5x cap",
+    "12/18/24-bp paths and funding fallback",
+    "winner-removal rerouting",
+    "2024H2 through 2026H1 unopened",
+    "credential and order prohibition"
+  ],
+  "official_2024h1_outcome_opened_before_change": false,
+  "orders_submitted": false
+}
