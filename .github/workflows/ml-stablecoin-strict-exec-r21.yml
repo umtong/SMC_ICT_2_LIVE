@@ -1,4 +1,4 @@
-name: Stablecoin supply shock strict causal V3 decision
+name: Stablecoin supply shock strict causal V3 decision macOS parallel
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-strict-v3-main-${{ github.sha }}
+  group: stablecoin-strict-v3-macos-${{ github.sha }}
   cancel-in-progress: false
 
 env:
@@ -21,6 +21,7 @@ env:
   OMP_NUM_THREADS: '2'
   OPENBLAS_NUM_THREADS: '2'
   MKL_NUM_THREADS: '2'
+  VECLIB_MAXIMUM_THREADS: '2'
   SOURCE_SHA: 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539
   STRICT_SHA: 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c
   SOURCE_ROOT: research/ml_stablecoin_issuance_20260726
@@ -33,7 +34,7 @@ env:
 
 jobs:
   decision:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +55,7 @@ jobs:
       - name: Materialize immutable source and strict engine snapshots
         run: |
           set -euo pipefail
+          mkdir -p "$RUN_ROOT"
           git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
           rm -rf "$SOURCE_ROOT"
@@ -94,6 +96,7 @@ jobs:
           python scripts/validate_project.py
 
       - name: Run complete corrected 2021-2023 source gate
+        shell: bash
         run: |
           set -u
           rm -rf "$SOURCE_OUT/run"
@@ -107,7 +110,7 @@ jobs:
           if [[ ! -f "$SOURCE_OUT/run/SOURCE_GATE_RESULT.json" ]]; then
             python "$SOURCE_ROOT/write_transport_failure.py" \
               --output "$SOURCE_OUT/run" \
-              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V3-MAIN \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V3-MACOS \
               --exit-code "$rc"
           fi
           if [[ "$rc" != 0 && "$rc" != 2 ]]; then
@@ -134,6 +137,13 @@ jobs:
               rows=[json.loads(line) for line in events.read_text().splitlines() if line.strip()]
               assert result['source_schema_id']=='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
               assert result['source_correction_id']=='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+              assert result['transport_response_policy_correction']=='CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019'
+              assert result['status_zero_empty_policy']=='EXPLICIT_NO_RECORDS_ONLY'
+              assert result['status_zero_range_policy']=='EXPLICIT_RANGE_LIMIT_ONLY'
+              assert result['unrecognized_status_zero_policy']=='FAIL_CLOSED_SOURCE_UNAVAILABLE'
+              assert manifest['source_schema_id']==result['source_schema_id']
+              assert manifest['source_correction_id']==result['source_correction_id']
+              assert manifest['transport_response_policy_correction']==result['transport_response_policy_correction']
               assert result['pass_checks'] and all(result['pass_checks'].values())
               assert result['event_semantics']['ordinary_usdt_transfer_excluded'] is True
               assert int(result['event_count'])>=120
@@ -155,10 +165,11 @@ jobs:
         if: steps.source.outputs.authorized == 'true'
         with:
           path: ${{ env.MARKET_CACHE }}
-          key: stablecoin-market-2020-12-2023-12-strict-v3-main
+          key: stablecoin-market-macos-2020-12-2023-12-strict-v3
 
       - name: Run strict causal pre-2024 ML and account screen
         if: steps.source.outputs.authorized == 'true'
+        shell: bash
         run: |
           set -u
           rm -rf "$ECON_OUT/run"
@@ -232,12 +243,20 @@ jobs:
           cp "$SOURCE_ROOT"/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
           cp "$GUARD_ROOT"/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
           cp "$GUARD_ROOT"/strict_guard.py "$GUARD_ROOT"/test_causal_guard.py "$RUN_ROOT/inputs/"
-          find "$RUN_ROOT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$RUN_ROOT/OUTPUT_SHA256SUMS.txt"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ['RUN_ROOT'])
+          rows=[]
+          for path in sorted(item for item in root.rglob('*') if item.is_file() and item.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stablecoin-strict-v3-main-${{ github.run_id }}
+          name: stablecoin-strict-v3-macos-${{ github.run_id }}
           path: research_runs/ml_stablecoin_strict_v3
           if-no-files-found: error
           retention-days: 30
