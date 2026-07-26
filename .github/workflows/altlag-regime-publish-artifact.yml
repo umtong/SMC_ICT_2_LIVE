@@ -1,0 +1,62 @@
+name: Publish immutable altlag regime artifact
+
+on:
+  push:
+    branches:
+      - agent/r11-altlag-attention-regime-001
+    paths:
+      - ".github/workflows/altlag-regime-publish-artifact.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Download immutable failed-run artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/altlag-artifact
+          curl --fail --location \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8626795344/zip" \
+            -o /tmp/altlag-artifact.zip
+          unzip -o /tmp/altlag-artifact.zip -d /tmp/altlag-artifact
+      - name: Preserve scientific outputs and diagnostic tail
+        run: |
+          set -euo pipefail
+          target=research/bybit_altlag_attention_regime_20260726/observed_run_30185198502
+          rm -rf "$target"
+          mkdir -p "$target"
+          find /tmp/altlag-artifact -type f -print | sort > "$target/ARTIFACT_FILES.txt"
+          if test -d /tmp/altlag-artifact/result; then
+            cp -R /tmp/altlag-artifact/result "$target/result"
+          fi
+          if test -f /tmp/altlag-artifact/probe.log; then
+            tail -n 400 /tmp/altlag-artifact/probe.log > "$target/PROBE_TAIL.txt"
+          fi
+          if test -f /tmp/altlag-artifact/INPUT_SHA256SUMS.txt; then
+            cp /tmp/altlag-artifact/INPUT_SHA256SUMS.txt "$target/INPUT_SHA256SUMS.txt"
+          fi
+          if test -f /tmp/altlag-artifact/OUTPUT_SHA256SUMS.txt; then
+            cp /tmp/altlag-artifact/OUTPUT_SHA256SUMS.txt "$target/OUTPUT_SHA256SUMS.txt"
+          fi
+          sha256sum $(find "$target" -type f | sort) > "$target/PUBLISHED_SHA256SUMS.txt"
+      - name: Commit snapshot to claim branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/bybit_altlag_attention_regime_20260726/observed_run_30185198502
+          git commit -m "Preserve attention-regime replication artifact"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
