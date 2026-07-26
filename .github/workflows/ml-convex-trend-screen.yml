@@ -1,0 +1,51 @@
+name: ML convex trend causal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-convex-trend-001
+    paths:
+      - research/ml_convex_trend_20260726/**
+      - .github/workflows/ml-convex-trend-screen.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime families
+        run: python -m pip install --disable-pip-version-check numpy pandas scikit-learn
+      - name: Download checksum-identified source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p source
+          gh run download 30147824722 --repo "${{ github.repository }}" --name cross-asset-leadlag-baseline-20260725 --dir source
+          test -f source/snapshot/BTCUSDT_5m.npz
+      - name: Run frozen pre-2024 screen
+        run: |
+          rm -rf research/ml_convex_trend_20260726/observed
+          python research/ml_convex_trend_20260726/run.py \
+            --snapshot source/snapshot \
+            --out research/ml_convex_trend_20260726/observed
+      - name: Independent audit
+        run: python research/ml_convex_trend_20260726/audit.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-convex-trend-20260726
+          path: |
+            research/ml_convex_trend_20260726/preregistration.json
+            research/ml_convex_trend_20260726/FINGERPRINTS.json
+            research/ml_convex_trend_20260726/dataset_manifest.json
+            research/ml_convex_trend_20260726/observed
+          if-no-files-found: error
+          retention-days: 14
