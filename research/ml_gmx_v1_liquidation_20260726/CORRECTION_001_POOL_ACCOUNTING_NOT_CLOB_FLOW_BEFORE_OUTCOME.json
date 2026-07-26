@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-GMX-V1-POOL-ACCOUNTING-NOT-CLOB-FLOW-001",
+  "claim_id": "CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001",
+  "recorded_at": "2026-07-27T00:29:00+09:00",
+  "status": "PRE_SOURCE_DECISION_SEMANTIC_CORRECTION",
+  "observed_before_correction": {
+    "source_gate_decision": false,
+    "market_price_opened": false,
+    "future_label_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "contract_facts": [
+    "LiquidatePosition is emitted only after GMX V1 Vault liquidationState 1 deletes a position.",
+    "liquidationState 2 calls decreasePosition and does not emit LiquidatePosition, so the event is a censored subset of forced deleveraging.",
+    "GMX V1 settles against an oracle-priced liquidity pool and updates reserved amounts, guaranteed USD, global short size and pool balances; the event is not itself an external CLOB or AMM market order.",
+    "markPrice is the Vault oracle mark used for accounting and is not an executable Bybit fill or external price-impact observation."
+  ],
+  "prohibited_interpretations": [
+    "liquidated GMX long mechanically equals an external-market sell order",
+    "liquidated GMX short mechanically equals an external-market buy order",
+    "absence of LiquidatePosition means absence of forced deleveraging",
+    "GMX markPrice is an external executable price"
+  ],
+  "binding_model_semantics": {
+    "event_identity": "finalized GMX V1 position deletion and pool-balance-sheet transition",
+    "side_feature": "LONG_REMOVED or SHORT_REMOVED trader exposure",
+    "signed_removed_exposure": "-size for removed trader long, +size for removed trader short; this is exposure sign, not asserted market-order flow",
+    "action_rule": "the single HGBT and cost-adjusted structural EV rule may learn continuation, exhaustion reversal or flat; no action direction is hard-coded from isLong",
+    "mark_price_use": "causally available oracle-accounting context only",
+    "execution": "all fills, costs and account PnL remain Bybit USDT-linear"
+  },
+  "unchanged": [
+    "canonical Arbitrum chain and GMX V1 Vault identity",
+    "exact LiquidatePosition ABI and topic",
+    "BTC and ETH index-token identities",
+    "120-second causal delay",
+    "frozen pre-2024 source windows and density gate",
+    "one HGBT and one calibration rule after source passage",
+    "one global Bybit slot, structural target and stop",
+    "12/18/24bp paths and half-year chronology",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ]
+}
