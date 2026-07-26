@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "audit_id": "AUDIT-20260726-R14-LOWER-RANK-EXIT-CONTRACT-001",
+  "project_revision": 14,
+  "rule": "A position may exit only through strategy-defined market or state logic. A fixed maximum holding duration, timeout index or scheduled horizon close is prohibited.",
+  "removed": [
+    {
+      "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+      "status": "REMOVE_FROM_ACTIVE_RANKING",
+      "evidence": "state_exit.py precommits maximum_hold_bars=96 and defaults surviving positions to the timeout open 480 minutes after entry.",
+      "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"
+    },
+    {
+      "source_result_id": "RES-20260725-ABS-FLOW-001",
+      "status": "REMOVE_FROM_ACTIVE_RANKING",
+      "evidence": "Candidate.maximum_holding_minutes fixes max_exit_time and the executor closes a surviving position at the scheduled horizon.",
+      "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"
+    },
+    {
+      "source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
+      "status": "REMOVE_FROM_ACTIVE_RANKING",
+      "evidence": "candidate.hold defines timeout_i; the default exit_reason is timeout when no earlier rule fires.",
+      "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"
+    },
+    {
+      "source_result_id": "RES-20260726-DVOL-XSEC-001",
+      "status": "REMOVE_FROM_ACTIVE_RANKING",
+      "evidence": "Candidate contains maximum_hold_bars and uses that fixed horizon in account replay.",
+      "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"
+    },
+    {
+      "source_result_id": "RES-20260725-ALPHA-HYP-001",
+      "status": "REMOVE_FROM_ACTIVE_RANKING",
+      "evidence": "The durable result is status INVALID and the selected positive specification contains hold=48.",
+      "contract_failure": "INVALID_RESULT_AND_FIXED_HOLD"
+    },
+    {
+      "source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
+      "status": "REMOVE_FROM_ACTIVE_RANKING",
+      "evidence": "The best raw fragmented-flow candidate contains hold_minutes=30; it has four trades and becomes negative after winner removal.",
+      "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"
+    }
+  ],
+  "retained_or_inserted": [
+    {
+      "rank": 1,
+      "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+      "candidate": "all-breakout a70626d9e484285f2cb4|all",
+      "exit_logic": "ATR stop or completed Donchian channel exit",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 2,
+      "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+      "candidate": "after-loser a70626d9e484285f2cb4|after_loser",
+      "exit_logic": "ATR stop or completed Donchian channel exit",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 3,
+      "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001",
+      "exit_logic": "One of two frozen structural liquidity destinations reaches first; the unselected destination is the stop.",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 4,
+      "source_result_id": "RES-20260726-LIQUIDITY-MASS-001",
+      "exit_logic": "Structural stop outside the consumed pool and target at a pre-existing denser liquidity pool.",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 5,
+      "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001",
+      "exit_logic": "Structural stop beyond the sweep and target at opposing liquidity.",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 6,
+      "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001",
+      "exit_logic": "Stop beyond the terminal raid and target at the far Original-Consolidation boundary.",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 7,
+      "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001",
+      "exit_logic": "Regional-basis closure, opposing global relative liquidity or completed leader invalidation, with structural stop.",
+      "elapsed_time_liquidation": false
+    },
+    {
+      "rank": 8,
+      "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001",
+      "exit_logic": "Structural event-range stop or fixed-R structural target; unresolved paths cannot pass rather than being time-liquidated.",
+      "elapsed_time_liquidation": false
+    }
+  ],
+  "authority": {
+    "market_rows_opened": false,
+    "strategy_rules_changed": false,
+    "parameters_changed": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "created_at": "2026-07-26T21:05:00+09:00"
+}
