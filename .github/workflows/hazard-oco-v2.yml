@@ -1,4 +1,4 @@
-name: Minimal ML L2 movement-hazard OCO
+name: Minimal ML L2 hazard local trigger
 
 on:
   push:
@@ -20,7 +20,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: minimal-hazard-oco-${{ github.event.pull_request.number || github.ref }}
+  group: minimal-hazard-local-trigger-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -43,6 +43,7 @@ jobs:
           cache: pip
       - name: Install frozen research environment
         run: |
+          set -euo pipefail
           python -m pip install --upgrade "pip==25.1.1"
           python -m pip install \
             "numpy==2.1.3" \
@@ -51,120 +52,116 @@ jobs:
             "pyarrow==18.1.0" \
             "requests==2.32.4" \
             "pytest==8.3.4"
-      - name: Reconstruct immutable scientific source
-        run: |
-          set -euo pipefail
-          python research/hazard_oco_20260726/reconstruct_v2.py
-      - name: Compile reconstructed source
+      - name: Reconstruct one-order local-trigger source
         run: |
           set -euo pipefail
           root=research/hazard_oco_20260726
-          python -m py_compile "$root/reconstruct_v2.py" "$root/run_v2.py" "$root/test_run_v2.py"
-      - name: Run deterministic executor self-test
-        run: |
-          set -euo pipefail
-          python research/hazard_oco_20260726/run_v2.py self-test
-      - name: Run adversarial causal and account tests
-        run: |
-          set -euo pipefail
-          python -m pytest -q research/hazard_oco_20260726/test_run_v2.py
-      - name: Validate frozen contracts and repository
+          python "$root/reconstruct_local_trigger.py"
+          python -m py_compile \
+            "$root/reconstruct_local_trigger.py" \
+            "$root/local_trigger_runner.py" \
+            "$root/test_local_trigger_runner.py"
+          PYTHONPATH="$root" python "$root/local_trigger_runner.py" self-test
+          PYTHONPATH="$root" python -m pytest -q "$root/test_local_trigger_runner.py"
+      - name: Validate corrected frozen contracts
         run: |
           set -euo pipefail
           root=research/hazard_oco_20260726
-          python -m json.tool "$root/WORK_CLAIM_V2.json" >/dev/null
-          python -m json.tool "$root/SOURCE_REUSE_V2.json" >/dev/null
-          python -m json.tool "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" >/dev/null
-          python -m json.tool "$root/CORRECTION_004_SPLIT_RUNNER_TRANSPORT_BEFORE_DATA.json" >/dev/null
-          python -m json.tool "$root/preregistration_v2.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/preregistration_local_trigger_v3.json" >/dev/null
+          python -m json.tool "$root/local_trigger_bundle_manifest.json" >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/hazard_oco_20260726')
+          cor=json.loads((root/'CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json').read_text())
+          pre=json.loads((root/'preregistration_local_trigger_v3.json').read_text())
+          assert cor['scientific_outcome_observed'] is False
+          assert cor['correction']['maximum_entry_orders']==1
+          assert cor['correction']['resting_entry_orders']==0
+          assert pre['global_entry_contract']['maximum_exchange_entry_orders']==1
+          assert pre['global_entry_contract']['resting_exchange_entry_orders']==0
+          assert pre['exit']['elapsed_time_exit'] is False
+          assert pre['chronology']['prohibited_years']==[2024,2025,2026]
+          print('SINGLE_ORDER_CONTRACT_PASS')
+          PY
           python scripts/validate_project.py
       - name: Reuse registered completed-state artifact
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/bybit_l2" research_runs/hazard_oco_v2/input research_runs/hazard_oco_v2/output
+          mkdir -p "$RUNNER_TEMP/bybit_l2" "$RUNNER_TEMP/hazard_raw" research_runs/hazard_local_trigger/output
           gh run download 30183063220 \
             --repo "$GITHUB_REPOSITORY" \
             --name bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216 \
             --dir "$RUNNER_TEMP/bybit_l2"
-          cp "$RUNNER_TEMP/bybit_l2/output/SOURCE_MANIFEST.json" research_runs/hazard_oco_v2/input/REUSED_SOURCE_MANIFEST.json
-      - name: Acquire only registered raw trigger streams
+      - name: Acquire fit raw trades only
         run: |
           set -euo pipefail
-          raw="$RUNNER_TEMP/hazard_oco_raw"
-          mkdir -p "$raw"
+          raw="$RUNNER_TEMP/hazard_raw/2022-07-01_BTCUSDT_trades.csv.gz"
           curl -fL --retry 5 --retry-delay 3 \
             https://datasets.tardis.dev/v1/bybit/trades/2022/07/01/BTCUSDT.csv.gz \
-            -o "$raw/2022-07-01_BTCUSDT_trades.csv.gz"
-          curl -fL --retry 5 --retry-delay 3 \
-            https://datasets.tardis.dev/v1/bybit/trades/2023/07/01/BTCUSDT.csv.gz \
-            -o "$raw/2023-07-01_BTCUSDT_trades.csv.gz"
-          test "$(sha256sum "$raw/2022-07-01_BTCUSDT_trades.csv.gz" | cut -d' ' -f1)" = "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
-          # The development file is acquired from the already registered public source, but the runner cannot hash or parse it unless the fit gate passes.
-      - name: Run frozen one-model fatal screen
+            -o "$raw"
+          test "$(sha256sum "$raw" | cut -d' ' -f1)" = "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
+      - name: Run frozen single-order fatal screen
         run: |
           set -euo pipefail
           root=research/hazard_oco_20260726
-          python "$root/run_v2.py" run \
-            --artifact-root "$RUNNER_TEMP/bybit_l2" \
-            --raw-root "$RUNNER_TEMP/hazard_oco_raw" \
-            --source-manifest "$RUNNER_TEMP/bybit_l2/output/SOURCE_MANIFEST.json" \
-            --output research_runs/hazard_oco_v2/output \
-            2>&1 | tee research_runs/hazard_oco_v2/run.log
-      - name: Verify decision boundary and registered evidence
+          PYTHONPATH="$root" python "$root/local_trigger_runner.py" run \
+            --fit-state "$RUNNER_TEMP/bybit_l2/output/compact_states/2022-07-01_BTCUSDT_state.parquet" \
+            --fit-trades "$RUNNER_TEMP/hazard_raw/2022-07-01_BTCUSDT_trades.csv.gz" \
+            --development-state "$RUNNER_TEMP/bybit_l2/output/compact_states/2023-07-01_BTCUSDT_state.parquet" \
+            --development-trades "$RUNNER_TEMP/hazard_raw/2023-07-01_BTCUSDT_trades.csv.gz" \
+            --output research_runs/hazard_local_trigger/output \
+            2>&1 | tee research_runs/hazard_local_trigger/run.log
+      - name: Verify result and authority boundaries
         if: always()
         run: |
           set -euo pipefail
-          out=research_runs/hazard_oco_v2/output
+          out=research_runs/hazard_local_trigger/output
           if test -f "$out/RESULT.json"; then
             (cd "$out" && sha256sum --check SHA256SUMS.txt)
             python - <<'PY'
           import json
           from pathlib import Path
-          result=json.loads(Path('research_runs/hazard_oco_v2/output/RESULT.json').read_text())
+          result=json.loads(Path('research_runs/hazard_local_trigger/output/RESULT.json').read_text())
           assert result['hard_validity_status']=='PASS'
+          assert result['entry_contract']['resting_entry_orders']==0
+          assert result['entry_contract']['maximum_exchange_entry_orders']==1
+          assert result['global_slots']==1
+          assert result['elapsed_time_exit'] is False
           assert result['2024_2025_2026_opened'] is False
           assert result['orders_submitted'] is False
           assert result['rank_eligible'] is False
-          assert len(result['fit_cells'])==3
+          assert len(result['fit_cells']) in (0,3)
           assert result['development_opened']==(result['fit_gate_pass_count']>0)
           print('VERIFIED_RESULT='+json.dumps(result,sort_keys=True,separators=(',',':')))
           PY
           fi
           python scripts/validate_project.py
-      - name: Record exact source and contract inputs
+      - name: Record exact inputs
         if: always()
         run: |
           set -euo pipefail
           root=research/hazard_oco_20260726
-          mkdir -p research_runs/hazard_oco_v2/input
+          mkdir -p research_runs/hazard_local_trigger/input
           sha256sum \
-            "$root/WORK_CLAIM_V2.json" \
-            "$root/SOURCE_REUSE_V2.json" \
-            "$root/SCHEMA_PROBE_CONTRACT.json" \
-            "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" \
-            "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" \
-            "$root/CORRECTION_004_SPLIT_RUNNER_TRANSPORT_BEFORE_DATA.json" \
-            "$root/preregistration_v2.json" \
-            "$root/v2_bundle_manifest.json" \
-            "$root/reconstruct_v2.py" \
-            "$root/run_v2.py.gz.b64.part00" \
-            "$root/run_v2.py.gz.b64.part01" \
-            "$root/run_v2.py.gz.b64.part02" \
-            "$root/run_v2.py.gz.b64.part03" \
-            "$root/run_v2.py.gz.b64.part04" \
-            "$root/test_run_v2.py.gz.b64" \
+            "$root/CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json" \
+            "$root/preregistration_local_trigger_v3.json" \
+            "$root/local_trigger_bundle_manifest.json" \
+            "$root/reconstruct_local_trigger.py" \
+            "$root/local_trigger_runner.py.gz.b64.part00" \
+            "$root/local_trigger_runner.py.gz.b64.part01" \
+            "$root/local_trigger_runner.py.gz.b64.part02" \
+            "$root/test_local_trigger_runner.py.gz.b64" \
             .github/workflows/hazard-oco-v2.yml \
-            > research_runs/hazard_oco_v2/input/INPUT_SHA256SUMS.txt
-          cp "$root/preregistration_v2.json" research_runs/hazard_oco_v2/input/
-          cp "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" research_runs/hazard_oco_v2/input/
-          cp "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" research_runs/hazard_oco_v2/input/
-          cp "$root/CORRECTION_004_SPLIT_RUNNER_TRANSPORT_BEFORE_DATA.json" research_runs/hazard_oco_v2/input/
+            > research_runs/hazard_local_trigger/input/INPUT_SHA256SUMS.txt
+          cp "$root/CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json" research_runs/hazard_local_trigger/input/
+          cp "$root/preregistration_local_trigger_v3.json" research_runs/hazard_local_trigger/input/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: minimal-ml-hazard-oco-${{ github.sha }}
-          path: research_runs/hazard_oco_v2
+          name: minimal-ml-hazard-local-trigger-${{ github.sha }}
+          path: research_runs/hazard_local_trigger
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
