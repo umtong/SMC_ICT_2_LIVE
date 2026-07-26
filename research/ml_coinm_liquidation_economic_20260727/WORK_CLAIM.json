@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260727-0015-ML-COINM-LIQ-ECONOMIC-001",
+  "parent_claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "worker_id": "gpt-5.6-pro-20260727-0015",
+  "status": "PREPARED_WAITING_FOR_PARENT_SOURCE_PASS",
+  "started_at": "2026-07-27T00:15:00+09:00",
+  "lease_until": "2026-07-27T08:15:00+09:00",
+  "github_branch": "agent/r21-ml-coinm-liquidation-economic-001",
+  "scope": {
+    "information_unit": "Checksum-verified Binance COIN-M BTCUSD_PERP and ETHUSD_PERP forced-liquidation records signal-mapped to Bybit BTCUSDT and ETHUSDT.",
+    "model": "One pooled HistGradientBoostingClassifier and one predetermined isotonic calibration rule.",
+    "features": "Sixteen causal trader-readable forced-flow, prior completed market-state, funding and structural-distance values; no future MFE/MAE or post-decision flow.",
+    "actions": "One cost-adjusted LONG/SHORT/FLAT equation; one global Bybit position slot.",
+    "exits": "Frozen external-liquidity target, structural stop or source-gap adverse settlement; no elapsed-time liquidation.",
+    "chronology": "Fit through 2022H1, calibrate 2022H2, confirm 2023H1, conditional development/risk-cap selection 2023H2, freeze through 2023-12-31 and immediately open official 2024H1.",
+    "costs": "Identical 12/18/24bp account paths; actual Bybit funding when sufficiently complete, otherwise adverse 1bp per 8h for both sides.",
+    "risk_search": "Only after positive non-liquidated 24bp confirmation and development; 0.25%-60% planned risk and 1x-100x notional caps; choose highest positive no-liquidation 24bp growth; 1% is not a ceiling."
+  },
+  "permissions": {
+    "credentials": false,
+    "paper_orders": false,
+    "testnet_orders": false,
+    "live_orders": false
+  },
+  "dependencies": {
+    "required_parent_result": "SOURCE_GATE_RESULT.json with parent claim ID and status PASS",
+    "parent_pr": 259,
+    "source_branch": "agent/r11-ml-binance-liquidation-dense-001"
+  },
+  "result_authority": "This branch creates no market outcome until the parent source gate passes. Its workflow is dormant until a post-PASS sentinel is committed."
+}
