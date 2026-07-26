@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1023-COMMON-FACTOR-MICROSHOCK-001",
+  "status": "PREREGISTERED_BEFORE_COMMON_FACTOR_EVENT_OR_PNL_COMPUTATION",
+  "created_at": "2026-07-26T10:23:00+09:00",
+  "base_revision": 11,
+  "research_question": "Can a completed joint BTCUSDT and ETHUSDT Bybit event-time information shock reveal a repeatable, economically large SOLUSDT or XRPUSDT residual lag after explicit cost floors?",
+  "distinct_information_unit": "The retired precursor used BTC alone as leader. This study requires a jointly observed BTC+ETH state, incorporates ETH-specific price and aggressive-flow information, and estimates each follower with a prior-only multivariate leader regression. No BTC-only threshold is retuned.",
+  "markets": {
+    "venue": "Bybit USDT linear perpetual public trades",
+    "leaders": ["BTCUSDT", "ETHUSDT"],
+    "followers": ["SOLUSDT", "XRPUSDT"],
+    "global_new_entry_slots_if_pnl_opens": 1
+  },
+  "chronological_stages": {
+    "fit_dates": ["2023-01-15", "2023-03-19"],
+    "development_dates": ["2023-05-21", "2023-07-16"],
+    "frozen_validation_dates": ["2023-09-17", "2023-11-19"],
+    "official_2024_2026_evaluation": "SEALED_UNTIL_FROZEN_VALIDATION_GATE"
+  },
+  "source_contract": {
+    "raw_trade_schema": ["timestamp", "symbol", "side", "size", "price"],
+    "event_grid_ms": 100,
+    "feature_price_carry_max_ms": 2000,
+    "source_identity": "The sixteen raw public-trade files are reused only after their stored SHA-256 values match the preregistered list. No validation or later-period member is read."
+  },
+  "source_sha256": {
+    "BTCUSDT_2023-01-15": "f96b1ba637c47496c263c3871835325e4bc5fa0e5613ff35961f67d6584b3a7b",
+    "BTCUSDT_2023-03-19": "372eebac52e8e316549be927a0d5e18ad68089e56a22b1242808e83856304ba8",
+    "BTCUSDT_2023-05-21": "c84a1e2ef67b6a3ccf3c68957beb2affa62f4ae2494edd9207253bdb7c3a2f1a",
+    "BTCUSDT_2023-07-16": "b919ec4bdf48dfde2e52fa49972df195ac53b755825f4c54d665e4eb1849abae",
+    "ETHUSDT_2023-01-15": "7535316371881bed6f82d23f51efe2749b40b7060891e47178b8a95150eaddb3",
+    "ETHUSDT_2023-03-19": "077ff6e8c9e62f465cbbb94279f362b30f659f3798a8c5abc1d5e99f6c995de0",
+    "ETHUSDT_2023-05-21": "147d50f55e643abe43a0d5338695b7561f89a6456278662a9f4b329446e29a7b",
+    "ETHUSDT_2023-07-16": "c2d90022212ad5df43c7158a04d08bc4ae41aaf48bd6af6df863a5a9308972a1",
+    "SOLUSDT_2023-01-15": "034ab97bbf90364d4cd4e7df6f40f4f81e10413a520ea87351d62d0602cf7b1d",
+    "SOLUSDT_2023-03-19": "8d9f025f3335028793150060145994f78eda745a84f70a511099fd135bc165ec",
+    "SOLUSDT_2023-05-21": "c4dcd85cb529e2ea4dc95257d2b1100e2d4675de8edf7f6efd05a91e29a4dbfd",
+    "SOLUSDT_2023-07-16": "8fb65d386bbb36d830f5cd953dd9aa683bdb2f3f26bd724300c9e7a7373ee838",
+    "XRPUSDT_2023-01-15": "45e0c706a8db54dcf5a8c0f84b6f0fba24d5d94281911982004ec17e8386be00",
+    "XRPUSDT_2023-03-19": "b1e45cb6468fe763360726574786c7976860fb60149cc705cfc38c58ca966beb",
+    "XRPUSDT_2023-05-21": "aa1e3a9b2a0864a17faf4fb81d77013e75dd540f6754e3e29574540607ee9c3c",
+    "XRPUSDT_2023-07-16": "92842c34ccd407e4120f4e1eca073ce8bd43116e9f61cb39860835a51c5f04cc"
+  },
+  "information_contract": {
+    "decision": "Only after complete contemporaneous leader and follower 1, 2 or 5 second windows.",
+    "rolling_history": "All scales, activity baselines and regression coefficients end strictly before shock start.",
+    "entry_if_pnl_opens": "First actual follower trade at or after decision plus 100ms; a catch-up target already crossed before that trade invalidates the entry.",
+    "missing_data": "No time compression or interpolation across a price state older than 2000ms."
+  },
+  "prior_model": {
+    "window_seconds": 1800,
+    "minimum_finite_rows": 1200,
+    "minimum_nonzero_returns_per_leader": 100,
+    "regression": "Ridge solve of follower one-second return on BTC and ETH one-second returns. Ridge lambda equals 5 percent of half the trace of the prior leader covariance matrix.",
+    "coefficient_clip": [-2.0, 4.0],
+    "follower_expected_horizon_return": "beta_btc * completed BTC horizon return + beta_eth * completed ETH horizon return"
+  },
+  "leader_state": {
+    "horizon_seconds": [1, 2, 5],
+    "scale": "Each leader uses prior-only 900-second realized variance scaled by horizon; require at least 600 finite and 60 nonzero one-second returns.",
+    "same_direction_required": true,
+    "common_shock_score": "direction * (BTC standardized horizon return + ETH standardized horizon return) / sqrt(2)",
+    "leader_balance_ratio": "min(abs(BTC z), abs(ETH z)) / max(abs(BTC z), abs(ETH z))",
+    "flow_alignment_average": "Mean of direction-aligned BTC and ETH aggressive quote-notional imbalances.",
+    "flow_alignment_minimum": "Minimum of the two direction-aligned leader imbalances.",
+    "activity_consensus": "Geometric mean of the two leader horizon quote-notional ratios to their separate prior 900-second positive-window medians."
+  },
+  "follower_state": {
+    "remaining_gap": "direction * (prior-model expected follower return - completed follower return)",
+    "underreaction_ratio": "direction * completed follower return / abs(expected follower return)",
+    "flow_alignment": "direction-aligned follower aggressive quote-notional imbalance over the completed horizon",
+    "expected_return_must_match_common_direction": true
+  },
+  "frozen_grid": {
+    "horizon_seconds": [1, 2, 5],
+    "minimum_common_shock_score": [2.0, 3.0, 4.0],
+    "minimum_leader_balance_ratio": [0.25, 0.5],
+    "minimum_average_leader_flow_alignment": [0.25, 0.5],
+    "minimum_each_leader_flow_alignment": [0.0, 0.25],
+    "minimum_activity_consensus": [1.5, 3.0],
+    "maximum_underreaction_ratio": [0.25, 0.5, 0.75],
+    "maximum_follower_flow_alignment": [0.25, 0.5],
+    "minimum_remaining_gap_log": [0.0012, 0.0018, 0.0024],
+    "cells_per_follower": 2592
+  },
+  "fatal_event_availability_gate": {
+    "minimum_best_cell_total_across_development_dates": 30,
+    "minimum_best_cell_events_each_development_date": 10,
+    "minimum_prior-valid_raw_24bp_gap_events_across_development_dates": 20,
+    "zero_formula_or_source_errors": true,
+    "if_failed": "Stop the follower before PnL; do not open frozen validation or later periods."
+  },
+  "later_pnl_contract_if_gate_passes": {
+    "catchup_fraction": [0.75, 1.0],
+    "state_exits": ["residual catch-up", "joint leader impulse decay", "completed opposite common shock", "adverse structural residual stop"],
+    "fixed_elapsed_time_exit": false,
+    "roundtrip_cost_bps": [12, 18, 24],
+    "one_global_slot": true
+  },
+  "promotion_boundaries": {
+    "strategy_pnl_computed": false,
+    "frozen_validation_opened": false,
+    "2024_2026_opened": false,
+    "exact_funding_opened": false,
+    "bid_ask_or_depth_execution_opened": false,
+    "risk_leverage_optimization_opened": false,
+    "orders_submitted": false,
+    "live_permission": false
+  },
+  "sources": [
+    "paper:doi:10.1007/s10690-026-09589-z",
+    "paper:arxiv:1111.7103",
+    "exchange:bybit:public-trading-archive",
+    "workflow-artifact:8626036650",
+    "drive:DS-BYBIT-BTCETH-PUBLIC-TRADES-ROUND-NUMBER-2023-R1"
+  ]
+}
