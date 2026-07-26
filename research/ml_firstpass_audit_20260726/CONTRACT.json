@@ -1,0 +1,50 @@
+{
+  "audit_id": "ML-LIQUIDITY-DRAW-FIRSTPASS-AUDIT-R11-V1",
+  "chronology": {
+    "calibration": "strictly after train and disjoint",
+    "confirmation": "strictly after calibration and disjoint",
+    "development": "untouched 2023, opened only after frozen 2022 confirmation",
+    "train": "earliest 2022 partition"
+  },
+  "decision_equation": {
+    "action": "argmax(LONG, SHORT, FLAT=0), with trade only when the best directional EV is strictly positive under the frozen minimum-edge rule",
+    "long_ev_bps": "p_upper * upper_distance_bps - p_lower * lower_distance_bps - roundtrip_cost_bps",
+    "short_ev_bps": "p_lower * lower_distance_bps - p_upper * upper_distance_bps - roundtrip_cost_bps"
+  },
+  "orders_submitted": false,
+  "purpose": "Independent reusable validation only; no model fitting, feature selection, market-data access or strategy PnL discovery.",
+  "required_artifacts": [
+    "manifest.json",
+    "prediction_ledger.csv",
+    "trade_ledger.csv",
+    "cost_ledger.csv",
+    "result.json"
+  ],
+  "required_core": {
+    "actions": [
+      "LONG",
+      "SHORT",
+      "FLAT"
+    ],
+    "censoring": "Must be retained through an explicit competing-risk/survival objective or frozen IPCW-equivalent scoring; censored rows may not be silently relabeled or discarded.",
+    "cost_replay_bps": [
+      12,
+      18,
+      24
+    ],
+    "economic_decision_rule_count": 1,
+    "hyperparameter_candidate_count": 1,
+    "model_family_count": 1,
+    "one_global_slot": true,
+    "probability_calibration": "Chronological partition independent of model training",
+    "same_bar_both_pools": "AMBIGUOUS in labels; adverse in account replay",
+    "sealed": [
+      "2024",
+      "2025",
+      "2026"
+    ],
+    "structural_target_stop": "Frozen nearest confirmed upper/lower external-liquidity pools"
+  },
+  "schema_version": 1,
+  "target_claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001"
+}
