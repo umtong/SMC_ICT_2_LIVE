@@ -68,14 +68,19 @@ These historical results remain recorded but cannot rank under the fixed no-elap
 
 The fixed 2024 portfolio combining the invalid dynamic component with aligned continuation remains closed before any 2024 strategy outcome.
 
-Coinbase spot-flow ML is closed as `SOURCE_UNAVAILABLE`; no market row or model outcome existed. Bybit mark/index raid-acceptance ML is a complete negative result. Neither route receives threshold, risk or leverage rescue.
+Coinbase spot-flow ML is closed as `SOURCE_UNAVAILABLE`; no market row or model outcome existed. Bybit mark/index raid-acceptance ML is a complete negative result.
+
+Path-continuity structural first-passage ML is retired: model AUC `0.571277` trailed the structural-distance baseline `0.635450`, 24-bp growth was `-0.688163%`/day, and the rerouted winner-removal path was worse.
+
+OKX spot-swap-OI consensus is retired at the frozen event-count gate: confirmation contained only `8` events on one date and `0` on the second, so no model was fitted and no threshold was relaxed.
+
+None of these routes receives threshold, feature, stop, risk or leverage rescue.
 
 ## Active high-information ML work
 
-- four-asset direct after-cost utility regression with turnover-aware `KEEP / SWITCH / FLAT` actions;
-- OKX spot-swap consensus and OI sponsorship relay into delayed executable Bybit BBO;
-- path-continuity structural first-passage ML;
-- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH ML screen.
+- four-asset direct after-cost utility regression with turnover-aware `KEEP / SWITCH / FLAT` actions and causal source-gap resets;
+- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH ML screen;
+- Uniswap V3 WETH-stablecoin `Swap` inventory-transfer source gate and conditional ETHUSDT hedge-relay ML screen, claim `CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001` / PR #190.
 
 These paths are prioritized because they can create cost-sized information before Bybit delivery, not because of the current rank.
 
@@ -83,15 +88,17 @@ These paths are prioritized because they can create cost-sized information befor
 
 The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived realistic sequential 2024-2026 Bybit execution, funding, winner removal and regime changes, and the leading routes are not a deployable ML system.
 
+The direct-utility screen still awaits a completed immutable run. The Aave and Uniswap routes remain source-gated; neither has opened market outcomes.
+
 ## Current objective
 
-Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the active direct-utility, OKX, path-continuity and Aave paths; insert any superior result immediately and retire any failed dependency immediately.
+Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the direct-utility account screen and the two distinct on-chain forced-flow/inventory-transfer gates; insert any superior result immediately and retire any failed dependency immediately.
 
 ## Next exact action
 
-1. Complete the direct-utility gap-boundary correction without imputation and run its frozen chronological screen.
-2. Consume the OKX and path-continuity results as soon as immutable account paths exist.
-3. Finish the Aave source gate; pass opens the frozen ML screen, failure retires the source.
-4. If all fail, open a materially new forced-flow or inventory-transfer source rather than another completed-bar parameter family.
+1. Complete the direct-utility gap-safe frozen chronological screen and consume its untouched confirmation/development decision.
+2. Finish the Aave source gate; passage opens its frozen conditional ML screen and failure retires the source.
+3. Finish the Uniswap source gate; passage opens its frozen conditional ML screen and failure retires the source.
+4. Reconcile every decision-ready result against the full cumulative ranking without reopening retired thresholds or official 2024-2026 data prematurely.
 
-Updated: 2026-07-26 21:08 KST
+Updated: 2026-07-26 21:30 KST
