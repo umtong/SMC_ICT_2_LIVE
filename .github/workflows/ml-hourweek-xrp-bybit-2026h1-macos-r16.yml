@@ -38,6 +38,9 @@ jobs:
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/r16-ml-hourweek-xrp-bybit-2026h1-001
+          fetch-depth: 1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -55,6 +58,7 @@ jobs:
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/LOCAL_REPLICATION_BEFORE_2026.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_CORRECTION_001_BINANCE_HEADER_BEFORE_MODEL.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_002_EXPLICIT_HEAD_REF_BEFORE_MODEL.json" >/dev/null
           python "$ROOT/reconstruct.py" | tee "$OUT/RECONSTRUCT.log"
           python "$ROOT/apply_header_correction.py" | tee "$OUT/HEADER_CORRECTION.log"
           python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/apply_header_correction.py"
