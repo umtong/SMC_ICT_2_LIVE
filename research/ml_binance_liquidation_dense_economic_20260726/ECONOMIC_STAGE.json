@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "stage_id": "STAGE-20260726-ML-BINANCE-LIQ-DENSE-ECONOMIC-001",
+  "status": "CONDITIONAL_ON_SOURCE_PASS",
+  "source_branch": "agent/r11-ml-binance-liquidation-dense-001",
+  "economic_branch": "agent/r21-ml-binance-liquidation-dense-economic-001",
+  "source_workflow": "ML Binance dense liquidation source gate",
+  "source_result_required": "PASS",
+  "model": "one fixed pooled HistGradientBoostingClassifier plus one frozen isotonic calibration rule",
+  "decision": "one cost-adjusted LONG/SHORT/FLAT structural first-passage equation",
+  "chronology": {
+    "fit": "2021-01-01 through 2022-06-30",
+    "calibration": "2022-07-01 through 2022-12-31",
+    "untouched_confirmation": "2023-01-01 through 2023-06-30",
+    "conditional_development": "2023-07-01 through 2023-12-31",
+    "official_2024h1": "not opened here; immediate next stage only after an unchanged robust pre-2024 survivor"
+  },
+  "fixed_cost_bps": [12, 18, 24],
+  "initial_measurement_risk": 0.005,
+  "initial_measurement_notional_cap": 3.0,
+  "searches_before_base_edge": {
+    "model_family": false,
+    "feature_subset": false,
+    "event_threshold": false,
+    "target_stop": false,
+    "risk": false,
+    "leverage": false
+  },
+  "causality": {
+    "source_gaps_interpolated": false,
+    "gap_crossing_features_or_labels": false,
+    "pivot_right_bars": 2,
+    "decision_delay_seconds_after_completed_event_minute": 5,
+    "entry": "next exact complete one-minute open",
+    "same_bar_ambiguity": "adverse-first",
+    "elapsed_time_exit": false,
+    "winner_removal": "remove event keys before full chronological rerouting"
+  },
+  "permissions": {
+    "credentials": false,
+    "paper_orders": false,
+    "testnet_orders": false,
+    "live_orders": false
+  }
+}
