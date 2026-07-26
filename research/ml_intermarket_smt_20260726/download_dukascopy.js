@@ -32,20 +32,45 @@ function rowTimestamp(row) {
   return parsed;
 }
 
+function normalizeHistoricalRates(raw, instrument, fromDate, toDate) {
+  let data = raw;
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch (error) {
+      throw new Error(
+        `invalid JSON output for ${instrument} ${isoDate(fromDate)} ${isoDate(toDate)}: ${error.message}`
+      );
+    }
+  }
+  if (!Array.isArray(data) && data && Array.isArray(data.data)) {
+    data = data.data;
+  }
+  if (!Array.isArray(data)) {
+    const type = data === null ? "null" : typeof data;
+    const keys = data && typeof data === "object" ? Object.keys(data).slice(0, 20) : [];
+    throw new Error(
+      `unexpected Dukascopy output for ${instrument} ${isoDate(fromDate)} ${isoDate(toDate)}: type=${type} keys=${JSON.stringify(keys)}`
+    );
+  }
+  if (data.length === 0) {
+    throw new Error(`no rows returned for ${instrument} ${isoDate(fromDate)} ${isoDate(toDate)}`);
+  }
+  return data;
+}
+
 async function fetchDirect(instrument, fromDate, toDate, maxAttempts) {
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const data = await getHistoricalRates({
+      const raw = await getHistoricalRates({
         instrument,
         dates: { from: fromDate, to: toDate },
         timeframe: "m1",
         priceType: "bid",
-        format: "array",
+        format: "json",
       });
-      if (!Array.isArray(data) || data.length === 0) {
-        throw new Error(`no rows returned for ${instrument} ${isoDate(fromDate)} ${isoDate(toDate)}`);
-      }
+      const data = normalizeHistoricalRates(raw, instrument, fromDate, toDate);
       return { data, attempts: attempt };
     } catch (error) {
       lastError = error;
