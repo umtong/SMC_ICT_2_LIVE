@@ -1,0 +1,44 @@
+name: ML hazard OCO retained source bundle audit
+
+on:
+  push:
+    branches: [agent/r11-hazard-oco-v2]
+    paths:
+      - research/hazard_oco_20260726/v2_source/source_bundle.tar.gz.b64.part*
+      - .github/workflows/hazard-oco-v2-source-bundle-audit.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - research/hazard_oco_20260726/v2_source/source_bundle.tar.gz.b64.part*
+      - .github/workflows/hazard-oco-v2-source-bundle-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode, inspect and hash retained source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726/v2_source
+          out=research_runs/hazard_oco_v2_retained_source
+          mkdir -p "$out/extracted"
+          cat "$root"/source_bundle.tar.gz.b64.part* > "$out/source_bundle.tar.gz.b64"
+          base64 --decode "$out/source_bundle.tar.gz.b64" > "$out/source_bundle.tar.gz"
+          sha256sum "$out/source_bundle.tar.gz.b64" "$out/source_bundle.tar.gz" > "$out/BUNDLE_SHA256SUMS.txt"
+          tar -tzf "$out/source_bundle.tar.gz" | sort > "$out/ARCHIVE_FILES.txt"
+          tar -xzf "$out/source_bundle.tar.gz" -C "$out/extracted"
+          find "$out/extracted" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/EXTRACTED_SHA256SUMS.txt"
+          find "$out/extracted" -type f -printf '%P\n' | sort
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hazard-oco-v2-retained-source-${{ github.sha }}
+          path: research_runs/hazard_oco_v2_retained_source
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
