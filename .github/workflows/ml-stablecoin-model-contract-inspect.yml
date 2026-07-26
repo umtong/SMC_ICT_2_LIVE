@@ -1,0 +1,50 @@
+name: Stablecoin model reusable-engine inspection
+
+on:
+  push:
+    branches: [agent/r13-ml-stablecoin-model-conditional-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-model-contract-inspect.yml'
+      - 'research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reconstruct existing verified Bybit engine source
+        run: |
+          set -euo pipefail
+          python research/ml_liquidity_draw_20260726/reconstruct.py
+          python -m py_compile research/ml_liquidity_draw_20260726/run.py
+      - name: Extract function and data contracts only
+        run: |
+          set -euo pipefail
+          python research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/ml_stablecoin_issuance_20260726/REUSABLE_BYBIT_ENGINE_AST.json')
+          data=json.loads(p.read_text())
+          assert data['market_data_read'] is False
+          assert data['model_fit'] is False
+          assert data['trade_or_pnl_opened'] is False
+          print('\n'.join(
+              f"{r['kind']} {r['name']}"
+              for r in data['records']
+          ))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stablecoin-reusable-engine-ast-${{ github.run_id }}
+          path: research/ml_stablecoin_issuance_20260726/REUSABLE_BYBIT_ENGINE_AST.json
+          if-no-files-found: error
+          retention-days: 14
