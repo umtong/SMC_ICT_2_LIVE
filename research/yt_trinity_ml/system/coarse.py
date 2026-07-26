@@ -68,6 +68,13 @@ def _market_fill(open_price: float, side: int, row: pd.Series, slippage_bps: flo
     return open_price * (1 + side * cost)
 
 
+def _entry_geometry_valid(candidate: EventCandidate, entry_price: float) -> bool:
+    """A marketable IOC order is cancelled if latency moves beyond stop or target."""
+    protective_distance = candidate.side * (entry_price - candidate.stop_reference)
+    remaining_reward = candidate.side * (candidate.target_reference - entry_price)
+    return protective_distance > 0 and remaining_reward > 0
+
+
 class _RangeExtremaIndex:
     """Segment tree for first low/high barrier crossing at or after a position."""
 
@@ -185,6 +192,16 @@ class CoarseLabeler:
             )
 
         entry_time = self.available_times[entry_position] if passive else self.times[entry_position]
+        if not _entry_geometry_valid(candidate, entry_price):
+            return CoarseLabel(
+                candidate.timestamp,
+                None,
+                entry_time,
+                None,
+                None,
+                0,
+                "CANCELLED_INVALID_ENTRY_GEOMETRY",
+            )
         stop_distance = abs(entry_price - candidate.stop_reference)
         if stop_distance <= 0:
             return CoarseLabel(candidate.timestamp, entry_time, entry_time, 0, -1.0, passive_filled, "INVALID_STOP")
@@ -449,6 +466,19 @@ def _outcome_from_labeler(labeler: CoarseLabeler, candidate: EventCandidate, pas
         entry_fee_rate = config.taker_fee_rate
         entry_liquidity = "taker"
     entry_time = labeler.available_times[entry_position] if passive else labeler.times[entry_position]
+    if not _entry_geometry_valid(candidate, entry_price):
+        return CoarseOutcome(
+            candidate.timestamp,
+            None,
+            entry_time,
+            "CANCELLED_INVALID_ENTRY_GEOMETRY",
+            None,
+            None,
+            0.0,
+            None,
+            None,
+            None,
+        )
     if side > 0:
         stop_position = labeler.extrema.first_low_le(entry_position, candidate.stop_reference)
         target_position = labeler.extrema.first_high_ge(entry_position, candidate.target_reference)
@@ -561,13 +591,14 @@ class CoarseEventReplay:
             assert outcome.entry_price is not None
             step, minimum = instrument_rules.get(candidate.symbol, (risk.quantity_step, risk.minimum_quantity))
             symbol_risk = replace(risk, quantity_step=float(step), minimum_quantity=float(minimum))
+            sizing_candidate = replace(candidate, entry_reference=float(outcome.entry_price))
             quantity = size_position_from_nav(
                 cash,
-                candidate,
+                sizing_candidate,
                 symbol_risk,
                 outcome.entry_fee_rate,
                 self.config.taker_fee_rate,
-                self.config.market_slippage_bps / 10000 if not passive else 0.0,
+                0.0,
                 self.config.stop_slippage_bps / 10000,
             )
             if quantity <= 0:
