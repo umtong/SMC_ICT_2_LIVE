@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "dataset_id": "DS-TARDIS-BINANCE-BYBIT-L2-SWEEP-2022-R1",
+  "provider": "Tardis normalized public cryptocurrency market data",
+  "markets": [
+    "Binance Futures BTCUSDT USDT-linear perpetual",
+    "Bybit BTCUSDT USDT-linear perpetual"
+  ],
+  "data_types": [
+    "binance-futures/book_snapshot_5",
+    "binance-futures/trades",
+    "bybit/quotes",
+    "bybit/trades"
+  ],
+  "partitions": [
+    "2022-01-01",
+    "2022-03-01",
+    "2022-05-01",
+    "2022-07-01",
+    "2022-09-01",
+    "2022-11-01"
+  ],
+  "source_file_count": 24,
+  "compressed_bytes": 773972036,
+  "parsed_rows": 47491039,
+  "availability_clock": "local_timestamp",
+  "source_manifest_sha256": "8327a20cbe7e9ec6d36f66284d87942521e13c48f6390fbc0510fb335373eee3",
+  "status": "VERIFIED_RESEARCH_ONLY",
+  "causal_availability": "Each completed one-second feature window and each Bybit execution quote is usable only after its provider local arrival timestamp. No 2023 file was parsed because the frozen fit gate failed; every 2024-2026 URL is rejected in code.",
+  "notes": "The exact source ledger is retained in workflow artifact 8630674842. The dataset produced 1,112 resolved or conservatively unresolved sweep events across six 2022 partitions. Reuse only for a materially different information target or payoff; do not retune this reported sweep-routing dependency.",
+  "2023_opened": false,
+  "2024_opened": false,
+  "2025_opened": false,
+  "2026_opened": false,
+  "orders_submitted": false,
+  "created_at": "2026-07-26T19:15:00+09:00"
+}
