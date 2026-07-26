@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "amendment_id": "002",
+  "created_at": "2026-07-26T01:48:00Z",
+  "stage": "SOURCE_INVENTORY_ONLY",
+  "reason": "The first anonymous inventory established that the Kaggle sample covers only 2026-05-04 through 2026-05-08, which lies inside the official 2026H1 evaluation interval. Before any Kaggle outcome row is read, this amendment adds a materially more useful pre-2026 public mirror for metadata-only inventory.",
+  "added_source_probe": {
+    "provider": "Hugging Face public dataset repository",
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "expected_source": "Mirror/processing of Hyperliquid node_fills_by_block public archive",
+    "expected_advertised_rows": 140973012,
+    "expected_advertised_bytes": 114000000000,
+    "expected_preview_start": "2025-07-28",
+    "trust_policy": "Do not trust coverage, ordering, completeness, file count, bytes, commit time or provenance from the web preview. Record the repository API response and complete tree inventory before any parquet row is downloaded or read."
+  },
+  "allowed_operations": [
+    "anonymous Hugging Face dataset metadata fetch",
+    "anonymous repository refs and commit metadata fetch",
+    "anonymous complete file-tree listing with pagination",
+    "record filenames, sizes, object identifiers, commit identifiers and timestamps",
+    "derive dates and hours from filenames only",
+    "hash metadata and tree responses"
+  ],
+  "prohibited_operations": [
+    "download parquet or lz4 data files",
+    "read parquet metadata, row groups or data rows",
+    "inspect event JSON",
+    "score wallets",
+    "construct signals",
+    "compute returns or strategy PnL",
+    "open any 2026 evaluation outcome",
+    "submit any order"
+  ],
+  "promotion_gate": {
+    "required": [
+      "at least 60 distinct pre-2026 UTC dates",
+      "latest filename-derived date no later than 2025-12-31",
+      "at least one immutable repository revision identifier",
+      "complete or explicitly paginated tree inventory",
+      "source_inventory_only=true",
+      "strategy_pnl_computed=false"
+    ],
+    "if_passed": "Freeze a second date-specific scientific preregistration before reading any data row. Use only information through 2025-12-31 for any simulated 2026H1 strategy version.",
+    "if_failed": "Do not inspect outcomes. Retain the 2026 five-day Kaggle sample only as non-ranked future feasibility evidence or retire the dependency."
+  },
+  "official_2024_2026_evaluation_opened": false,
+  "live_order_permission": false
+}

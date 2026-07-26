@@ -1,0 +1,138 @@
+name: Hyperliquid wallet skill persistence gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/hl-wallet-skill-persistence-gate.yml"
+      - "research/hyperliquid_wallet_flow_20260726/source_selection_v2.json"
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_skill_persistence_v1.json"
+      - "research/hyperliquid_wallet_flow_20260726/run_wallet_skill_gate.py"
+      - "research/hyperliquid_wallet_flow_20260726/test_wallet_skill_gate.py"
+  push:
+    branches:
+      - agent/r11-hl-wallet-flow-001
+    paths:
+      - ".github/workflows/hl-wallet-skill-persistence-gate.yml"
+      - "research/hyperliquid_wallet_flow_20260726/source_selection_v2.json"
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_skill_persistence_v1.json"
+      - "research/hyperliquid_wallet_flow_20260726/run_wallet_skill_gate.py"
+      - "research/hyperliquid_wallet_flow_20260726/test_wallet_skill_gate.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hl-wallet-skill-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  wallet-skill-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 \
+            orjson==3.10.18 \
+            pyarrow==20.0.0 \
+            requests==2.32.4
+
+      - name: Verify code, causal tests, and project harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          python -m py_compile \
+            "$root/run_wallet_skill_gate.py" \
+            "$root/test_wallet_skill_gate.py"
+          python "$root/test_wallet_skill_gate.py"
+          python scripts/validate_project.py
+
+      - name: Freeze input hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          output=research_runs/hyperliquid_wallet_skill_gate_20260726
+          mkdir -p "$output"
+          sha256sum \
+            "$root/source_selection_v2.json" \
+            "$root/preregistration_skill_persistence_v1.json" \
+            "$root/run_wallet_skill_gate.py" \
+            "$root/test_wallet_skill_gate.py" \
+            > "$output/INPUT_SHA256SUMS.txt"
+
+      - name: Run pre-2026 identity premise gate
+        shell: bash
+        run: |
+          set -o pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          output=research_runs/hyperliquid_wallet_skill_gate_20260726
+          python "$root/run_wallet_skill_gate.py" \
+            --selection "$root/source_selection_v2.json" \
+            --preregistration "$root/preregistration_skill_persistence_v1.json" \
+            --work-dir /tmp/hyperliquid_wallet_skill_gate \
+            --output "$output" \
+            --download-workers 4 \
+            2>&1 | tee "$output/run.log"
+
+      - name: Enforce scientific boundaries
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('research_runs/hyperliquid_wallet_skill_gate_20260726/RUN_REPORT.json')
+          report = json.loads(path.read_text())
+          assert report['stage'] == 'PRE_2026_WALLET_SKILL_PERSISTENCE_GATE'
+          assert report['candidate_count'] == 16
+          assert report['identity_flow_grid_opened'] is False
+          assert report['strategy_pnl_computed'] is False
+          assert report['bybit_execution_opened'] is False
+          assert report['official_rank_eligible'] is False
+          assert report['official_2026_opened'] is False
+          assert report['orders_submitted'] is False
+          if report['development_passed']:
+              assert report['validation_file_count_read'] == 8
+          else:
+              assert report['validation_file_count_read'] == 0
+              assert report['validation']['status'] == 'SEALED_NO_DEVELOPMENT_PASS'
+          print(json.dumps({
+              'development_passed': report['development_passed'],
+              'validation_passed': report['validation_passed'],
+              'winner': report['development_winner']['candidate_id'],
+              'decision': report['decision'],
+          }, sort_keys=True))
+          PY
+
+      - name: Record output hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          output=research_runs/hyperliquid_wallet_skill_gate_20260726
+          find "$output" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$output/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hyperliquid-wallet-skill-gate-${{ github.sha }}
+          path: research_runs/hyperliquid_wallet_skill_gate_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

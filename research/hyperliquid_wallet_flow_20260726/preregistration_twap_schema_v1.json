@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "created_at": "2026-07-26T02:31:00Z",
+  "stage": "PRE_2026_TWAP_IDENTIFIER_SCHEMA_PROBE",
+  "purpose": "Determine, without opening any return or PnL outcome, whether the immutable historical node_fills_by_block source exposes enough explicit TWAP-parent identifiers and repeated slices to support a direct parent-order continuation experiment.",
+  "economic_distinction": "This is not historical-wallet skill copying and does not use any prior wallet return. The future hypothesis, if this schema gate passes, is that an already-observed same-parent TWAP sequence can reveal remaining scheduled inventory demand before its full cross-venue price impact is incorporated.",
+  "source": {
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "path": "data/node_fills_by_block_hourly_20250727_12.parquet",
+    "utc_interval": ["2025-07-27T12:00:00Z", "2025-07-27T12:59:59.999Z"],
+    "role": "warmup_only",
+    "bytes": 31076403,
+    "lfs_sha256": "88fbe8b2868631d6ce4c655e0e40e04c96a83c8f5e0fa62156898dc5d0c801ee",
+    "xet_hash": "12a81e10f12ec0e0726788e19bf65f45b50495919620ae80795ab05e07a5554c"
+  },
+  "allowed_operations": [
+    "download only the exact frozen warmup file",
+    "verify byte size and LFS SHA-256 before parsing",
+    "read event structure and fill-object key names",
+    "read wallet, coin, side, crossed, time, oid and explicit TWAP identifier fields",
+    "count identifiers, fill counts, elapsed spans and inter-arrival intervals",
+    "calculate same-side purity within an explicit TWAP group",
+    "record malformed-event counts"
+  ],
+  "prohibited_operations": [
+    "access, aggregate, serialize or compare px, sz, fee, closedPnl, startPosition or any price/value field",
+    "calculate returns, markouts, labels, wallet skill, signal PnL or account PnL",
+    "read any other source file",
+    "read development, validation, 2026 or official Bybit outcomes",
+    "select a trading threshold from outcomes",
+    "submit an order"
+  ],
+  "target_universe": ["BTC", "ETH", "SOL", "XRP"],
+  "identifier_aliases": ["twapId", "twap_id"],
+  "valid_explicit_identifier": "Non-null, non-empty and not numeric zero after string normalization.",
+  "group_key": ["wallet", "coin", "explicit_twap_id"],
+  "incidence_metrics": [
+    "fill-object key frequencies",
+    "eligible fill count by coin",
+    "fills carrying explicit TWAP ID by coin",
+    "distinct explicit TWAP groups",
+    "groups with at least 2, 3, 5 and 10 fills",
+    "groups lasting at least 30, 60, 120 and 300 seconds",
+    "median and percentile fill counts",
+    "median and percentile positive inter-arrival seconds",
+    "same-side-purity distribution",
+    "repeated OID groups as non-promoting fallback evidence"
+  ],
+  "promotion_gate": {
+    "minimum_distinct_explicit_twap_groups": 10,
+    "minimum_groups_with_at_least_3_fills": 5,
+    "minimum_groups_lasting_at_least_30_seconds": 5,
+    "minimum_groups_with_same_side_purity_at_least_0_9": 5,
+    "required_target_coins_with_any_explicit_twap": 1,
+    "all_prices_and_returns_unopened": true
+  },
+  "if_passed": "Freeze a separate causal TWAP-continuation screen before reading any price. The screen must define detection after completed slices, local availability delay, parent inactivity/end state, Bybit execution proxy, global slot, cost gates and untouched partitions.",
+  "if_failed": "Do not infer parent orders from wallet performance. Explicit-TWAP continuation is retired for this source unless a different immutable historical source exposes the identifier. Repeated OID evidence cannot independently promote the experiment.",
+  "hard_boundaries": {
+    "price_values_accessed": false,
+    "return_or_markout_computed": false,
+    "strategy_pnl_computed": false,
+    "bybit_execution_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  }
+}

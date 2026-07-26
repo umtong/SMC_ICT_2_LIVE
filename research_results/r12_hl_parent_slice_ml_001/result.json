@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-HL-PARENT-SLICE-ML-001",
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "experiment_id": "HL-PARENT-SLICE-IMPACT-ML-V1",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_PRE_2026_SAME_VENUE_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_NON_BYBIT_FATAL_SCREEN",
+  "decision": "RETIRE_PARENT_SLICE_IMPACT_DEPENDENCY_WITHOUT_ADJACENT_TUNING",
+  "mechanism": "After three same-wallet, same-coin, same-side taker child orders with 20-to-40-second start gaps, one direction-locked HGBT regressor predicts same-direction gross return to the fourth-child completion or the causal 40-second cadence invalidation. A structural stop remains beyond the first-three-child origin, and a trade requires predicted gross return above 20bp before 12/18/24bp replay.",
+  "source": {
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "canonical_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "prevalidation_file_count": 32,
+    "validation_file_count_read": 0
+  },
+  "sample": {
+    "train_event_count": 3921,
+    "confirmation_event_count": 1334,
+    "confirmation_fourth_child_count": 842,
+    "confirmation_fourth_child_rate": 0.631184407796102,
+    "confirmation_unresolved_count": 13,
+    "confirmation_unresolved_fraction": 0.009745127436281859
+  },
+  "prediction": {
+    "spearman_correlation": -0.033426064076021875,
+    "r2": -0.03822491438502573,
+    "model_mae": 3.951454869660088,
+    "constant_train_mean_baseline_mae": 3.865830739299785,
+    "mae_skill": -0.022148959986751038,
+    "model_rmse": 5.462888630562308,
+    "constant_train_mean_baseline_rmse": 5.370535457838541,
+    "rmse_skill": -0.017196269058976865,
+    "predicted_mean_gross_bp": 0.28441677372224156,
+    "maximum_predicted_gross_bp": 5.144693492909245,
+    "authorization_threshold_bp": 20.0
+  },
+  "economic_path": {
+    "confirmation_mean_gross_bp": 0.005974210867694895,
+    "confirmation_median_gross_bp": -0.2869728752435401,
+    "fourth_child_present_mean_gross_bp": 0.1811000292780182,
+    "fourth_child_present_median_gross_bp": -0.0879770635196184,
+    "fourth_child_absent_mean_gross_bp": -0.2937329473154643,
+    "fourth_child_absent_median_gross_bp": -1.131206941042658,
+    "authorized_action_count": 0,
+    "paths": {
+      "12bp": {"trade_count": 0, "total_return": 0.0},
+      "18bp": {"trade_count": 0, "total_return": 0.0},
+      "24bp": {"trade_count": 0, "total_return": 0.0}
+    },
+    "positive_confirmation_dates": 0,
+    "top_winner_exclusion_count": 0
+  },
+  "interpretation": "The fourth child arrives often, but its completion produces effectively zero average same-direction price impact and a negative median. The fixed regressor predicts outcome rank worse than chance-direction monotonicity and worse absolute error than the train-mean baseline. Its maximum predicted gross return is only 5.14bp, far below the frozen 20bp authorization threshold. The strong order-cadence phenomenon therefore does not transport into a realistic-cost trading payoff.",
+  "retirement_boundary": "Do not tune the cadence gaps, features, HGBT parameters, fourth-child exit, 40-second invalidation, structural stop, authorization threshold, risk or leverage under this source dependency. Reopen only with a materially different point-in-time information source capable of producing cost-sized executable Bybit displacement.",
+  "reproducibility": {
+    "workflow_run": 30198703475,
+    "artifact_id": 8630988651,
+    "artifact_digest": "sha256:c501b166aef1d167cc080aa5484394c860ea18f5d87ff4e2672cdb92f5536df9",
+    "result_json_sha256": "b6c8b4a49f893d5169f93b7c71117b1e7930a211b362dde792e292a9c12f66c2",
+    "confirmation_event_ledger_sha256": "cae282497bce34b5b5d6ae0f7a588f8bdc5962900184f6ef55991c34cee11ea4",
+    "model_contract_sha256": "a72066c46cdc8fc0ff74d73deef0313eb5c492f8c64e6efedfea3725fb49361e"
+  },
+  "bybit_execution_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}

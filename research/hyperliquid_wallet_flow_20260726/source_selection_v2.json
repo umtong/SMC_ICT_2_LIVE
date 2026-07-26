@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "created_at": "2026-07-26T02:00:00Z",
+  "source": {
+    "provider": "Hugging Face public dataset",
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "revision_last_modified": "2025-12-08T04:10:10.000Z",
+    "inventory_artifact_id": 8626363180,
+    "inventory_artifact_digest": "sha256:0d9c50d2caf1d2e7704bc23091b9744f52bf732055fd8ee0957d3e7547435626"
+  },
+  "selection_rule": "At the frozen revision, select every file whose path exactly matches data/node_fills_by_block_hourly_YYYYMMDD_H.parquet, whose UTC date is from 2025-07-27 through 2025-08-06 inclusive, and whose integer UTC hour is one of 12,13,14,15. Sort by date, hour and path. No file substitution is permitted.",
+  "expected_file_count": 44,
+  "expected_total_bytes": 2045945803,
+  "canonical_manifest_format": "One UTF-8 line per selected file, ending with newline: path<TAB>bytes<TAB>lfs_sha256<TAB>xet_hash. Lines sorted by date, hour and path.",
+  "expected_canonical_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+  "partitions": {
+    "warmup": ["2025-07-27"],
+    "fit": ["2025-07-28", "2025-07-29", "2025-07-30"],
+    "development_a": ["2025-07-31", "2025-08-01", "2025-08-02"],
+    "development_b": ["2025-08-03", "2025-08-04"],
+    "validation": ["2025-08-05", "2025-08-06"]
+  },
+  "decision_window_utc": {
+    "start_inclusive": "12:10:00",
+    "end_exclusive": "15:50:00",
+    "reason": "The first ten minutes provide an in-sample state buffer and the last ten minutes preserve the longest 600-second diagnostic markout inside the selected source window."
+  },
+  "future_conditional_oos": {
+    "provider": "Kaggle public dataset",
+    "owner": "marvingozo",
+    "slug": "hyperliquid-l1-order-flow-microstructure-10-perps",
+    "dataset_id": 10433513,
+    "version": 1,
+    "last_updated": "2026-05-15T04:24:20.26Z",
+    "fills": [
+      {"date": "2026-05-04", "path": "fills/fills_2026-05-04.parquet", "bytes": 54457934},
+      {"date": "2026-05-05", "path": "fills/fills_2026-05-05.parquet", "bytes": 45428048},
+      {"date": "2026-05-06", "path": "fills/fills_2026-05-06.parquet", "bytes": 50432290},
+      {"date": "2026-05-07", "path": "fills/fills_2026-05-07.parquet", "bytes": 43426790},
+      {"date": "2026-05-08", "path": "fills/fills_2026-05-08.parquet", "bytes": 34015215}
+    ],
+    "opening_condition": "No 2026 file may be downloaded or read unless the pre-2026 development gate and the untouched 2025 validation gate in preregistration_v2.json both pass.",
+    "status": "SEALED"
+  }
+}

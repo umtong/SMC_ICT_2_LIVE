@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "experiment_id": "HL-PARENT-SLICE-IMPACT-ML-V1",
+  "created_at": "2026-07-26T10:30:00Z",
+  "stage": "PRE_2026_PARENT_SLICE_IMPACT_FATAL_SCREEN",
+  "purpose": "Test the one payoff still directly implied by the passed structural gate: after three causally observed same-wallet, same-coin, same-side child orders, can one fixed ML model identify schedules whose next child slice creates enough same-direction impact to survive realistic cost stress?",
+  "prior_evidence_and_boundary": {
+    "parent_cadence_structure": "The warmup-only structural probe found 76 continued runs among 126 three-child cadence runs, versus 635 continuations among 8415 activity-matched controls; continuation-rate ratio 7.993x.",
+    "retired_wallet_skill": "Prior-only wallet performance ranking failed its preregistered cohort-spread and concentration gates and is not an input to this experiment.",
+    "retired_external_liquidity_payoff": "The same parent cadence failed to predict delivery to the previous completed 15-minute external-liquidity pool; that target/stop geometry is retired and is not tuned here.",
+    "opened_development_notice": "Dates 2025-08-02 through 2025-08-04 were read under the distinct external-liquidity payoff. They are development confirmation here, not sealed final OOS. Only 2025-08-05 and 2025-08-06 remain untouched for this exact next-slice payoff."
+  },
+  "trader_explanation": [
+    "Three same-wallet, same-coin, same-side taker child orders with 20 to 40 seconds between starts reveal an active execution schedule after the third child has fully completed.",
+    "The parent side fixes direction. ML may accept or reject the schedule but may never reverse it.",
+    "Enter only after a two-second information delay and before the next cadence deadline or fourth child starts.",
+    "If a fourth same-side child starts on schedule, the position exits after that child fully completes and a further two-second observation delay.",
+    "If no fourth child starts within the frozen 40-second cadence window, the parent-order state is invalid and the position exits after the invalidation becomes observable.",
+    "A protective stop remains beyond the first-three-child origin extreme. The cadence deadline is signal invalidation, not an arbitrary elapsed-time liquidation."
+  ],
+  "source_contract": {
+    "selection": "source_selection_v2.json",
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "expected_file_count": 44,
+    "expected_total_bytes": 2045945803,
+    "expected_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "allowed_hours_utc": [12, 13, 14, 15],
+    "allowed_dates": [
+      "2025-07-27", "2025-07-28", "2025-07-29", "2025-07-30",
+      "2025-07-31", "2025-08-01", "2025-08-02", "2025-08-03",
+      "2025-08-04", "2025-08-05", "2025-08-06"
+    ],
+    "validation_files_must_remain_unread_until_confirmation_pass": true,
+    "prohibited": [
+      "any 2026 row",
+      "any official project 2024-2026 Bybit outcome",
+      "file substitution",
+      "credentials or orders"
+    ]
+  },
+  "partitions": {
+    "warmup_only": ["2025-07-27"],
+    "train": ["2025-07-28", "2025-07-29", "2025-07-30", "2025-07-31", "2025-08-01"],
+    "development_confirmation": ["2025-08-02", "2025-08-03", "2025-08-04"],
+    "conditional_untouched_validation": ["2025-08-05", "2025-08-06"]
+  },
+  "event_contract": {
+    "eligible_market_path": "Every valid BTC, ETH, SOL or XRP fill, deduplicated by trade id; median duplicate price and earliest timestamp.",
+    "eligible_flow_context": "Every valid crossed target-coin fill with recognized side.",
+    "eligible_parent_child": "Crossed non-liquidation fill with recognized side, valid wallet, order id, timestamp, price and size.",
+    "child_order_key": ["wallet", "coin", "side", "oid"],
+    "child_completion": "Minimum and maximum fill timestamps, size-weighted VWAP, summed quote notional and majority non-empty cloid.",
+    "sequence": "The first causal three-order window in each same-side cadence run; both start-to-start gaps must lie in 20 to 40 seconds inclusive.",
+    "detection": "Maximum fill time of the third child, so full third-child VWAP and notional are known.",
+    "entry": "First same-coin market trade at or after detection plus 2000ms, rejected if more than 5000ms late, at or after the 40-second cadence expiry, or at or after a known fourth child's start.",
+    "decision_window_utc": ["12:20:00", "15:50:00"]
+  },
+  "exit_contract": {
+    "protective_stop": "For long, the minimum first-three-child VWAP buffered 2bp lower; for short, the maximum buffered 2bp higher.",
+    "fourth_child_state_exit": "First market trade after the fourth scheduled child has fully completed plus 2000ms.",
+    "cadence_failure_state_exit": "First market trade after third-child start plus 40000ms plus 2000ms when no scheduled fourth child exists.",
+    "stop_precedence": "A structural stop observed no later than the causal state-exit trigger wins.",
+    "source_boundary": "Unresolved accepted positions receive the full structural stop.",
+    "elapsed_time_liquidation": false,
+    "why_not_time_liquidation": "The 40-second boundary is the preregistered condition under which the hypothesized parent schedule ceases to exist."
+  },
+  "model_contract": {
+    "family": "HistGradientBoostingRegressor",
+    "one_model_only": true,
+    "hyperparameters": {
+      "loss": "squared_error",
+      "learning_rate": 0.05,
+      "max_iter": 160,
+      "max_leaf_nodes": 15,
+      "max_depth": 3,
+      "min_samples_leaf": 30,
+      "l2_regularization": 1.0,
+      "random_state": 20260726
+    },
+    "training_target": "Actual same-direction gross basis-point return to the causal parent-state exit, clipped only for model fitting to [-200, 200]bp; economic replay uses the unclipped observed return.",
+    "feature_columns": [
+      "same_cloid_three",
+      "mean_cadence_error_seconds",
+      "log_total_child_notional",
+      "log_third_to_first_notional_ratio",
+      "directional_run_displacement_bp",
+      "directional_market_return_30s_bp",
+      "directional_market_return_120s_bp",
+      "directional_taker_imbalance_60s",
+      "log_parent_notional_share_60s"
+    ],
+    "direction_lock": "The detected parent side is immutable; the regressor can authorize or reject only.",
+    "minimum_training_events": 500,
+    "candidate_grid": false,
+    "feature_grid": false,
+    "threshold_grid": false
+  },
+  "economic_decision": {
+    "predicted_gross_return_threshold_bp": 20,
+    "derivation": "18bp decision cost plus 2bp minimum predicted edge.",
+    "same_authorized_events_replayed_at_round_trip_cost_bp": [12, 18, 24],
+    "no_second_entry_or_payoff_family": true
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "risk_fraction": 0.01,
+    "notional_cap_multiple": 3.0,
+    "quantity": "min(NAV*risk_fraction/(stop_distance_fraction+round_trip_cost_fraction), NAV*notional_cap_multiple)/entry_price",
+    "one_global_slot": true,
+    "same_timestamp_reentry": false,
+    "simultaneous_priority": "higher predicted gross return, then same-cloid indicator, then BTC, ETH, SOL, XRP, then event key",
+    "top_winner_counterfactual": "Remove the largest positive 10 percent of 12bp event keys before slot arbitration and replay from initial NAV.",
+    "sample_growth_calendar": "Every fixed confirmation or validation date is included, including no-trade dates.",
+    "funding": "Not separately applied because the parent-state exit is intraminute and every source-boundary position is charged the full stop. Exact Bybit funding is mandatory after any survivor."
+  },
+  "confirmation_gate_all_required": {
+    "prediction_spearman": ">=0.05",
+    "positive_mae_skill_over_constant_train_mean": true,
+    "accepted_trades_at_18bp": ">=60",
+    "mean_net_trade_at_24bp": ">0",
+    "median_net_trade_at_24bp": ">0",
+    "total_return_at_24bp": ">0",
+    "top_10_percent_winner_removed_return_at_18bp": ">0",
+    "positive_confirmation_dates_at_18bp": ">=2/3",
+    "top_five_positive_pnl_share_at_18bp": "<=0.50",
+    "unresolved_trade_fraction": "<=0.10",
+    "geometric_sample_day_growth_at_24bp": ">=0.0025"
+  },
+  "validation_gate_all_required": {
+    "frozen_model_features_and_decision_rule": true,
+    "accepted_trades_at_18bp": ">=30",
+    "mean_and_median_net_trade_at_24bp": ">0",
+    "total_return_at_24bp": ">0",
+    "top_10_percent_winner_removed_return_at_18bp": ">0",
+    "both_validation_dates_positive_at_18bp": true,
+    "top_five_positive_pnl_share_at_18bp": "<=0.50",
+    "unresolved_trade_fraction": "<=0.10"
+  },
+  "promotion_boundary": "A validation pass opens only a separately frozen synchronized Bybit BBO/depth/funding reconstruction of the identical Hyperliquid events. This same-venue fatal screen cannot rank, open official 2024-2026 evaluation, optimize risk/leverage or submit orders.",
+  "authority": {
+    "rank_eligible": false,
+    "bybit_execution_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  }
+}

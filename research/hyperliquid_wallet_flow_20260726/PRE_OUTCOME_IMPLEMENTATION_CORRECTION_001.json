@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "experiment_id": "HL-PARENT-ORDER-DELIVERY-ML-V1",
+  "correction_id": "COR-20260726-HL-PARENT-ORDER-IMPLEMENTATION-001",
+  "created_at": "2026-07-26T09:53:00Z",
+  "status": "FROZEN_BEFORE_ANY_PARENT_ORDER_PRICE_OR_MODEL_OUTCOME",
+  "reason": "Static implementation review found four contract-clarity defects before the parent-order price workflow existed or any price label, model metric, action or PnL was produced.",
+  "corrections": [
+    {
+      "surface": "market price and contextual flow series",
+      "before": "The draft parser built the market path only from non-liquidation crossed fills.",
+      "after": "Build the market price path from every valid target-coin fill and deduplicate by trade id; use every valid crossed fill for causal taker-flow context; restrict parent-child detection itself to crossed non-liquidation fills.",
+      "scientific_reason": "The target/stop path must not omit real prints merely because the print is a maker-side duplicate or liquidation. Wallet parent-order identity remains protected from liquidation contamination."
+    },
+    {
+      "surface": "partial-fill child price",
+      "before": "The draft used price weighted by quote notional, which double-weighted price.",
+      "after": "Collapse one child OID at size-weighted VWAP while retaining summed quote notional as a separate feature.",
+      "scientific_reason": "Perpetual fill VWAP is sum(price*size)/sum(size)."
+    },
+    {
+      "surface": "global-slot and calendar accounting",
+      "before": "The draft allowed a new entry at the exact prior exit timestamp and calculated sample-day growth only across dates containing authorized actions.",
+      "after": "Require new entry time strictly after the previous exit, and include every fixed confirmation or validation date in geometric sample-day growth with zero-return no-trade dates.",
+      "scientific_reason": "This prevents same-timestamp order-of-events optimism and aligns growth with the frozen sample calendar."
+    },
+    {
+      "surface": "classification sample gate",
+      "before": "The draft silently reused the 150-row confirmation minimum in conditional validation.",
+      "after": "Retain 150 resolved confirmation rows and use a separately explicit 60 resolved-row validation minimum; both partitions require both classes.",
+      "scientific_reason": "No hidden gate may be stricter than the written validation contract."
+    }
+  ],
+  "unchanged": {
+    "source_revision_and_files": true,
+    "partitions": true,
+    "cadence_detection": true,
+    "direction_lock": true,
+    "external_liquidity_target_and_structural_stop": true,
+    "feature_count_and_semantic_roles": true,
+    "model_family_and_hyperparameters": true,
+    "isotonic_calibration": true,
+    "expected_value_rule": true,
+    "cost_paths": true,
+    "risk_fraction_and_notional_cap": true,
+    "winner_removal_and_global_slot": true,
+    "confirmation_and_validation_economic_gates": true,
+    "sealed_2026_and_official_2024_2026": true
+  },
+  "outcomes_opened_before_correction": {
+    "parent_order_price_rows": false,
+    "labels": false,
+    "model_fit": false,
+    "classification_metrics": false,
+    "actions": false,
+    "strategy_pnl": false,
+    "validation_files": false,
+    "orders": false
+  },
+  "corrected_source_sha256": "00b267e328733a00acc3371271bb5345c95f49950c94644132a5bd2a1b4ed654"
+}

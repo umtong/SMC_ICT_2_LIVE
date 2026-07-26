@@ -1,0 +1,118 @@
+name: Hyperliquid pre-2026 mirror inventory v3
+
+on:
+  push:
+    branches:
+      - agent/r11-hl-wallet-flow-001
+    paths:
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_v1_amendment_002.json"
+      - "research/hyperliquid_wallet_flow_20260726/inventory_hf_source.py"
+      - "research/hyperliquid_wallet_flow_20260726/inventory_hf_source_v2.py"
+      - "research/hyperliquid_wallet_flow_20260726/inventory_hf_source_v3.py"
+      - ".github/workflows/hl-wallet-flow-hf-inventory-v3.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_v1_amendment_002.json"
+      - "research/hyperliquid_wallet_flow_20260726/inventory_hf_source.py"
+      - "research/hyperliquid_wallet_flow_20260726/inventory_hf_source_v2.py"
+      - "research/hyperliquid_wallet_flow_20260726/inventory_hf_source_v3.py"
+      - ".github/workflows/hl-wallet-flow-hf-inventory-v3.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hl-wallet-flow-hf-inventory-v3-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify frozen inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          python -m py_compile \
+            "$root/inventory_hf_source.py" \
+            "$root/inventory_hf_source_v2.py" \
+            "$root/inventory_hf_source_v3.py"
+          python scripts/validate_project.py
+          mkdir -p research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726
+          sha256sum \
+            "$root/preregistration_v1.json" \
+            "$root/preregistration_v1_amendment_002.json" \
+            "$root/README.md" \
+            "$root/inventory_hf_source.py" \
+            "$root/inventory_hf_source_v2.py" \
+            "$root/inventory_hf_source_v3.py" \
+            > research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726/INPUT_SHA256SUMS.txt
+
+      - name: Inventory immutable public repository paths without reading rows
+        shell: bash
+        run: |
+          set -o pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          output=research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726/inventory
+          python "$root/inventory_hf_source_v3.py" --output "$output" \
+            2>&1 | tee research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726/run.log
+
+      - name: Enforce inventory-only boundary and coverage gate
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726/inventory/HF_SOURCE_INVENTORY.json')
+          result = json.loads(path.read_text())
+          assert result['stage'] == 'SOURCE_INVENTORY_ONLY'
+          assert result['source_probe_only'] is True
+          assert result['strategy_pnl_computed'] is False
+          assert result['parquet_or_lz4_rows_read'] is False
+          assert result['event_json_read'] is False
+          assert result['official_2026_evaluation_opened'] is False
+          assert result['orders_submitted'] is False
+          assert result['promotion_gate_passed'] is True
+          assert result['pre_2026_date_count'] >= 60
+          assert result['complete_tree'] is True
+          print(json.dumps({
+              'metadata_sha': result['metadata_sha'],
+              'metadata_last_modified': result['metadata_last_modified'],
+              'metadata_used_storage': result['metadata_used_storage'],
+              'data_file_count': result['data_file_count'],
+              'listed_data_bytes_from_tree': result['listed_data_bytes_from_tree'],
+              'pre_2026_date_count': result['pre_2026_date_count'],
+              'first_explicit_filename_date': result['first_explicit_filename_date'],
+              'last_explicit_filename_date': result['last_explicit_filename_date'],
+              'promotion_status': result['promotion_status'],
+          }, sort_keys=True))
+          PY
+
+      - name: Record immutable output hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hl-wallet-flow-hf-inventory-v3-${{ github.sha }}
+          path: research_runs/hyperliquid_wallet_flow_hf_inventory_v3_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

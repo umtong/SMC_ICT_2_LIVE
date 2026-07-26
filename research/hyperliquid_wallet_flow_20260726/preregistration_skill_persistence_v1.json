@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "created_at": "2026-07-26T02:16:00Z",
+  "stage": "PRE_2026_WALLET_SKILL_PERSISTENCE_GATE",
+  "purpose": "Before opening the 1,152-candidate identity-flow grid, test its necessary premise: wallet-coin skill estimated strictly from earlier dates must persist in two development partitions and an untouched validation partition. Failure retires the dependency before flow optimization, Bybit replay, risk search or 2026 data.",
+  "source_contract": {
+    "selection": "source_selection_v2.json",
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "expected_file_count": 44,
+    "expected_total_bytes": 2045945803,
+    "expected_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "prevalidation_files": "UTC hours 12,13,14,15 on 2025-07-27 through 2025-08-04",
+    "validation_files": "UTC hours 12,13,14,15 on 2025-08-05 and 2025-08-06; remain unread until the development gate and placebo pass",
+    "verification_before_rows": ["exact path", "byte size", "LFS SHA-256", "canonical aggregate manifest SHA-256"]
+  },
+  "parser": {
+    "coins": ["BTC", "ETH", "SOL", "XRP"],
+    "keep": "crossed=true taker fills with recognized side, finite positive price and size, integer time/tid/oid",
+    "exclude": "liquidation-tagged fills and malformed rows",
+    "deduplicate_key": ["wallet", "coin", "time", "tid", "oid", "price", "size", "side"],
+    "episode": "wallet-coin signed taker flow aggregated in completed 5-second UTC buckets",
+    "episode_direction": "sign(sum(side_sign*price*size))",
+    "episode_price": "absolute-notional-weighted fill price",
+    "market_price": "earliest timestamp and median taker-fill price per coin/tid",
+    "forward_price": "first market trade at or after bucket end plus 60 or 300 seconds, rejected when more than 5 seconds late",
+    "markout_bp": "episode_direction*10000*log(forward_price/episode_price), winsorized to [-200,200]"
+  },
+  "causal_score": {
+    "rank_scope": "wallet-coin",
+    "update_time": "At each UTC date boundary, use only resolved episodes from strictly earlier selected dates",
+    "score": "sum(prior winsorized markout)/(prior_episode_count+shrinkage_n0)",
+    "grid": {
+      "skill_horizon_seconds": [60, 300],
+      "minimum_prior_episodes": [20, 50],
+      "shrinkage_n0": [50, 200],
+      "cohort_tail_fraction": [0.02, 0.05]
+    },
+    "candidate_count": 16,
+    "cohorts": "Upper and lower score tails, each max(10,ceil(tail_fraction*eligible_wallets)); candidate-date-coin inactive when tails overlap or fewer than 20 wallets are eligible",
+    "evaluation_unit": "One current-date mean markout per wallet-coin, preventing highly active wallets from dominating by episode count",
+    "signed_persistence": "current markout for upper-tail wallets and negative current markout for lower-tail wallets"
+  },
+  "partitions": {
+    "warmup": ["2025-07-27"],
+    "fit": ["2025-07-28", "2025-07-29", "2025-07-30"],
+    "development_a": ["2025-07-31", "2025-08-01", "2025-08-02"],
+    "development_b": ["2025-08-03", "2025-08-04"],
+    "validation": ["2025-08-05", "2025-08-06"]
+  },
+  "development_gate": {
+    "each_partition": [
+      "at least 60 wallet-day observations",
+      "at least two coins represented",
+      "mean signed persistence greater than zero",
+      "upper-minus-lower current markout spread at least 4 bp",
+      "mean prior-score/current-markout correlation greater than zero"
+    ],
+    "combined": [
+      "at least 150 wallet-day observations",
+      "median signed persistence greater than zero",
+      "mean signed persistence remains greater than zero after removing the largest positive 10%"
+    ],
+    "selection_order": [
+      "gate pass",
+      "larger minimum development-partition upper-minus-lower spread",
+      "larger combined mean signed persistence",
+      "larger top-10%-removed mean signed persistence",
+      "more wallet-day observations",
+      "lexicographically smaller candidate id"
+    ],
+    "placebo": "For the selected winner only, 500 fixed-seed activity-matched random upper/lower cohort assignments; true combined mean signed persistence must exceed the 95th percentile of placebo means",
+    "validation_opening": "Validation files remain unread unless every development condition and placebo pass"
+  },
+  "validation_gate": [
+    "fixed development winner with no parameter change",
+    "at least 40 wallet-day observations",
+    "both dates and at least two coins represented",
+    "mean and median signed persistence greater than zero",
+    "upper-minus-lower spread at least 4 bp",
+    "mean score/current-markout correlation greater than zero",
+    "top-10%-removed mean signed persistence greater than zero",
+    "each validation date mean signed persistence greater than zero"
+  ],
+  "promotion": "Only a validation pass opens preregistration_v2.json and its 1,152 identity-flow candidates. It does not open 2026, Bybit execution, strategy PnL, risk/leverage optimization, official ranking or orders.",
+  "hard_boundaries": {
+    "identity_flow_grid_opened": false,
+    "strategy_pnl_computed": false,
+    "bybit_execution_opened": false,
+    "official_2024_2026_opened": false,
+    "official_rank_eligible": false,
+    "orders_submitted": false
+  }
+}

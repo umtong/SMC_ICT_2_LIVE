@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "created_at": "2026-07-26T02:40:00Z",
+  "stage": "PRE_2026_PARENT_ORDER_CADENCE_STRUCTURE_GATE",
+  "purpose": "Determine, without accessing price, size, return or PnL values, whether the historical node_fills_by_block source contains a causally detectable repeated-child-order pattern consistent with Hyperliquid's fixed 30-second TWAP schedule.",
+  "economic_distinction": "The candidate state is an already observed sequence of repeated same-wallet, same-coin, same-side child orders. It does not use historical wallet profitability, future wallet labels, aggregate anonymous flow thresholds or post-hoc chart patterns.",
+  "external_mechanism_fixed_before_data": {
+    "official_rule": "Hyperliquid TWAP sends one suborder every 30 seconds during execution.",
+    "causal_detection": "Only completed child-order timestamps at or before the detection time are used.",
+    "future_price_not_opened": true
+  },
+  "source": {
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "path": "data/node_fills_by_block_hourly_20250727_12.parquet",
+    "utc_interval": ["2025-07-27T12:00:00Z", "2025-07-27T12:59:59.999Z"],
+    "role": "warmup_only",
+    "bytes": 31076403,
+    "lfs_sha256": "88fbe8b2868631d6ce4c655e0e40e04c96a83c8f5e0fa62156898dc5d0c801ee",
+    "xet_hash": "12a81e10f12ec0e0726788e19bf65f45b50495919620ae80795ab05e07a5554c"
+  },
+  "allowed_fields": ["wallet", "coin", "side", "crossed", "time", "oid", "cloid"],
+  "prohibited_fields_and_operations": [
+    "access, aggregate, serialize or compare px, sz, fee, closedPnl, startPosition, dir, liquidation values or any price/value field",
+    "calculate returns, markouts, price impact, wallet skill, signal PnL or account PnL",
+    "read any other source file",
+    "read development, validation, 2026 or official Bybit outcomes",
+    "adapt the cadence window, slice count or gate after seeing this file",
+    "submit an order"
+  ],
+  "target_universe": ["BTC", "ETH", "SOL", "XRP"],
+  "child_order_normalization": {
+    "eligible_fill": "coin in target universe, crossed=true, recognized side, valid wallet, time and oid",
+    "child_order_key": ["wallet", "coin", "side", "oid"],
+    "child_order_time": "minimum observed fill time for the key",
+    "reason": "Multiple partial fills of one child order must not be mistaken for repeated scheduled slices."
+  },
+  "cloid_parent_test": {
+    "valid_cloid": "Non-null, non-empty and not numeric zero after string normalization.",
+    "group_key": ["wallet", "coin", "cloid"],
+    "candidate_group": "At least two distinct child-order OIDs, elapsed duration at least 20 seconds and same-side purity at least 0.9.",
+    "promotion_gate": {
+      "minimum_candidate_groups": 5,
+      "minimum_target_coins_represented": 1
+    }
+  },
+  "cadence_sequence_test": {
+    "sequence_scope": ["wallet", "coin"],
+    "ordering": "Sort normalized child orders by timestamp, then oid and side.",
+    "cadence_gap_seconds_inclusive": [20, 40],
+    "run_rule": "A maximal run consists of consecutive normalized child orders with the same side and every adjacent gap inside 20 to 40 seconds. Any intervening child order, opposite side or out-of-window gap terminates the run.",
+    "causal_detection": "A run becomes detectable immediately after its third child order. A fourth child order is continuation only when it remains in the same maximal run.",
+    "right_censoring": "Exclude detections whose third child order occurs later than 40 seconds before the frozen file end.",
+    "conditional_control": "For the same wallet and coin, use anchors whose current and previous two consecutive child orders have the same side but whose two prior gaps are not both in the cadence window. The control succeeds when the next consecutive child order is same-side and 20 to 40 seconds later. Exclude right-censored anchors.",
+    "promotion_gate": {
+      "minimum_detectable_runs": 10,
+      "minimum_continued_runs": 5,
+      "minimum_continuation_rate": 0.5,
+      "minimum_control_anchors": 20,
+      "minimum_absolute_lift_over_control": 0.2,
+      "minimum_rate_ratio_over_control": 2.0,
+      "minimum_target_coins_with_detectable_runs": 1
+    }
+  },
+  "overall_promotion": "Pass when either the cloid-parent gate or every cadence-sequence gate condition passes. Passing only permits a new preregistration for a price and Bybit-execution fatal screen; it does not permit PnL, risk search, ranking or orders.",
+  "if_failed": "Retire direct parent-order continuation from this historical source. Do not rescue it with wallet-skill ranking, post-hoc cadence windows or OID partial-fill counts.",
+  "hard_boundaries": {
+    "price_values_accessed": false,
+    "size_values_accessed": false,
+    "return_or_markout_computed": false,
+    "strategy_pnl_computed": false,
+    "bybit_execution_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  }
+}
