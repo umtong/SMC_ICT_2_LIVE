@@ -20,7 +20,9 @@ def load_stage_with_utc_funding_index(*args, **kwargs):
     for symbol, series in funding_by_symbol.items():
         values = series.copy()
         original_rates = values.to_numpy(copy=True)
-        index = pd.DatetimeIndex(pd.to_datetime(values.index, utc=True, errors="raise"))
+        index = pd.DatetimeIndex(
+            pd.to_datetime(values.index, utc=True, errors="raise", format="mixed")
+        )
         if index.has_duplicates:
             raise ValueError(f"duplicate cached funding timestamps for {symbol}")
         values.index = index
@@ -48,8 +50,12 @@ def run(output: Path, cache: Path) -> dict[str, Any]:
 
 def self_test() -> None:
     v5.self_test()
-    index = ["2021-01-01 00:00:00+00:00", "2021-01-01 08:00:00+00:00"]
-    rates = pd.Series([0.0001, -0.0002], index=index, name="rate")
+    index = [
+        "2021-01-01 00:00:00.000000+00:00",
+        "2021-01-02 00:00:00+00:00",
+        "2021-01-02T08:00:00Z",
+    ]
+    rates = pd.Series([0.0001, -0.0002, 0.0003], index=index, name="rate")
 
     def fake_loader(*args, **kwargs):
         return {}, {}, {"BTCUSDT": rates.copy()}, []
