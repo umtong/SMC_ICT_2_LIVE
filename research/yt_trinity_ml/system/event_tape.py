@@ -48,12 +48,15 @@ class EventTapeGlobalReplay:
         self.cursors[symbol] = max(start, end)
         return frame.iloc[start:end].iterrows()
 
-    def _mark_asof(self, symbol: str, timestamp: pd.Timestamp) -> float:
+    def _row_asof(self, symbol: str, timestamp: pd.Timestamp) -> pd.Series:
         values = self.time_ns[symbol]
         position = int(np.searchsorted(values, timestamp.value, side="right")) - 1
         if position < 0:
             position = 0
-        return float(self.tapes[symbol].iloc[min(position, len(self.tapes[symbol]) - 1)]["mark"])
+        return self.tapes[symbol].iloc[min(position, len(self.tapes[symbol]) - 1)]
+
+    def _mark_asof(self, symbol: str, timestamp: pd.Timestamp) -> float:
+        return float(self._row_asof(symbol, timestamp)["mark"])
 
     def run(
         self,
@@ -65,10 +68,12 @@ class EventTapeGlobalReplay:
         initial_nav: float = 10000.0,
         funding: Mapping[tuple[str, pd.Timestamp], float] | None = None,
         instrument_rules: Mapping[str, tuple[float, float]] | None = None,
+        invalidation_timestamps: Mapping[str, set[pd.Timestamp]] | None = None,
     ) -> AccountState:
         account = AccountState(initial_nav)
         funding = funding or {}
         instrument_rules = instrument_rules or {}
+        invalidation_timestamps = invalidation_timestamps or {}
         groups: dict[pd.Timestamp, list[ScoredCandidate]] = {}
         for scored in scored_candidates:
             if evaluation_start <= scored.candidate.timestamp < evaluation_end_exclusive:
@@ -90,7 +95,8 @@ class EventTapeGlobalReplay:
                 self.engine.process_entry_row(account, timestamp, row)
                 if (active_symbol, timestamp) in funding:
                     self.engine.apply_funding(account, timestamp, float(row["mark"]), float(funding[(active_symbol, timestamp)]))
-                self.engine.process_position_row(account, timestamp, row)
+                structural_invalidation = timestamp in invalidation_timestamps.get(active_symbol, set())
+                self.engine.process_position_row(account, timestamp, row, structural_invalidation)
                 if account.pending_entry is not None:
                     candidate = account.pending_entry.candidate
                     side = candidate.side
@@ -129,6 +135,11 @@ class EventTapeGlobalReplay:
             step, minimum = instrument_rules.get(candidate.symbol, (risk.quantity_step, risk.minimum_quantity))
             symbol_risk = replace(risk, quantity_step=float(step), minimum_quantity=float(minimum))
             entry_fee_rate = self.config.maker_fee_rate if selected.action == PolicyDecision.PASSIVE_RETEST else self.config.taker_fee_rate
+            expected_entry = (
+                candidate.entry_reference
+                if selected.action == PolicyDecision.PASSIVE_RETEST
+                else candidate.decision_price * (1 + candidate.side * self.config.base_slippage_bps / 10000)
+            )
             quantity = size_position_from_nav(
                 float(account.cash),
                 candidate,
@@ -137,10 +148,19 @@ class EventTapeGlobalReplay:
                 self.config.taker_fee_rate,
                 self.config.base_slippage_bps / 10000 if selected.action == PolicyDecision.MARKETABLE else 0.0,
                 self.config.base_slippage_bps / 10000,
+                expected_entry_price=expected_entry,
             )
             if quantity <= 0:
                 continue
-            self.engine.submit_entry(account, candidate, selected.action, quantity)
+            self.engine.submit_entry(
+                account,
+                candidate,
+                selected.action,
+                quantity,
+                loss_budget=float(account.cash) * symbol_risk.risk_fraction,
+                stop_fee_rate=self.config.taker_fee_rate,
+                stop_slippage_fraction=self.config.base_slippage_bps / 10000,
+            )
             self.cursors[candidate.symbol] = max(
                 self.cursors[candidate.symbol],
                 int(np.searchsorted(self.time_ns[candidate.symbol], decision_time.value, side="right")),
@@ -162,10 +182,10 @@ class EventTapeGlobalReplay:
             freq="1D",
             tz="UTC",
         ):
-            while cash_index < len(cash_history) and cash_history[cash_index][0] <= day_end:
+            while cash_index < len(cash_history) and cash_history[cash_index][0] < day_end:
                 cash = cash_history[cash_index][1]
                 cash_index += 1
-            while snapshot_index < len(snapshots) and snapshots[snapshot_index].timestamp <= day_end:
+            while snapshot_index < len(snapshots) and snapshots[snapshot_index].timestamp < day_end:
                 snapshot = snapshots[snapshot_index]
                 active_snapshot = None if snapshot.quantity <= 0 else snapshot
                 snapshot_index += 1
@@ -175,7 +195,13 @@ class EventTapeGlobalReplay:
             if active_snapshot is not None:
                 symbol = active_snapshot.symbol
                 quantity = active_snapshot.quantity
-                mark = self._mark_asof(symbol, day_end)
-                unrealized = active_snapshot.side * quantity * (mark - active_snapshot.average_entry_price)
+                mark_time = day_end - pd.Timedelta(nanoseconds=1)
+                closeout_row = self._row_asof(symbol, mark_time)
+                unrealized = self.engine.estimate_closeout_pnl(
+                    active_snapshot.side,
+                    quantity,
+                    active_snapshot.average_entry_price,
+                    closeout_row,
+                )
             account.daily_nav.append(DailyNavRecord(day_end, cash + unrealized, cash, unrealized, symbol, quantity))
         return account

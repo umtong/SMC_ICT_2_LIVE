@@ -16,6 +16,7 @@ from system.core import (  # noqa: E402
     FeatureConfig,
     RiskConfig,
     build_causal_features,
+    generate_event_candidates,
     size_position_from_nav,
 )
 from system.model import ScoredCandidate  # noqa: E402
@@ -87,6 +88,7 @@ def simple_tape(index: pd.DatetimeIndex, last: list[float]) -> pd.DataFrame:
             "trade_volume": 100.0,
             "bid_size": 1000.0,
             "ask_size": 1000.0,
+            "aggressor_side": -1.0,
         },
         index=index,
     )
@@ -335,3 +337,374 @@ def test_event_tape_global_replay_uses_one_slot_and_500ms_activation() -> None:
     assert len(account.closed_trades) == 2
     assert account.closed_trades[0].opened_at == pd.Timestamp("2023-01-01T00:00:00.500Z")
     assert account.closed_trades[1].opened_at == pd.Timestamp("2023-01-01T00:00:02.500Z")
+
+
+
+def _manual_feature_frame(rows: list[dict[str, float]]) -> pd.DataFrame:
+    index = pd.date_range("2023-01-01", periods=len(rows), freq="5min", tz="UTC")
+    defaults = {
+        "open": 100.0,
+        "high": 101.0,
+        "low": 99.0,
+        "close": 100.0,
+        "volume": 100.0,
+        "atr": 1.0,
+        "last_swing_high": 101.0,
+        "last_swing_low": 99.0,
+        "previous_day_high": 105.0,
+        "previous_day_low": 95.0,
+        "previous_week_high": 110.0,
+        "previous_week_low": 90.0,
+        "bull_bos": 0.0,
+        "bear_bos": 0.0,
+        "bull_displacement": 0.0,
+        "bear_displacement": 0.0,
+        "bull_fvg_lower": np.nan,
+        "bull_fvg_upper": np.nan,
+        "bear_fvg_lower": np.nan,
+        "bear_fvg_upper": np.nan,
+        "close_location": 0.5,
+        "body": 0.0,
+    }
+    return pd.DataFrame([{**defaults, **row} for row in rows], index=index)
+
+
+def test_liquidity_sweep_is_armed_then_requires_later_mss_displacement() -> None:
+    frame = _manual_feature_frame(
+        [
+            {},
+            {"high": 100.5, "low": 99.5, "close": 100.0},
+            {"open": 100.0, "high": 100.5, "low": 98.0, "close": 100.0, "last_swing_low": 99.0},
+            {
+                "open": 100.2,
+                "high": 102.5,
+                "low": 100.0,
+                "close": 102.0,
+                "bull_displacement": 1.0,
+                "bull_fvg_lower": 100.2,
+                "bull_fvg_upper": 100.8,
+                "close_location": 0.8,
+                "body": 1.8,
+            },
+        ]
+    )
+    events_before_confirmation = generate_event_candidates(frame.iloc[:3], "BTCUSDT")
+    events = generate_event_candidates(frame, "BTCUSDT")
+    assert events_before_confirmation == []
+    assert len(events) == 1
+    assert events[0].timestamp == frame.index[3]
+    assert events[0].family == EventFamily.LIQUIDITY_SWEEP_REVERSAL
+    assert events[0].side == 1
+
+
+def test_displacement_break_is_armed_then_requires_later_accepted_retest() -> None:
+    frame = _manual_feature_frame(
+        [
+            {},
+            {"last_swing_high": 100.0, "last_swing_low": 95.0},
+            {
+                "open": 99.5,
+                "high": 103.0,
+                "low": 99.5,
+                "close": 102.5,
+                "last_swing_high": 100.0,
+                "last_swing_low": 95.0,
+                "bull_bos": 1.0,
+                "bull_displacement": 1.0,
+                "bull_fvg_lower": 100.0,
+                "bull_fvg_upper": 101.0,
+                "close_location": 0.85,
+                "body": 3.0,
+            },
+            {
+                "open": 100.5,
+                "high": 102.0,
+                "low": 100.4,
+                "close": 101.6,
+                "last_swing_high": 100.0,
+                "last_swing_low": 95.0,
+                "close_location": 0.75,
+                "body": 1.1,
+            },
+        ]
+    )
+    assert generate_event_candidates(frame.iloc[:3], "BTCUSDT") == []
+    events = generate_event_candidates(frame, "BTCUSDT")
+    assert len(events) == 1
+    assert events[0].timestamp == frame.index[3]
+    assert events[0].family == EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION
+
+
+def test_policy_compares_action_specific_utility_not_fill_threshold() -> None:
+    timestamp = pd.Timestamp("2023-01-01", tz="UTC")
+    first = EventCandidate(timestamp, "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 98, 104, 99, {})
+    second = EventCandidate(timestamp, "ETHUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 98, 104, 99, {})
+    passive_edge = ScoredCandidate(
+        first,
+        0.6,
+        0.4,
+        0.20,
+        0.012,
+        0.010,
+        passive_win_probability=0.8,
+        market_expected_log_growth=0.002,
+        passive_expected_log_growth=0.012,
+        market_lower_confidence_score=0.001,
+        passive_lower_confidence_score=0.010,
+        preferred_action="PASSIVE_RETEST",
+    )
+    market_edge = ScoredCandidate(
+        second,
+        0.7,
+        0.5,
+        0.9,
+        0.009,
+        0.008,
+        passive_win_probability=0.5,
+        market_expected_log_growth=0.009,
+        passive_expected_log_growth=-0.001,
+        market_lower_confidence_score=0.008,
+        passive_lower_confidence_score=-0.002,
+        preferred_action="MARKETABLE",
+    )
+    selected = GlobalSlotPolicy(passive_fill_threshold=0.95).choose([passive_edge, market_edge], True)
+    assert selected.scored == passive_edge
+    assert selected.action == PolicyDecision.PASSIVE_RETEST
+
+
+def test_passive_queue_uses_resting_side_and_correct_aggressor() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION, 1, 101, 100, 98, 105, 99, {})
+    engine = ExecutionEngine(ExecutionConfig(activation_latency_ms=0, passive_queue_multiple=1.0))
+    account = AccountState(10000)
+    engine.submit_entry(account, event, PolicyDecision.PASSIVE_RETEST, 1.0)
+    row = pd.Series({"bid": 99.9, "ask": 100.1, "last": 99.8, "mark": 99.9, "trade_volume": 3.0, "bid_size": 2.0, "ask_size": 1000.0, "aggressor_side": -1.0})
+    engine.process_entry_row(account, pd.Timestamp("2023-01-01T00:00:01Z"), row)
+    assert account.position is not None and account.position.quantity == 1.0
+
+    blocked = AccountState(10000)
+    engine.submit_entry(blocked, event, PolicyDecision.PASSIVE_RETEST, 1.0)
+    wrong_side = row.copy()
+    wrong_side["aggressor_side"] = 1.0
+    engine.process_entry_row(blocked, pd.Timestamp("2023-01-01T00:00:01Z"), wrong_side)
+    assert blocked.position is None
+
+
+def test_partial_entry_remainder_is_cancelled_when_position_closes() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION, 1, 101, 100, 98, 105, 99, {})
+    engine = ExecutionEngine(ExecutionConfig(activation_latency_ms=0, passive_queue_multiple=0.0, base_slippage_bps=0, impact_bps_per_one_percent_depth=0))
+    account = AccountState(10000)
+    engine.submit_entry(account, event, PolicyDecision.PASSIVE_RETEST, 2.0)
+    fill_row = pd.Series({"bid": 99.9, "ask": 100.1, "last": 99.8, "mark": 100.0, "trade_volume": 1.0, "bid_size": 0.0, "ask_size": 10.0, "aggressor_side": -1.0})
+    timestamp = pd.Timestamp("2023-01-01T00:00:01Z")
+    engine.process_entry_row(account, timestamp, fill_row)
+    assert account.position is not None and account.pending_entry is not None
+    stop_row = fill_row.copy()
+    stop_row["mark"] = 97.5
+    stop_row["bid"] = 97.4
+    stop_row["ask"] = 97.6
+    stop_row["trade_volume"] = 0.0
+    engine.process_position_row(account, timestamp + pd.Timedelta(seconds=1), stop_row)
+    assert account.position is None and account.pending_entry is None
+
+
+def test_actual_fill_is_capped_by_loss_budget() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 98, 110, 99, {})
+    engine = ExecutionEngine(ExecutionConfig(activation_latency_ms=0, base_slippage_bps=0, impact_bps_per_one_percent_depth=0))
+    account = AccountState(10000)
+    engine.submit_entry(account, event, PolicyDecision.MARKETABLE, 100.0, loss_budget=10.0, stop_fee_rate=0.0)
+    row = pd.Series({"bid": 100.0, "ask": 100.0, "last": 100.0, "mark": 100.0, "trade_volume": 1000.0, "bid_size": 1000.0, "ask_size": 1000.0})
+    engine.process_entry_row(account, pd.Timestamp("2023-01-01T00:00:00Z"), row)
+    assert account.position is not None
+    worst_case = account.position.quantity * (account.position.average_entry_price - event.stop_reference) + account.position.entry_fees
+    assert worst_case <= 10.0 + 1e-9
+
+
+def test_coarse_stop_uses_adverse_gap_open_not_trigger_price() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 98, 110, 99, {})
+    coarse_bars = execution_bars(
+        ["2023-01-01T00:01:00Z", "2023-01-01T00:02:00Z"],
+        [100.0, 90.0],
+        [101.0, 92.0],
+        [99.0, 89.0],
+        [100.0, 91.0],
+    )
+    label = label_candidate_on_bars(event, coarse_bars, passive=False, config=CoarseExecutionConfig(market_slippage_bps=0, stop_slippage_bps=0, minimum_spread_bps=0))
+    assert label.status == "STOP"
+    assert label.net_r is not None and label.net_r < -4.0
+
+
+def test_canonical_adapter_rejects_pre_source_availability() -> None:
+    bad = pd.DataFrame(
+        {
+            "start_time_ms": [1000],
+            "available_at_ms": [999],
+            "open": [100],
+            "high": [101],
+            "low": [99],
+            "close": [100],
+            "volume": [1],
+        }
+    )
+    try:
+        normalize_trade_bars(bad)
+    except RuntimeError as exc:
+        assert "before its source timestamp" in str(exc)
+    else:
+        raise AssertionError("pre-source availability was accepted")
+
+
+def test_event_tape_replay_exercises_structural_invalidation() -> None:
+    index = pd.to_datetime(["2023-01-01T00:00:00.500Z", "2023-01-01T00:00:01.500Z"])
+    tape = simple_tape(index, [100.0, 100.1])
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 98, 110, 99, {})
+    scored = [ScoredCandidate(event, 0.7, 1.0, 0.1, 0.01, 0.01)]
+    replay = EventTapeGlobalReplay({"BTCUSDT": tape}, ExecutionConfig(activation_latency_ms=500, base_slippage_bps=0, impact_bps_per_one_percent_depth=0))
+    account = replay.run(
+        scored,
+        GlobalSlotPolicy(0.55),
+        RiskConfig(0.01, 5, 0.001),
+        pd.Timestamp("2023-01-01T00:00:00Z"),
+        pd.Timestamp("2023-01-02T00:00:00Z"),
+        invalidation_timestamps={"BTCUSDT": {index[1]}},
+    )
+    assert len(account.closed_trades) == 1
+    assert account.closed_trades[0].exit_reason == ExitReason.STRUCTURAL_INVALIDATION.value
+
+
+def test_action_specific_model_does_not_copy_market_outcome_into_passive_nonfills() -> None:
+    rng = np.random.default_rng(23)
+    count = 300
+    x = rng.normal(size=count)
+    market_win = (x > -0.2).astype(int)
+    passive_fill = (x > 0.8).astype(int)
+    passive_win = (x > 1.2).astype(float)
+    rows = pd.DataFrame(
+        {
+            "event_start": pd.date_range("2022-01-01", periods=count, freq="1h", tz="UTC"),
+            "event_end": pd.date_range("2022-01-01T00:30:00Z", periods=count, freq="1h"),
+            "target_before_stop": market_win,
+            "net_r": np.where(market_win, 1.2, -1.0),
+            "market_target_before_stop": market_win,
+            "market_net_r": np.where(market_win, 1.2, -1.0),
+            "passive_filled": passive_fill,
+            "passive_target_before_stop": np.where(passive_fill, passive_win, np.nan),
+            "passive_net_r": np.where(passive_fill, np.where(passive_win, 2.0, -1.0), 0.0),
+            "x": x,
+        }
+    )
+    model = ChronologicalEventModel(ModelConfig(min_samples_leaf=8, max_iter=60)).fit(rows)
+    event = EventCandidate(
+        pd.Timestamp("2023-01-01T00:00:00Z"),
+        "BTCUSDT",
+        EventFamily.LIQUIDITY_SWEEP_REVERSAL,
+        1,
+        100,
+        100,
+        98,
+        104,
+        99,
+        {"x": -1.0},
+    )
+    scored = model.score(
+        event,
+        risk_fraction=0.02,
+        winner_net_r=1.2,
+        loser_net_r=-1.0,
+        fixed_cost_fraction=0.0,
+        passive_winner_net_r=2.0,
+        passive_loser_net_r=-1.0,
+    )
+    assert scored.market_expected_log_growth is not None
+    assert scored.passive_expected_log_growth is not None
+    assert scored.passive_expected_log_growth != scored.market_expected_log_growth
+    assert abs(scored.passive_expected_log_growth) < abs(scored.market_expected_log_growth)
+
+
+def test_candidate_generation_is_prefix_invariant() -> None:
+    frame = _manual_feature_frame(
+        [
+            {},
+            {},
+            {"low": 98.0, "close": 100.0, "last_swing_low": 99.0},
+            {
+                "open": 100.0,
+                "high": 102.5,
+                "low": 100.0,
+                "close": 102.0,
+                "bull_displacement": 1.0,
+                "bull_fvg_lower": 100.2,
+                "bull_fvg_upper": 100.8,
+                "close_location": 0.8,
+                "body": 2.0,
+            },
+            {"high": 103.0, "low": 101.0, "close": 102.5},
+        ]
+    )
+    short = generate_event_candidates(frame.iloc[:4], "BTCUSDT")
+    long = [event for event in generate_event_candidates(frame, "BTCUSDT") if event.timestamp <= frame.index[3]]
+    assert short == long
+
+
+def test_coarse_execution_accepts_bar_start_exactly_at_activation_time() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:59.500Z"), "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 98, 110, 99, {})
+    coarse_bars = execution_bars(
+        ["2023-01-01T00:01:00Z", "2023-01-01T00:02:00Z"],
+        [100.0, 100.0],
+        [101.0, 101.0],
+        [99.0, 99.0],
+        [100.0, 100.0],
+    )
+    label = label_candidate_on_bars(event, coarse_bars, passive=False)
+    assert label.entry_time == pd.Timestamp("2023-01-01T00:01:00Z")
+
+
+def test_duplicate_event_timestamps_require_and_respect_sequence() -> None:
+    from system.execution import validate_tape
+
+    index = pd.to_datetime(["2023-01-01T00:00:00Z", "2023-01-01T00:00:00Z"])
+    tape = simple_tape(index, [100.0, 100.1])
+    try:
+        validate_tape(tape.drop(columns=["aggressor_side"]))
+    except ValueError as exc:
+        assert "sequence" in str(exc)
+    else:
+        raise AssertionError("duplicate timestamps without sequence were accepted")
+    tape["sequence"] = [1, 2]
+    validated = validate_tape(tape)
+    assert len(validated) == 2
+
+
+def test_daily_nav_marks_realistic_closeout_value_including_exit_cost() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 90, 120, 95, {})
+    account = AccountState(10000)
+    engine = ExecutionEngine(ExecutionConfig(activation_latency_ms=0, base_slippage_bps=0, impact_bps_per_one_percent_depth=0))
+    engine.submit_entry(account, event, PolicyDecision.MARKETABLE, 1.0)
+    entry_row = pd.Series({"bid": 99.9, "ask": 100.0, "last": 100.0, "mark": 100.0, "trade_volume": 10.0, "bid_size": 100.0, "ask_size": 100.0})
+    timestamp = pd.Timestamp("2023-01-01T00:00:00Z")
+    engine.process_entry_row(account, timestamp, entry_row)
+    closeout_row = entry_row.copy()
+    closeout_row["bid"] = 99.0
+    closeout_row["ask"] = 101.0
+    mark_only, _ = engine.mark_nav(account, 100.0)
+    record = engine.record_utc_day_end(account, pd.Timestamp("2023-01-02T00:00:00Z"), 100.0, closeout_row)
+    assert record.nav < mark_only
+    assert record.unrealized_pnl < 0
+
+
+def test_final_metrics_can_use_executable_closeout_not_mark() -> None:
+    event = EventCandidate(pd.Timestamp("2023-01-01T00:00:00Z"), "BTCUSDT", EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100, 100, 90, 120, 95, {})
+    account = AccountState(10000)
+    engine = ExecutionEngine(ExecutionConfig(activation_latency_ms=0, base_slippage_bps=0, impact_bps_per_one_percent_depth=0))
+    engine.submit_entry(account, event, PolicyDecision.MARKETABLE, 1.0)
+    row = pd.Series({"bid": 100.0, "ask": 100.0, "last": 100.0, "mark": 100.0, "trade_volume": 10.0, "bid_size": 100.0, "ask_size": 100.0})
+    engine.process_entry_row(account, pd.Timestamp("2023-01-01T00:00:00Z"), row)
+    marked = summarize_account(account, pd.Timestamp("2023-01-01T00:00:00Z"), pd.Timestamp("2023-01-02T00:00:00Z"), 100.0)
+    liquidatable = summarize_account(
+        account,
+        pd.Timestamp("2023-01-01T00:00:00Z"),
+        pd.Timestamp("2023-01-02T00:00:00Z"),
+        100.0,
+        final_closeout_price=99.0,
+        final_closeout_fee_rate=0.00055,
+    )
+    assert liquidatable.end_nav < marked.end_nav

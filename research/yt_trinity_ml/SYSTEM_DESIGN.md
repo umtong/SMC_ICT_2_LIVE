@@ -12,12 +12,14 @@ bound by hash, and the exact frozen survivor is replayed on canonical Bybit data
 The initial hypothesis space is deliberately restricted to two payoff mechanisms.
 
 1. **Liquidity-sweep reversal**: price raids a previously knowable swing/day/week
-   liquidity level, closes back through it, confirms repricing, and targets the next
-   opposing external-liquidity level. The stop is beyond the raid extreme.
-2. **Displacement break/retest continuation**: a completed-bar structure break has
-   displacement/imbalance, then execution either crosses after confirmation or waits
-   queue-aware at a causal retest boundary. The stop is beyond the broken/retest
-   structure and the target is the next same-direction external-liquidity level.
+   liquidity level and closes back through it. That bar only arms the setup. A candidate
+   is emitted later, after a causal internal-structure shift with displacement and, by
+   default, a same-direction FVG. The stop is beyond the raid extreme and the target is
+   the next opposing external-liquidity level.
+2. **Displacement break/retest continuation**: a completed-bar structure break with
+   displacement/FVG only arms the setup. A candidate is emitted later, after the first
+   accepted retest closes back in the break direction. The stop is beyond the retest or
+   prior structure and the target is the next same-direction external-liquidity level.
 
 Indicators, patterns, session state, volume, volatility, positioning, basis and
 funding are model context. They are not independent named strategies.
@@ -37,16 +39,17 @@ funding are model context. They are not independent named strategies.
 
 ## ML policy
 
-A pooled histogram-gradient-boosting model has three heads:
+A pooled histogram-gradient-boosting action-value model has separate heads for:
 
-- target before structural invalidation probability;
-- after-cost net-R expectation;
-- passive-order fill probability.
+- marketable target-before-stop probability and after-cost net-R;
+- passive-order fill probability;
+- passive conditional target-before-stop probability and after-cost net-R.
 
-A strictly later chronological tail calibrates probabilities. The global policy
-ranks simultaneous BTC/ETH/SOL/XRP candidates by lower-confidence expected log NAV
-increment after cost, abstains when it is nonpositive, and permits at most one
-pending or open entry across the whole account.
+A passive nonfill contributes zero realized account return; it never inherits the
+market-order label. Strictly later chronological tails calibrate probabilities. The
+global policy compares `ABSTAIN`, `MARKETABLE`, and `PASSIVE_RETEST` by action-specific
+lower-confidence expected log NAV increment after cost across BTC/ETH/SOL/XRP, and
+permits at most one pending or open entry across the whole account.
 
 ## Risk and execution
 
@@ -58,9 +61,15 @@ searched only after positive basic after-cost alpha; growth is never clipped at 
 1% project target.
 
 The event-tape engine implements fixed 500 ms activation, bid/ask market fills,
-depth-dependent impact, queue-ahead passive fills, partial fills, nonfills, funding,
-stop-first same-timestamp ambiguity, liquidation invalidation and UTC daily NAV.
-It never closes an order or position solely because time elapsed.
+depth-dependent impact, resting-side queue-ahead passive fills, aggressor-direction
+filters, partial fills, nonfills, funding, stop-first same-timestamp ambiguity,
+structural invalidation inputs, liquidation invalidation and UTC daily NAV. Unknown
+aggressor volume is not credited to a passive fill. Any unfilled entry remainder is
+cancelled when the sibling position closes. Actual executable entry prices cap filled
+quantity to the planned whole-account loss budget. Without an explicit reduce-only
+target queue, targets cross the observable book with taker cost rather than receiving
+an exact full maker fill. Coarse stops use adverse gap opens. No order or position is
+closed solely because time elapsed.
 
 ## Evaluation path
 

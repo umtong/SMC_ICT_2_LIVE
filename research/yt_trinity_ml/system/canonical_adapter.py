@@ -37,6 +37,8 @@ def _index_by_available(frame: pd.DataFrame, *, timestamp_column: str) -> pd.Dat
     result = result.sort_values(timestamp_column, kind="stable")
     if result[timestamp_column].duplicated().any():
         raise ValueError("duplicate canonical timestamps")
+    if not (result["available_at"] >= result["timestamp"]).all():
+        raise RuntimeError("canonical observation became available before its source timestamp")
     return result.set_index("timestamp", drop=False)
 
 
@@ -141,6 +143,8 @@ def assemble_symbol_frame(
         index=funding.index,
     )
     result = result.sort_index()
-    if not (result["available_at"] >= result.index).all():
+    bar_start = pd.DatetimeIndex(pd.to_datetime(result["bar_start"], utc=True))
+    available = pd.DatetimeIndex(result.index)
+    if not (available >= bar_start).all():
         raise RuntimeError("canonical bar became available before its own start")
     return result, funding_output.sort_index()

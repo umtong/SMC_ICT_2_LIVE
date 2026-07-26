@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
-  "system_id": "YT-TRINITY-CAUSAL-ML-V1",
-  "status": "DRAFT_PENDING_COMPLETE_CORPUS_DIGEST",
+  "schema_version": 2,
+  "system_id": "YT-TRINITY-CAUSAL-ACTION-V2",
+  "status": "DRAFT_PENDING_COMPLETE_CORPUS_DIGEST_AND_CANONICAL_DATA",
   "objective": {
     "primary": "maximize realistic after-cost continuous-account geometric log growth",
     "target_geometric_daily_growth": 0.01,
@@ -13,8 +13,14 @@
   "universe": {
     "venue": "Bybit",
     "product": "USDT linear perpetual",
-    "symbols_primary": ["BTCUSDT", "ETHUSDT"],
-    "symbols_conditional": ["SOLUSDT", "XRPUSDT"],
+    "symbols_primary": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "symbols_conditional": [
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
     "global_pending_or_open_entry_slots": 1
   },
   "information": {
@@ -22,13 +28,19 @@
     "decision_to_order_activation_latency_ms": 500,
     "same_bar_ambiguous_barrier_resolution": "event_tape_required_or_stop_first",
     "no_future_confirmed_pivots": true,
-    "training_and_selection_cutoff_utc": "2023-12-31T23:59:59Z"
+    "training_and_selection_cutoff_utc": "2023-12-31T23:59:59Z",
+    "candidate_timestamp": "later_confirmation_or_accepted_retest_availability_time"
   },
   "candidate_families": [
     {
       "id": "LIQUIDITY_SWEEP_REVERSAL",
       "economic_mechanism": "forced liquidity raid that fails, then reprices toward opposing external liquidity",
-      "required_sequence": ["external_liquidity_location", "sweep_and_reclaim", "micro_structure_shift_or_displacement", "entry_zone_or_confirmation"],
+      "required_sequence": [
+        "external_liquidity_location",
+        "sweep_and_reclaim",
+        "micro_structure_shift_or_displacement",
+        "entry_zone_or_confirmation"
+      ],
       "structural_stop": "beyond raid extreme plus execution buffer",
       "structural_target": "next opposing confirmed external liquidity pool",
       "elapsed_time_exit_forbidden": true
@@ -36,7 +48,12 @@
     {
       "id": "DISPLACEMENT_BREAK_RETEST_CONTINUATION",
       "economic_mechanism": "accepted structure break with displacement, followed by efficient repricing from a retest zone",
-      "required_sequence": ["compression_or_trend_context", "confirmed_structure_break", "displacement_or_imbalance", "retest_or_continuation_confirmation"],
+      "required_sequence": [
+        "compression_or_trend_context",
+        "confirmed_structure_break",
+        "displacement_or_imbalance",
+        "retest_or_continuation_confirmation"
+      ],
       "structural_stop": "beyond retest zone or broken structure invalidation",
       "structural_target": "next same-direction confirmed external liquidity pool",
       "elapsed_time_exit_forbidden": true
@@ -52,15 +69,31 @@
     "execution_cost_and_fill_state"
   ],
   "model": {
-    "family": "pooled histogram gradient boosting",
-    "heads": ["target_before_invalidation_probability", "net_r_expectation", "passive_fill_probability"],
+    "family": "pooled causal histogram gradient boosting with action-specific heads",
+    "heads": [
+      "market_target_before_stop_probability",
+      "market_after_cost_net_r_expectation",
+      "passive_fill_probability",
+      "passive_conditional_target_before_stop_probability",
+      "passive_conditional_after_cost_net_r_expectation"
+    ],
     "calibration": "strictly later purged chronological folds",
-    "policy_score": "lower_confidence_expected_log_nav_increment_after_cost",
+    "policy_score": "maximum action-specific lower-confidence expected log NAV increment after cost, including zero return on passive nonfill",
     "abstain_when_nonpositive": true,
-    "selection_objective": "pre_2024_sequential_after_cost_account_log_growth"
+    "selection_objective": "pre_2024_sequential_after_cost_account_log_growth",
+    "action_space": [
+      "ABSTAIN",
+      "MARKETABLE",
+      "PASSIVE_RETEST"
+    ],
+    "market_labels_never_reused_as_passive_labels": true
   },
   "updates": {
-    "candidate_cadences": ["DAILY", "WEEKLY", "FOUR_WEEK"],
+    "candidate_cadences": [
+      "DAILY",
+      "WEEKLY",
+      "FOUR_WEEK"
+    ],
     "cadence_selected_pre_2024": true,
     "old_model_remains_active_until_new_model_finished": true,
     "minimum_activation_lag_minutes": 15,
@@ -68,19 +101,37 @@
   },
   "risk": {
     "quantity_basis": "whole_account_nav_times_selected_risk_fraction_divided_by_expected_per_unit_stop_loss",
-    "expected_loss_includes": ["entry_to_stop_distance", "entry_fee", "stop_fee", "spread", "slippage", "market_impact", "funding"],
+    "expected_loss_includes": [
+      "entry_to_stop_distance",
+      "entry_fee",
+      "stop_fee",
+      "spread",
+      "slippage",
+      "market_impact",
+      "funding"
+    ],
     "risk_leverage_and_order_style_selected_only_after_positive_basic_alpha": true,
     "search_does_not_treat_one_percent_as_ceiling": true,
     "liquidation_before_structural_stop_forbidden": true
   },
   "execution": {
-    "entry_styles": ["marketable_after_confirmation", "queue_aware_passive_retest"],
+    "entry_styles": [
+      "marketable_after_confirmation",
+      "queue_aware_passive_retest"
+    ],
     "partial_fills": true,
     "nonfills": true,
     "funding": true,
     "market_impact": true,
     "position_exit_only_by_strategy_logic": true,
-    "elapsed_time_liquidation_forbidden": true
+    "elapsed_time_liquidation_forbidden": true,
+    "passive_queue_side": "buy_on_bid_sell_on_ask",
+    "passive_fill_requires_correct_aggressor_side": true,
+    "unknown_aggressor_volume_fraction": 0.0,
+    "target_exit_without_queue_evidence": "cross_observable_book_with_taker_cost",
+    "actual_fill_quantity_capped_to_planned_loss_budget": true,
+    "adverse_gap_stop_fill": true,
+    "partial_entry_remainder_cancelled_on_position_close": true
   },
   "corpus_binding": {
     "required_manifest_decision": "PASS_COMPLETE",

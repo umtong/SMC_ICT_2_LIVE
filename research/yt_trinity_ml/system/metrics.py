@@ -64,6 +64,8 @@ def summarize_account(
     evaluation_start: pd.Timestamp,
     evaluation_end_exclusive: pd.Timestamp,
     final_mark_price: float,
+    final_closeout_price: float | None = None,
+    final_closeout_fee_rate: float = 0.0,
 ) -> AccountMetrics:
     if evaluation_start.tz is None or evaluation_end_exclusive.tz is None:
         raise ValueError("evaluation boundaries must be timezone aware")
@@ -76,7 +78,12 @@ def summarize_account(
     final_unrealized = 0.0
     if account.position is not None:
         position = account.position
-        final_unrealized = position.side * position.open_quantity * (final_mark_price - position.average_entry_price)
+        executable = final_mark_price if final_closeout_price is None else final_closeout_price
+        exit_fee = position.open_quantity * executable * final_closeout_fee_rate
+        final_unrealized = (
+            position.side * position.open_quantity * (executable - position.average_entry_price)
+            - exit_fee
+        )
     end_nav = float(account.cash) + final_unrealized
     if end_nav <= 0:
         geometric = -1.0

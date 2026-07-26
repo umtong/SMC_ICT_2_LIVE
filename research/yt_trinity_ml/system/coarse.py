@@ -75,6 +75,24 @@ def _entry_geometry_valid(candidate: EventCandidate, entry_price: float) -> bool
     return protective_distance > 0 and remaining_reward > 0
 
 
+def _stop_fill(row: pd.Series, side: int, stop_reference: float, config: CoarseExecutionConfig) -> float:
+    # A stop-market cannot fill at the trigger after an adverse opening gap.
+    base = min(float(row["open"]), stop_reference) if side > 0 else max(float(row["open"]), stop_reference)
+    return _market_fill(base, -side, row, config.stop_slippage_bps, config)
+
+
+def _target_fill(row: pd.Series, side: int, target_reference: float, config: CoarseExecutionConfig) -> float:
+    # Without queue/depth data, do not award an exact maker fill. A predeclared
+    # target trigger is crossed at the observable book with taker costs.
+    return _market_fill(target_reference, -side, row, config.market_slippage_bps, config)
+
+
+def coarse_closeout_price(row: pd.Series, position_side: int, config: CoarseExecutionConfig) -> float:
+    """Conservative executable closeout price for NAV marking."""
+    base = float(row.get("mark_close", row.get("close")))
+    return _market_fill(base, -position_side, row, config.market_slippage_bps, config)
+
+
 class _RangeExtremaIndex:
     """Segment tree for first low/high barrier crossing at or after a position."""
 
@@ -157,7 +175,7 @@ class CoarseLabeler:
 
     def label(self, candidate: EventCandidate, passive: bool) -> CoarseLabel:
         activation = candidate.timestamp + pd.Timedelta(milliseconds=self.config.activation_latency_ms)
-        start_position = int(np.searchsorted(self.time_ns, activation.value, side="right"))
+        start_position = int(np.searchsorted(self.time_ns, activation.value, side="left"))
         if start_position >= len(self.data):
             return CoarseLabel(candidate.timestamp, None, None, None, None, 0, "UNRESOLVED_NO_EXECUTION_BAR")
 
@@ -216,18 +234,15 @@ class CoarseLabeler:
         if exit_position is None:
             return CoarseLabel(candidate.timestamp, entry_time, None, None, None, passive_filled, "UNRESOLVED_CENSORED")
         exit_time = self.available_times[exit_position]
+        exit_row = self.data.iloc[exit_position]
         if stop_position == exit_position:
-            stop_price = candidate.stop_reference * (
-                1 - self.config.stop_slippage_bps / 10000
-                if side > 0
-                else 1 + self.config.stop_slippage_bps / 10000
-            )
+            stop_price = _stop_fill(exit_row, side, candidate.stop_reference, self.config)
             gross = side * (stop_price - entry_price)
             fees = entry_price * entry_fee_rate + stop_price * self.config.taker_fee_rate
             return CoarseLabel(candidate.timestamp, entry_time, exit_time, 0, (gross - fees) / stop_distance, passive_filled, "STOP")
-        target_price = candidate.target_reference
+        target_price = _target_fill(exit_row, side, candidate.target_reference, self.config)
         gross = side * (target_price - entry_price)
-        fees = entry_price * entry_fee_rate + target_price * self.config.maker_fee_rate
+        fees = entry_price * entry_fee_rate + target_price * self.config.taker_fee_rate
         return CoarseLabel(candidate.timestamp, entry_time, exit_time, 1, (gross - fees) / stop_distance, passive_filled, "TARGET")
 
 
@@ -291,6 +306,7 @@ class CoarseGlobalReplay:
         funding = funding or {}
         instrument_rules = instrument_rules or {}
         last_mark: dict[str, float] = {}
+        last_row: dict[str, pd.Series] = {}
         last_day: pd.Timestamp | None = None
 
         def account_nav(mark: float | None = None) -> float:
@@ -302,26 +318,50 @@ class CoarseGlobalReplay:
         for timestamp in timeline:
             day = timestamp.floor("D")
             if last_day is not None and day > last_day:
-                mark = last_mark.get(position.candidate.symbol, position.entry_price) if position else 0.0
-                unrealized = account_nav(mark) - float(account.cash)
+                unrealized = 0.0
+                nav = float(account.cash)
+                if position is not None:
+                    closeout_row = last_row.get(position.candidate.symbol)
+                    if closeout_row is not None:
+                        exit_price = coarse_closeout_price(closeout_row, position.candidate.side, self.config)
+                        exit_fee = position.quantity * exit_price * self.config.taker_fee_rate
+                        unrealized = position.candidate.side * position.quantity * (exit_price - position.entry_price) - exit_fee
+                        nav += unrealized
                 account.daily_nav.append(
-                    DailyNavRecord(day, account_nav(mark), float(account.cash), unrealized, position.candidate.symbol if position else None, position.quantity if position else 0.0)
+                    DailyNavRecord(day, nav, float(account.cash), unrealized, position.candidate.symbol if position else None, position.quantity if position else 0.0)
                 )
             last_day = day
 
             for symbol, row in bars_by_start.get(timestamp, []):
                 mark = float(row.get("mark_close", row["close"]))
                 last_mark[symbol] = mark
+                last_row[symbol] = row
 
-                if pending is not None and pending.scored.candidate.symbol == symbol and timestamp > pending.activation:
+                if pending is not None and pending.scored.candidate.symbol == symbol and timestamp >= pending.activation:
                     candidate = pending.scored.candidate
                     side = candidate.side
                     if pending.action == PolicyDecision.MARKETABLE:
                         entry = _market_fill(float(row["open"]), side, row, self.config.market_slippage_bps, self.config)
-                        fee = pending.quantity * entry * self.config.taker_fee_rate
+                        step, minimum = instrument_rules.get(candidate.symbol, (risk.quantity_step, risk.minimum_quantity))
+                        symbol_risk = replace(risk, quantity_step=float(step), minimum_quantity=float(minimum))
+                        allowed = size_position_from_nav(
+                            account_nav(mark),
+                            candidate,
+                            symbol_risk,
+                            self.config.taker_fee_rate,
+                            self.config.taker_fee_rate,
+                            self.config.market_slippage_bps / 10000,
+                            self.config.stop_slippage_bps / 10000,
+                            expected_entry_price=entry,
+                        )
+                        fill_quantity = min(pending.quantity, allowed)
+                        if fill_quantity <= 0:
+                            pending = None
+                            continue
+                        fee = fill_quantity * entry * self.config.taker_fee_rate
                         account.cash = float(account.cash) - fee
-                        account.fills.append(FillRecord(timestamp, symbol, "ENTRY", side, pending.quantity, entry, fee, "taker"))
-                        position = _CoarseOpenPosition(candidate, pending.quantity, entry, timestamp, fee, account_nav())
+                        account.fills.append(FillRecord(timestamp, symbol, "ENTRY", side, fill_quantity, entry, fee, "taker"))
+                        position = _CoarseOpenPosition(candidate, fill_quantity, entry, timestamp, fee, account_nav())
                         pending = None
                     else:
                         invalidated = row["low"] <= candidate.stop_reference if side > 0 else row["high"] >= candidate.stop_reference
@@ -331,10 +371,26 @@ class CoarseGlobalReplay:
                             pending = None
                         elif crossed:
                             entry = candidate.entry_reference
-                            fee = pending.quantity * entry * self.config.maker_fee_rate
+                            step, minimum = instrument_rules.get(candidate.symbol, (risk.quantity_step, risk.minimum_quantity))
+                            symbol_risk = replace(risk, quantity_step=float(step), minimum_quantity=float(minimum))
+                            allowed = size_position_from_nav(
+                                account_nav(mark),
+                                candidate,
+                                symbol_risk,
+                                self.config.maker_fee_rate,
+                                self.config.taker_fee_rate,
+                                0.0,
+                                self.config.stop_slippage_bps / 10000,
+                                expected_entry_price=entry,
+                            )
+                            fill_quantity = min(pending.quantity, allowed)
+                            if fill_quantity <= 0:
+                                pending = None
+                                continue
+                            fee = fill_quantity * entry * self.config.maker_fee_rate
                             account.cash = float(account.cash) - fee
-                            account.fills.append(FillRecord(timestamp, symbol, "ENTRY", side, pending.quantity, entry, fee, "maker"))
-                            position = _CoarseOpenPosition(candidate, pending.quantity, entry, timestamp, fee, account_nav())
+                            account.fills.append(FillRecord(timestamp, symbol, "ENTRY", side, fill_quantity, entry, fee, "maker"))
+                            position = _CoarseOpenPosition(candidate, fill_quantity, entry, timestamp, fee, account_nav())
                             pending = None
 
                 if position is not None and position.candidate.symbol == symbol:
@@ -350,13 +406,12 @@ class CoarseGlobalReplay:
                     reason: ExitReason | None = None
                     liquidity = "taker"
                     if stop_hit:
-                        exit_price = candidate.stop_reference * (1 - self.config.stop_slippage_bps / 10000 if side > 0 else 1 + self.config.stop_slippage_bps / 10000)
+                        exit_price = _stop_fill(row, side, candidate.stop_reference, self.config)
                         fee_rate = self.config.taker_fee_rate
                         reason = ExitReason.STOP
                     elif target_hit:
-                        exit_price = candidate.target_reference
-                        fee_rate = self.config.maker_fee_rate
-                        liquidity = "maker"
+                        exit_price = _target_fill(row, side, candidate.target_reference, self.config)
+                        fee_rate = self.config.taker_fee_rate
                         reason = ExitReason.TARGET
                     if reason is not None:
                         fee = position.quantity * exit_price * fee_rate
@@ -439,7 +494,7 @@ class CoarsePositionInterval:
 def _outcome_from_labeler(labeler: CoarseLabeler, candidate: EventCandidate, passive: bool) -> CoarseOutcome:
     config = labeler.config
     activation = candidate.timestamp + pd.Timedelta(milliseconds=config.activation_latency_ms)
-    start_position = int(np.searchsorted(labeler.time_ns, activation.value, side="right"))
+    start_position = int(np.searchsorted(labeler.time_ns, activation.value, side="left"))
     if start_position >= len(labeler.data):
         return CoarseOutcome(candidate.timestamp, None, None, "UNRESOLVED_NO_EXECUTION_BAR", None, None, 0.0, None, None, None)
     side = candidate.side
@@ -489,17 +544,23 @@ def _outcome_from_labeler(labeler: CoarseLabeler, candidate: EventCandidate, pas
     if exit_position is None:
         return CoarseOutcome(candidate.timestamp, entry_time, None, "UNRESOLVED_CENSORED", entry_price, None, entry_fee_rate, None, entry_liquidity, None)
     end_time = labeler.available_times[exit_position]
+    exit_row = labeler.data.iloc[exit_position]
     if stop_position == exit_position:
-        exit_price = candidate.stop_reference * (1 - config.stop_slippage_bps / 10000 if side > 0 else 1 + config.stop_slippage_bps / 10000)
+        exit_price = _stop_fill(exit_row, side, candidate.stop_reference, config)
         return CoarseOutcome(candidate.timestamp, entry_time, end_time, "STOP", entry_price, exit_price, entry_fee_rate, config.taker_fee_rate, entry_liquidity, "taker")
-    return CoarseOutcome(candidate.timestamp, entry_time, end_time, "TARGET", entry_price, candidate.target_reference, entry_fee_rate, config.maker_fee_rate, entry_liquidity, "maker")
+    exit_price = _target_fill(exit_row, side, candidate.target_reference, config)
+    return CoarseOutcome(candidate.timestamp, entry_time, end_time, "TARGET", entry_price, exit_price, entry_fee_rate, config.taker_fee_rate, entry_liquidity, "taker")
 
 
-def _mark_at(labeler: CoarseLabeler, timestamp: pd.Timestamp) -> float:
+def _row_before(labeler: CoarseLabeler, timestamp: pd.Timestamp) -> pd.Series:
     position = int(np.searchsorted(labeler.time_ns, timestamp.value, side="left")) - 1
     if position < 0:
         position = 0
-    row = labeler.data.iloc[min(position, len(labeler.data) - 1)]
+    return labeler.data.iloc[min(position, len(labeler.data) - 1)]
+
+
+def _mark_at(labeler: CoarseLabeler, timestamp: pd.Timestamp) -> float:
+    row = _row_before(labeler, timestamp)
     return float(row.get("mark_close", row["close"]))
 
 
@@ -589,17 +650,23 @@ class CoarseEventReplay:
                 slot_release = evaluation_end_exclusive
                 continue
             assert outcome.entry_price is not None
+            resolved_before_cutoff = (
+                outcome.end_time is not None
+                and outcome.end_time < evaluation_end_exclusive
+                and outcome.exit_price is not None
+                and outcome.exit_fee_rate is not None
+            )
             step, minimum = instrument_rules.get(candidate.symbol, (risk.quantity_step, risk.minimum_quantity))
             symbol_risk = replace(risk, quantity_step=float(step), minimum_quantity=float(minimum))
-            sizing_candidate = replace(candidate, entry_reference=float(outcome.entry_price))
             quantity = size_position_from_nav(
                 cash,
-                sizing_candidate,
+                candidate,
                 symbol_risk,
                 outcome.entry_fee_rate,
                 self.config.taker_fee_rate,
-                0.0,
+                self.config.market_slippage_bps / 10000 if not passive else 0.0,
                 self.config.stop_slippage_bps / 10000,
+                expected_entry_price=outcome.entry_price,
             )
             if quantity <= 0:
                 slot_release = decision_time
@@ -609,11 +676,7 @@ class CoarseEventReplay:
             cash -= entry_fee
             cash_events.append((outcome.entry_time, -entry_fee))
             account.fills.append(FillRecord(outcome.entry_time, candidate.symbol, "ENTRY", candidate.side, quantity, outcome.entry_price, entry_fee, outcome.entry_liquidity or "unknown"))
-            effective_end = (
-                outcome.end_time
-                if outcome.end_time is not None and outcome.end_time < evaluation_end_exclusive
-                else None
-            )
+            effective_end = outcome.end_time if resolved_before_cutoff else None
             interval_end = effective_end if effective_end is not None else evaluation_end_exclusive
             funding_pnl = 0.0
             for timestamp, rate in self._funding_events(funding, candidate.symbol, outcome.entry_time, interval_end):
@@ -621,9 +684,18 @@ class CoarseEventReplay:
                 funding_pnl += payment
                 cash += payment
                 cash_events.append((timestamp, payment))
-            interval = CoarsePositionInterval(candidate, quantity, outcome.entry_time, effective_end, outcome.entry_price, entry_fee, entry_equity, funding_pnl)
+            interval = CoarsePositionInterval(
+                candidate,
+                quantity,
+                outcome.entry_time,
+                effective_end,
+                outcome.entry_price,
+                entry_fee,
+                entry_equity,
+                funding_pnl,
+            )
             intervals.append(interval)
-            if effective_end is None or outcome.exit_price is None or outcome.exit_fee_rate is None:
+            if not resolved_before_cutoff:
                 open_interval = interval
                 slot_release = evaluation_end_exclusive
                 break
@@ -677,14 +749,14 @@ class CoarseEventReplay:
         running_cash = float(initial_nav)
         cash_index = 0
         for day_end in day_ends:
-            while cash_index < len(cash_events) and cash_events[cash_index][0] <= day_end:
+            while cash_index < len(cash_events) and cash_events[cash_index][0] < day_end:
                 running_cash += cash_events[cash_index][1]
                 cash_index += 1
             active = next(
                 (
                     interval
                     for interval in intervals
-                    if interval.entry_time <= day_end and (interval.end_time is None or day_end < interval.end_time)
+                    if interval.entry_time < day_end and (interval.end_time is None or day_end <= interval.end_time)
                 ),
                 None,
             )
@@ -692,8 +764,14 @@ class CoarseEventReplay:
             symbol = None
             quantity = 0.0
             if active is not None:
-                mark = _mark_at(self.labelers[active.candidate.symbol], day_end)
-                unrealized = active.candidate.side * active.quantity * (mark - active.entry_price)
+                labeler = self.labelers[active.candidate.symbol]
+                closeout_row = _row_before(labeler, day_end)
+                exit_price = coarse_closeout_price(closeout_row, active.candidate.side, self.config)
+                exit_fee = active.quantity * exit_price * self.config.taker_fee_rate
+                unrealized = (
+                    active.candidate.side * active.quantity * (exit_price - active.entry_price)
+                    - exit_fee
+                )
                 symbol = active.candidate.symbol
                 quantity = active.quantity
             account.daily_nav.append(DailyNavRecord(day_end, running_cash + unrealized, running_cash, unrealized, symbol, quantity))

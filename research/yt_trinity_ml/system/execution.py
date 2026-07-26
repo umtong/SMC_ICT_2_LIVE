@@ -36,6 +36,7 @@ class ExecutionConfig:
     impact_bps_per_one_percent_depth: float = 1.0
     passive_queue_multiple: float = 1.0
     passive_through_fraction_at_touch: float = 0.0
+    unknown_aggressor_volume_fraction: float = 0.0
     liquidation_fee_rate: float = 0.005
     maintenance_margin_fraction: float = 0.005
     liquidation_buffer_fraction: float = 0.0025
@@ -54,6 +55,10 @@ class EntryOrder:
     average_fill_price: float = 0.0
     fees: float = 0.0
     queue_ahead: float = 0.0
+    loss_budget: float | None = None
+    stop_fee_rate: float = 0.0
+    stop_slippage_fraction: float = 0.0
+    expected_funding_fraction: float = 0.0
 
     @property
     def remaining_quantity(self) -> float:
@@ -152,12 +157,30 @@ def validate_tape(tape: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"event tape missing columns: {sorted(missing)}")
     if not isinstance(tape.index, pd.DatetimeIndex) or tape.index.tz is None:
         raise ValueError("event tape index must be timezone-aware DatetimeIndex")
-    if not tape.index.is_monotonic_increasing or tape.index.has_duplicates:
-        raise ValueError("event tape timestamps must be unique and increasing")
+    if not tape.index.is_monotonic_increasing:
+        raise ValueError("event tape timestamps must be increasing")
+    if tape.index.has_duplicates:
+        if "sequence" not in tape.columns:
+            raise ValueError("duplicate event timestamps require an exchange sequence column")
+        sequence = pd.to_numeric(tape["sequence"], errors="coerce")
+        if sequence.isna().any():
+            raise ValueError("event sequence must be numeric")
+        ordered = pd.DataFrame({"timestamp": tape.index, "sequence": sequence.to_numpy()})
+        if ordered.duplicated(["timestamp", "sequence"]).any():
+            raise ValueError("duplicate timestamp/sequence event")
+        if not ordered.groupby("timestamp", sort=False)["sequence"].apply(lambda values: values.is_monotonic_increasing).all():
+            raise ValueError("event sequence must increase within equal timestamps")
     result = tape.copy()
-    numeric = REQUIRED_TAPE_COLUMNS | ({"bid_size", "ask_size", "aggressor_side"} & set(tape.columns))
+    numeric = REQUIRED_TAPE_COLUMNS | ({"bid_size", "ask_size"} & set(tape.columns))
     for column in numeric:
         result[column] = pd.to_numeric(result[column], errors="coerce")
+    if "aggressor_side" in result.columns:
+        raw_side = result["aggressor_side"]
+        mapped = raw_side.astype(str).str.strip().str.lower().map(
+            {"buy": 1.0, "buyer": 1.0, "b": 1.0, "sell": -1.0, "seller": -1.0, "s": -1.0}
+        )
+        numeric_side = pd.to_numeric(raw_side, errors="coerce")
+        result["aggressor_side"] = mapped.fillna(numeric_side).clip(-1, 1)
     if (result["ask"] < result["bid"]).any():
         raise ValueError("ask must be >= bid")
     return result
@@ -173,6 +196,11 @@ class ExecutionEngine:
         candidate: EventCandidate,
         decision: PolicyDecision,
         quantity: float,
+        *,
+        loss_budget: float | None = None,
+        stop_fee_rate: float | None = None,
+        stop_slippage_fraction: float = 0.0,
+        expected_funding_fraction: float = 0.0,
     ) -> EntryOrder:
         if not account.slot_available():
             raise RuntimeError("global pending/open entry slot is occupied")
@@ -189,6 +217,10 @@ class ExecutionEngine:
             created_at=created,
             activated_at=activated,
             limit_price=candidate.entry_reference if decision == PolicyDecision.PASSIVE_RETEST else None,
+            loss_budget=float(loss_budget) if loss_budget is not None else None,
+            stop_fee_rate=self.config.taker_fee_rate if stop_fee_rate is None else float(stop_fee_rate),
+            stop_slippage_fraction=float(stop_slippage_fraction),
+            expected_funding_fraction=float(expected_funding_fraction),
         )
         account.pending_entry = order
         return order
@@ -204,6 +236,37 @@ class ExecutionEngine:
         base = float(row["ask"] if side > 0 else row["bid"])
         impact = self._impact_bps(quantity, float(depth) if pd.notna(depth) else None) / 10000
         return base * (1 + side * impact)
+
+    @staticmethod
+    def _entry_worst_case_loss(order: EntryOrder) -> float:
+        if order.filled_quantity <= 0:
+            return 0.0
+        stop = order.candidate.stop_reference
+        return (
+            order.filled_quantity * abs(order.average_fill_price - stop)
+            + order.fees
+            + order.filled_quantity * stop * (order.stop_fee_rate + order.stop_slippage_fraction)
+            + order.filled_quantity * order.average_fill_price * order.expected_funding_fraction
+        )
+
+    def _cap_fill_to_loss_budget(
+        self,
+        order: EntryOrder,
+        quantity: float,
+        price: float,
+        fee_rate: float,
+    ) -> float:
+        if order.loss_budget is None:
+            return quantity
+        remaining_budget = order.loss_budget - self._entry_worst_case_loss(order)
+        per_unit = (
+            abs(price - order.candidate.stop_reference)
+            + price * (fee_rate + order.expected_funding_fraction)
+            + order.candidate.stop_reference * (order.stop_fee_rate + order.stop_slippage_fraction)
+        )
+        if remaining_budget <= 0 or per_unit <= 0:
+            return 0.0
+        return min(quantity, remaining_budget / per_unit)
 
     def _record_entry_fill(
         self,
@@ -221,6 +284,13 @@ class ExecutionEngine:
             position = account.position
             pre_fill_nav += position.side * position.open_quantity * (price - position.average_entry_price)
         fee_rate = self.config.maker_fee_rate if liquidity == "maker" else self.config.taker_fee_rate
+        requested_quantity = quantity
+        quantity = self._cap_fill_to_loss_budget(order, quantity, price, fee_rate)
+        budget_capped = quantity + 1e-12 < requested_quantity
+        if quantity <= 1e-12:
+            order.state = OrderState.REJECTED if order.filled_quantity <= 0 else OrderState.CANCELLED
+            account.pending_entry = None
+            return
         fee = quantity * price * fee_rate
         new_total = order.filled_quantity + quantity
         order.average_fill_price = (
@@ -254,6 +324,11 @@ class ExecutionEngine:
             position.entry_equity = max(position.entry_equity, pre_fill_nav)
         if order.state == OrderState.FILLED:
             account.pending_entry = None
+        elif budget_capped:
+            # The unfilled remainder would violate the planned whole-account loss
+            # budget at the actual executable price. Cancel it immediately.
+            order.state = OrderState.CANCELLED
+            account.pending_entry = None
 
     def process_entry_row(self, account: AccountState, timestamp: pd.Timestamp, row: pd.Series) -> None:
         order = account.pending_entry
@@ -270,16 +345,24 @@ class ExecutionEngine:
         limit = order.limit_price
         last = float(row["last"])
         trade_volume = max(0.0, float(row.get("trade_volume", 0.0)))
-        displayed = row.get("ask_size") if side > 0 else row.get("bid_size")
+        # A passive buy rests on the bid queue; a passive sell rests on the ask.
+        displayed = row.get("bid_size") if side > 0 else row.get("ask_size")
         if order.queue_ahead <= 0:
-            displayed_value = float(displayed) if pd.notna(displayed) else remaining
-            order.queue_ahead = max(remaining, displayed_value * self.config.passive_queue_multiple)
+            displayed_value = float(displayed) if pd.notna(displayed) else 0.0
+            order.queue_ahead = max(0.0, displayed_value * self.config.passive_queue_multiple)
 
         touched = last <= limit if side > 0 else last >= limit
         crossed = last < limit if side > 0 else last > limit
         if not touched:
             return
-        eligible_volume = trade_volume if crossed else trade_volume * self.config.passive_through_fraction_at_touch
+        aggressor = row.get("aggressor_side")
+        if pd.isna(aggressor):
+            aggressor_fraction = self.config.unknown_aggressor_volume_fraction
+        else:
+            correct_aggressor = float(aggressor) < 0 if side > 0 else float(aggressor) > 0
+            aggressor_fraction = 1.0 if correct_aggressor else 0.0
+        through_fraction = 1.0 if crossed else self.config.passive_through_fraction_at_touch
+        eligible_volume = trade_volume * aggressor_fraction * through_fraction
         consumed = max(0.0, eligible_volume - order.queue_ahead)
         order.queue_ahead = max(0.0, order.queue_ahead - eligible_volume)
         fill_quantity = min(remaining, consumed)
@@ -322,6 +405,12 @@ class ExecutionEngine:
             FillRecord(timestamp, position.candidate.symbol, reason.value, exit_side, quantity, price, fee, liquidity)
         )
         if position.open_quantity <= 1e-12:
+            if account.pending_entry is not None and (
+                account.pending_entry.candidate.timestamp == position.candidate.timestamp
+                and account.pending_entry.candidate.symbol == position.candidate.symbol
+            ):
+                account.pending_entry.state = OrderState.CANCELLED
+                account.pending_entry = None
             position.closed_at = timestamp
             position.exit_reason = reason
             net_pnl = position.realized_pnl + position.funding_pnl - position.entry_fees
@@ -390,7 +479,9 @@ class ExecutionEngine:
             self._close_quantity(account, timestamp, row, position.open_quantity, ExitReason.STRUCTURAL_INVALIDATION, False)
             return
         if target_hit:
-            self._close_quantity(account, timestamp, row, position.open_quantity, ExitReason.TARGET, True)
+            # Do not assume an exact-price, instantly full maker exit. Without a
+            # separately modelled reduce-only queue, cross the observable book.
+            self._close_quantity(account, timestamp, row, position.open_quantity, ExitReason.TARGET, False)
 
     def apply_funding(self, account: AccountState, timestamp: pd.Timestamp, mark_price: float, funding_rate: float) -> None:
         position = account.position
@@ -403,6 +494,30 @@ class ExecutionEngine:
             FillRecord(timestamp, position.candidate.symbol, "FUNDING", 0, position.open_quantity, mark_price, -funding_pnl, "funding")
         )
 
+    def estimate_closeout_pnl(
+        self,
+        side: int,
+        quantity: float,
+        average_entry_price: float,
+        row: pd.Series,
+    ) -> float:
+        exit_price = self._market_price(row, -side, quantity)
+        exit_fee = quantity * exit_price * self.config.taker_fee_rate
+        return side * quantity * (exit_price - average_entry_price) - exit_fee
+
+    def mark_closeout_nav(self, account: AccountState, row: pd.Series) -> tuple[float, float]:
+        """NAV if the open position were realistically crossed out now."""
+        closeout_pnl = 0.0
+        if account.position is not None:
+            position = account.position
+            closeout_pnl = self.estimate_closeout_pnl(
+                position.side,
+                position.open_quantity,
+                position.average_entry_price,
+                row,
+            )
+        return float(account.cash) + closeout_pnl, closeout_pnl
+
     def mark_nav(self, account: AccountState, mark_price: float) -> tuple[float, float]:
         unrealized = 0.0
         if account.position is not None:
@@ -410,10 +525,20 @@ class ExecutionEngine:
             unrealized = position.side * position.open_quantity * (mark_price - position.average_entry_price)
         return float(account.cash) + unrealized, unrealized
 
-    def record_utc_day_end(self, account: AccountState, day_end: pd.Timestamp, mark_price: float) -> DailyNavRecord:
+    def record_utc_day_end(
+        self,
+        account: AccountState,
+        day_end: pd.Timestamp,
+        mark_price: float,
+        closeout_row: pd.Series | None = None,
+    ) -> DailyNavRecord:
         if day_end.tz is None:
             raise ValueError("day_end must be timezone aware")
-        nav, unrealized = self.mark_nav(account, mark_price)
+        nav, unrealized = (
+            self.mark_closeout_nav(account, closeout_row)
+            if closeout_row is not None
+            else self.mark_nav(account, mark_price)
+        )
         position = account.position
         record = DailyNavRecord(
             day_end,
@@ -438,16 +563,18 @@ class ExecutionEngine:
         invalidations = set(invalidation_timestamps)
         last_day: pd.Timestamp | None = None
         previous_mark: float | None = None
+        previous_row: pd.Series | None = None
         for timestamp, row in data.iterrows():
             day = timestamp.floor("D")
             if last_day is not None and day > last_day and previous_mark is not None:
-                self.record_utc_day_end(account, day, previous_mark)
+                self.record_utc_day_end(account, day, previous_mark, previous_row)
             last_day = day
             self.process_entry_row(account, timestamp, row)
             if timestamp in funding:
                 self.apply_funding(account, timestamp, float(row["mark"]), float(funding[timestamp]))
             self.process_position_row(account, timestamp, row, timestamp in invalidations)
             previous_mark = float(row["mark"])
+            previous_row = row
             if account.invalid:
                 break
         return account

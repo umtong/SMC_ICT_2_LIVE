@@ -28,6 +28,11 @@ class FeatureConfig:
     displacement_body_atr: float = 0.80
     sweep_buffer_atr: float = 0.03
     retest_tolerance_atr: float = 0.15
+    confirmation_window_bars: int = 8
+    continuation_retest_window_bars: int = 12
+    internal_structure_lookback: int = 4
+    require_confirmation_fvg: bool = True
+    retest_close_location_min: float = 0.55
 
 
 @dataclass(frozen=True)
@@ -266,68 +271,216 @@ def generate_event_candidates(
     symbol: str,
     config: FeatureConfig = FeatureConfig(),
 ) -> list[EventCandidate]:
-    required = {"atr", "last_swing_high", "last_swing_low", "bull_bos", "bear_bos"}
+    """Generate only completed, causally confirmed structural setups.
+
+    A liquidity raid is not an entry by itself. It first arms a reversal setup and
+    becomes tradable only after a later displacement/MSS confirmation. Likewise, a
+    displacement break arms a continuation setup and becomes tradable only after a
+    later accepted retest. This avoids labelling the setup bar with information that
+    did not yet exist and removes the economically weak "sweep equals entry" and
+    "break bar equals retest" shortcuts.
+    """
+    required = {
+        "atr",
+        "last_swing_high",
+        "last_swing_low",
+        "bull_bos",
+        "bear_bos",
+        "bull_displacement",
+        "bear_displacement",
+    }
     if not required.issubset(features.columns):
         raise ValueError(f"features missing required columns: {sorted(required - set(features.columns))}")
+    if config.confirmation_window_bars <= 0 or config.continuation_retest_window_bars <= 0:
+        raise ValueError("setup windows must be positive")
+    if config.internal_structure_lookback <= 0:
+        raise ValueError("internal_structure_lookback must be positive")
+
+    @dataclass(frozen=True)
+    class SweepSetup:
+        armed_position: int
+        side: int
+        swept_level: float
+        extreme: float
+        confirmation_level: float
+        sweep_depth_atr: float
+
+    @dataclass(frozen=True)
+    class ContinuationSetup:
+        armed_position: int
+        side: int
+        broken_level: float
+        zone_lower: float
+        zone_upper: float
+        stop_reference: float
+
     events: list[EventCandidate] = []
     previous_close = features["close"].shift(1)
+    sweep_setups: dict[int, SweepSetup] = {}
+    continuation_setups: dict[int, ContinuationSetup] = {}
+
+    def feature_snapshot(row: pd.Series, **extra: float) -> dict[str, float]:
+        snapshot = _numeric_feature_row(row)
+        snapshot.update({key: float(value) for key, value in extra.items() if np.isfinite(value)})
+        return snapshot
+
     for position in range(2, len(features)):
         row = features.iloc[position]
         timestamp = features.index[position]
-        atr = row.get("atr")
-        if pd.isna(atr) or atr <= 0:
+        atr_value = row.get("atr")
+        if pd.isna(atr_value) or float(atr_value) <= 0:
             continue
-        buffer = config.sweep_buffer_atr * float(atr)
-        feature_row = _numeric_feature_row(row)
+        atr = float(atr_value)
+        buffer = config.sweep_buffer_atr * atr
+        tolerance = config.retest_tolerance_atr * atr
+
+        # 1) Confirm previously armed liquidity raids with a later MSS/displacement.
+        for side, setup in list(sweep_setups.items()):
+            age = position - setup.armed_position
+            invalidated = (
+                float(row["low"]) < setup.extreme - buffer
+                if side > 0
+                else float(row["high"]) > setup.extreme + buffer
+            )
+            if age > config.confirmation_window_bars or invalidated:
+                del sweep_setups[side]
+                continue
+            if age < 1:
+                continue
+            displaced = row.get("bull_displacement", 0) > 0 if side > 0 else row.get("bear_displacement", 0) > 0
+            structure_shift = float(row["close"]) > setup.confirmation_level if side > 0 else float(row["close"]) < setup.confirmation_level
+            if side > 0:
+                fvg_lower, fvg_upper = row.get("bull_fvg_lower"), row.get("bull_fvg_upper")
+            else:
+                fvg_lower, fvg_upper = row.get("bear_fvg_lower"), row.get("bear_fvg_upper")
+            has_fvg = pd.notna(fvg_lower) and pd.notna(fvg_upper) and float(fvg_lower) < float(fvg_upper)
+            if not displaced or not structure_shift or (config.require_confirmation_fvg and not has_fvg):
+                continue
+            entry = (float(fvg_lower) + float(fvg_upper)) / 2 if has_fvg else float(row["close"])
+            stop = setup.extreme - buffer if side > 0 else setup.extreme + buffer
+            target = _nearest_above(row, max(entry, float(row["close"]))) if side > 0 else _nearest_below(row, min(entry, float(row["close"])))
+            valid_geometry = target is not None and (stop < entry < target if side > 0 else target < entry < stop)
+            if valid_geometry:
+                events.append(
+                    EventCandidate(
+                        timestamp=timestamp,
+                        symbol=symbol,
+                        family=EventFamily.LIQUIDITY_SWEEP_REVERSAL,
+                        side=side,
+                        decision_price=float(row["close"]),
+                        entry_reference=entry,
+                        stop_reference=stop,
+                        target_reference=float(target),
+                        structural_level=setup.swept_level,
+                        feature_row=feature_snapshot(
+                            row,
+                            setup_age_bars=age,
+                            sweep_depth_atr=setup.sweep_depth_atr,
+                            confirmation_distance_atr=abs(float(row["close"]) - setup.confirmation_level) / atr,
+                            passive_retrace_distance_atr=abs(float(row["close"]) - entry) / atr,
+                        ),
+                    )
+                )
+            del sweep_setups[side]
+
+        # 2) Confirm a prior displacement break only after a later accepted retest.
+        for side, setup in list(continuation_setups.items()):
+            age = position - setup.armed_position
+            hard_invalidated = float(row["low"]) <= setup.stop_reference if side > 0 else float(row["high"]) >= setup.stop_reference
+            if age > config.continuation_retest_window_bars or hard_invalidated:
+                del continuation_setups[side]
+                continue
+            if age < 1:
+                continue
+            touched = float(row["low"]) <= setup.zone_upper + tolerance and float(row["high"]) >= setup.zone_lower - tolerance
+            accepted = (
+                float(row["close"]) > setup.broken_level
+                and float(row.get("close_location", 0.0)) >= config.retest_close_location_min
+                and float(row.get("body", 0.0)) > 0
+                if side > 0
+                else float(row["close"]) < setup.broken_level
+                and float(row.get("close_location", 1.0)) <= 1 - config.retest_close_location_min
+                and float(row.get("body", 0.0)) < 0
+            )
+            if not touched or not accepted:
+                continue
+            entry = (setup.zone_lower + setup.zone_upper) / 2
+            target = _nearest_above(row, max(entry, float(row["close"]))) if side > 0 else _nearest_below(row, min(entry, float(row["close"])))
+            valid_geometry = target is not None and (setup.stop_reference < entry < target if side > 0 else target < entry < setup.stop_reference)
+            if valid_geometry:
+                events.append(
+                    EventCandidate(
+                        timestamp=timestamp,
+                        symbol=symbol,
+                        family=EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION,
+                        side=side,
+                        decision_price=float(row["close"]),
+                        entry_reference=entry,
+                        stop_reference=setup.stop_reference,
+                        target_reference=float(target),
+                        structural_level=setup.broken_level,
+                        feature_row=feature_snapshot(
+                            row,
+                            setup_age_bars=age,
+                            retest_zone_width_atr=(setup.zone_upper - setup.zone_lower) / atr,
+                            retest_distance_atr=abs(float(row["close"]) - entry) / atr,
+                            accepted_break_distance_atr=abs(float(row["close"]) - setup.broken_level) / atr,
+                        ),
+                    )
+                )
+            del continuation_setups[side]
 
         high_levels = [row.get("last_swing_high"), row.get("previous_day_high"), row.get("previous_week_high")]
         low_levels = [row.get("last_swing_low"), row.get("previous_day_low"), row.get("previous_week_low")]
         valid_highs = [float(level) for level in high_levels if pd.notna(level)]
         valid_lows = [float(level) for level in low_levels if pd.notna(level)]
+        lookback_start = max(0, position - config.internal_structure_lookback)
+        prior_slice = features.iloc[lookback_start:position]
 
-        swept_highs = [level for level in valid_highs if row["high"] > level + buffer and row["close"] < level]
-        if swept_highs and previous_close.iloc[position] <= max(swept_highs) + float(atr):
+        # 3) Arm, but do not trade, a newly observed liquidity raid.
+        swept_highs = [level for level in valid_highs if float(row["high"]) > level + buffer and float(row["close"]) < level]
+        if swept_highs and previous_close.iloc[position] <= max(swept_highs) + atr and not prior_slice.empty:
             structural = max(swept_highs)
-            entry = float(row["close"])
-            stop = float(row["high"] + buffer)
-            target = _nearest_below(row, entry)
-            if target is not None and target < entry and stop > entry:
-                events.append(
-                    EventCandidate(timestamp, symbol, EventFamily.LIQUIDITY_SWEEP_REVERSAL, -1, entry, entry, stop, target, structural, feature_row)
-                )
+            sweep_setups[-1] = SweepSetup(
+                armed_position=position,
+                side=-1,
+                swept_level=structural,
+                extreme=float(row["high"]),
+                confirmation_level=float(prior_slice["low"].min()),
+                sweep_depth_atr=(float(row["high"]) - structural) / atr,
+            )
 
-        swept_lows = [level for level in valid_lows if row["low"] < level - buffer and row["close"] > level]
-        if swept_lows and previous_close.iloc[position] >= min(swept_lows) - float(atr):
+        swept_lows = [level for level in valid_lows if float(row["low"]) < level - buffer and float(row["close"]) > level]
+        if swept_lows and previous_close.iloc[position] >= min(swept_lows) - atr and not prior_slice.empty:
             structural = min(swept_lows)
-            entry = float(row["close"])
-            stop = float(row["low"] - buffer)
-            target = _nearest_above(row, entry)
-            if target is not None and target > entry and stop < entry:
-                events.append(
-                    EventCandidate(timestamp, symbol, EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, entry, entry, stop, target, structural, feature_row)
-                )
+            sweep_setups[1] = SweepSetup(
+                armed_position=position,
+                side=1,
+                swept_level=structural,
+                extreme=float(row["low"]),
+                confirmation_level=float(prior_slice["high"].max()),
+                sweep_depth_atr=(structural - float(row["low"])) / atr,
+            )
 
-        if row.get("bull_bos", 0) > 0:
-            entry = float(row.get("bull_fvg_upper")) if pd.notna(row.get("bull_fvg_upper")) else float(row["close"])
-            stop_level = row.get("last_swing_high")
-            prior_low = features.iloc[position - 1].get("last_swing_low")
-            stop = float(prior_low) if pd.notna(prior_low) else float(row["low"] - buffer)
-            target = _nearest_above(row, float(row["close"]))
-            if target is not None and stop < entry < target:
-                events.append(
-                    EventCandidate(timestamp, symbol, EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION, 1, float(row["close"]), entry, stop, target, float(stop_level), feature_row)
-                )
+        # 4) Arm a displacement continuation; the break bar itself is never an entry.
+        if row.get("bull_bos", 0) > 0 and pd.notna(row.get("bull_fvg_lower")) and pd.notna(row.get("bull_fvg_upper")):
+            lower, upper = float(row["bull_fvg_lower"]), float(row["bull_fvg_upper"])
+            prior = features.iloc[position - 1]
+            broken = prior.get("last_swing_high")
+            prior_low = prior.get("last_swing_low")
+            if lower < upper and pd.notna(broken):
+                stop = min(float(prior_low), lower - buffer) if pd.notna(prior_low) else lower - buffer
+                continuation_setups[1] = ContinuationSetup(position, 1, float(broken), lower, upper, stop)
 
-        if row.get("bear_bos", 0) > 0:
-            entry = float(row.get("bear_fvg_lower")) if pd.notna(row.get("bear_fvg_lower")) else float(row["close"])
-            stop_level = row.get("last_swing_low")
-            prior_high = features.iloc[position - 1].get("last_swing_high")
-            stop = float(prior_high) if pd.notna(prior_high) else float(row["high"] + buffer)
-            target = _nearest_below(row, float(row["close"]))
-            if target is not None and target < entry < stop:
-                events.append(
-                    EventCandidate(timestamp, symbol, EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION, -1, float(row["close"]), entry, stop, target, float(stop_level), feature_row)
-                )
+        if row.get("bear_bos", 0) > 0 and pd.notna(row.get("bear_fvg_lower")) and pd.notna(row.get("bear_fvg_upper")):
+            lower, upper = float(row["bear_fvg_lower"]), float(row["bear_fvg_upper"])
+            prior = features.iloc[position - 1]
+            broken = prior.get("last_swing_low")
+            prior_high = prior.get("last_swing_high")
+            if lower < upper and pd.notna(broken):
+                stop = max(float(prior_high), upper + buffer) if pd.notna(prior_high) else upper + buffer
+                continuation_setups[-1] = ContinuationSetup(position, -1, float(broken), lower, upper, stop)
+
     return events
 
 
@@ -340,6 +493,8 @@ def size_position_from_nav(
     entry_slippage_fraction: float,
     stop_slippage_fraction: float,
     expected_funding_fraction: float = 0.0,
+    expected_entry_price: float | None = None,
+    expected_stop_fill_price: float | None = None,
 ) -> float:
     if nav <= 0:
         raise ValueError("nav must be positive")
@@ -347,12 +502,15 @@ def size_position_from_nav(
         raise ValueError("risk_fraction must be in (0, 1)")
     if risk.quantity_step <= 0:
         raise ValueError("quantity_step must be positive")
-    entry = candidate.entry_reference
-    stop_distance = candidate.stop_distance
+    entry = float(expected_entry_price) if expected_entry_price is not None else candidate.entry_reference
+    stop_fill = float(expected_stop_fill_price) if expected_stop_fill_price is not None else candidate.stop_reference
+    if entry <= 0 or stop_fill <= 0:
+        raise ValueError("expected entry and stop fill prices must be positive")
+    stop_distance = abs(entry - stop_fill)
     per_unit_loss = (
         stop_distance
         + entry * (entry_fee_rate + entry_slippage_fraction + expected_funding_fraction)
-        + candidate.stop_reference * (stop_fee_rate + stop_slippage_fraction)
+        + stop_fill * (stop_fee_rate + stop_slippage_fraction)
     )
     if per_unit_loss <= 0:
         raise ValueError("expected per-unit loss must be positive")

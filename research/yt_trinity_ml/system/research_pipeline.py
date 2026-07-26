@@ -8,7 +8,7 @@ import json
 
 import pandas as pd
 
-from .coarse import CoarseEventReplay, CoarseExecutionConfig, CoarseLabeler
+from .coarse import CoarseEventReplay, CoarseExecutionConfig, CoarseLabeler, coarse_closeout_price
 from .core import (
     EventCandidate,
     FeatureConfig,
@@ -138,12 +138,23 @@ def label_event_dataset(
         if not passive_resolved or passive.event_end is None:
             continue
         event_end = max(market.event_end, passive.event_end)
+        passive_target = (
+            int(passive.target_before_stop)
+            if passive.passive_filled and passive.target_before_stop is not None
+            else np.nan
+        )
+        passive_net_r = float(passive.net_r) if passive.passive_filled and passive.net_r is not None else 0.0
         row: dict[str, Any] = {
             "event_start": candidate.timestamp,
             "event_end": event_end,
+            # Backward-compatible aliases are market-action labels.
             "target_before_stop": int(market.target_before_stop),
             "net_r": float(market.net_r),
+            "market_target_before_stop": int(market.target_before_stop),
+            "market_net_r": float(market.net_r),
             "passive_filled": int(passive.passive_filled),
+            "passive_target_before_stop": passive_target,
+            "passive_net_r": passive_net_r,
             "market_status": market.status,
             "passive_status": passive.status,
             "symbol": candidate.symbol,
@@ -163,16 +174,38 @@ def _purged_rows_asof(rows: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
     return eligible.sort_values(["event_end", "event_start"], kind="stable").reset_index(drop=True)
 
 
-def _distribution(rows: pd.DataFrame) -> tuple[float, float]:
-    wins = rows.loc[rows["target_before_stop"] == 1, "net_r"].astype(float)
-    losses = rows.loc[rows["target_before_stop"] == 0, "net_r"].astype(float)
+def _distribution(
+    rows: pd.DataFrame,
+    target_column: str = "market_target_before_stop",
+    return_column: str = "market_net_r",
+) -> tuple[float, float]:
+    if target_column not in rows.columns:
+        target_column = "target_before_stop"
+    if return_column not in rows.columns:
+        return_column = "net_r"
+    usable = rows[rows[target_column].notna() & rows[return_column].notna()]
+    wins = usable.loc[usable[target_column] == 1, return_column].astype(float)
+    losses = usable.loc[usable[target_column] == 0, return_column].astype(float)
     winner = float(wins.median()) if not wins.empty else 1.0
     loser = float(losses.median()) if not losses.empty else -1.0
     if winner <= 0:
-        winner = max(0.01, float(rows["net_r"].quantile(0.75)))
+        winner = max(0.01, float(usable[return_column].quantile(0.75))) if not usable.empty else 1.0
     if loser >= 0:
-        loser = min(-0.01, float(rows["net_r"].quantile(0.25)))
+        loser = min(-0.01, float(usable[return_column].quantile(0.25))) if not usable.empty else -1.0
     return winner, loser
+
+
+def _action_distributions(rows: pd.DataFrame) -> tuple[float, float, float, float]:
+    market_winner, market_loser = _distribution(rows)
+    passive_rows = rows[rows["passive_filled"].astype(int).eq(1)] if "passive_filled" in rows.columns else rows.iloc[0:0]
+    if passive_rows.empty:
+        return market_winner, market_loser, market_winner, market_loser
+    passive_winner, passive_loser = _distribution(
+        passive_rows,
+        "passive_target_before_stop",
+        "passive_net_r",
+    )
+    return market_winner, market_loser, passive_winner, passive_loser
 
 
 def _aligned_updates(start: pd.Timestamp, end: pd.Timestamp, cadence_days: int) -> list[pd.Timestamp]:
@@ -199,12 +232,12 @@ def score_candidates_walk_forward(
     update_starts = _aligned_updates(evaluation_start, evaluation_end_exclusive, configuration.update_cadence_days)
     update_index = 0
     active_model: ChronologicalEventModel | None = None
-    active_distribution = (1.0, -1.0)
-    pending: tuple[pd.Timestamp, ChronologicalEventModel, tuple[float, float], int, pd.Timestamp] | None = None
+    active_distribution = (1.0, -1.0, 1.0, -1.0)
+    pending: tuple[pd.Timestamp, ChronologicalEventModel, tuple[float, float, float, float], int, pd.Timestamp] | None = None
     scored: list[ScoredCandidate] = []
     ledger: list[ModelUpdateRecord] = []
 
-    def start_update(update_start: pd.Timestamp) -> tuple[pd.Timestamp, ChronologicalEventModel, tuple[float, float], int, pd.Timestamp] | None:
+    def start_update(update_start: pd.Timestamp) -> tuple[pd.Timestamp, ChronologicalEventModel, tuple[float, float, float, float], int, pd.Timestamp] | None:
         training = _purged_rows_asof(label_rows, update_start)
         minimum = max(50, configuration.model.min_samples_leaf * 2)
         if len(training) < minimum:
@@ -214,7 +247,7 @@ def score_candidates_walk_forward(
         except ValueError:
             return None
         latest = pd.Timestamp(training["event_end"].max())
-        return update_start + lag, model, _distribution(training), len(training), latest
+        return update_start + lag, model, _action_distributions(training), len(training), latest
 
     initial_started = evaluation_start - lag
     initial = start_update(initial_started)
@@ -241,14 +274,17 @@ def score_candidates_walk_forward(
             pending = None
         if active_model is None:
             continue
-        winner, loser = active_distribution
+        market_winner, market_loser, passive_winner, passive_loser = active_distribution
         scored.append(
             active_model.score(
                 candidate,
                 risk_fraction=configuration.risk.risk_fraction,
-                winner_net_r=winner,
-                loser_net_r=loser,
+                winner_net_r=market_winner,
+                loser_net_r=market_loser,
                 fixed_cost_fraction=0.0,
+                passive_winner_net_r=passive_winner,
+                passive_loser_net_r=passive_loser,
+                passive_fixed_cost_fraction=0.0,
             )
         )
     return scored, tuple(ledger)
@@ -313,12 +349,22 @@ def evaluate_configuration(
     ]
     final_prices = [float(frame.iloc[-1].get("mark_close", frame.iloc[-1]["close"])) for frame in last_candidates if not frame.empty]
     final_mark = final_prices[-1] if final_prices else 0.0
+    final_closeout: float | None = None
     if account.position is not None:
         symbol_frame = selected_bars[account.position.candidate.symbol]
         eligible = symbol_frame.loc[symbol_frame["bar_start"] < evaluation_end_exclusive]
         if not eligible.empty:
-            final_mark = float(eligible.iloc[-1].get("mark_close", eligible.iloc[-1]["close"]))
-    metrics = summarize_account(account, evaluation_start, evaluation_end_exclusive, final_mark)
+            final_row = eligible.iloc[-1]
+            final_mark = float(final_row.get("mark_close", final_row["close"]))
+            final_closeout = coarse_closeout_price(final_row, account.position.side, execution_config)
+    metrics = summarize_account(
+        account,
+        evaluation_start,
+        evaluation_end_exclusive,
+        final_mark,
+        final_closeout_price=final_closeout,
+        final_closeout_fee_rate=execution_config.taker_fee_rate if final_closeout is not None else 0.0,
+    )
     return ConfigurationResult(
         configuration=configuration,
         metrics=metrics,

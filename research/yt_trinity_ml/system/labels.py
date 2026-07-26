@@ -5,7 +5,8 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .core import EventCandidate
-from .execution import ExecutionConfig, validate_tape
+from .execution import AccountState, ExecutionConfig, ExecutionEngine, ExitReason, validate_tape
+from .policy import PolicyDecision
 
 
 @dataclass(frozen=True)
@@ -24,54 +25,51 @@ def label_first_passage(
     passive_entry: bool,
     config: ExecutionConfig = ExecutionConfig(),
 ) -> EventLabel:
-    """Label a structural event without an elapsed-time exit.
+    """Replay one action on the event tape without an elapsed-time exit.
 
-    The label is unresolved at the available-data boundary when neither target nor
-    stop is reached. A same-timestamp target/stop collision is stop-first.
+    Passive labels use the same resting-side queue, aggressor direction, partial
+    fill, fee and target/stop logic as account replay. A target/stop reached before
+    any passive fill is an observed no-fill cancellation; an order still pending at
+    the data boundary is censored rather than converted to a zero-return sample.
     """
     data = validate_tape(tape)
-    active = data.loc[data.index >= candidate.timestamp + pd.Timedelta(milliseconds=config.activation_latency_ms)]
+    active = data.loc[
+        data.index >= candidate.timestamp + pd.Timedelta(milliseconds=config.activation_latency_ms)
+    ]
     if active.empty:
         return EventLabel(candidate.timestamp, None, None, None, 0, "UNRESOLVED_NO_ACTIVE_TAPE")
 
-    side = candidate.side
-    entry_price: float | None = None
-    entry_time: pd.Timestamp | None = None
-    passive_filled = 0
-    for timestamp, row in active.iterrows():
-        if passive_entry:
-            crossed = float(row["last"]) < candidate.entry_reference if side > 0 else float(row["last"]) > candidate.entry_reference
-            if not crossed:
-                continue
-            entry_price = candidate.entry_reference
-            passive_filled = 1
-        else:
-            entry_price = float(row["ask"] if side > 0 else row["bid"])
-        entry_time = timestamp
-        break
-    if entry_price is None or entry_time is None:
-        return EventLabel(candidate.timestamp, None, None, None, 0, "UNRESOLVED_NO_FILL")
+    account = AccountState(1_000_000.0)
+    engine = ExecutionEngine(config)
+    action = PolicyDecision.PASSIVE_RETEST if passive_entry else PolicyDecision.MARKETABLE
+    engine.submit_entry(account, candidate, action, 1.0)
+    ever_filled = 0
 
-    stop = candidate.stop_reference
-    target = candidate.target_reference
-    stop_distance = abs(entry_price - stop)
-    if stop_distance <= 0:
-        raise ValueError("nonpositive stop distance")
-    future = active.loc[active.index >= entry_time]
-    for timestamp, row in future.iterrows():
-        mark = float(row["mark"])
-        last = float(row["last"])
-        stop_hit = mark <= stop if side > 0 else mark >= stop
-        target_hit = last >= target if side > 0 else last <= target
-        if stop_hit:
-            exit_price = float(row["bid"] if side > 0 else row["ask"])
-            gross = side * (exit_price - entry_price)
-            fees = entry_price * config.taker_fee_rate + exit_price * config.taker_fee_rate
-            return EventLabel(candidate.timestamp, timestamp, 0, (gross - fees) / stop_distance, passive_filled, "STOP")
-        if target_hit:
-            exit_price = target
-            entry_fee = config.maker_fee_rate if passive_entry else config.taker_fee_rate
-            fees = entry_price * entry_fee + exit_price * config.maker_fee_rate
-            gross = side * (exit_price - entry_price)
-            return EventLabel(candidate.timestamp, timestamp, 1, (gross - fees) / stop_distance, passive_filled, "TARGET")
-    return EventLabel(candidate.timestamp, None, None, None, passive_filled, "UNRESOLVED_CENSORED")
+    for timestamp, row in active.iterrows():
+        engine.process_entry_row(account, timestamp, row)
+        if account.position is not None:
+            ever_filled = 1
+            engine.process_position_row(account, timestamp, row)
+            if account.closed_trades:
+                trade = account.closed_trades[-1]
+                target = int(trade.exit_reason == ExitReason.TARGET.value)
+                return EventLabel(
+                    candidate.timestamp,
+                    trade.closed_at,
+                    target,
+                    trade.net_r,
+                    ever_filled,
+                    trade.exit_reason,
+                )
+            continue
+
+        if account.pending_entry is not None:
+            side = candidate.side
+            invalidated = float(row["mark"]) <= candidate.stop_reference if side > 0 else float(row["mark"]) >= candidate.stop_reference
+            target_passed = float(row["last"]) >= candidate.target_reference if side > 0 else float(row["last"]) <= candidate.target_reference
+            if invalidated or target_passed:
+                engine.cancel_pending(account, "barrier reached before passive fill")
+                return EventLabel(candidate.timestamp, timestamp, None, None, ever_filled, "CANCELLED_BEFORE_FILL")
+
+    status = "UNRESOLVED_CENSORED" if ever_filled else "UNRESOLVED_NO_FILL"
+    return EventLabel(candidate.timestamp, None, None, None, ever_filled, status)
