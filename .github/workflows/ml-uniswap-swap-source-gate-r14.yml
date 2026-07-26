@@ -47,11 +47,16 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_uniswap_hedge_transfer_20260726
-          python -m py_compile "$root/probe_uniswap_swaps.py" "$root/test_probe_uniswap_swaps.py"
+          python -m py_compile \
+            "$root/probe_uniswap_swaps.py" \
+            "$root/run_source_gate_with_blockscout.py" \
+            "$root/test_probe_uniswap_swaps.py"
           PYTHONPATH="$root" python -m pytest -q "$root/test_probe_uniswap_swaps.py"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
 
       - name: Run outcome-sealed Ethereum source gate
         run: |
@@ -59,7 +64,7 @@ jobs:
           root=research/ml_uniswap_hedge_transfer_20260726
           out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
           mkdir -p "$out"
-          PYTHONPATH="$root" python "$root/probe_uniswap_swaps.py" \
+          PYTHONPATH="$root" python "$root/run_source_gate_with_blockscout.py" \
             --output "$out" \
             2>&1 | tee "$out/RUN.log"
 
@@ -93,6 +98,7 @@ jobs:
           ):
               assert forbidden_key not in serialized
           print(json.dumps({
+              'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
               'source_gate_pass': result['source_gate_pass'],
               'decision': result['scientific_decision'],
               'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
@@ -117,7 +123,10 @@ jobs:
             "$root/PREREGISTRATION.md" \
             "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" \
+            "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" \
             "$root/probe_uniswap_swaps.py" \
+            "$root/run_source_gate_with_blockscout.py" \
             "$root/test_probe_uniswap_swaps.py" \
             .github/workflows/ml-uniswap-swap-source-gate-r14.yml \
             > "$out/INPUT_SHA256SUMS.txt"
