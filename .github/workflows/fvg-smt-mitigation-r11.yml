@@ -1,0 +1,146 @@
+name: Bybit FVG-mitigation SMT fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-fvg-smt-mitigation-001
+    paths:
+      - research/fvg_smt_mitigation_20260726/**
+      - .github/workflows/fvg-smt-mitigation-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/fvg_smt_mitigation_20260726/**
+      - .github/workflows/fvg-smt-mitigation-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: fvg-smt-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen research environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Reconstruct and validate causal implementation
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+          python research/fvg_smt_mitigation_20260726/reconstruct.py
+          python -m py_compile research/fvg_smt_mitigation_20260726/run_screen.py
+          python research/fvg_smt_mitigation_20260726/run_screen.py self-test
+          python -m json.tool research/fvg_smt_mitigation_20260726/preregistration.json >/dev/null
+
+      - name: Cache immutable pre-2024 Bybit responses
+        uses: actions/cache@v4
+        with:
+          path: /tmp/bybit-fvg-smt
+          key: bybit-fvg-smt-v1-${{ hashFiles('research/fvg_smt_mitigation_20260726/preregistration.json') }}
+
+      - name: Run frozen fit and development fatal screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/fvg_smt
+          mkdir -p artifacts/fvg_smt
+          set -o pipefail
+          python research/fvg_smt_mitigation_20260726/run_screen.py run \
+            --cache /tmp/bybit-fvg-smt \
+            --output artifacts/fvg_smt \
+            2>&1 | tee artifacts/fvg_smt/run.log
+
+      - name: Verify stage, causality and cost boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+
+          root = Path("artifacts/fvg_smt")
+          prereg = json.loads(Path("research/fvg_smt_mitigation_20260726/preregistration.json").read_text())
+          result = json.loads((root / "result_summary.json").read_text())
+          candidates = json.loads((root / "candidate_results.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+
+          assert result["claim_id"] == prereg["claim_id"]
+          assert result["result_id"] == prereg["provisional_result_id"]
+          assert result["candidate_count"] == len(candidates) == 256
+          assert result["qualification"] == "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE"
+          assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
+          assert result["orders_submitted"] is False
+          assert result["paper_or_testnet_started"] is False
+          assert result["one_global_slot"] is True
+          assert manifest["later_periods_opened"] is False
+          assert manifest["orders_submitted"] is False
+          assert len(manifest["records"]) == 8
+          assert set(manifest["continuity"]) == {"BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"}
+
+          boundary = pd.Timestamp("2024-01-01T00:00:00Z")
+          for record in manifest["records"]:
+              assert record["row_count"] > 0
+              assert len(record["normalized_sha256"]) == 64
+              assert pd.Timestamp(record["last_timestamp"]) < boundary
+              assert record["page_count"] > 0
+              assert all(len(page["sha256"]) == 64 for page in record["pages"])
+
+          assert len({row["config_id"] for row in candidates}) == 256
+          for row in candidates:
+              for stage in ("fit_metrics", "development_metrics"):
+                  metrics = row[stage]
+                  assert set(metrics) == {"12", "18", "24"}
+                  counts = [metrics[cost]["trade_count"] for cost in ("12", "18", "24")]
+                  unresolved = [metrics[cost]["unresolved_positions"] for cost in ("12", "18", "24")]
+                  totals = [metrics[cost]["total_return"] for cost in ("12", "18", "24")]
+                  assert counts[0] == counts[1] == counts[2]
+                  assert unresolved[0] == unresolved[1] == unresolved[2]
+                  assert totals[0] >= totals[1] >= totals[2]
+
+          print("FVG_SMT_FROZEN_CONTRACT_PASS")
+          print(json.dumps({
+              "fit_survivors": result["fit_survivor_count"],
+              "development_survivors": result["development_survivor_count"],
+              "best_config": None if result["best_candidate"] is None else result["best_candidate"]["config_id"],
+          }, sort_keys=True))
+          PY
+
+      - name: Build immutable artifact inventory
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/fvg_smt
+          find artifacts/fvg_smt -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 -r sha256sum \
+            > artifacts/fvg_smt/CI_SHA256SUMS.txt
+          sha256sum artifacts/fvg_smt/CI_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fvg-smt-mitigation-20260726
+          path: artifacts/fvg_smt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
