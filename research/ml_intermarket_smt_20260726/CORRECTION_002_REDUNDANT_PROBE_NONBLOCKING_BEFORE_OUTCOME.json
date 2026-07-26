@@ -1,0 +1,37 @@
+{
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "correction_id": "CORRECTION_002_REDUNDANT_PROBE_NONBLOCKING_BEFORE_OUTCOME",
+  "status": "PRE_OUTCOME_PIPELINE_FIX",
+  "failed_workflow_run": 30197210458,
+  "failed_artifact": 8630498254,
+  "failure_stage": "redundant one-day Dukascopy transport probe before the frozen annual source run",
+  "failure": "the separate 2022-01-03 one-day probe returned no rows for all bounded attempts although an earlier full source run had already downloaded the frozen annual data successfully",
+  "outcome_access": {
+    "annual_source_run_started": false,
+    "candidate_events_generated": false,
+    "model_fit": false,
+    "prediction_metrics_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "change": "retain the one-day probe as a logged diagnostic but do not let an unavailable redundant probe block the authoritative frozen annual download; the annual run remains fail-closed and must download, validate and hash every required source before any model or account result",
+  "unchanged": [
+    "source provider, instruments and dates",
+    "annual source requirements and source integrity checks",
+    "event thresholds and cooldown",
+    "features and labels",
+    "model and calibration",
+    "probability and EV rules",
+    "structural target and stop",
+    "costs, risk, capacity and global-slot rules",
+    "fit and conditional development gates"
+  ],
+  "authority": {
+    "credentials": false,
+    "orders": false,
+    "live_permission_change": false,
+    "ranking_change": false
+  }
+}
