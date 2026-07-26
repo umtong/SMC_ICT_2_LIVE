@@ -1,0 +1,110 @@
+{
+  "candidate_count": 324,
+  "claim_id": "CLM-20260726-1036-SYNTHETIC-CROSSRATE-001",
+  "data": {
+    "2024_and_later_sealed": true,
+    "clock": "local_timestamp",
+    "conversion_symbol": "BTCUSDT",
+    "cross_symbol_map": {
+      "ETHUSDT": "ETHBTC",
+      "SOLUSDT": "SOLBTC",
+      "XRPUSDT": "XRPBTC"
+    },
+    "development_dates": [
+      "2023-09-01",
+      "2023-11-01",
+      "2023-12-01"
+    ],
+    "development_opens_only_after_fit_survivor": true,
+    "fit_dates": [
+      "2023-03-01",
+      "2023-05-01",
+      "2023-07-01"
+    ],
+    "leader_venue": "binance",
+    "maximum_state_age_us": 500000,
+    "no_gap_fill": true,
+    "provider": "Tardis public monthly-first-day normalized quote files",
+    "target_symbols": [
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "target_venue": "bybit"
+  },
+  "execution": {
+    "completed_same_timestamp_signal_group": "final reconstructed BBO row",
+    "entry_latency_ms": [
+      100,
+      250,
+      500
+    ],
+    "equal_timestamp_resolution": "adverse",
+    "explicit_spread_and_top_quote_impact": true,
+    "extra_roundtrip_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
+    "fixed_markouts_seconds": [
+      1,
+      3,
+      10,
+      30
+    ],
+    "fixed_notional_usdt": 10000.0,
+    "marketable_limit_spreads": [
+      1.0,
+      2.0
+    ],
+    "one_global_slot": true,
+    "thirty_second_best_executable_exit_is_upper_bound_only": true
+  },
+  "frozen_before_source_probe_or_pnl": true,
+  "gate_each_stage": {
+    "fixed_10s_18bps_mean_positive": true,
+    "minimum_trades": 20,
+    "oracle_18bps_mean_positive": true,
+    "oracle_18bps_median_positive": true,
+    "oracle_18bps_top10_removed_mean_positive": true,
+    "positive_calendar_day_fraction_minimum": 0.6666666666666666
+  },
+  "hypothesis": "A completed 100ms algebraic Binance spot ALT/BTC × BTC/USDT synthetic fair-value shock can lead the executable Bybit ALTUSDT linear-perpetual quote after prior-basis adjustment.",
+  "orders_submitted": false,
+  "promotion": "A survivor only authorizes development of a causal exit; it is not rank eligible and does not open 2024.",
+  "provisional_result_id": "RES-20260726-SYNTHETIC-CROSSRATE-UPPERBOUND-001",
+  "schema_version": 1,
+  "signal": {
+    "completed_bucket_us": 100000,
+    "cooldown": "max(5 completed buckets, observation lag)",
+    "first_broad_state_after_false_only": true,
+    "maximum_follower_fraction": [
+      0.25,
+      0.5
+    ],
+    "maximum_target_spread_bps": 5.0,
+    "observation_ms": [
+      200,
+      500,
+      1000
+    ],
+    "prior_adjusted_gap_bps": [
+      5.0,
+      10.0,
+      15.0
+    ],
+    "synthetic_impulse_bps": [
+      3.0,
+      5.0,
+      10.0
+    ]
+  },
+  "synthetic_fair": {
+    "ask": "ALT/BTC ask × BTC/USDT ask",
+    "bid": "ALT/BTC bid × BTC/USDT bid",
+    "maximum_synthetic_spread_bps": 10.0,
+    "mid": "geometric mean of executable synthetic bid and ask",
+    "minimum_component_path_consistency": 0.5,
+    "prior_basis": "segmented prior-only EWM of log(Bybit target mid) - log(synthetic mid); span 600; minimum 300; reset after unavailable joint state"
+  }
+}
