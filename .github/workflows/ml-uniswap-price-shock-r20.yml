@@ -1,0 +1,126 @@
+name: ML Uniswap price-impact shock screen
+
+on:
+  push:
+    branches:
+      - agent/r20-ml-uniswap-price-shock-001
+    paths:
+      - 'research/ml_uniswap_price_shock_20260726/**'
+      - '.github/workflows/ml-uniswap-price-shock-r20.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_uniswap_price_shock_20260726/**'
+      - '.github/workflows/ml-uniswap-price-shock-r20.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-uniswap-price-shock-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed research environment
+        run: |
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install \
+            'numpy==2.1.3' \
+            'pandas==2.2.3' \
+            'pyarrow==19.0.1' \
+            'requests==2.32.4' \
+            'scikit-learn==1.6.1' \
+            'pytest==8.3.5'
+      - name: Compile and run causal/execution tests
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_price_shock_20260726
+          out=research_runs/ml_uniswap_price_shock_20260726
+          mkdir -p "$out"
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_001_MARKED_NAV_BEFORE_OUTCOME.json" >/dev/null
+          python -m py_compile "$root/run.py" "$root/run_corrected.py" "$root/test_run.py"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/run_corrected.py" self-test | tee "$out/SELF_TEST.log"
+      - name: Run frozen pre-2024 economic screen
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_price_shock_20260726
+          out=research_runs/ml_uniswap_price_shock_20260726/result
+          cache="$RUNNER_TEMP/ml-uniswap-price-shock-cache"
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/run_corrected.py" run --output "$out" --cache "$cache" 2>&1 | tee "$out/RUN.log"
+      - name: Verify result authority and period seals
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_uniswap_price_shock_20260726/result
+          test -f "$out/RESULT.json"
+          (cd "$out" && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('research_runs/ml_uniswap_price_shock_20260726/result/RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2350-ML-UNISWAP-PRICE-SHOCK-001'
+          assert result['source_semantics']=='unsigned activity plus completed pool-price displacement; no signed inventory claim'
+          assert result['official_2024H1_opened'] is False
+          assert result['2024H2_2026H1_opened'] is False
+          assert result['credentials_used'] is False
+          assert result['orders_submitted'] is False
+          assert result['status'] in {'TESTED_BELOW_GATE','PRE2024_SURVIVOR_REQUIRES_CANONICAL_2024_SOURCE'}
+          print(json.dumps({
+              'status':result['status'],
+              'events':result['event_meta']['event_count'],
+              'development_24bps':result['development_accounts'].get('24.0'),
+              'selected':result['selected_path'],
+              'winner_removed':result['winner_removed_selected_path'],
+              'next':result['next_action'],
+          },sort_keys=True,default=str))
+          PY
+      - name: Record current project validation without suppressing scientific result
+        if: always()
+        run: |
+          set +e
+          python scripts/validate_project.py 2>&1 | tee research_runs/ml_uniswap_price_shock_20260726/PROJECT_VALIDATION.log
+          echo ${PIPESTATUS[0]} > research_runs/ml_uniswap_price_shock_20260726/PROJECT_VALIDATION_EXIT_CODE.txt
+          exit 0
+      - name: Freeze input and output hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_price_shock_20260726
+          out=research_runs/ml_uniswap_price_shock_20260726
+          sha256sum \
+            "$root/README.md" \
+            "$root/WORK_CLAIM.json" \
+            "$root/preregistration.json" \
+            "$root/EXECUTION_CORRECTION_001_MARKED_NAV_BEFORE_OUTCOME.json" \
+            "$root/run.py" \
+            "$root/run_corrected.py" \
+            "$root/test_run.py" \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name CI_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/CI_SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-uniswap-price-shock-${{ github.run_id }}
+          path: research_runs/ml_uniswap_price_shock_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
