@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 import extract as engine
 
@@ -102,7 +103,7 @@ def aggregate_compat(target: Path, date: str):
     """Bind path, symbol and date to the shared aggregate function once.
 
     The upstream helper changed its call signature, not its scientific
-    implementation.  Argument binding is decided from the function signature
+    implementation. Argument binding is decided from the function signature
     before invoking it, so no data path is executed speculatively or twice.
     """
     path = Path(target)
@@ -153,6 +154,11 @@ def aggregate_compat(target: Path, date: str):
     )
 
 
+def utc_start_compat(date: str) -> float:
+    """Return the Unix timestamp of 00:00 UTC for an ISO calendar date."""
+    return float(pd.Timestamp(date, tz="UTC").timestamp())
+
+
 def corrected_rolling_realized_volatility(mark: np.ndarray, window: int = 100) -> np.ndarray:
     price = np.asarray(mark, dtype=np.float64)
     returns = np.full(len(price), np.nan, dtype=np.float64)
@@ -176,6 +182,8 @@ def corrected_rolling_realized_volatility(mark: np.ndarray, window: int = 100) -
 if not hasattr(engine.base, "inspect_source"):
     engine.base.inspect_source = inspect_source_compat
 engine.base.aggregate = aggregate_compat
+if not hasattr(engine.base, "utc_start"):
+    engine.base.utc_start = utc_start_compat
 engine.rolling_realized_volatility = corrected_rolling_realized_volatility
 
 
