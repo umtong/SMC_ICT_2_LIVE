@@ -1,0 +1,134 @@
+name: ML Hyperliquid liquidation source gate macOS
+
+on:
+  push:
+    branches:
+      - agent/r13-ml-hl-liquidation-001
+    paths:
+      - 'research/ml_hl_liquidation_20260726/**'
+      - '.github/workflows/ml-hl-liquidation-source-gate-macos-r13.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_hl_liquidation_20260726/**'
+      - '.github/workflows/ml-hl-liquidation-source-gate-macos-r13.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Execution-only correction before any source row: a stale project-control
+# assertion must not prevent the independently frozen source gate from running.
+concurrency:
+  group: ml-hl-liquidation-source-macos-r13-authoritative
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: '0'
+  PYTHONUNBUFFERED: '1'
+  PYTHONFAULTHANDLER: '1'
+  ROOT: research/ml_hl_liquidation_20260726
+  OUT: research_runs/ml_hl_liquidation_20260726/source-gate-macos
+
+jobs:
+  source-gate:
+    runs-on: macos-14
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 \
+            duckdb==1.4.3 \
+            pytest==8.3.5
+
+      - name: Compile and test parser before network access
+        run: |
+          set -euo pipefail
+          python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_004_MACOS_RETRIGGER_BEFORE_DATA.json" >/dev/null
+          python -m py_compile "$ROOT/probe_hl_liquidations.py" "$ROOT/test_probe_hl_liquidations.py"
+          PYTHONPATH="$ROOT" pytest -q "$ROOT/test_probe_hl_liquidations.py"
+          PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" --self-test
+
+      - name: Run outcome-sealed commit-pinned Parquet source gate
+        run: |
+          set -euo pipefail
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
+
+      - name: Enforce source-only authority and frozen decision
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          out=Path(os.environ['OUT'])
+          result=json.loads((out/'SOURCE_GATE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2058-ML-HL-LIQUIDATION-001'
+          assert result['phase']=='OUTCOME_SEALED_SOURCE_GATE'
+          assert result['transport']=='COMMIT_PINNED_CONSOLIDATED_PARQUET_PREDICATE_PUSHDOWN'
+          for key in ('market_price_opened','future_return_opened','model_fitted','strategy_pnl_opened','official_2026_opened','orders_submitted'):
+              assert result[key] is False
+          expected='OPEN_FROZEN_HISTORICAL_MODEL_STAGE' if result['source_gate_pass'] else 'CLOSE_SOURCE_ROUTE_BEFORE_MARKET_OUTCOMES'
+          assert result['scientific_decision']==expected
+          manifest_path=out/'SOURCE_MANIFEST.json'
+          if manifest_path.exists():
+              manifest=json.loads(manifest_path.read_text())
+              assert manifest['resolved_revision']==result.get('resolved_revision')
+              assert len(manifest['frozen_paths'])==36
+          print(json.dumps({
+              'source_gate_pass':result['source_gate_pass'],
+              'decision':result['scientific_decision'],
+              'parsed_files':result.get('parsed_file_count'),
+              'explicit_liquidations':result.get('explicit_liquidation_event_count'),
+              'target_positions':result.get('target_position_record_count'),
+              'fatal_error':result.get('fatal_error'),
+          },sort_keys=True))
+          PY
+
+      - name: Validate current project control plane without blocking scientific evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python scripts/validate_project.py 2>&1 | tee "$OUT/PROJECT_VALIDATION.log"
+
+      - name: Freeze evidence identities
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/source"
+          cp \
+            "$ROOT/WORK_CLAIM.json" \
+            "$ROOT/PREREGISTRATION.md" \
+            "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" \
+            "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" \
+            "$ROOT/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_DATA.json" \
+            "$ROOT/EXECUTION_CORRECTION_004_MACOS_RETRIGGER_BEFORE_DATA.json" \
+            "$ROOT/SOURCES.md" \
+            "$ROOT/probe_hl_liquidations.py" \
+            "$ROOT/test_probe_hl_liquidations.py" \
+            "$OUT/source/"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-hl-liquidation-source-macos-${{ github.run_id }}
+          path: research_runs/ml_hl_liquidation_20260726/source-gate-macos
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
