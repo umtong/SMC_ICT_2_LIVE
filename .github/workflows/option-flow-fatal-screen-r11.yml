@@ -8,7 +8,13 @@ on:
       - research/option_flow_hedge_20260726/screen_preregistration.json
       - research/option_flow_hedge_20260726/greek_formula_fixture.csv
       - research/option_flow_hedge_20260726/screen.py.gz.b64
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part00
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part01
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part02
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part03
       - research/option_flow_hedge_20260726/reconstruct_screen.py
+      - research/option_flow_hedge_20260726/RUNTIME_TRANSPORT_CORRECTION_001.json
+      - research/option_flow_hedge_20260726/RUNTIME_TRANSPORT_CORRECTION_002.json
       - .github/workflows/option-flow-fatal-screen-r11.yml
   pull_request:
     branches:
@@ -17,7 +23,13 @@ on:
       - research/option_flow_hedge_20260726/screen_preregistration.json
       - research/option_flow_hedge_20260726/greek_formula_fixture.csv
       - research/option_flow_hedge_20260726/screen.py.gz.b64
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part00
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part01
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part02
+      - research/option_flow_hedge_20260726/screen.py.gz.b64.part03
       - research/option_flow_hedge_20260726/reconstruct_screen.py
+      - research/option_flow_hedge_20260726/RUNTIME_TRANSPORT_CORRECTION_001.json
+      - research/option_flow_hedge_20260726/RUNTIME_TRANSPORT_CORRECTION_002.json
       - .github/workflows/option-flow-fatal-screen-r11.yml
   workflow_dispatch:
 
@@ -46,10 +58,11 @@ jobs:
         run: pip install --disable-pip-version-check requests==2.32.4
       - name: Reconstruct and validate frozen screen
         run: |
-          python scripts/validate_project.py
-          python research/option_flow_hedge_20260726/reconstruct_screen.py
+          mkdir -p artifacts/option_flow_screen
+          python scripts/validate_project.py 2>&1 | tee artifacts/option_flow_screen/project_validation.log
+          python research/option_flow_hedge_20260726/reconstruct_screen.py 2>&1 | tee artifacts/option_flow_screen/reconstruction.log
           python -m py_compile research/option_flow_hedge_20260726/screen.py
-          python research/option_flow_hedge_20260726/screen.py self-test
+          python research/option_flow_hedge_20260726/screen.py self-test 2>&1 | tee artifacts/option_flow_screen/self_test.log
           python -m json.tool research/option_flow_hedge_20260726/screen_preregistration.json >/dev/null
       - name: Cache immutable pre-2024 source files
         uses: actions/cache@v4
@@ -58,17 +71,18 @@ jobs:
           key: option-flow-screen-v1-${{ hashFiles('research/option_flow_hedge_20260726/screen_preregistration.json') }}
       - name: Run frozen fit and development fatal screen
         run: |
-          rm -rf artifacts/option_flow_screen
+          rm -rf artifacts/option_flow_screen/result
           python research/option_flow_hedge_20260726/screen.py run \
             --cache /tmp/option-flow-screen \
-            --output artifacts/option_flow_screen
+            --output artifacts/option_flow_screen/result \
+            2>&1 | tee artifacts/option_flow_screen/run.log
       - name: Verify causal, stage and cost boundaries
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          root = Path("artifacts/option_flow_screen")
+          root = Path("artifacts/option_flow_screen/result")
           result = json.loads((root / "result_summary.json").read_text())
           manifest = json.loads((root / "source_manifest.json").read_text())
           candidates = json.loads((root / "candidate_results.json").read_text())
@@ -102,7 +116,9 @@ jobs:
           print(json.dumps(result, sort_keys=True, separators=(",", ":")))
           PY
       - name: Build immutable output inventory
+        if: always()
         run: |
+          mkdir -p artifacts/option_flow_screen
           find artifacts/option_flow_screen -type f ! -name CI_SHA256SUMS.txt -print0 \
             | sort -z | xargs -0 sha256sum \
             > artifacts/option_flow_screen/CI_SHA256SUMS.txt
@@ -112,6 +128,6 @@ jobs:
         with:
           name: option-flow-fatal-screen-20260726
           path: artifacts/option_flow_screen
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
           compression-level: 6
