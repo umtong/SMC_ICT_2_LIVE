@@ -1,0 +1,11 @@
+# Source boundary
+
+The evaluator reuses only the immutable causal state parquet files from PR #72, not its failed model, predictions, labels, signals or PnL.
+
+- source run: `30183063220`
+- source artifact: `8626169763`
+- artifact digest: `sha256:a6f5c943231ca4e7b22df35d5cf79c236da55dc6fe2f0be40739fb3141142841`
+- 2022 state SHA-256: `da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b`
+- 2023 state SHA-256: `8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f`
+
+Tardis `local_timestamp` is the information-availability clock. Only exact contiguous 500 ms states may form a bar, and missing states start a new causal segment.
