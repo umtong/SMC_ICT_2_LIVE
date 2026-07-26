@@ -1,0 +1,142 @@
+{
+  "account": {
+    "cost_paths_round_trip_bps": [
+      12,
+      18,
+      24
+    ],
+    "funding": "exact final funding_rate immediately preceding each crossed funding_timestamp from Bybit derivative_ticker",
+    "global_slot_count": 1,
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 3.0,
+    "planned_loss_fraction": 0.01,
+    "prior_three_second_quote_notional_participation_cap": 0.001,
+    "winner_removal": "remove ceil(10% of positive 12bp event keys before complete global-slot rerouting"
+  },
+  "chronology": {
+    "calibration": [
+      "2022-03-01"
+    ],
+    "conditional_development": [
+      "2022-07-01",
+      "2022-09-01",
+      "2022-11-01"
+    ],
+    "fit_confirmation": [
+      "2022-05-01"
+    ],
+    "prohibited_years": [
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "train": [
+      "2022-01-01"
+    ]
+  },
+  "claim_id": "CLM-20260726-1108-COINBASE-FLOW-001",
+  "development_gate": "same prediction and economic rules, at least 60 trades, positive on at least two of three dates for both delays",
+  "engine_version": "ML-COINBASE-INSTITUTIONAL-FLOW-RELAY-V1",
+  "event": {
+    "bybit_underreaction_fraction_max": 0.75,
+    "candidate_threshold": "99th percentile of train-window absolute Coinbase displacement divided by prior one-hour realized volatility",
+    "cooldown_seconds": 60,
+    "decision_delays_seconds": [
+      2,
+      5
+    ],
+    "direction": "sign of completed Coinbase displacement",
+    "elapsed_time_exit": false,
+    "entry": "first fresh Bybit BBO after completed Coinbase window plus delay",
+    "minimum_coinbase_trade_count": 20,
+    "minimum_directional_aggressor_share": 0.55,
+    "range_lookback_seconds": 300,
+    "same_timestamp_target_stop": "stop first",
+    "source_boundary": "full structural stop plus cost",
+    "target_stop": "frozen prior completed Bybit five-minute high and low",
+    "window_seconds": 15
+  },
+  "features": [
+    "coinbase_displacement_z",
+    "coinbase_aggressor_share",
+    "coinbase_notional_surprise",
+    "coinbase_effort_result_efficiency",
+    "coinbase_retracement_ratio",
+    "coinbase_directional_quote_pressure",
+    "coinbase_directional_quote_change",
+    "bybit_response_fraction",
+    "bybit_spread_bps",
+    "structural_reward_risk"
+  ],
+  "fit_gate_all_required": {
+    "auc_lift_over_structure_baseline": ">=0.01",
+    "calibration_resolved_rows": ">=50",
+    "confirmation_resolved_rows": ">=50",
+    "model_auc": ">=0.55",
+    "positive_brier_skill_over_structure_baseline": true,
+    "positive_median_trade_12bp_both_delays": true,
+    "positive_symbol_breadth_18bp": "both BTC and ETH or one symbol with >=40 trades",
+    "positive_total_return_18bp_both_delays": true,
+    "positive_total_return_24bp_both_delays": true,
+    "positive_winner_removed_return_18bp_both_delays": true,
+    "profit_factor_18bp_both_delays": ">1",
+    "top_five_positive_pnl_share_both_delays": "<=0.40",
+    "trade_count_18bp_both_delays": ">=20",
+    "train_resolved_rows": ">=80"
+  },
+  "frozen_at": "2026-07-26T19:18:30+09:00",
+  "model": {
+    "C": 0.5,
+    "baseline": "structure-only standardized logistic using target distance, stop distance, range position and prior Bybit volatility",
+    "calibration": "one isotonic map fitted only on calibration rows when both classes are present",
+    "class_weight": "balanced",
+    "family": "standardized L2 logistic regression",
+    "feature_grid": false,
+    "max_iter": 500,
+    "model_grid": false,
+    "single_model_only": true,
+    "solver": "lbfgs",
+    "threshold_grid": false
+  },
+  "orders_submitted": false,
+  "policy": {
+    "actions": [
+      "CONTINUATION",
+      "FLAT"
+    ],
+    "minimum_probability_advantage_over_exact_break_even": 0.05,
+    "reversal_prohibited": true,
+    "signal_cost_bps": 18
+  },
+  "rank_eligible": false,
+  "result_id": "RES-20260726-ML-COINBASE-FLOW-001",
+  "schema_version": 1,
+  "scientific_question": "Does completed Coinbase spot displacement and aggressor-flow state add incremental information beyond frozen Bybit range geometry for deciding whether Bybit reaches the same-direction external boundary before the opposing boundary?",
+  "smc_ict_translation": [
+    "Coinbase completed displacement defines institutional delivery direction.",
+    "The prior completed Bybit five-minute high and low are frozen external liquidity.",
+    "Bybit underreaction inside that range is intermarket SMT/non-confirmation.",
+    "ML only accepts or rejects continuation toward the Coinbase-direction boundary."
+  ],
+  "sources": {
+    "availability_clock": "local_timestamp_microseconds",
+    "bitmex_prohibited": true,
+    "data_types": [
+      "trades",
+      "quotes",
+      "derivative_ticker"
+    ],
+    "execution_exchange": "bybit",
+    "execution_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "row_order_tie_break": true,
+    "signal_exchange": "coinbase",
+    "signal_symbols": [
+      "BTCUSD",
+      "ETHUSD"
+    ]
+  }
+}
