@@ -1,4 +1,4 @@
-name: Stablecoin model reusable-engine inspection
+name: Stablecoin conditional ML engine validation
 
 on:
   push:
@@ -6,31 +6,45 @@ on:
     paths:
       - '.github/workflows/ml-stablecoin-model-contract-inspect.yml'
       - 'research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py'
+      - 'research/ml_stablecoin_issuance_20260726/model_screen.py'
+      - 'research/ml_stablecoin_issuance_20260726/test_model_screen.py'
   pull_request:
     branches: [agent/r13-ml-stablecoin-issuance-001]
     paths:
       - '.github/workflows/ml-stablecoin-model-contract-inspect.yml'
       - 'research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py'
+      - 'research/ml_stablecoin_issuance_20260726/model_screen.py'
+      - 'research/ml_stablecoin_issuance_20260726/test_model_screen.py'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: stablecoin-conditional-model-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  inspect:
+  validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install frozen model environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 \
+            scipy==1.15.3 scikit-learn==1.6.1 pytest==8.3.5
       - name: Reconstruct existing verified Bybit engine source
         run: |
           set -euo pipefail
           python research/ml_liquidity_draw_20260726/reconstruct.py
           python -m py_compile research/ml_liquidity_draw_20260726/run.py
-      - name: Extract function and data contracts only
+      - name: Extract reusable function and data contracts only
         run: |
           set -euo pipefail
           python research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py
@@ -44,9 +58,33 @@ jobs:
           assert data['trade_or_pnl_opened'] is False
           print('\n'.join(f"{r['kind']} {r['name']}" for r in data['records']))
           PY
+      - name: Validate the new external-information economic engine
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_20260726
+          python -m py_compile "$root/model_screen.py" "$root/test_model_screen.py"
+          PYTHONPATH="$root" pytest -q "$root/test_model_screen.py"
+          PYTHONPATH="$root" python "$root/model_screen.py" --self-test
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          root=Path('research/ml_stablecoin_issuance_20260726')
+          tree=ast.parse((root/'model_screen.py').read_text())
+          text=(root/'model_screen.py').read_text()
+          assert 'HistGradientBoostingClassifier' in text
+          assert 'IsotonicRegression' in text
+          assert 'PRIMARY_COST_BPS = 24.0' in text
+          assert 'BASE_RISK = 0.005' in text
+          assert 'BASE_NOTIONAL_CAP = 3.0' in text
+          assert 'no_elapsed_time_liquidation' in text
+          assert 'official_2024_2026_opened' in text
+          assert 'orders_submitted' in text
+          assert len([n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name=='Trade']) == 1
+          print('conditional model contract checks passed')
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: stablecoin-reusable-engine-ast-${{ github.run_id }}
+          name: stablecoin-conditional-model-validation-${{ github.run_id }}
           path: research/ml_stablecoin_issuance_20260726/REUSABLE_BYBIT_ENGINE_AST.json
           if-no-files-found: error
           retention-days: 14
