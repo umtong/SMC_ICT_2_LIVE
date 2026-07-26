@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "COR-20260726-DIRECT-UTILITY-SPLIT-TRANSPORT-003",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "created_at": "2026-07-26T20:54:00+09:00",
+  "observed_failure": "The amended scientific source was committed as four ordered Base64 parts, while reconstruct.py still read the obsolete single-file transport and stopped with base64 source identity mismatch.",
+  "outcome_state_before_correction": {
+    "model_fitted": false,
+    "prediction_metrics_opened": false,
+    "actions_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false
+  },
+  "correction": [
+    "Treat run.py.gz.b64.part00 through part03, in lexical order, as the only authoritative Base64 transport.",
+    "Strip whitespace within each part, concatenate the parts, and require the already-frozen aggregate Base64, gzip and raw-source byte counts and SHA-256 identities before compilation.",
+    "Remove the obsolete unmatched monolithic Base64 file and hash every authoritative part in the workflow evidence."
+  ],
+  "unchanged": [
+    "scientific question",
+    "data dates and symbols",
+    "source-gap amendment",
+    "features",
+    "model and parameters",
+    "calibration",
+    "target",
+    "keep-switch-flat policy",
+    "costs and funding reserve",
+    "structural stop",
+    "chronology and gates",
+    "risk and leverage search",
+    "winner-removal rerouting",
+    "ranking benchmark",
+    "2024-2026 prohibition",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used": false,
+  "orders_submitted": false
+}
