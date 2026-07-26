@@ -3,7 +3,7 @@
 - Result ID: `RES-20260727-ML-SWEEP-CROWDING-001`
 - Claim: `CLM-20260727-0245-ML-SWEEP-CROWDING-001`
 - Status: **SOURCE_GATE_FAIL**
-- Contract SHA-256: `229d8d6038a679bf0cfffb9c8d1591b1cd06850b2b4c30451b4b97e6561bdf05`
+- Contract SHA-256: `dc0e349f9786692284dcea164e7af51855e52d0df9cec91389303a7044178efb`
 - Live orders: none
 
 ## Mechanism
@@ -12,7 +12,7 @@ A completed external-liquidity sweep creates two mutually exclusive candidates: 
 
 ## Pre-2024 decision
 
-No pre-2024 account result opened: `download failed after retries: https://public.bybit.com/kline_for_metatrader4/ETHUSDT/2021/ETHUSDT_1_2021-01-01_2021-01-31.csv.gz: 404 Client Error: Not Found for url: https://public.bybit.com/kline_for_metatrader4/ETHUSDT/2021/ETHUSDT_1_2021-01-01_2021-01-31.csv.gz`
+No pre-2024 account result opened: `JSON request failed after retries: https://api.bybit.com/v5/market/kline: 403 Client Error: Forbidden for url: https://api.bytick.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=1&start=1609459200000&end=1612137599999&limit=1000`
 
 ## Causality and execution
 
