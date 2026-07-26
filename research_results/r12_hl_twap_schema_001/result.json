@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-HL-TWAP-SCHEMA-001",
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "status": "SOURCE_FIELD_UNAVAILABLE",
+  "hard_validity": "PASS_SCHEMA_PROBE",
+  "economic_status": "NOT_OPENED",
+  "ranking_role": "NONE_SOURCE_PROBE",
+  "decision": "RETIRE_EXPLICIT_TWAP_CONTINUATION_FOR_THIS_SOURCE",
+  "source": {
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "path": "data/node_fills_by_block_hourly_20250727_12.parquet",
+    "bytes": 31076403,
+    "sha256": "88fbe8b2868631d6ce4c655e0e40e04c96a83c8f5e0fa62156898dc5d0c801ee"
+  },
+  "probe": {
+    "block_rows": 44723,
+    "event_items": 266614,
+    "eligible_target_crossed_fills": 29376,
+    "explicit_twap_identifier_aliases": 0,
+    "explicit_twap_groups": 0,
+    "target_coins_with_any_explicit_twap": 0,
+    "fields_present": [
+      "builder", "builderFee", "cloid", "closedPnl", "coin", "crossed", "dir",
+      "fee", "feeToken", "hash", "liquidation", "oid", "px", "side",
+      "startPosition", "sz", "tid", "time"
+    ]
+  },
+  "interpretation": "The immutable mirror contains no explicit twapId or twap_id field in the tested fill objects. Repeated OIDs are partial fills of one child order and cannot be relabeled as an explicit TWAP schedule. Explicit-TWAP continuation cannot be tested with this source.",
+  "retirement_boundary": "Do not infer explicit TWAP identity from repeated OID groups. Reopen only with a source that exposes a point-in-time schedule identifier or equivalent authenticated schedule metadata.",
+  "reproducibility": {
+    "workflow_run": 30198047925,
+    "artifact_id": 8630735758,
+    "artifact_digest": "sha256:1073c7a624fbe504db504023c15d7d85e51b47eb2ec336c925218a09872cbc55",
+    "report_sha256": "3689eec9e31ec61b0b71aa8115a9915eda93a42220debf5b136b8afd546a58cf"
+  },
+  "price_values_accessed": false,
+  "return_or_markout_computed": false,
+  "strategy_pnl_computed": false,
+  "bybit_execution_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
