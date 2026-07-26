@@ -39,8 +39,8 @@ jobs:
             pandas==2.2.3 \
             pyarrow==18.1.0 \
             requests==2.32.3
-      - name: Probe immutable Bybit one-minute mirrors
-        run: python research/ml_sweep_crowding/probe_hf_bybit_price.py
+      - name: Probe immutable Bybit one-minute mirrors at observed listing boundaries
+        run: python -m research.ml_sweep_crowding.probe_hf_bybit_price_v2
       - name: Publish immutable probe
         shell: bash
         run: |
@@ -48,13 +48,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add research/results/ml_sweep_crowding/bybit_price_mirror_probe.json
-          git commit -m "research: publish pinned Bybit one-minute mirror probe"
+          git commit -m "research: publish listing-aware Bybit one-minute mirror probe"
           git push origin HEAD:${GITHUB_REF_NAME}
       - name: Upload probe artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ml-sweep-bybit-price-mirror-probe-v1
+          name: ml-sweep-bybit-price-mirror-probe-v2
           path: research/results/ml_sweep_crowding/bybit_price_mirror_probe.json
           if-no-files-found: warn
           retention-days: 30
