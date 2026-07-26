@@ -28,12 +28,16 @@ jobs:
           cache: pip
       - name: Install declared dependencies
         run: python -m pip install .
-      - name: Probe representative historical windows
+      - name: Probe representative historical windows through official alternate mainnet host
         shell: bash
         run: |
           set +e
           mkdir -p probe
-          python scripts/market_data/probe_bybit_history.py --out probe \
+          python scripts/market_data/probe_bybit_history.py \
+            --out probe \
+            --base-url https://api.bytick.com \
+            --timeout 10 \
+            --max-attempts 1 \
             > probe/stdout.log 2> probe/stderr.log
           echo $? > probe/exit-code.txt
           exit 0
