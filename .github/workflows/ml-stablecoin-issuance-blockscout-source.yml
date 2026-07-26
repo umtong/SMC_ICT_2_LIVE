@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   source:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +39,7 @@ jobs:
           python -m py_compile "$r"/source_gate*.py "$r/test_source_gate.py"
           PYTHONPATH="$r" pytest -q "$r/test_source_gate.py" | tee "$o/PYTEST.log"
           PYTHONPATH="$r" python "$r/source_gate_blockscout_authoritative.py" --self-test | tee "$o/SELF_TEST.log"
+          python -m json.tool "$r/EXECUTION_CORRECTION_006_SLIM_RUNNERS_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py | tee "$o/PROJECT_VALIDATION.log"
       - name: Query pre-2024 issuance source only
         run: |
