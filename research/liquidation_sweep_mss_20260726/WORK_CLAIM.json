@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-LIQ-SWEEP-MSS-001",
+  "worker_id": "gpt-5.6-pro-20260726",
+  "status": "ACTIVE",
+  "title": "Bybit liquidation sweep, reclaim and micro-structure-shift alpha",
+  "repository": "umtong/SMC_ICT_2_LIVE",
+  "branch": "agent/r11-liq-sweep-mss-001",
+  "base_revision": 11,
+  "objective_contribution": "Test a structurally new, SMC/ICT-explainable state transition whose payoff can exceed ordinary bar and taker-threshold families: external liquidity raid, actual forced liquidation, absorption/refill, reclaim and MSS before executable Bybit entry.",
+  "scope": {
+    "execution_venue": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "global_slot": 1,
+    "signal_data": ["Bybit trades", "Bybit BBO quotes", "Bybit liquidations"],
+    "fit_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "development_dates": ["2023-07-01", "2023-09-01", "2023-11-01"],
+    "sealed_periods": ["2024", "2025", "2026"],
+    "candidate_count": 768
+  },
+  "non_overlap": [
+    "ordinary candle or completed-bar liquidity sweeps",
+    "generic liquidation continuation or reversal thresholds",
+    "inferred OI inventory pressure maps",
+    "L2 cancellation-replenishment taker rules",
+    "direction-neutral movement-hazard OCO",
+    "ordinary event-tape absorption"
+  ],
+  "expected_outputs": [
+    "source and data manifest",
+    "fit event ledger",
+    "conditional development event ledger",
+    "all 768 fit candidate metrics",
+    "frozen-survivor development metrics if authorized",
+    "decision-ready summary and immutable checksums"
+  ],
+  "orders_permitted": false,
+  "created_at": "2026-07-26T15:58:00+09:00"
+}
