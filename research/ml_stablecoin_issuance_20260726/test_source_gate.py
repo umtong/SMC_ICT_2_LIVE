@@ -4,6 +4,7 @@ import pytest
 
 from source_gate import (
     CONTRACTS,
+    FIXED_MONTHS,
     TRANSFER_TOPIC,
     ZERO_TOPIC,
     Event,
@@ -12,6 +13,19 @@ from source_gate import (
     month_bounds,
     normalize_address_topic,
 )
+
+
+def test_full_source_months_are_complete_and_pre_2024() -> None:
+    assert len(FIXED_MONTHS) == 36
+    assert FIXED_MONTHS[0] == "2021-01"
+    assert FIXED_MONTHS[-1] == "2023-12"
+    assert len(set(FIXED_MONTHS)) == len(FIXED_MONTHS)
+    expected = tuple(
+        f"{year}-{month:02d}"
+        for year in (2021, 2022, 2023)
+        for month in range(1, 13)
+    )
+    assert FIXED_MONTHS == expected
 
 
 def test_month_bounds_never_open_2024() -> None:
