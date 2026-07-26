@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1952-ML-AAVE-LIQUIDATION-001",
+  "result_id": "RES-20260726-ML-AAVE-LIQUIDATION-SOURCE-UNAVAILABLE-001",
+  "status": "SOURCE_UNAVAILABLE",
+  "hard_validity_status": "PASS_SOURCE_GATE_NO_MARKET_OUTCOME",
+  "economic_status": "NOT_EVALUATED_SOURCE_UNAVAILABLE",
+  "ranking_role": "NONE",
+  "scientific_decision": "CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES",
+  "source_gate_pass": false,
+  "address_book": {
+    "package": "@aave-dao/aave-address-book",
+    "package_version": "4.61.0",
+    "source_commit": "67c777be17e782c2f961a44e085ec55b39e63639",
+    "v2_pool": "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9",
+    "v3_pool": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
+  },
+  "endpoint_result": {
+    "preflight_selected": "https://eth-mainnet.public.blastapi.io",
+    "selected_chain_id": 1,
+    "historical_probe_block": 12461490,
+    "v2_code_bytes": 1779,
+    "v3_code_bytes": 2400,
+    "fatal_error": "HTTP 400 on the first bounded historical LiquidationCall log request after successful preflight",
+    "other_endpoints": [
+      "ethereum-rpc.publicnode.com: historical archive requests require a personal token",
+      "1rpc.io/eth: HTTP 403"
+    ]
+  },
+  "frozen_probe_dates": [
+    "2021-05-19",
+    "2021-12-04",
+    "2022-05-12",
+    "2022-06-13",
+    "2022-11-09",
+    "2023-03-11",
+    "2023-08-17"
+  ],
+  "market_price_opened": false,
+  "label_opened": false,
+  "model_opened": false,
+  "action_opened": false,
+  "trade_opened": false,
+  "pnl_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "workflow_run": 30201627005,
+  "artifact_id": 8631908591,
+  "artifact_digest": "sha256:46e9b2031332e2d0b01bc5d45b4905b33b7c124a3fd82f319c97b8846cdfc79c",
+  "transport_contract": {
+    "range_bisection_only_on_explicit_range_error": true,
+    "maximum_calls": 3000,
+    "maximum_wall_seconds": 1200,
+    "per_endpoint_attempts": 2
+  },
+  "next_action": "Retire the keyless Ethereum JSON-RPC transport. Reopen the Aave information unit only with independently hashable archival logs or a durable archive endpoint; do not infer alpha from this source failure."
+}
