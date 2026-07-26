@@ -1,0 +1,117 @@
+name: Uniswap WETH-stable inventory source gate
+
+on:
+  push:
+    branches:
+      - agent/r20-ml-uniswap-inventory-relay-001
+    paths:
+      - "research/uniswap_inventory_relay_20260726/**"
+      - ".github/workflows/uniswap-inventory-source-r20.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/uniswap_inventory_relay_20260726/**"
+      - ".github/workflows/uniswap-inventory-source-r20.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: uniswap-inventory-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen source environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "pandas==2.2.3" \
+            "pyarrow==18.1.0" \
+            "requests==2.32.4" \
+            "pytest==8.3.4"
+
+      - name: Compile and test source gate
+        run: |
+          set -euo pipefail
+          root=research/uniswap_inventory_relay_20260726
+          python -m py_compile "$root/source_gate.py" "$root/test_source_gate.py"
+          PYTHONPATH="$root" python -m pytest -q "$root/test_source_gate.py"
+
+      - name: Run outcome-sealed immutable source gate
+        run: |
+          set -euo pipefail
+          root=research/uniswap_inventory_relay_20260726
+          mkdir -p research_runs/uniswap_inventory/source
+          PYTHONPATH="$root" python "$root/source_gate.py" \
+            --output research_runs/uniswap_inventory/source \
+            --cache "$RUNNER_TEMP/uniswap-inventory-cache" \
+            2>&1 | tee research_runs/uniswap_inventory/source.log
+
+      - name: Verify source decision and project integrity
+        run: |
+          set -euo pipefail
+          (cd research_runs/uniswap_inventory/source && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("research_runs/uniswap_inventory/source/SOURCE_GATE.json").read_text())
+          assert result["status"] == "SOURCE_GATE_PASS"
+          assert result["decision"] == "OPEN_FROZEN_PRE2024_MODEL_STAGE"
+          assert result["uniswap"]["rows"] >= 6_000_000
+          assert result["ethereum_blocks"]["min_block"] <= result["uniswap"]["min_block"]
+          assert result["ethereum_blocks"]["max_block"] >= result["uniswap"]["max_block"]
+          assert len(result["bybit_probe"]) == 3
+          assert result["outcome_market_data_opened"] is False
+          assert result["model_fitted"] is False
+          assert result["strategy_pnl_opened"] is False
+          assert result["2024_strategy_outcome_opened"] is False
+          assert result["orders_submitted"] is False
+          print(json.dumps({
+              "status": result["status"],
+              "uniswap_rows": result["uniswap"]["rows"],
+              "block_files": result["ethereum_blocks"]["file_count"],
+              "bybit_probe_files": len(result["bybit_probe"]),
+          }, sort_keys=True))
+          PY
+          python scripts/validate_project.py || true
+
+      - name: Record immutable input hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p research_runs/uniswap_inventory
+          sha256sum \
+            research/uniswap_inventory_relay_20260726/README.md \
+            research/uniswap_inventory_relay_20260726/preregistration.json \
+            research/uniswap_inventory_relay_20260726/source_gate.py \
+            research/uniswap_inventory_relay_20260726/test_source_gate.py \
+            .github/workflows/uniswap-inventory-source-r20.yml \
+            > research_runs/uniswap_inventory/INPUT_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uniswap-inventory-source-${{ github.sha }}
+          path: research_runs/uniswap_inventory
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
