@@ -51,49 +51,16 @@ jobs:
 
       - name: Compile, test and run causal self-test
         run: |
-          set +e
+          set -euo pipefail
           root=research/oi_flow_decomposition_20260726
-          diag=research_runs/oi_flow_decomposition/diagnostics
-          self=research_runs/oi_flow_decomposition/self_test
-          mkdir -p "$diag" "$self"
-
-          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py" \
-            >"$diag/compile.log" 2>&1
-          compile_status=$?
-
-          python -m pytest -vv "$root/test_run_screen.py" \
-            >"$diag/pytest.log" 2>&1
-          pytest_status=$?
-
-          self_status=99
-          checksum_status=99
-          if [ "$compile_status" -eq 0 ] && [ "$pytest_status" -eq 0 ]; then
-            python "$root/run_screen.py" \
-              --self-test \
-              --output "$self" \
-              --cache "$RUNNER_TEMP/oi-flow-cache" \
-              >"$diag/self_test.log" 2>&1
-            self_status=$?
-            if [ "$self_status" -eq 0 ]; then
-              (cd "$self" && sha256sum --check SHA256SUMS.txt) \
-                >"$diag/self_test_checksums.log" 2>&1
-              checksum_status=$?
-            fi
-          fi
-
-          printf '{"compile":%s,"pytest":%s,"self_test":%s,"checksums":%s}\n' \
-            "$compile_status" "$pytest_status" "$self_status" "$checksum_status" \
-            > "$diag/STATUS.json"
-          cat "$diag/STATUS.json"
-          for file in "$diag"/*.log; do
-            echo "===== $file ====="
-            cat "$file"
-          done
-
-          test "$compile_status" -eq 0
-          test "$pytest_status" -eq 0
-          test "$self_status" -eq 0
-          test "$checksum_status" -eq 0
+          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py"
+          python -m pytest -q "$root/test_run_screen.py"
+          mkdir -p research_runs/oi_flow_decomposition/self_test
+          python "$root/run_screen.py" \
+            --self-test \
+            --output research_runs/oi_flow_decomposition/self_test \
+            --cache "$RUNNER_TEMP/oi-flow-cache"
+          (cd research_runs/oi_flow_decomposition/self_test && sha256sum --check SHA256SUMS.txt)
 
       - name: Run frozen pre-2024 official-source fatal screen
         run: |
@@ -133,7 +100,6 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          mkdir -p research_runs/oi_flow_decomposition
           sha256sum \
             research/oi_flow_decomposition_20260726/preregistration.json \
             research/oi_flow_decomposition_20260726/README.md \
