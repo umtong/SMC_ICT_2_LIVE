@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "execution_authority_id": "EXECUTION-AUTHORITY-20260727-ML-STABLECOIN-STRICT-V3-020",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:27:00+09:00",
+  "recorded_before_source_pass_consumption": true,
+  "recorded_before_market_download": true,
+  "recorded_before_label_computation": true,
+  "recorded_before_model_fit": true,
+  "recorded_before_trade_or_pnl": true,
+  "recorded_before_official_2024h1": true,
+  "supersedes_execution_prs": [263, 267, 270],
+  "validation_source_pr": 268,
+  "source_commit": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
+  "economic_base_commit": "b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8",
+  "strict_guard_commit": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "strict_correction_id": "CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002",
+  "engine": "ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3",
+  "fixed_information_boundary": [
+    "latest market bar close must be at or before the finalized source-decision second",
+    "all market features and frozen liquidity geometry use only that completed-bar cutoff",
+    "the future next-minute open is realized execution only and never a feature, filter or action input",
+    "a future entry gap outside the frozen band is zero-gross cost-only invalidation with no alternative reroute",
+    "unresolved chronological-boundary exposure is NAV-marked and never asserted as a strategy close"
+  ],
+  "unchanged_scientific_contract": [
+    "USDT Issue/Redeem and USDC zero-address Transfer source semantics",
+    "2021-2023 source chronology and block+12/block+64 availability",
+    "one HGBT and one isotonic calibration map",
+    "first-passage structural labels and one global BTC/ETH slot",
+    "12/18/24bp cost paths and the registered risk/notional grid",
+    "immediate official 2024H1 only after a positive no-liquidation pre-2024 survivor"
+  ],
+  "source_pass_consumed": false,
+  "market_archive_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024h1_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
