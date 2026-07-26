@@ -7,30 +7,47 @@ from typing import Any
 import stablecoin_strict_v3_validation_hook as base
 
 CANONICAL_SOURCE_SHA = "3631cf01a2a2b91d690b81160e14ba033a298f75"
-CORRECTION = (
+TRANSPORT_CORRECTION = (
     base.ROOT
     / "research"
     / "execution"
     / "stablecoin_strict_validator_hook_20260727"
     / "EXECUTION_CORRECTION_002_TRANSPORT_EXCEPTION_FAIL_CLOSED.json"
 )
+SOURCE_AUTHORITY_CORRECTION = (
+    base.ROOT
+    / "research"
+    / "execution"
+    / "stablecoin_strict_validator_hook_20260727"
+    / "EXECUTION_CORRECTION_003_CANONICAL_SOURCE3631_BEFORE_OUTCOME.json"
+)
 
 
-def _load_correction() -> dict[str, Any]:
-    payload = json.loads(CORRECTION.read_text(encoding="utf-8"))
-    expected = (
-        "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-"
-        "VALIDATOR-TRANSPORT-FAIL-CLOSED-002"
-    )
+def _load_correction(path: Path, expected: str) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("correction_id") != expected:
-        raise AssertionError("transport fail-closed correction identity changed")
+        raise AssertionError(f"correction identity changed: {path}")
     if payload.get("recorded_before_source_decision") is not True:
         raise AssertionError("correction was not frozen before source decision")
     if payload.get("recorded_before_market_outcome") is not True:
         raise AssertionError("correction was not frozen before market outcome")
-    if payload.get("canonical_source_sha") != CANONICAL_SOURCE_SHA:
-        raise AssertionError("canonical source SHA changed")
     return payload
+
+
+def _load_corrections() -> tuple[dict[str, Any], dict[str, Any]]:
+    transport = _load_correction(
+        TRANSPORT_CORRECTION,
+        "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VALIDATOR-TRANSPORT-FAIL-CLOSED-002",
+    )
+    source = _load_correction(
+        SOURCE_AUTHORITY_CORRECTION,
+        "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VALIDATOR-CANONICAL-SOURCE3631-003",
+    )
+    if source.get("source_sha") != CANONICAL_SOURCE_SHA:
+        raise AssertionError("canonical source SHA changed")
+    if source.get("strict_sha") != base.STRICT_SHA:
+        raise AssertionError("strict economic SHA changed")
+    return transport, source
 
 
 _original_run = base.run
@@ -59,7 +76,7 @@ def _run_failclosed(
 
 
 def self_test() -> None:
-    _load_correction()
+    _load_corrections()
     observed: list[tuple[tuple[str, ...], tuple[int, ...]]] = []
 
     def fake_run(
