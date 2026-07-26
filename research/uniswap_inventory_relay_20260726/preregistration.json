@@ -5,12 +5,15 @@
   "objective": "discover a sustainable after-cost ML alpha from completed Uniswap WETH-stable inventory transfer before Bybit ETHUSDT structural delivery, without using pre-2024 purity gates to postpone the first official 2024H1 research interval",
   "information_unit": {
     "pool": "Uniswap V3 USDC/WETH 0.05% 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
-    "snapshot_dataset": "arthurneuron/USDC-WETH-Uniswap-V3-2021-to-2023",
-    "block_time_dataset": "vnegi10/Ethereum_blockchain_parquet",
-    "aggregation": "completed UTC one-hour cumulative-state differences",
+    "primary_source": "SQD public Ethereum Portal finalized canonical Swap logs",
+    "event_topic0": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+    "reference_snapshot_dataset": "arthurneuron/USDC-WETH-Uniswap-V3-2021-to-2023",
+    "reference_snapshot_role": "identity and aggregate-coverage cross-check only",
+    "aggregation": "completed UTC one-hour signed amount0/amount1 inventory transfer",
     "availability_delay_hours": 2,
-    "direction_proxy": "sign of completed pool-price change multiplied by positive USDC volume increment",
-    "known_limitation": "the source snapshot stores cumulative absolute pool volume rather than signed Swap amount0/amount1; unchanged Bybit-native confirmation is mandatory before deployment"
+    "direction": "amount0 positive and amount1 negative is completed WETH purchase pressure; the opposite signs are completed WETH sale pressure",
+    "source_gate": "complete signed stream from 2021-07-01 through 2023-12-31 plus two frozen small 2024H1 continuity probes; the complete 2024H1 stream stays unopened until the pre-2024 system is frozen",
+    "known_limitation": "the public Portal is rate-limited; the client must preserve cursor continuity and immutable event identities, and any incomplete stream retires the source rather than imputing it"
   },
   "model": {
     "family_count": 1,
@@ -85,12 +88,14 @@
   },
   "seals": {
     "source_gate_opens_market_outcomes": false,
+    "source_gate_opens_complete_2024H1_source": false,
     "2024H1_opens_after_complete_pre2024_system_freeze_and_cost_possibility": true,
     "2024H2_2026H1_initially_opened": false,
     "credentials_used": false,
     "orders_submitted": false
   },
   "amendments": [
-    "AMENDMENT-20260726-UNISWAP-IMMEDIATE-2024H1-AFTER-COST-POSSIBILITY-001"
+    "AMENDMENT-20260726-UNISWAP-IMMEDIATE-2024H1-AFTER-COST-POSSIBILITY-001",
+    "AMENDMENT-20260726-UNISWAP-SQD-SIGNED-SWAP-CONTINUITY-002"
   ]
 }
