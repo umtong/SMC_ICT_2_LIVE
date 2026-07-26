@@ -1,0 +1,45 @@
+{
+  "2024_opened": false,
+  "ci": {
+    "code_commit": "b2d9484ebda9c788daca81811f2f22d148dc417c",
+    "conclusion": "success",
+    "project_harness_conclusion": "success",
+    "project_harness_run_id": 30194339115,
+    "workflow_name": "Validate ML liquidity-draw first-passage audit",
+    "workflow_run_id": 30194339123
+  },
+  "claim_id": "CLM-20260726-1712-ML-FIRSTPASS-AUDIT-001",
+  "component_result_id": "COMP-20260726-ML-FIRSTPASS-AUDIT-001",
+  "created_at": "2026-07-26T17:18:34+09:00",
+  "economic_status": "NOT_APPLICABLE_NO_MARKET_DATA",
+  "enforced": [
+    "explicit UPPER_FIRST, LOWER_FIRST, CENSORED and AMBIGUOUS first-passage states",
+    "same-bar two-pool touch is never labeled favorably",
+    "strictly disjoint train, calibration, confirmation and untouched development partitions",
+    "exactly one model family, one hyperparameter specification and one economic decision rule",
+    "recomputed calibrated LONG/SHORT/FLAT cost-adjusted EV",
+    "one global slot and cost monotonicity",
+    "2024-2026 sealed and no orders"
+  ],
+  "fingerprints": {
+    "audit_py_sha256": "d66dd955d5b00d5f4fac2af33017176daf6ef374f2487918979091b9b2bec848",
+    "dependency_fingerprint": "ee8c1ceb5d84183eddfe32908fb4cfebcc99bde1b828db10b89cf5ef1f1d694d",
+    "evaluation_contract_sha256": "be2aff81836d7ddc7b58a7278509b67412bd55e5d08ec1bcd5a1b54edcd18a91",
+    "target_scope_fingerprint": "9b16777180abb1566387aec7a47b89020fa2ec1f88c4c7033b051d3ec46b0ada",
+    "test_audit_py_sha256": "4a34a5a954392a0e5a7e2598612489bd6663d73b50873b9173eb6b95a388789f"
+  },
+  "hard_validity_status": "PASS_SYNTHETIC_AND_CONTRACT",
+  "local_tests": {
+    "pytest_passed": 5,
+    "self_test": "PASS"
+  },
+  "market_data_opened": false,
+  "next_exact_action": "When target Claim CLM-20260726-1703-ML-LIQUIDITY-DRAW-001 publishes manifest.json, prediction_ledger.csv, trade_ledger.csv and cost_ledger.csv, run audit.py validate without modifying the target model or decision rule.",
+  "orders_submitted": false,
+  "ranking_role": "COMPONENT_ONLY_NOT_STRATEGY",
+  "schema_version": 1,
+  "status": "COMPONENT_VALIDATION_PASS",
+  "strategy_pnl_computed": false,
+  "summary": "Reusable audit harness passed project validation, deterministic first-passage/EV self-test and five adversarial tests. It opens no market data and makes no profitability claim. It is ready to consume the active ML liquidity-draw manifest and ledgers.",
+  "target_claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001"
+}
