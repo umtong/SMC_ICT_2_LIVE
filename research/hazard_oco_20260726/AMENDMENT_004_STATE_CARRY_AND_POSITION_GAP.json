@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "status": "FROZEN_AFTER_SOURCE_COVERAGE_FAILURE_AND_BEFORE_ANY_MODEL_FIT_OR_PNL",
+  "created_at": "2026-07-26T10:28:00+09:00",
+  "observed_pre_outcome_evidence": {
+    "workflow_run": 30182709292,
+    "fit_day_rows": {
+      "2023-01-01": 356,
+      "2023-07-01": 0
+    },
+    "failure": "fit labels require both classes",
+    "model_fitted": false,
+    "development_loaded": false,
+    "strategy_or_pnl_computed": false
+  },
+  "root_cause": "One 200ms constant incorrectly served two different roles: carrying an unchanged completed BBO state and bounding the delay to a real executable quote. Bybit quote updates are event driven; the absence of a change message for more than 200ms does not by itself invalidate the last known BBO, while an order fill still requires a fresh actual quote event.",
+  "corrections": {
+    "signal_state_max_age_ms": 1000,
+    "execution_quote_max_delay_ms": 200,
+    "history_continuity": "Every decision still requires a complete 60-second 100ms state path after the 1-second state-age rule. No rolling feature bridges a state age above one second.",
+    "label_continuity": "Every 30-second fit label still requires complete 100ms state coverage under the same state-age rule.",
+    "position_continuity": "After an accepted entry, the first unavailable bid/ask/mid state is a hard boundary. Target, stop and state exits are searched only before that boundary. If the position is not already causally resolved and filled before it, the account path receives terminal NAV zero.",
+    "state_exit_consecutiveness": "The two hazard-decay/re-entry observations must be exactly five seconds apart in wall-clock time; adjacent rows separated by an unavailable decision interval do not qualify."
+  },
+  "unchanged": [
+    "Bybit execution venue and BTCUSDT symbol",
+    "fit and development dates",
+    "hazard label and feature definitions",
+    "model hyperparameters and fit-only thresholds",
+    "162 candidate grid",
+    "entry acknowledgement and trigger-to-fill latency",
+    "100/300ms non-atomic cancellation stress",
+    "target, stop and state-exit logic",
+    "risk, leverage, participation and 12/18/24bp costs",
+    "counterfactual top-winner replay",
+    "selection and 2026 seals",
+    "no credentials and no orders"
+  ],
+  "orders_permitted": false
+}
