@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260726-1031-QUOTE-RESIDUAL-001",
+  "status": "EXECUTION_TIMING_CLARIFICATION_BEFORE_ANY_QUOTE_SOURCE_DOWNLOAD_OR_PNL",
+  "created_at": "2026-07-26T10:34:00+09:00",
+  "supersedes": "preregistration_v1.json",
+  "scientific_scope_changed": false,
+  "source_members_or_strategy_outcomes_observed": false,
+  "clarifications": {
+    "decision_time": "For a 100ms bin indexed i, the completed decision time is the end of bin i.",
+    "entry_latency": "A 100ms latency makes the first eligible quote update one whose local_timestamp is at or after the end of bin i+1; in zero-based bins this is bin i+2 or later.",
+    "entry_quote_timeout_ms": 500,
+    "actual_entry_quote": "Use the first valid quote update after the latency boundary, not the last quote carried to an arbitrary grid point.",
+    "spread_for_grid_and_target_deduction": "Use the actual entry quote log spread. Long target exit is target mid minus half that log spread; short target exit is target mid plus half that log spread.",
+    "quote_intensity_baseline": "For each horizon, sample completed quote-update counts at one-second boundaries and take the prior 900-boundary positive-window median, excluding the current shock window.",
+    "raw_24bp_diagnostic": "Counts prior-model-valid same-direction events whose conservative executable gap from the actual post-latency entry quote is at least 24bp before common-score, queue-support, intensity, underreaction, follower-queue and spread-grid thresholds.",
+    "artifact_boundary": "Raw downloaded gzip files remain runner-temporary. SHA manifests, causal aggregates, event rows, gate output and logs are uploaded."
+  },
+  "all_other_contract_fields": "Unchanged from preregistration_v1.json"
+}
