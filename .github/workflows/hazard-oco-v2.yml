@@ -51,17 +51,31 @@ jobs:
             "pyarrow==18.1.0" \
             "requests==2.32.4" \
             "pytest==8.3.4"
-      - name: Reconstruct, compile and run adversarial tests
+      - name: Reconstruct immutable scientific source
+        run: |
+          set -euo pipefail
+          python research/hazard_oco_20260726/reconstruct_v2.py
+      - name: Compile reconstructed source
         run: |
           set -euo pipefail
           root=research/hazard_oco_20260726
-          python "$root/reconstruct_v2.py"
           python -m py_compile "$root/reconstruct_v2.py" "$root/run_v2.py" "$root/test_run_v2.py"
-          python "$root/run_v2.py" self-test
-          python -m pytest -q "$root/test_run_v2.py"
+      - name: Run deterministic executor self-test
+        run: |
+          set -euo pipefail
+          python research/hazard_oco_20260726/run_v2.py self-test
+      - name: Run adversarial causal and account tests
+        run: |
+          set -euo pipefail
+          python -m pytest -q research/hazard_oco_20260726/test_run_v2.py
+      - name: Validate frozen contracts and repository
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
           python -m json.tool "$root/WORK_CLAIM_V2.json" >/dev/null
           python -m json.tool "$root/SOURCE_REUSE_V2.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$root/preregistration_v2.json" >/dev/null
           python scripts/validate_project.py
       - name: Reuse registered completed-state artifact
@@ -72,7 +86,6 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --name bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216 \
             --dir "$RUNNER_TEMP/bybit_l2"
-          test "$(sha256sum "$RUNNER_TEMP/bybit_l2/output/compact_states/2022-07-01_BTCUSDT_state.parquet" | cut -d' ' -f1)" = "6dd05ab05b9ce81e3cd6ae37f9828a9977c26213de3a3113771ac3a65f5ae2a2" || true
           cp "$RUNNER_TEMP/bybit_l2/output/SOURCE_MANIFEST.json" research_runs/hazard_oco_v2/input/REUSED_SOURCE_MANIFEST.json
       - name: Acquire only registered raw trigger streams
         run: |
@@ -86,7 +99,7 @@ jobs:
             https://datasets.tardis.dev/v1/bybit/trades/2023/07/01/BTCUSDT.csv.gz \
             -o "$raw/2023-07-01_BTCUSDT_trades.csv.gz"
           test "$(sha256sum "$raw/2022-07-01_BTCUSDT_trades.csv.gz" | cut -d' ' -f1)" = "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
-          # The development file is acquired from the already registered public source but the runner cannot parse or hash it unless the fit gate passes.
+          # The development file is acquired from the already registered public source, but the runner cannot hash or parse it unless the fit gate passes.
       - name: Run frozen one-model fatal screen
         run: |
           set -euo pipefail
@@ -129,6 +142,7 @@ jobs:
             "$root/SOURCE_REUSE_V2.json" \
             "$root/SCHEMA_PROBE_CONTRACT.json" \
             "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" \
             "$root/preregistration_v2.json" \
             "$root/v2_bundle_manifest.json" \
             "$root/reconstruct_v2.py" \
@@ -138,6 +152,7 @@ jobs:
             > research_runs/hazard_oco_v2/input/INPUT_SHA256SUMS.txt
           cp "$root/preregistration_v2.json" research_runs/hazard_oco_v2/input/
           cp "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" research_runs/hazard_oco_v2/input/
+          cp "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" research_runs/hazard_oco_v2/input/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
