@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "dataset_family_id": "DSF-BYBIT-LINEAR-4ASSET-CANONICAL-HALFYEAR-V1",
+  "claim_id": "CLM-20260727-CANONICAL-HALFYEAR-DATA-001",
+  "venue": "Bybit",
+  "product": "USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "timezone": "UTC",
+  "evaluation_range": {
+    "start": "2024-01-01T00:00:00Z",
+    "end_exclusive": "2026-07-01T00:00:00Z"
+  },
+  "logical_segments": {
+    "PRE_2024": {
+      "end_exclusive": "2024-01-01T00:00:00Z",
+      "physical_shards": ["PRE_2024_2020", "PRE_2024_2021", "PRE_2024_2022", "PRE_2024_2023"],
+      "purpose": "training, calibration and frozen system preparation only"
+    },
+    "2024_H1": {"start": "2024-01-01T00:00:00Z", "end_exclusive": "2024-07-01T00:00:00Z"},
+    "2024_H2": {"start": "2024-07-01T00:00:00Z", "end_exclusive": "2025-01-01T00:00:00Z"},
+    "2025_H1": {"start": "2025-01-01T00:00:00Z", "end_exclusive": "2025-07-01T00:00:00Z"},
+    "2025_H2": {"start": "2025-07-01T00:00:00Z", "end_exclusive": "2026-01-01T00:00:00Z"},
+    "2026_H1": {"start": "2026-01-01T00:00:00Z", "end_exclusive": "2026-07-01T00:00:00Z"}
+  },
+  "physical_segments": {
+    "PRE_2024_2020": {"start": "2020-01-01T00:00:00Z", "end_exclusive": "2021-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
+    "PRE_2024_2021": {"start": "2021-01-01T00:00:00Z", "end_exclusive": "2022-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
+    "PRE_2024_2022": {"start": "2022-01-01T00:00:00Z", "end_exclusive": "2023-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
+    "PRE_2024_2023": {"start": "2023-01-01T00:00:00Z", "end_exclusive": "2024-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
+    "2024_H1": {"start": "2024-01-01T00:00:00Z", "end_exclusive": "2024-07-01T00:00:00Z", "logical_segment": "2024_H1"},
+    "2024_H2": {"start": "2024-07-01T00:00:00Z", "end_exclusive": "2025-01-01T00:00:00Z", "logical_segment": "2024_H2"},
+    "2025_H1": {"start": "2025-01-01T00:00:00Z", "end_exclusive": "2025-07-01T00:00:00Z", "logical_segment": "2025_H1"},
+    "2025_H2": {"start": "2025-07-01T00:00:00Z", "end_exclusive": "2026-01-01T00:00:00Z", "logical_segment": "2025_H2"},
+    "2026_H1": {"start": "2026-01-01T00:00:00Z", "end_exclusive": "2026-07-01T00:00:00Z", "logical_segment": "2026_H1"}
+  },
+  "core_streams": {
+    "trade_price_1m": {"endpoint": "/v5/market/kline", "interval": "1m", "required_for_account_replay": true},
+    "mark_price_1m": {"endpoint": "/v5/market/mark-price-kline", "interval": "1m", "required_for_account_replay": true},
+    "index_price_1m": {"endpoint": "/v5/market/index-price-kline", "interval": "1m", "required_for_account_replay": false},
+    "premium_index_1m": {"endpoint": "/v5/market/premium-index-price-kline", "interval": "1m", "required_for_account_replay": false},
+    "open_interest_5m": {"endpoint": "/v5/market/open-interest", "interval": "5m", "required_for_account_replay": false},
+    "account_ratio_5m": {"endpoint": "/v5/market/account-ratio", "interval": "5m", "required_for_account_replay": false},
+    "funding_events": {"endpoint": "/v5/market/funding/history", "interval": "event", "required_for_account_replay": true}
+  },
+  "precomputed_trade_bars": ["1m", "5m", "15m", "1h", "4h", "1d"],
+  "on_demand_bars": "Any coarser UTC-anchored bar may be deterministically derived from canonical 1m rows; incomplete source windows remain incomplete and are never forward-filled.",
+  "information_availability": {
+    "completed_bar": "usable at start_time + interval",
+    "funding": "usable at fundingRateTimestamp",
+    "new_order_activation_delay_ms": 500,
+    "future_rows": "forbidden",
+    "missing_data": "preserve explicit gaps; no filling, interpolation or compressed time"
+  },
+  "storage": {
+    "github": "code, contract, small manifests, hashes and validation only",
+    "google_drive": "immutable half-year artifacts and large market data",
+    "drive_root_relative": "02_DATA/70_MARKET_AND_REFERENCE_DATA/00_CANONICAL_BYBIT_USDT_LINEAR"
+  },
+  "event_tape_lane": {
+    "source": "https://public.bybit.com/trading/<SYMBOL>/<SYMBOL><YYYY-MM-DD>.csv.gz",
+    "status": "separate large-data lane",
+    "purpose": "sub-minute 1s/5s/15s bars and execution-sensitive candidates",
+    "rule": "do not make every strategy reacquire it; preserve source daily gzip and deterministic aggregates once built"
+  }
+}
