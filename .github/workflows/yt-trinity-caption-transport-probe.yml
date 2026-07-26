@@ -9,7 +9,7 @@ on:
       - .github/workflows/yt-trinity-caption-transport-probe.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: yt-trinity-caption-transport-probe-${{ github.ref }}
@@ -25,6 +25,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -43,6 +46,7 @@ jobs:
           mkdir -p artifact
           python - <<'PY'
           import json
+          import os
           import subprocess
           import sys
           from pathlib import Path
@@ -79,9 +83,15 @@ jobs:
                       extractor_args,
                       f"https://www.youtube.com/watch?v={video_id}",
                   ]
-                  completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
-                  stdout = completed.stdout.strip()
-                  stderr = completed.stderr.strip()
+                  try:
+                      completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
+                      stdout = completed.stdout.strip()
+                      stderr = completed.stderr.strip()
+                      returncode = completed.returncode
+                  except subprocess.TimeoutExpired as exc:
+                      stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+                      stderr = ((exc.stderr or "") if isinstance(exc.stderr, str) else "") + "\nTIMEOUT"
+                      returncode = 124
                   payload = None
                   if stdout:
                       try:
@@ -94,7 +104,7 @@ jobs:
                       "channel": channel,
                       "video_id": video_id,
                       "profile": profile,
-                      "returncode": completed.returncode,
+                      "returncode": returncode,
                       "title": (payload or {}).get("title"),
                       "subtitles": sorted(subtitles),
                       "automatic_captions": sorted(automatic),
@@ -102,12 +112,17 @@ jobs:
                       "stderr_tail": stderr[-3000:],
                       "stdout_prefix": stdout[:300],
                   })
-          Path("artifact/probe.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           successful = [row for row in rows if row["track_count"] > 0]
-          Path("artifact/summary.json").write_text(
-              json.dumps({"successful_profiles": successful, "success_count": len(successful)}, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
-          )
+          result = {
+              "schema_version": 1,
+              "runner_os": os.environ["RUNNER_OS"],
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "success_count": len(successful),
+              "successful_profiles": successful,
+              "rows": rows,
+          }
+          Path("artifact/probe.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print(json.dumps({"success_count": len(successful), "successful_profiles": successful}, ensure_ascii=False, indent=2))
           PY
       - uses: actions/upload-artifact@v4
@@ -117,3 +132,27 @@ jobs:
           path: artifact
           if-no-files-found: error
           retention-days: 14
+      - name: Persist probe result on work branch
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -f artifact/probe.json ]]; then
+            exit 0
+          fi
+          target="research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_${RUNNER_OS}.json"
+          cp artifact/probe.json "$target"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record ${RUNNER_OS} caption transport probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
