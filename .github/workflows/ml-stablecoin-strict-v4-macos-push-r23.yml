@@ -1,0 +1,167 @@
+name: Stablecoin strict V4 macOS push authority
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'research/triggers/stablecoin_strict_v4_macos/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: stablecoin-strict-v4-macos-push-authority
+  cancel-in-progress: false
+
+jobs:
+  decision:
+    runs-on: macos-14
+    timeout-minutes: 360
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      VECLIB_MAXIMUM_THREADS: '2'
+      EXECUTION_SHA: b6aae3e645630b88951678b8eff6856ddb95ab19
+      RUN_ROOT: research_runs/stablecoin_strict_v4_validator_hook_20260727
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Materialize exact strict V4 execution helper
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$EXECUTION_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$EXECUTION_SHA"
+          rm -rf scripts/stablecoin_strict_v4_validation_hook.py \
+            research/execution/stablecoin_strict_v4_validator_hook_20260727
+          git archive "$EXECUTION_SHA" \
+            scripts/stablecoin_strict_v4_validation_hook.py \
+            research/execution/stablecoin_strict_v4_validator_hook_20260727 \
+            | tar -x
+          python -m json.tool \
+            research/execution/stablecoin_strict_v4_validator_hook_20260727/EXECUTION_CORRECTION.json \
+            >/dev/null
+
+      - name: Run corrected source and strict V4 economic decision
+        run: |
+          set -euo pipefail
+          python scripts/stablecoin_strict_v4_validation_hook.py \
+            2>&1 | tee "$RUNNER_TEMP/STABLECOIN_STRICT_V4_MACOS.log"
+
+      - name: Freeze execution log and failure evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUN_ROOT"
+          cp "$RUNNER_TEMP/STABLECOIN_STRICT_V4_MACOS.log" "$RUN_ROOT/" 2>/dev/null || true
+          printf '%s\n' "$EXECUTION_SHA" > "$RUN_ROOT/PINNED_EXECUTION_SHA.txt"
+          if [ ! -f "$RUN_ROOT/DECISION.json" ]; then
+            python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['RUN_ROOT'])
+          payload={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001',
+              'source_status':'NO_DECISION_FILE',
+              'economic_status':'NOT_OPENED',
+              'next_stage':'REPAIR_EXECUTION_OR_TRANSPORT_ONLY',
+              'execution_sha':os.environ['EXECUTION_SHA'],
+              'orders_submitted':False,
+          }
+          (root/'EXECUTION_FAILURE.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          PY
+          fi
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ['RUN_ROOT'])
+          rows=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
+
+      - name: Print compact decision
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['RUN_ROOT'])
+          path=root/'DECISION.json'
+          if not path.exists(): path=root/'EXECUTION_FAILURE.json'
+          x=json.loads(path.read_text())
+          assert x['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert x.get('orders_submitted') is False
+          print('STABLECOIN_STRICT_V4_PUSH_DECISION',json.dumps(x,sort_keys=True,default=str))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-v4-macos-${{ github.run_id }}
+          path: ${{ env.RUN_ROOT }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Publish immutable result branch and pull request
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['RUN_ROOT'])
+          path=root/'DECISION.json'
+          if not path.exists(): path=root/'EXECUTION_FAILURE.json'
+          x=json.loads(path.read_text())
+          source=x.get('source_status','UNKNOWN')
+          economic=x.get('economic_status','NOT_OPENED')
+          title=f"Record strict stablecoin V4 decision: {source} / {economic}"
+          body=(
+              '## Decision-ready strict V4 execution\n\n'
+              f"- claim: `{x.get('claim_id')}`\n"
+              f"- source SHA: `{x.get('source_sha')}`\n"
+              f"- strict SHA: `{x.get('strict_sha')}`\n"
+              f"- V4 authority: `{x.get('v4_authority')}`\n"
+              f"- source status: **{source}**\n"
+              f"- source events/months/tokens: `{x.get('source_event_count')}` / `{x.get('source_month_count')}` / `{x.get('source_tokens')}`\n"
+              f"- economic status: **{economic}**\n"
+              f"- next stage: **{x.get('next_stage')}**\n"
+              f"- orders submitted: `{x.get('orders_submitted',False)}`\n\n"
+              'This PR contains the immutable source/economic outputs, decision, execution log and SHA-256 manifest. '
+              'A pre-2024 survivor proceeds immediately to official 2024H1; otherwise the exact information unit changes without adjacent tuning.\n'
+          )
+          (root/'RESULT_PR_TITLE.txt').write_text(title+'\n',encoding='utf-8')
+          (root/'RESULT_PR_BODY.md').write_text(body,encoding='utf-8')
+          PY
+          branch="automation/stablecoin-strict-v4-${GITHUB_RUN_ID}"
+          git config user.name github-actions
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git checkout -b "$branch"
+          git add "$RUN_ROOT"
+          git commit -m "Record strict stablecoin V4 run ${GITHUB_RUN_ID}"
+          git push origin "$branch"
+          title=$(head -n 1 "$RUN_ROOT/RESULT_PR_TITLE.txt")
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "$title" \
+            --body-file "$RUN_ROOT/RESULT_PR_BODY.md"
