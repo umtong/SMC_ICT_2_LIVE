@@ -1,0 +1,37 @@
+{
+  "amendment_id": "AMEND-20260726-ML-HL-LIQUIDATION-SOURCE-GATE-001",
+  "changes": {
+    "account_value_validation": "finite numeric; may be negative because liquidation equity can be below zero",
+    "frozen_hours_utc": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "minimum_explicit_liquidations": 20,
+    "minimum_files_per_date": 5,
+    "minimum_nonzero_dates": 4,
+    "minimum_parsed_files": 33,
+    "minimum_target_coins": 2,
+    "minimum_target_position_records": 10,
+    "requested_files": 36
+  },
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "hyperliquid_event_file_opened_before_amendment": false,
+  "market_outcome_opened_before_amendment": false,
+  "orders_submitted": false,
+  "reason": "The original 144-file source gate would download several gigabytes before answering the transport/schema question. Before any Hyperliquid event file, market price, label, model metric, trade or PnL was opened, the probe was reduced to six evenly spaced UTC hours on each of the same six frozen calendar-rule dates.",
+  "recorded_at": "2026-07-26T21:13:00+09:00",
+  "schema_version": 1,
+  "status": "PRE_OUTCOME_SOURCE_ONLY",
+  "unchanged": [
+    "same six dates",
+    "same immutable-revision rule",
+    "same explicit LedgerUpdate liquidation information unit",
+    "same no-market-outcome source boundary",
+    "same conditional historical/model strategy contract",
+    "same symbols, model, features, entry, structural exits, costs, risk and no elapsed-time liquidation"
+  ]
+}
