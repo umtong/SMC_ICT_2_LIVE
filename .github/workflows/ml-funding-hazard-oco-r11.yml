@@ -1,0 +1,127 @@
+name: ML funding-settlement hazard OCO screen
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-funding-hazard-oco-001
+    paths:
+      - "research/ml_funding_hazard_oco_20260726/**"
+      - ".github/workflows/ml-funding-hazard-oco-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ml_funding_hazard_oco_20260726/**"
+      - "research/results/RES-20260726-ML-FUNDING-HAZARD-OCO-001.json"
+      - ".github/workflows/ml-funding-hazard-oco-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-funding-hazard-oco-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: research/ml_funding_hazard_oco_20260726/requirements-lock.txt
+
+      - name: Install frozen environment
+        run: |
+          python -m pip install --disable-pip-version-check -r research/ml_funding_hazard_oco_20260726/requirements-lock.txt
+
+      - name: Compile and test causal contracts
+        run: |
+          set -euo pipefail
+          root=research/ml_funding_hazard_oco_20260726
+          python -m py_compile "$root/run.py" "$root/test_run.py"
+          python -m pytest -q "$root/test_run.py"
+          rm -rf research_runs/ml_funding_hazard_oco/self_test
+          python "$root/run.py" \
+            --self-test \
+            --output research_runs/ml_funding_hazard_oco/self_test \
+            --cache "$RUNNER_TEMP/ml-funding-hazard-oco-cache"
+          (cd research_runs/ml_funding_hazard_oco/self_test && sha256sum --check SHA256SUMS.txt)
+
+      - name: Run frozen pre-2024 screen
+        run: |
+          set -euo pipefail
+          root=research/ml_funding_hazard_oco_20260726
+          rm -rf research_runs/ml_funding_hazard_oco/observed
+          python "$root/run.py" \
+            --output research_runs/ml_funding_hazard_oco/observed \
+            --cache "$RUNNER_TEMP/ml-funding-hazard-oco-cache" \
+            2>&1 | tee research_runs/ml_funding_hazard_oco/RUN.log
+
+      - name: Verify result safety and integrity
+        run: |
+          set -euo pipefail
+          (cd research_runs/ml_funding_hazard_oco/observed && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("research_runs/ml_funding_hazard_oco/observed/RESULT.json")
+          result = json.loads(path.read_text())
+          assert result["status"] in {"DATA_UNAVAILABLE", "TESTED_BELOW_GATE", "PROMISING_PRE2024_SURVIVOR"}
+          assert result["2024_opened"] is False
+          assert result["2025_or_2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["model_search_performed"] is False
+          assert result["payoff_search_performed"] is False
+          assert result["risk_search_performed"] is False
+          assert result["leverage_search_performed"] is False
+          for section in ("confirmation_metrics", "development_metrics"):
+              if section in result:
+                  m = result[section]
+                  assert m["12"]["total_return"] >= m["18"]["total_return"] >= m["24"]["total_return"]
+          print(json.dumps({
+              "status": result["status"],
+              "confirmation_gate_pass": result.get("confirmation_gate_pass"),
+              "development_opened": result.get("development_opened"),
+              "development_gate_pass": result.get("development_gate_pass"),
+              "confirmation_metrics_18": result.get("confirmation_metrics", {}).get("18"),
+              "development_metrics_18": result.get("development_metrics", {}).get("18"),
+              "error": result.get("error"),
+          }, sort_keys=True, default=str))
+          PY
+          python scripts/validate_project.py
+
+      - name: Record immutable input hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          sha256sum \
+            research/ml_funding_hazard_oco_20260726/README.md \
+            research/ml_funding_hazard_oco_20260726/preregistration.json \
+            research/ml_funding_hazard_oco_20260726/requirements-lock.txt \
+            research/ml_funding_hazard_oco_20260726/run.py \
+            research/ml_funding_hazard_oco_20260726/run_impl.py.gz.b64 \
+            research/ml_funding_hazard_oco_20260726/test_run.py \
+            .github/workflows/ml-funding-hazard-oco-r11.yml \
+            > research_runs/ml_funding_hazard_oco/INPUT_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-funding-hazard-oco-${{ github.sha }}
+          path: research_runs/ml_funding_hazard_oco
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
