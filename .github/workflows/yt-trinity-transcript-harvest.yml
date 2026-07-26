@@ -8,6 +8,9 @@ on:
     paths:
       - research/yt_trinity_ml/channels.json
       - research/yt_trinity_ml/harvest_transcripts.py
+      - research/yt_trinity_ml/merge_corpora.py
+      - research/yt_trinity_ml/apply_parallel_harvester_upgrade.py
+      - research/yt_trinity_ml/upgrade_chunks/**
       - research/yt_trinity_ml/build_concept_index.py
       - research/yt_trinity_ml/extract_rule_ontology.py
       - research/yt_trinity_ml/tests/test_harvest_transcripts.py
@@ -25,35 +28,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  harvest:
+  prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 10
+    outputs:
+      materialized_change: ${{ steps.materialize.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
+      - id: materialize
+        name: Materialize checkpointed parallel harvester
+        run: |
+          python research/yt_trinity_ml/apply_parallel_harvester_upgrade.py
+          if git diff --quiet -- \
+            research/yt_trinity_ml/harvest_transcripts.py \
+            research/yt_trinity_ml/merge_corpora.py; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research/yt_trinity_ml/harvest_transcripts.py \
+            research/yt_trinity_ml/merge_corpora.py
+          git commit -m "Materialize parallel checkpointed transcript harvester"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
+  validate:
+    needs: prepare
+    if: needs.prepare.outputs.materialized_change != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-
-      - name: Install current YouTube transports and test dependency
+      - name: Install current YouTube transports and tests
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade \
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade \
             yt-dlp \
             youtube-transcript-api \
             requests \
             scrapetube \
             pytest
           python -m pip freeze | sort > dependency-freeze.txt
-
-      - name: Compile and run deterministic parser tests
+      - name: Compile and test corpus machinery
         run: |
           python -m py_compile \
             research/yt_trinity_ml/harvest_transcripts.py \
+            research/yt_trinity_ml/merge_corpora.py \
             research/yt_trinity_ml/build_concept_index.py \
             research/yt_trinity_ml/extract_rule_ontology.py
           python research/yt_trinity_ml/harvest_transcripts.py --self-test
@@ -61,20 +92,111 @@ jobs:
           python research/yt_trinity_ml/extract_rule_ontology.py --self-test
           pytest -q research/yt_trinity_ml/tests/test_harvest_transcripts.py
           python -m json.tool research/yt_trinity_ml/channels.json >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-dependencies-${{ github.sha }}
+          path: dependency-freeze.txt
+          retention-days: 30
 
-      - name: Harvest every public uploads-playlist item and available caption
+  harvest:
+    needs: [prepare, validate]
+    if: needs.prepare.outputs.materialized_change != 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        channel: [swipalnam, chartbro, indicator_sensei]
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install transcript transports
         run: |
-          mkdir -p artifact/yt-trinity-corpus
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade \
+            yt-dlp \
+            youtube-transcript-api \
+            requests \
+            scrapetube
+      - name: Harvest complete public channel inventory and captions
+        run: |
+          out="artifact/channel/${{ matrix.channel }}"
+          mkdir -p "$out"
           python research/yt_trinity_ml/harvest_transcripts.py \
             --config research/yt_trinity_ml/channels.json \
-            --output artifact/yt-trinity-corpus \
-            --retries 3 \
-            --sleep-seconds 0.35 \
-            | tee artifact/HARVEST_STDOUT.json
-
-      - name: Build timestamp-addressable concept and rule evidence
+            --channel "${{ matrix.channel }}" \
+            --output "$out" \
+            --retries 2 \
+            --workers 10 \
+            --method-timeout-seconds 90 \
+            --sleep-seconds 0.20 \
+            | tee "$out/HARVEST_STDOUT.json"
+      - name: Finalize channel hashes
         if: always()
         run: |
+          out="artifact/channel/${{ matrix.channel }}"
+          if [[ -d "$out" ]]; then
+            (
+              cd "$out"
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - name: Upload checkpointed channel corpus
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-channel-${{ matrix.channel }}-${{ github.sha }}
+          path: artifact/channel/${{ matrix.channel }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, validate, harvest]
+    if: always() && needs.prepare.outputs.materialized_change != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download all channel checkpoints
+        uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-channel-*-${{ github.sha }}
+          path: artifact/downloads
+          merge-multiple: false
+      - name: Normalize channel artifact layout
+        run: |
+          mkdir -p artifact/channel-inputs
+          for slug in swipalnam chartbro indicator_sensei; do
+            src="artifact/downloads/yt-trinity-channel-${slug}-${GITHUB_SHA}"
+            dst="artifact/channel-inputs/${slug}"
+            mkdir -p "$dst"
+            if [[ -d "$src" ]]; then
+              cp -a "$src/." "$dst/"
+            fi
+          done
+      - name: Merge corpus and build timestamp-addressable evidence
+        run: |
+          mkdir -p artifact/yt-trinity-corpus
+          python research/yt_trinity_ml/merge_corpora.py \
+            --inputs-root artifact/channel-inputs \
+            --output artifact/yt-trinity-corpus \
+            --config research/yt_trinity_ml/channels.json \
+            | tee artifact/MERGE_STDOUT.json
           if [[ -f artifact/yt-trinity-corpus/videos.jsonl ]]; then
             python research/yt_trinity_ml/build_concept_index.py \
               --corpus artifact/yt-trinity-corpus \
@@ -83,17 +205,13 @@ jobs:
               --corpus artifact/yt-trinity-corpus \
               | tee artifact/RULE_ONTOLOGY_STDOUT.json
           fi
-          cp dependency-freeze.txt artifact/yt-trinity-corpus/DEPENDENCIES.txt || true
-          if [[ -d artifact/yt-trinity-corpus ]]; then
-            (
-              cd artifact/yt-trinity-corpus
-              find . -type f ! -name SHA256SUMS -print0 \
-                | LC_ALL=C sort -z \
-                | xargs -0 sha256sum > SHA256SUMS
-            )
-          fi
-
-      - name: Publish summary
+          (
+            cd artifact/yt-trinity-corpus
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+      - name: Publish corpus manifest
         if: always()
         run: |
           if [[ -f artifact/yt-trinity-corpus/manifest.json ]]; then
@@ -104,8 +222,7 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Upload immutable corpus for Drive ingestion
+      - name: Upload immutable merged corpus
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -114,8 +231,7 @@ jobs:
           if-no-files-found: error
           compression-level: 6
           retention-days: 90
-
-      - name: Write machine-readable corpus run pointer
+      - name: Write recoverable corpus run pointer
         if: always()
         env:
           POINTER_PATH: research/yt_trinity_ml/CORPUS_RUN_POINTER.json
@@ -134,21 +250,20 @@ jobs:
               manifest_sha256 = hashlib.sha256(raw).hexdigest()
               manifest = json.loads(raw)
           payload = {
-              'schema_version': 1,
+              'schema_version': 2,
               'workflow': 'YT Trinity public transcript corpus',
               'run_id': int(os.environ['GITHUB_RUN_ID']),
               'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
               'source_sha': os.environ['GITHUB_SHA'],
               'branch': os.environ['GITHUB_REF_NAME'],
+              'artifact_name': f"yt-trinity-corpus-{os.environ['GITHUB_SHA']}",
               'manifest_sha256': manifest_sha256,
               'manifest': manifest,
           }
           path = Path(os.environ['POINTER_PATH'])
           path.parent.mkdir(parents=True, exist_ok=True)
           path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
-          print(path)
           PY
-
       - name: Persist corpus run pointer without retriggering harvest
         if: always()
         run: |
@@ -161,17 +276,16 @@ jobs:
           git commit -m "Record YT Trinity corpus run ${GITHUB_RUN_ID}"
           TARGET_BRANCH="${GITHUB_REF_NAME}"
           for attempt in 1 2 3; do
-            git pull --rebase origin "${TARGET_BRANCH}"
+            git pull --rebase origin "$TARGET_BRANCH"
             if git push origin "HEAD:${TARGET_BRANCH}"; then
               break
             fi
-            if [[ "${attempt}" == "3" ]]; then
+            if [[ "$attempt" == "3" ]]; then
               exit 1
             fi
             sleep $((attempt * 2))
           done
-
-      - name: Enforce complete inventory and resolved caption attempts
+      - name: Enforce complete inventory and resolved captions
         if: always()
         run: |
           python - <<'PY'
@@ -180,12 +294,12 @@ jobs:
 
           path = Path('artifact/yt-trinity-corpus/manifest.json')
           if not path.exists():
-              raise SystemExit('manifest missing')
+              raise SystemExit('merged manifest missing')
           manifest = json.loads(path.read_text(encoding='utf-8'))
           if not manifest.get('inventory_complete'):
               raise SystemExit('public uploads-playlist inventory is incomplete')
           if not manifest.get('caption_attempt_complete'):
-              raise SystemExit('one or more listed videos has an unresolved caption fetch')
+              raise SystemExit('one or more listed videos remains unresolved')
           if manifest.get('decision') != 'PASS_COMPLETE':
               raise SystemExit(f"unexpected decision: {manifest.get('decision')}")
           if not (path.parent / 'rule_ontology_candidates.json').exists():
