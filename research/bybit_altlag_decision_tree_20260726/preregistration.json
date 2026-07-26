@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1130-ALTLAG-DECISIONTREE-001",
+  "created_at": "2026-07-26T11:30:00+09:00",
+  "base_revision": 11,
+  "status": "PREREGISTERED_BEFORE_ANY_DECEMBER_ARCHIVE_BYTES_OR_CONTENT",
+  "reused_dependency": {
+    "result_id": "RES-20260726-ALTLAG-OPPORTUNITY-001",
+    "dependency_fingerprint": "2d6917f2973bb8fb33e52bd64ceeb8c97e7dbb3c4ec366910415b20aa0834899",
+    "rule": "Reuse the registered hard-valid source hashes and base 100ms event formula; do not rerun its discovery dates."
+  },
+  "stage_1_underreaction_replication": {
+    "dates": ["2023-09-17", "2023-10-15", "2023-11-19"],
+    "symbols": ["BTCUSDT", "SOLUSDT", "XRPUSDT"],
+    "attention_regime": {
+      "prior_30m_follower_to_btc_actual_trade_count_ratio_min": 1.0,
+      "prior_15m_follower_to_btc_realized_volatility_ratio_min": 1.5
+    },
+    "base_event": {
+      "horizon_seconds": [1, 2, 5],
+      "btc_shock_z_min": 3.0,
+      "btc_direction_aligned_aggressive_imbalance_min": 0.5,
+      "btc_activity_ratio_min": 2.0,
+      "follower_underreaction_ratio_max": 0.75,
+      "follower_direction_aligned_aggressive_imbalance_max": 0.5,
+      "residual_gap_log_return_floors": [0.0012, 0.0018, 0.0024],
+      "rearm": "BTC direction-signed displacement <=25% of detected shock for ten consecutive 100ms states."
+    },
+    "gate": {
+      "minimum_unique_12bp_events_total": 15,
+      "minimum_unique_24bp_events_total": 5,
+      "minimum_dates_with_at_least_3_12bp_events": 2,
+      "minimum_follower_date_cells_with_at_least_3_12bp_events": 2,
+      "maximum_single_date_share_of_12bp_events": 0.7
+    }
+  },
+  "conditional_stage_2": {
+    "dates": ["2023-12-03", "2023-12-10", "2023-12-17", "2023-12-24"],
+    "if_stage_1_passes": {
+      "mode": "UNDERREACTION_PNL_CONFIRMATION",
+      "signal": "Same attention regime and 12bp-or-larger underreaction residual formula; each economic impulse may create one candidate per follower/horizon before the global slot.",
+      "candidate_priority": "At each decision time choose the largest completed direction-aligned residual gap; ties BTC shock z then follower symbol then shorter horizon.",
+      "entry": [
+        "First follower public trade at or after decision time plus 100ms.",
+        "Same frozen signal replay with first follower public trade at or after decision time plus 300ms as latency stress."
+      ],
+      "position": "Trade in BTC shock direction, at most one SOLUSDT or XRPUSDT position globally.",
+      "exit": [
+        "Gap closure: direction-aligned residual gap <=25% of entry gap for ten consecutive 100ms states.",
+        "Leader invalidation: BTC direction-signed displacement from shock start <=0 for ten consecutive 100ms states.",
+        "Adverse follower invalidation: follower moves against entry by at least 50% of entry gap."
+      ],
+      "no_elapsed_time_exit": true,
+      "unvalued_rule": "Missing entry, missing state exit, stale mark or any funding boundary crossing invalidates the path and fails the gate; funding is not approximated.",
+      "roundtrip_cost_bps": [12, 18, 24],
+      "gate": {
+        "minimum_global_slot_trades": 20,
+        "positive_mean_and_median_at_24bp_for_100ms_and_300ms": true,
+        "positive_top_10_percent_removed_mean_at_12bp_for_100ms_and_300ms": true,
+        "minimum_positive_dates_at_12bp": 3,
+        "maximum_single_trade_share_of_positive_gross_pnl": 0.4,
+        "maximum_unvalued_or_funding_crossing_paths": 0
+      }
+    },
+    "if_stage_1_fails": {
+      "mode": "OVERREACTION_OPPORTUNITY",
+      "attention_regime": "Same fixed prior trade-count and relative-volatility regime.",
+      "base_btc_shock": "Same completed 100ms BTC price-flow shock and prior-only beta/scale/activity formula.",
+      "overreaction": {
+        "direction_aligned_follower_residual_gap_log_return_floors": [0.0012, 0.0018, 0.0024],
+        "follower_to_expected_move_ratio_min": 1.25,
+        "follower_direction_aligned_aggressive_imbalance_min": 0.5,
+        "trade_direction": "Opposite the BTC shock direction only in a later separately frozen PnL study."
+      },
+      "opportunity_gate": {
+        "minimum_unique_12bp_events_total": 15,
+        "minimum_unique_24bp_events_total": 5,
+        "minimum_dates_with_at_least_3_12bp_events": 3,
+        "minimum_follower_date_cells_with_at_least_3_12bp_events": 3,
+        "maximum_single_date_share_of_12bp_events": 0.6
+      },
+      "pnl_computed": false
+    }
+  },
+  "information_contract": {
+    "grid_ms": 100,
+    "decision": "Only after the entire leader and contemporaneous follower horizon is complete.",
+    "mark_staleness_ms_max": 2000,
+    "all_rolling_features_prior_to_shock_start": true,
+    "no_imputation": true,
+    "source_url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz"
+  },
+  "promotion_boundary": {
+    "2024_2026_opened": false,
+    "risk_or_leverage_optimization": false,
+    "orders_submitted": false,
+    "live_permission": false
+  }
+}
