@@ -1,0 +1,90 @@
+name: ML option-surface pre-2024 fatal screen
+
+on:
+  push:
+    branches: [agent/r11-ml-option-surface-shape-001]
+    paths:
+      - 'research/ml_option_surface_shape_20260726/run_py.gz.b64.part*'
+      - 'research/ml_option_surface_shape_20260726/reconstruct.py'
+      - 'research/ml_option_surface_shape_20260726/test_run_pre2024_option_surface.py'
+      - 'research/ml_option_surface_shape_20260726/PREREGISTRATION.md'
+      - '.github/workflows/ml-option-surface-pre2024-r11.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_option_surface_shape_20260726/run_py.gz.b64.part*'
+      - 'research/ml_option_surface_shape_20260726/reconstruct.py'
+      - 'research/ml_option_surface_shape_20260726/test_run_pre2024_option_surface.py'
+      - 'research/ml_option_surface_shape_20260726/PREREGISTRATION.md'
+      - '.github/workflows/ml-option-surface-pre2024-r11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pre-2024-fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed research environment
+        run: |
+          python -m pip install \
+            'requests==2.32.3' \
+            'numpy==2.1.3' \
+            'scikit-learn==1.5.2'
+      - name: Reconstruct and verify frozen runner
+        run: |
+          set -euo pipefail
+          python research/ml_option_surface_shape_20260726/reconstruct.py
+          sha256sum research/ml_option_surface_shape_20260726/run_pre2024_option_surface.py
+          test "$(sha256sum research/ml_option_surface_shape_20260726/run_pre2024_option_surface.py | cut -d' ' -f1)" = \
+            "823a0d20ebf920c45d4dfbcc07892556eaaa39fb83be8f5fc0765c2254d8a186"
+      - name: Compile and run causal unit tests
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            research/ml_option_surface_shape_20260726/run_pre2024_option_surface.py \
+            research/ml_option_surface_shape_20260726/test_run_pre2024_option_surface.py
+          python -m unittest \
+            research/ml_option_surface_shape_20260726/test_run_pre2024_option_surface.py \
+            -v
+      - name: Run frozen chronological public-data screen
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ml-option-surface-pre2024 /tmp/ml-option-surface-cache
+          python research/ml_option_surface_shape_20260726/run_pre2024_option_surface.py \
+            --output /tmp/ml-option-surface-pre2024 \
+            --cache /tmp/ml-option-surface-cache \
+            --max-rows 150000 \
+            --source-workers 8 \
+            --price-workers 8 \
+            | tee /tmp/ml-option-surface-pre2024/run.log
+      - name: Freeze implementation and evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ml-option-surface-pre2024
+          cp research/ml_option_surface_shape_20260726/run_pre2024_option_surface.py \
+            /tmp/ml-option-surface-pre2024/ 2>/dev/null || true
+          cp research/ml_option_surface_shape_20260726/test_run_pre2024_option_surface.py \
+            /tmp/ml-option-surface-pre2024/ 2>/dev/null || true
+          cp research/ml_option_surface_shape_20260726/PREREGISTRATION.md \
+            /tmp/ml-option-surface-pre2024/ 2>/dev/null || true
+          cp research/ml_option_surface_shape_20260726/SOURCE_GATE.json \
+            /tmp/ml-option-surface-pre2024/ 2>/dev/null || true
+          find /tmp/ml-option-surface-pre2024 -maxdepth 1 -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > /tmp/ml-option-surface-pre2024/SHA256SUMS.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-option-surface-pre2024-${{ github.run_id }}
+          path: /tmp/ml-option-surface-pre2024
+          if-no-files-found: error
+          retention-days: 30
