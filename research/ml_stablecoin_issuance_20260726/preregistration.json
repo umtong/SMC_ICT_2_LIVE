@@ -78,7 +78,7 @@
       "calibrate": "2022-01-01 through 2022-06-30",
       "confirmation": "2022-07-01 through 2022-12-31",
       "conditional_development": "2023-01-01 through 2023-12-31",
-      "prohibited": "2024-01-01 onward"
+      "official_2024_onward": "prohibited until one complete pre-2024 strategy, sizing rule and execution rule are frozen; then opened sequentially by half-year"
     },
     "confirmation_gate": {
       "minimum_resolved_labels": 80,
@@ -91,14 +91,62 @@
       "positive_top10pct_winner_removed_return_at_24bps": true,
       "both_half_years_positive_at_24bps": true
     },
+    "development_gate_and_freeze": {
+      "same_model_features_and_action_rule": true,
+      "positive_total_return_at_24bps": true,
+      "positive_median_and_profit_factor_at_24bps": true,
+      "positive_top10pct_winner_removed_return_at_24bps": true,
+      "both_2023_half_years_positive_at_24bps": true,
+      "no_liquidation": true,
+      "freeze_rule": "Run the preregistered broad risk/notional-cap search using only information through 2023-12-31 and freeze the no-liquidation path with highest 24-bp geometric daily growth among paths that remain positive after winner removal. Performance is not capped at 1%."
+    },
     "risk_search_only_after_full_gate": {
       "planned_stop_risk_fraction": [0.0025, 0.6],
       "notional_cap_multiple": [1, 100],
       "selection_metric": "highest after-cost geometric daily growth subject to positive top10pct-winner-removed growth and no liquidation"
+    },
+    "official_sequential_evaluation": {
+      "purpose": "The half-year periods are sequential research intervals, not indefinitely sealed final holdouts.",
+      "intervals": [
+        {
+          "period": "2024H1",
+          "start": "2024-01-01T00:00:00Z",
+          "end_exclusive": "2024-07-01T00:00:00Z",
+          "information_cutoff": "2023-12-31T23:59:59Z",
+          "action": "Open immediately after the pre-2024 strategy is frozen."
+        },
+        {
+          "period": "2024H2",
+          "start": "2024-07-01T00:00:00Z",
+          "end_exclusive": "2025-01-01T00:00:00Z",
+          "information_cutoff": "2024-06-30T23:59:59Z"
+        },
+        {
+          "period": "2025H1",
+          "start": "2025-01-01T00:00:00Z",
+          "end_exclusive": "2025-07-01T00:00:00Z",
+          "information_cutoff": "2024-12-31T23:59:59Z"
+        },
+        {
+          "period": "2025H2",
+          "start": "2025-07-01T00:00:00Z",
+          "end_exclusive": "2026-01-01T00:00:00Z",
+          "information_cutoff": "2025-06-30T23:59:59Z"
+        },
+        {
+          "period": "2026H1",
+          "start": "2026-01-01T00:00:00Z",
+          "end_exclusive": "2026-07-01T00:00:00Z",
+          "information_cutoff": "2025-12-31T23:59:59Z"
+        }
+      ],
+      "decision_rule": "After each interval, retire the information unit immediately if realistic after-cost performance is structurally far from the 1% daily geometric-growth objective. If promising, use only information available through that interval's cutoff to freeze the next version and evaluate it in the next half-year.",
+      "oos_semantics": "An interval already inspected may guide the next version but may never be claimed later as a fresh independent OOS test for that modified version."
     }
   },
   "amendments": [
-    "AMENDMENT-20260726-ML-STABLECOIN-FULL-SOURCE-001"
+    "AMENDMENT-20260726-ML-STABLECOIN-FULL-SOURCE-001",
+    "AMENDMENT-20260726-ML-STABLECOIN-SEQUENTIAL-2024H1-002"
   ],
   "orders_submitted": false
 }
