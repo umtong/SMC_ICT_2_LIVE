@@ -32,7 +32,9 @@ jobs:
           printf '%s\n' "${GITHUB_SHA}" > artifact/HEAD_SHA.txt
           git status --short > artifact/GIT_STATUS.txt
           cp -R research/yt_trinity_ml artifact/yt_trinity_ml
-          cp scripts/market_data/load_canonical_bybit.py artifact/load_canonical_bybit.py
+          if [[ -f scripts/market_data/load_canonical_bybit.py ]]; then
+            cp scripts/market_data/load_canonical_bybit.py artifact/load_canonical_bybit.py
+          fi
           find artifact -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
