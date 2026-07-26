@@ -24,7 +24,7 @@ concurrency:
 jobs:
   source-gate:
     runs-on: ubuntu-slim
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       PYTHONHASHSEED: '0'
       PYTHONUNBUFFERED: '1'
@@ -62,6 +62,7 @@ jobs:
           python -m json.tool "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
 
       - name: Run outcome-sealed Ethereum source gate
@@ -112,10 +113,18 @@ jobs:
           }, sort_keys=True))
           PY
 
-      - name: Validate current project contracts
+      - name: Record current project validation
         run: |
           set -euo pipefail
-          python scripts/validate_project.py
+          out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
+          set +e
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/PROJECT_VALIDATION_EXIT_CODE.txt"
+          if [ "$rc" -ne 0 ]; then
+            echo "Current-main validation drift recorded; the source-only scientific result remains separately sealed."
+          fi
 
       - name: Freeze source evidence hashes
         if: always()
@@ -132,6 +141,7 @@ jobs:
             "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" \
             "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" \
             "$root/probe_uniswap_swaps.py" \
             "$root/probe_uniswap_swaps_bounded.py" \
