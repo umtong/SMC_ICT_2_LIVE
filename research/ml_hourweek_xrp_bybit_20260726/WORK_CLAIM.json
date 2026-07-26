@@ -1,34 +1,44 @@
 {
-  "base_revision": 16,
-  "branch": "agent/r16-ml-hourweek-xrp-bybit-2026h1-001",
+  "schema_version": 1,
   "claim_id": "CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
-  "frozen_replica_source_sha256": "74943366c11fa6317248758f29536c7fe7b47a87e6b3c97d34f4f637e3bcc9dd",
-  "frozen_test_sha256": "8abe33cb80fb425a469064e8b4280ab501195d06b1f774b5fe0b8a31e53efd20",
+  "worker_id": "gpt-5.6-pro-20260726-2235",
+  "base_revision": 16,
+  "status": "RUNNING_PRE_OUTCOME_TRANSPORT_CORRECTED",
+  "started_at": "2026-07-26T22:35:00+09:00",
+  "lease_until": "2026-07-27T10:35:00+09:00",
+  "branch": "agent/r16-ml-hourweek-xrp-bybit-2026h1-001",
+  "objective": "Independently freeze a reproducible causal replica of the provisional rank-one UTC-state XRP ML route before accessing 2026 outcomes, verify it on already-seen 2024-2025 selected development, then execute one Bybit-native hourly and actual-funding 2026H1 forward evaluation without changing the route.",
+  "parent_result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
+  "planned_result_id": "RES-20260726-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
   "transport_source_sha256": "6776def0ce1dc3f749507387eadc1834e2d19e26486b80c25308943db73edced",
+  "header_corrected_source_sha256": "c4aef87f1bb42fe8f196630a545a37d6a4ae3b7a1e4f8d3b4b7ada60f9826aaa",
+  "frozen_replica_source_sha256": "40e80b39783d2a85cb6b7f5dbee1553c4aaabd650687e0938a284f36535c1f00",
+  "frozen_test_sha256": "1420c73d01bef32c51ce09abb374e873b5b027d8e30fabc9ffeba3adcbff400b",
   "source_correction_ids": [
     "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-BINANCE-HEADER-001",
     "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-EXPLICIT-HEAD-002",
-    "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-BYTICK-MAINNET-003"
+    "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-BYTICK-MAINNET-003",
+    "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-BYBIT-DOMAIN-002"
   ],
-  "lease_until": "2026-07-27T10:35:00+09:00",
-  "objective": "Independently freeze a reproducible causal replica of the provisional rank-one UTC-state XRP ML route before accessing 2026 outcomes, verify it on already-seen 2024-2025 selected development, then execute one Bybit-native hourly and actual-funding 2026H1 forward evaluation without changing the route.",
-  "orders_authorized": false,
-  "parent_result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
-  "planned_result_id": "RES-20260726-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
-  "schema_version": 1,
+  "supersession": "The fixed official-domain fallback correction supersedes the single-domain bytick patch while preserving the same official V5 endpoint paths, parameters, pagination and payload semantics.",
+  "pre_outcome_transport_state": {
+    "model_fitted_for_2026H1": false,
+    "predictions_actions_trades_pnl_opened": false,
+    "actual_funding_applied": false,
+    "orders_submitted": false,
+    "scientific_or_account_rule_changed": false
+  },
   "scope_boundary": {
-    "credentials": false,
-    "forward_outcome_opened_before_freeze": false,
+    "selected_development": "2024-01-01T00:00:00Z/2026-01-01T00:00:00Z",
     "official_forward": "2026-01-01T00:00:00Z/2026-07-01T00:00:00Z",
-    "orders": false,
-    "selected_development": "2024-01-01T00:00:00Z/2026-01-01T00:00:00Z"
+    "forward_outcome_opened_before_freeze": false,
+    "credentials": false,
+    "orders": false
   },
   "source_reuse": {
-    "artifact_digest": "sha256:fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
     "artifact_id": 8616632878,
+    "artifact_digest": "sha256:fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
     "dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4"
   },
-  "started_at": "2026-07-26T22:35:00+09:00",
-  "status": "RUNNING",
-  "worker_id": "gpt-5.6-pro-20260726-2235"
+  "orders_authorized": false
 }
