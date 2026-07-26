@@ -1,0 +1,181 @@
+{
+  "account": {
+    "base_notional_cap": 3.0,
+    "base_planned_stop_risk": 0.005,
+    "calendar_growth": "all UTC calendar days",
+    "cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "liquidation_safety": "leverage <= 0.8/(stop distance fraction+0.005)",
+    "marked_nav": true,
+    "participation_cap": "0.1% of prior complete one-minute approximate quote turnover",
+    "winner_removal": "exclude largest positive 10% event keys before global-slot arbitration and replay from 10,000 USDT"
+  },
+  "chronology": {
+    "calibration": [
+      "2022-01-01T00:00:00Z",
+      "2022-07-01T00:00:00Z"
+    ],
+    "confirmation": [
+      "2022-07-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "development": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "official_2024H1": [
+      "2024-01-01T00:00:00Z",
+      "2024-07-01T00:00:00Z"
+    ],
+    "official_refit_calibration": [
+      "2023-01-01T00:00:00Z",
+      "2023-07-01T00:00:00Z"
+    ],
+    "official_refit_fit": [
+      "2021-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "risk_selection": [
+      "2023-07-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "train": [
+      "2021-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ]
+  },
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "contract_id": "MODEL-IMPLEMENTATION-CONTRACT-20260726-ML-STABLECOIN-009",
+  "event_and_rows": {
+    "availability_primary": "available_timestamp_12",
+    "availability_stress": "available_timestamp_64",
+    "gas_utilization": "event block gasUsed/gasLimit; neutral 0.5 only after a disclosed transport failure",
+    "prior_event_features": "strictly earlier availability timestamps only",
+    "two_market_rows_per_event": true
+  },
+  "features": [
+    "log1p_event_usd_notional",
+    "mint_plus1_burn_minus1",
+    "usdc_indicator",
+    "log1p_prior_60m_same_direction_notional",
+    "signed_prior_24h_net_issuance_scaled",
+    "event_block_gas_utilization",
+    "prior_completed_15m_log_return",
+    "prior_completed_60m_realized_volatility",
+    "prior_completed_60m_path_efficiency",
+    "upper_pool_distance_bps",
+    "lower_pool_distance_bps",
+    "btc_eth_completed_15m_return_breadth"
+  ],
+  "funding": {
+    "cashflow": "long pays positive funding and receives negative funding; short opposite",
+    "fallback": "adverse unsigned 2 bp per crossed UTC 00/08/16 boundary, never a credit",
+    "primary": "Bybit V5 public funding history at fundingRateTimestamp"
+  },
+  "labels_and_execution": {
+    "account_dual_touch": "structural stop first",
+    "elapsed_time_exit": false,
+    "fit_excludes": [
+      "same-minute dual touch",
+      "gap before resolution",
+      "unresolved at partition boundary"
+    ],
+    "label": "upper versus lower frozen pool touched first",
+    "one_global_slot": true,
+    "simultaneous_priority": [
+      "higher after-cost expected value",
+      "larger event notional",
+      "BTCUSDT before ETHUSDT",
+      "event_id"
+    ],
+    "source_boundary": "full structural stop plus all cost",
+    "stop_fill": "worse of stop and adverse minute open",
+    "target_fill": "frozen target with no favorable gap improvement"
+  },
+  "market_data": {
+    "availability": "one-minute bar usable only after close; entry is next exact contiguous minute open strictly after event availability",
+    "gaps": "never imputed; reset structural and rolling state and invalidate crossed labels",
+    "interval_minutes": 1,
+    "official_2024H1_end_exclusive": "2024-07-01T00:00:00Z",
+    "pre2024_start": "2021-01-01T00:00:00Z",
+    "provider": "Bybit official public MetaTrader4 one-minute kline archive",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ]
+  },
+  "market_outcome_observed": false,
+  "model": {
+    "baseline": "lower_distance/(upper_distance+lower_distance)",
+    "calibration": "one IsotonicRegression out_of_bounds=clip when frozen calibration has >=50 resolved rows and both classes; otherwise raw probability",
+    "family": "HistGradientBoostingClassifier",
+    "imputation": "training-partition numeric median with empty-feature preservation",
+    "parameters": {
+      "l2_regularization": 1.0,
+      "learning_rate": 0.05,
+      "max_bins": 63,
+      "max_iter": 160,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 20,
+      "random_state": 20260726
+    }
+  },
+  "model_fit_observed": false,
+  "official_2024H1": {
+    "availability_64_stress": true,
+    "decision": "report complete path; negative or concentration-fragile result retires immediately; a robust positive result informs a 2024H2 version frozen only with information through 2024-06-30",
+    "evaluation": "same features/model/action/execution and frozen risk/cap; no 2024H1 input selects its own version",
+    "opens_immediately_after_freeze": true
+  },
+  "official_2024_2026_observed": false,
+  "orders_submitted": false,
+  "parallel_transport": {
+    "favorable_result_selection_prohibited": true,
+    "reason": "independent runner capacity; identical Blockscout source gate and frozen economic code",
+    "runner": "windows-latest"
+  },
+  "purpose": "Make a source pass immediately executable through the frozen pre-2024 ML screen, broad risk search and official 2024H1 sequential research interval without adding another purity gate.",
+  "recorded_before_source_or_market_outcome": true,
+  "risk_search": {
+    "availability_64_stress_must_remain_robust": true,
+    "notional_cap_grid": [
+      1,
+      2,
+      3,
+      5,
+      8,
+      12,
+      20,
+      35,
+      50,
+      75,
+      100
+    ],
+    "opens_only_after_full_confirmation_and_development_gate": true,
+    "planned_stop_risk_grid": [
+      0.0025,
+      0.005,
+      0.01,
+      0.02,
+      0.04,
+      0.08,
+      0.15,
+      0.3,
+      0.6
+    ],
+    "selection": "highest 24-bp geometric daily growth on untouched 2023H2 among no-liquidation, positive winner-removed paths; no 1% cap"
+  },
+  "schema_version": 1,
+  "source_gate_result_observed": false,
+  "structural_liquidity": {
+    "active_pool": "confirmed pivot remains active until a completed one-minute bar consumes it",
+    "bar": "exact contiguous completed UTC 60-minute OHLC from Bybit one-minute bars",
+    "confirmation": "two complete hourly bars on the right",
+    "entry_requires": "nearest active upper and lower pools each at least 12 bp from entry",
+    "lookback_days": 14,
+    "pivot_span": 2
+  }
+}
