@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1634-MMXM-001",
+  "status": "PREREGISTERED_BEFORE_ANY_STRATEGY_OUTCOME",
+  "created_at": "2026-07-26T16:34:22+09:00",
+  "base_revision": 11,
+  "branch": "agent/r11-mmxm-lifecycle-001",
+  "research_question": "Can the complete ICT Market Maker Buy/Sell Model lifecycle, rather than an isolated entry pattern, produce repeatable Bybit USDT-linear after-cost NAV growth?",
+  "smc_ict_explanation": "Original Consolidation creates both-side liquidity. Price then engineers a multi-leg delivery curve away from that origin, raids terminal external liquidity in deep premium or discount, confirms a Smart Money Reversal through CISD/MSS displacement, holds the reversal line on the first pullback, and delivers back to the frozen Original Consolidation and its opposite liquidity.",
+  "distinct_scope": {
+    "required_sequence": [
+      "confirmed Original Consolidation",
+      "two or more directionally ordered engineered-liquidity shelves",
+      "terminal external-liquidity raid beyond the last confirmed pivot",
+      "deep excursion relative to the frozen Original Consolidation range",
+      "CISD/MSS displacement through the final engineered shelf",
+      "first pullback that holds the reversal line",
+      "delivery to the far boundary of the frozen Original Consolidation"
+    ],
+    "not_used": [
+      "isolated FVG, IFVG or BPR touch",
+      "breaker or Unicorn overlap",
+      "OTE percentage entry",
+      "fixed session or Silver Bullet window",
+      "paired-market SMT",
+      "elapsed-time position liquidation"
+    ]
+  },
+  "markets": {
+    "venue": "Bybit",
+    "product": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "global_pending_or_open_slots": 1
+  },
+  "data_contract": {
+    "source": "Bybit public kline_for_metatrader4 monthly archives",
+    "native_bar": "5 minute",
+    "required_columns": ["datetime", "open", "high", "low", "close", "volume"],
+    "fit_period": "2022-01-01 through 2022-12-31",
+    "development_period": "2023-01-01 through 2023-12-31, physically opened only after fit survivors are frozen",
+    "sealed_periods": ["2024", "2025", "2026"],
+    "gap_contract": "A complete 5-minute grid is retained. Features and cycles reset at a missing or invalid bar; an accepted position encountering a source gap receives its structural stop outcome."
+  },
+  "causal_contract": {
+    "bar_availability": "A bar is usable only after its close; entry is the next valid 5-minute open.",
+    "pivot_confirmation": "A swing is available only after three completed bars to its right.",
+    "original_consolidation": "Four or eight completed 60-minute bars, frozen before the engineering break.",
+    "same_bar_exit": "Protective stop is evaluated before target.",
+    "target": "The far boundary of the frozen Original Consolidation.",
+    "position_exit": "Structural stop, frozen target, or source-gap structural-stop outcome only. No elapsed-time exit.",
+    "evaluation_boundary": "An open position is marked at realistic liquidation value and flagged; it is not force-closed and cannot pass a gate."
+  },
+  "candidate_grid": {
+    "original_consolidation_hours": [4, 8],
+    "maximum_consolidation_range_atr60": [1.5, 2.5],
+    "minimum_engineered_shelves": [2, 3],
+    "minimum_excursion_in_original_range_units": [0.5, 1.0],
+    "minimum_cisd_displacement_atr5": [0.8, 1.2],
+    "first_pullback_hold": ["broken_shelf", "displacement_body_midpoint"],
+    "candidate_count": 64,
+    "minimum_entry_reward_risk": 2.0
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "planned_loss_fraction": 0.005,
+    "maximum_notional_multiple": 3.0,
+    "maximum_prior_bar_quote_volume_participation": 0.001,
+    "roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "identical_gross_trade_candidates_across_costs": true,
+    "terminal_nav_at_or_below_zero": "-100% return and 100% drawdown"
+  },
+  "fit_gate": {
+    "minimum_completed_trades": 40,
+    "positive_total_return_at_bps": [12, 18, 24],
+    "positive_median_trade_at_12bps": true,
+    "minimum_profit_factor_at_12bps": 1.15,
+    "maximum_drawdown_at_12bps": 0.25,
+    "both_half_years_positive_at_18bps": true,
+    "maximum_top_five_positive_pnl_share_at_12bps": 0.35,
+    "positive_exact_top10_removed_return_at_18bps": true,
+    "open_position_count": 0
+  },
+  "development_rule": "Only the four highest 18bps fit geometric-growth survivors are frozen. Their IDs and fit hashes are written before 2023 is downloaded. The same gate is then applied without changing any rule.",
+  "promotion_boundary": "This 2022/2023 discovery sequence cannot enter the project ranking. Any development survivor requires a new sequential 2024-2026 claim with actual Bybit funding and exact BBO/depth execution.",
+  "orders_permitted": false
+}
