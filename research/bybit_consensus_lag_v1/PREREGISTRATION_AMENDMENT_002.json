@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMD-20260726-BYBIT-CONSENSUS-LAG-002",
+  "claim_id": "CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001",
+  "result_id": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002",
+  "reason": "The checked-in V1B compressed transport is mechanically damaged: its current main stream is 14,103 base64 bytes versus the preregistered 14,444 bytes and its auxiliary file duplicates the first 3,000 bytes rather than supplying the missing segment. The original full V1 engine remains recoverable from immutable commit history. V1C reconstructs a clean deterministic engine from that full source and applies only the already frozen completed-message semantic correction from AMD-001.",
+  "information_observed_before_amendment": {
+    "candidate_pnl_from_invalid_v1": true,
+    "candidate_pnl_from_v1b_or_v1c": false,
+    "invalid_v1_artifact_id": 8624154724,
+    "invalid_v1_fit_survivor_count": 0,
+    "invalid_v1_event_outcome_rows": 10
+  },
+  "recovery_authorities": {
+    "full_v1_raw_source_sha256": "7736ceba0a08b68d093729bee1b884dd79fc111218aa68cdb9f539f9ce701628",
+    "full_v1_raw_bytes": 38341,
+    "v1_transport_sha256": "6496939712a9afa53e2cc1be362f3eff922bd3cb246b45a0ce84f509e91e1631",
+    "completed_message_contract": "AMD-20260726-BYBIT-CONSENSUS-LAG-001",
+    "provider_semantics": "At a completed bucket boundary, all quote rows with local_timestamp strictly less than the boundary are available; the final row of the latest completed same-local-timestamp group is the causal reconstructed BBO state. Entry and exit groups remain adverse."
+  },
+  "v1c_changes": [
+    "Change result identity to RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002 and record engine version BYBIT_CONSENSUS_LAG_V1C_RECOVERED_COMPLETED_MESSAGE_GROUP.",
+    "Remove only the invalid signal-state exclusion that discarded a state when the preceding quote row shared the latest local_timestamp.",
+    "Add a deterministic self-test proving the final row of a completed same-local-timestamp group is selected.",
+    "Add engine_version to the result summary so CI can bind the decision-ready output to this implementation.",
+    "Replace the damaged transport with four deterministic, hash-bound fragments."
+  ],
+  "unchanged_economic_contract": {
+    "candidate_count": 324,
+    "candidate_parameters": true,
+    "fit_dates": ["2023-03-01", "2023-05-01", "2023-07-01"],
+    "development_dates": ["2023-09-01", "2023-11-01", "2023-12-01"],
+    "development_opens_only_after_fit_survivor": true,
+    "symbols_and_venues": true,
+    "completed_bucket_us": 100000,
+    "prior_segmented_ewm": true,
+    "entry_latencies": true,
+    "adverse_equal_timestamp_execution": true,
+    "fixed_notional_and_convex_top_quote_impact": true,
+    "costs_12_18_24_bps": true,
+    "fixed_and_oracle_exit_definitions": true,
+    "global_slot": true,
+    "stage_gates": true,
+    "official_2024_2026_opened": false,
+    "parameter_or_gate_retuning": false
+  },
+  "v1c_source_contract": {
+    "raw_bytes": 38958,
+    "raw_sha256": "d3ac04f629a6114247b16a69333e43c91312247dc3dcbdd120f054014e1cf29d",
+    "gzip_bytes": 10695,
+    "gzip_sha256": "cb5bd752b56168c131ab62fe377412d5e7a9be738c8f2c2fe07f767e3c62d2b9",
+    "base64_bytes": 14260,
+    "base64_sha256": "48385fdde7fd9eae049798938eda49ea090d0b787e6fc68b1f891a040f90d083",
+    "parts": [
+      {"name": "run_v1c.py.gz.b64.part00", "bytes": 4000, "sha256": "f9927adad66a35d3268a0ebd6ba6ad678327f0e3e986873a4871332600349385"},
+      {"name": "run_v1c.py.gz.b64.part01", "bytes": 4000, "sha256": "e03fa9f3a7619ebfadcb27977559613b8c6d986972940f27346f484c034231f3"},
+      {"name": "run_v1c.py.gz.b64.part02", "bytes": 4000, "sha256": "bf908b7fd14de3eed57680ebea249f4e9f25b76d14a496a7dfa8d79731b0e965"},
+      {"name": "run_v1c.py.gz.b64.part03", "bytes": 2260, "sha256": "b6390f5f5905cdd80a99eada02a1fed96fc7a466c3e22df48555d5a8a2efd5b7"}
+    ]
+  },
+  "validity_decision": "Run the exact frozen 324-candidate contract with V1C. No threshold, date, cost, capacity, gate or exit definition may change after this amendment. Any V1C fit survivor may open only the already frozen 2023 development dates; 2024 and later remain sealed."
+}
