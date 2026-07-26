@@ -20,8 +20,8 @@ import requests
 DATASET_ID = "rogerdehe/klines-bybit"
 API_URL = f"https://huggingface.co/api/datasets/{DATASET_ID}"
 EXPECTED = {
-    "BTCUSDT": "futures/8h/BTC_USDT_USDT-funding_rate.parquet",
-    "ETHUSDT": "futures/8h/ETH_USDT_USDT-funding_rate.parquet",
+    "BTCUSDT": "futures/1h/BTC_USDT_USDT-funding_rate.parquet",
+    "ETHUSDT": "futures/1h/ETH_USDT_USDT-funding_rate.parquet",
 }
 MIN_START = {
     "BTCUSDT": pd.Timestamp("2021-01-01T00:00:00Z"),
@@ -54,7 +54,7 @@ def download(session: requests.Session, revision: str, filename: str, out: Path)
     out.parent.mkdir(parents=True, exist_ok=True)
     temp = out.with_suffix(out.suffix + ".part")
     last_error: Exception | None = None
-    for attempt in range(5):
+    for _attempt in range(5):
         try:
             with session.get(url, timeout=120, stream=True, allow_redirects=True) as response:
                 response.raise_for_status()
@@ -66,7 +66,7 @@ def download(session: requests.Session, revision: str, filename: str, out: Path)
                 raise RuntimeError(f"download too small: {url}")
             temp.replace(out)
             return
-        except Exception as exc:  # preserve exact failure after bounded retries
+        except Exception as exc:
             last_error = exc
             temp.unlink(missing_ok=True)
     raise RuntimeError(f"download failed: {url}: {last_error}")
@@ -75,13 +75,21 @@ def download(session: requests.Session, revision: str, filename: str, out: Path)
 def normalize(frame: pd.DataFrame) -> tuple[pd.DataFrame, str, str]:
     columns = {str(column).lower(): str(column) for column in frame.columns}
     time_name = next(
-        (columns[name] for name in ("date", "timestamp", "time", "datetime", "funding_time") if name in columns),
+        (
+            columns[name]
+            for name in ("date", "timestamp", "time", "datetime", "funding_time")
+            if name in columns
+        ),
         None,
     )
     if time_name is None:
         raise RuntimeError(f"no timestamp column in {list(frame.columns)}")
     rate_name = next(
-        (columns[name] for name in ("funding_rate", "fundingrate", "rate", "close") if name in columns),
+        (
+            columns[name]
+            for name in ("funding_rate", "fundingrate", "rate", "close")
+            if name in columns
+        ),
         None,
     )
     if rate_name is None:
@@ -96,8 +104,13 @@ def normalize(frame: pd.DataFrame) -> tuple[pd.DataFrame, str, str]:
         timestamp = pd.to_datetime(time_raw, utc=True, errors="coerce")
     rate = pd.to_numeric(frame[rate_name], errors="coerce")
     normalized = pd.DataFrame({"timestamp": timestamp, "funding_rate": rate})
-    normalized = normalized.dropna().drop_duplicates("timestamp", keep="last").sort_values("timestamp")
-    return normalized.reset_index(drop=True), time_name, rate_name
+    normalized = (
+        normalized.dropna()
+        .drop_duplicates("timestamp", keep="last")
+        .sort_values("timestamp")
+        .reset_index(drop=True)
+    )
+    return normalized, time_name, rate_name
 
 
 def inspect(symbol: str, path: Path) -> dict[str, Any]:
@@ -114,12 +127,14 @@ def inspect(symbol: str, path: Path) -> dict[str, Any]:
     aligned = pd.DatetimeIndex(after_start["timestamp"]).floor("8h").nunique()
     coverage = aligned / max(len(expected), 1)
     max_gap_hours = float(gaps.max() / pd.Timedelta(hours=1)) if len(gaps) else 0.0
+    median_gap_hours = float(gaps.median() / pd.Timedelta(hours=1)) if len(gaps) else 0.0
     max_abs = float(rates.abs().max())
     finite = bool(pd.Series(rates).map(math.isfinite).all())
     status = bool(
         timestamps.min() <= MIN_START[symbol] + pd.Timedelta(hours=16)
         and timestamps.max() >= REQUIRED_END - pd.Timedelta(hours=16)
         and coverage >= 0.98
+        and 4.0 <= median_gap_hours <= 12.01
         and max_gap_hours <= 24.01
         and finite
         and max_abs <= MAX_ABS_RATE
@@ -142,6 +157,7 @@ def inspect(symbol: str, path: Path) -> dict[str, Any]:
         "expected_8h_rows": int(len(expected)),
         "observed_8h_slots": int(aligned),
         "coverage_8h": float(coverage),
+        "median_gap_hours": median_gap_hours,
         "max_gap_hours": max_gap_hours,
         "duplicate_timestamps_removed": int(len(frame) - len(normalized)),
         "min_rate": float(rates.min()),
@@ -149,6 +165,7 @@ def inspect(symbol: str, path: Path) -> dict[str, Any]:
         "max_abs_rate": max_abs,
         "finite_rates": finite,
         "zero_rate_share": float((rates == 0).mean()),
+        "unique_rate_count": int(rates.nunique()),
     }
 
 
@@ -157,7 +174,7 @@ def main() -> int:
     session.headers.update({"User-Agent": "SMC-ICT-2-source-probe/1.0"})
     result: dict[str, Any] = {
         "schema_version": 1,
-        "probe_id": "PROBE-20260727-HF-BYBIT-FUNDING-PINNED-001",
+        "probe_id": "PROBE-20260727-HF-BYBIT-FUNDING-PINNED-002",
         "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "dataset_id": DATASET_ID,
@@ -198,7 +215,9 @@ def main() -> int:
             record["repository_path"] = filename
             result["records"].append(record)
         result["status"] = (
-            "PASS" if result["records"] and all(row["status"] == "PASS" for row in result["records"]) else "FAIL"
+            "PASS"
+            if result["records"] and all(row["status"] == "PASS" for row in result["records"])
+            else "FAIL"
         )
     except Exception as exc:
         result["status"] = "ERROR"
