@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-PATH-CONTINUITY-001",
+  "claim_id": "CLM-20260726-1958-ML-PATH-CONTINUITY-001",
+  "worker_id": "gpt-5.6-pro-20260726-1958",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NEGATIVE_NOT_RANKED",
+  "base_project_revision": 13,
+  "mechanism": {
+    "smc_ict_rule": "Freeze the nearest completed 4h/day/week/30d external-liquidity pools, wait for the first completed 50%-79% OTE pullback after a 4h displacement, and route continuous delivery to continuation or jump-concentrated delivery to reversal according to one calibrated HGBT's cost-adjusted upper/lower first-passage EV.",
+    "model": "one fixed HistGradientBoostingClassifier plus one isotonic calibrator",
+    "feature_count": 22,
+    "action_rule": "one 18-bps cost-adjusted LONG/SHORT/FLAT rule",
+    "elapsed_time_exit": false
+  },
+  "data": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "period": ["2021-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "interval": "15m",
+    "actual_funding": true,
+    "official_regional_api_host_used": "https://api.manepa.jp",
+    "source_count": 12,
+    "event_count": 17108,
+    "resolved_rows": {"train": 7254, "calibration": 3225, "confirmation": 3221, "development": 3336},
+    "label_counts": {"UPPER_FIRST": 8391, "LOWER_FIRST": 8649, "AMBIGUOUS": 66, "CENSORED": 2},
+    "2024_opened": false,
+    "2025_or_2026_opened": false
+  },
+  "confirmation_model": {
+    "rows": 3221,
+    "auc": 0.5712772206685259,
+    "baseline_auc": 0.635450108338473,
+    "auc_lift": -0.06417288766994711,
+    "brier": 0.24697613577575997,
+    "baseline_brier": 0.23465920503295118,
+    "brier_skill": -0.05248858974477155
+  },
+  "development_account": {
+    "12bps": {"trades": 264, "total_return": -0.5448645067618586, "geometric_daily_growth": -0.004268906318816379, "profit_factor": 0.6303183435359397, "median_trade_bps": -48.665076939965004, "maximum_drawdown": 0.5536041764552373, "positive_month_fraction": 0.16666666666666666, "both_quarters_positive": false},
+    "18bps": {"trades": 264, "total_return": -0.6413904411467704, "geometric_daily_growth": -0.005557980986568567, "profit_factor": 0.563646171753723, "median_trade_bps": -54.66507693996501, "maximum_drawdown": 0.6485892172712256, "positive_month_fraction": 0.16666666666666666, "both_quarters_positive": false, "top5_positive_pnl_share": 0.21458428725584766},
+    "24bps": {"trades": 264, "total_return": -0.7193360645410641, "geometric_daily_growth": -0.006881632398147208, "profit_factor": 0.5057567903130581, "median_trade_bps": -60.665076939965004, "maximum_drawdown": 0.7243076768625015, "positive_month_fraction": 0.0, "both_quarters_positive": false}
+  },
+  "winner_removal_18bps": {
+    "removed_positive_trades": 7,
+    "trade_count_after_replay": 266,
+    "total_return": -0.7691066899343467,
+    "geometric_daily_growth": -0.007934654937506558,
+    "maximum_drawdown": 0.7737416730427511
+  },
+  "pre2024_gate": {
+    "pass": false,
+    "passed_count": 8,
+    "failed": ["both_development_quarters_positive", "maximum_marked_drawdown", "minimum_auc_lift", "minimum_brier_skill", "minimum_positive_month_fraction", "minimum_profit_factor_18", "positive_12_18_24", "positive_median_18", "positive_top10_removed_18"]
+  },
+  "interpretation": {
+    "model_failure": "The ML model underperformed the causal structural-distance baseline on both AUC and Brier score.",
+    "economic_failure": "The same 264-trade path was strongly negative at every tested cost, had a negative median trade, lost in both development quarters and deteriorated after winner removal.",
+    "risk_search_opened": false,
+    "risk_search_reason": "The unchanged base path failed after-cost alpha and robustness; leverage cannot rescue negative expectancy.",
+    "dependency_retirement": "Close this exact completed-15m path-continuity plus frozen structural first-passage formulation. Reopen only with a materially different information unit, not model, feature, OTE, pool, stop, cost, risk or leverage retuning."
+  },
+  "reproducibility": {
+    "scientific_branch": "agent/r11-ml-path-continuity-router-001",
+    "scientific_head": "91d8d56d7aacc04c0a31334f66816524ac9ef4c3",
+    "scientific_pr": 170,
+    "frozen_implementation_sha256": "5d0a65e5ec1b402f8eac1a927b8fb7a1a69d38672a7aadcb938804e847badb68",
+    "evaluation_contract_sha256": "f3a77798c0454c855e196148a6ac2e6d3764eb1530c28928227d2e0622eb9d0d",
+    "dependency_fingerprint": "b040a2e64f5d6b791682ddc865007bc9d85ba9958e0aaa522c10133401d7f19b",
+    "workflow_run_id": 30200761014,
+    "workflow_job_id": 89790184643,
+    "artifact_id": 8631631089,
+    "artifact_sha256": "01b5ca962983dc1b3d0c5105315f1d26929f7fe9362fd7b82484063b01a5a11e",
+    "result_sha256": "3aa2b19e532f799ecc62dcfc7277f289c595ed8a6a35a8d42954051904c386e1",
+    "source_manifest_sha256": "06978fcdaf3c962e96ca765d37f77a847d75c61d04f96e851c50426453ffb5c9",
+    "events_sha256": "c06330bbdd9ab92fc620c7da87f3e50b8b658c56d9e5cf030ce703a22f3b5fb7",
+    "development_decisions_sha256": "ed9c578f7ad5cd6c15c04cbb3142e542d0e022e819d0472f720b9358bba43f73",
+    "deterministic_tests": 9,
+    "synthetic_event_count": 675,
+    "orders_submitted": false
+  },
+  "ranking_decision": {
+    "ranking_changed": false,
+    "current_first_place": "RES-20260726-DONCHIAN-DEPENDENCE-001 a70626d9e484285f2cb4|all",
+    "current_first_place_geometric_daily_growth_12bps": 0.0009008544402622221,
+    "reason": "This ML result is negative at all costs, inferior to its causal baseline and only pre-2024; it cannot enter the cumulative ranking."
+  }
+}
