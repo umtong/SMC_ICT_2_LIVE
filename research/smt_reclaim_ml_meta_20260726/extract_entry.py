@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import gzip
 import hashlib
+import inspect
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,6 +84,75 @@ def inspect_source_compat(
     )
 
 
+_ORIGINAL_AGGREGATE = engine.base.aggregate
+
+
+def _source_symbol(target: Path, date: str) -> str:
+    name = target.name
+    if date in name:
+        candidate = name.split(date, 1)[0]
+        if candidate:
+            return candidate
+    if target.parent.name:
+        return target.parent.name
+    raise ValueError(f"cannot derive source symbol from {target}")
+
+
+def aggregate_compat(target: Path, date: str):
+    """Bind path, symbol and date to the shared aggregate function once.
+
+    The upstream helper changed its call signature, not its scientific
+    implementation.  Argument binding is decided from the function signature
+    before invoking it, so no data path is executed speculatively or twice.
+    """
+    path = Path(target)
+    symbol = _source_symbol(path, date)
+    signature = inspect.signature(_ORIGINAL_AGGREGATE)
+
+    semantic_values: dict[str, object] = {}
+    unresolved_required: list[str] = []
+    for name, parameter in signature.parameters.items():
+        if parameter.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        ):
+            continue
+        lowered = name.lower()
+        if any(token in lowered for token in ("path", "file", "target", "archive", "source")):
+            semantic_values[name] = path
+        elif any(token in lowered for token in ("symbol", "instrument", "market", "contract")):
+            semantic_values[name] = symbol
+        elif "date" in lowered or lowered in {"day", "session"}:
+            semantic_values[name] = date
+        elif parameter.default is inspect.Parameter.empty:
+            unresolved_required.append(name)
+
+    if not unresolved_required:
+        signature.bind(**semantic_values)
+        return _ORIGINAL_AGGREGATE(**semantic_values)
+
+    candidates = (
+        (path, symbol, date),
+        (path, date, symbol),
+        (symbol, path, date),
+        (symbol, date, path),
+        (date, path, symbol),
+        (date, symbol, path),
+        (path, date),
+    )
+    for arguments in candidates:
+        try:
+            signature.bind(*arguments)
+        except TypeError:
+            continue
+        return _ORIGINAL_AGGREGATE(*arguments)
+
+    raise TypeError(
+        "unsupported shared aggregate signature: "
+        f"{signature}; available values are path={path}, symbol={symbol}, date={date}"
+    )
+
+
 def corrected_rolling_realized_volatility(mark: np.ndarray, window: int = 100) -> np.ndarray:
     price = np.asarray(mark, dtype=np.float64)
     returns = np.full(len(price), np.nan, dtype=np.float64)
@@ -105,6 +175,7 @@ def corrected_rolling_realized_volatility(mark: np.ndarray, window: int = 100) -
 
 if not hasattr(engine.base, "inspect_source"):
     engine.base.inspect_source = inspect_source_compat
+engine.base.aggregate = aggregate_compat
 engine.rolling_realized_volatility = corrected_rolling_realized_volatility
 
 
