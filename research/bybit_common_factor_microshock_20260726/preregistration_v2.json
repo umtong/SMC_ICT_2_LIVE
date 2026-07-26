@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260726-1023-COMMON-FACTOR-MICROSHOCK-001",
+  "status": "INDEPENDENCE_AMENDMENT_BEFORE_COMMON_FACTOR_EVENT_OR_PNL_COMPUTATION",
+  "created_at": "2026-07-26T10:27:00+09:00",
+  "supersedes": "preregistration_v1.json",
+  "scientific_scope_changed": false,
+  "source_members_or_common_factor_events_observed": false,
+  "amendment": {
+    "reason": "Overlapping 100ms decisions from one physical leader impulse must not be counted as independent events.",
+    "cell_specific_event_thinning": "For each follower and frozen parameter cell, sort eligible decisions chronologically across each UTC source date. Retain the first eligible decision, then suppress every later decision for that follower during the next 5,000ms regardless of direction or horizon. The cooldown restarts only from a retained event, not from suppressed rows.",
+    "date_boundary": "Cooldown does not cross a UTC source-date boundary.",
+    "gate_counts": "All best-cell total and per-date fatal-gate counts use the thinned event sequence. Raw prior-valid 24bp residual-gap count remains an unthinned diagnostic and cannot pass the gate by itself."
+  },
+  "all_other_contract_fields": "Unchanged from preregistration_v1.json"
+}
