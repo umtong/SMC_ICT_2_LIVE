@@ -51,16 +51,52 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - id: probe
+        name: Register free key and verify known-positive caption
         run: |
           python - <<'PY'
-          import json, os, urllib.request
-          req=urllib.request.Request('https://api.youtubetotext.com/full_transcript/F6wDs1HRTSo?meta=true',headers={'User-Agent':'SMC-ICT-2-LIVE/1.0'})
-          with urllib.request.urlopen(req,timeout=45) as response: data=json.loads(response.read())
-          transcript=data.get('transcript') if isinstance(data,dict) else None
-          passed=isinstance(transcript,list) and len(transcript)>=100
-          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as out: out.write(f"passed={'true' if passed else 'false'}\n")
-          print(json.dumps({'passed':passed,'segments':len(transcript) if isinstance(transcript,list) else 0,'error':data.get('error'),'reason':data.get('reason')},ensure_ascii=False))
-          if not passed: raise SystemExit('known-positive caption control failed')
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          base = 'https://api.youtubetotext.com'
+          register = urllib.request.Request(
+              f'{base}/free/register',
+              data=b'',
+              method='POST',
+              headers={'User-Agent': 'SMC-ICT-2-LIVE/1.0', 'Accept': 'application/json'},
+          )
+          with urllib.request.urlopen(register, timeout=45) as response:
+              registration = json.loads(response.read())
+          key = str(registration.get('api_key') or '')
+          if not key.startswith('ytt_free_'):
+              raise SystemExit(f'invalid free-key response: {registration}')
+          request = urllib.request.Request(
+              f'{base}/full_transcript/F6wDs1HRTSo?meta=true',
+              headers={
+                  'User-Agent': 'SMC-ICT-2-LIVE/1.0',
+                  'Accept': 'application/json',
+                  'X-API-Key': key,
+              },
+          )
+          with urllib.request.urlopen(request, timeout=45) as response:
+              data = json.loads(response.read())
+          transcript = data.get('transcript') if isinstance(data, dict) else None
+          passed = isinstance(transcript, list) and len(transcript) >= 100
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write(f"passed={'true' if passed else 'false'}\n")
+          print(json.dumps({
+              'passed': passed,
+              'segments': len(transcript) if isinstance(transcript, list) else 0,
+              'language_code': data.get('language_code') if isinstance(data, dict) else None,
+              'source_type': data.get('source_type') if isinstance(data, dict) else None,
+              'tier': registration.get('tier'),
+              'daily_fetch_cap': registration.get('daily_fetch_cap'),
+              'error': data.get('error') if isinstance(data, dict) else None,
+              'reason': data.get('reason') if isinstance(data, dict) else None,
+          }, ensure_ascii=False))
+          if not passed:
+              raise SystemExit('known-positive caption control failed')
           PY
 
   harvest:
@@ -170,7 +206,7 @@ jobs:
           raw=''.join(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n' for r in rows); (out/'videos.jsonl').write_text(raw,encoding='utf-8')
           counts=Counter(r.get('caption_status') for r in rows); resolved={'ok','verified_no_caption','unavailable'}
           channel_counts={c:dict(sorted(Counter(r.get('caption_status') for r in rows if r['channel_slug']==c).items())) for c in sorted({r['channel_slug'] for r in rows})}
-          manifest={'schema_version':1,'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'inventory_count':len(inventory),'inventory_sha256':hashlib.sha256(inventory_path.read_bytes()).hexdigest(),'status_counts':dict(sorted(counts.items())),'channel_status_counts':channel_counts,'caption_attempt_complete':all(r.get('caption_status') in resolved for r in rows),'transcript_video_count':counts.get('ok',0),'verified_no_caption_count':counts.get('verified_no_caption',0),'unavailable_count':counts.get('unavailable',0),'retry_required_count':counts.get('retry_required',0),'transcript_segment_count':sum(int(r.get('caption_segment_count') or 0) for r in rows),'transcript_character_count':sum(int(r.get('caption_character_count') or 0) for r in rows),'videos_sha256':hashlib.sha256(raw.encode()).hexdigest()}
+          manifest={'schema_version':2,'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'inventory_count':len(inventory),'inventory_sha256':hashlib.sha256(inventory_path.read_bytes()).hexdigest(),'status_counts':dict(sorted(counts.items())),'channel_status_counts':channel_counts,'caption_attempt_complete':all(r.get('caption_status') in resolved for r in rows),'transcript_video_count':counts.get('ok',0),'verified_no_caption_count':counts.get('verified_no_caption',0),'unavailable_count':counts.get('unavailable',0),'retry_required_count':counts.get('retry_required',0),'transcript_segment_count':sum(int(r.get('caption_segment_count') or 0) for r in rows),'transcript_character_count':sum(int(r.get('caption_character_count') or 0) for r in rows),'videos_sha256':hashlib.sha256(raw.encode()).hexdigest()}
           manifest['decision']='PASS_NATIVE_CAPTION_CLASSIFICATION' if manifest['caption_attempt_complete'] else 'PARTIAL_REQUIRES_RETRY'
           (out/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
           print(json.dumps(manifest,ensure_ascii=False,indent=2))
@@ -189,7 +225,7 @@ jobs:
           import json,os
           from pathlib import Path
           p=Path('artifact/corpus/manifest.json'); manifest=json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
-          Path('research/yt_trinity_ml/ISOLATED_CAPTION_EXEC_POINTER.json').write_text(json.dumps({'schema_version':1,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'artifact_name':f"yt-trinity-isolated-caption-corpus-{os.environ['GITHUB_SHA']}",'manifest':manifest},ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          Path('research/yt_trinity_ml/ISOLATED_CAPTION_EXEC_POINTER.json').write_text(json.dumps({'schema_version':2,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'artifact_name':f"yt-trinity-isolated-caption-corpus-{os.environ['GITHUB_SHA']}",'manifest':manifest},ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add research/yt_trinity_ml/ISOLATED_CAPTION_EXEC_POINTER.json
