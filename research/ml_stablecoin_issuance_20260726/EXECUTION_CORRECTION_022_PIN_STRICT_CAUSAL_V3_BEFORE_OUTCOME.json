@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-PIN-STRICT-CAUSAL-V3-022",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_ANY_SOURCE_PASS_CONSUMPTION_MARKET_DOWNLOAD_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_2024H1",
+  "observed_problem": "The combined source-and-economic workflow had been superseded because it pinned causal V2. The later pre-outcome audit in PR #268 proved that V2 could use a still-forming pre-entry minute and the future entry open in features, liquidity geometry, action eligibility, or model utility.",
+  "change": [
+    "Reactivate one SHA-scoped non-cancelling source-to-economic workflow on the corrected source branch.",
+    "Pin strict economic commit 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c from PR #268.",
+    "Materialize both the frozen economic engine and sourcefix/ml_stablecoin_causal_guard_20260726 from that immutable commit.",
+    "Execute strict_guard.py rather than causal V2 after, and only after, a decision-ready corrected source PASS.",
+    "Require engine ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3, correction CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002, no legacy SOURCE_BOUNDARY exit, no forced boundary close, and a nonfatal strict causal audit."
+  ],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address mint/burn source semantics",
+    "2021-2023 chronology and 12/64-block availability delays",
+    "source PASS density and month-breadth thresholds",
+    "one HGBT and unchanged calibration, labels, features, cost profiles, one global slot, structural target and stop",
+    "prewritten risk/notional frontier without a 1-percent ceiling",
+    "immediate official 2024H1 after a complete positive pre-2024 freeze",
+    "credentials and order prohibition"
+  ],
+  "source_pass_consumed_before_change": false,
+  "market_archive_opened_before_change": false,
+  "label_computed_before_change": false,
+  "model_fit_before_change": false,
+  "trade_or_pnl_opened_before_change": false,
+  "official_2024h1_opened_before_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
