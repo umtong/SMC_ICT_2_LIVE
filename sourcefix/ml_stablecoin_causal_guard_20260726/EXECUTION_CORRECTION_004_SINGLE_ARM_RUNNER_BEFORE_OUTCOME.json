@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-SINGLE-ARM-RUNNER-004",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "reason": "The sole strict V3 decision job remained queued on the standard Linux runner while duplicate trigger PRs were being closed. Move only the execution carrier to one ARM runner and one fixed concurrency group.",
+  "changes": [
+    "use ubuntu-24.04-arm for the sole strict decision job",
+    "use one fixed concurrency group with cancel-in-progress true",
+    "remove duplicate pull_request execution from this branch workflow"
+  ],
+  "unchanged": [
+    "fail-closed source commit and source semantics",
+    "strict causal V3 engine and all causal guards",
+    "event identities and 2021-2023 chronology",
+    "features, labels, calibration, HGBT family and hyperparameters",
+    "one global BTC/ETH slot",
+    "12/18/24bp account paths",
+    "structural target, stop and boundary marking",
+    "winner-removal rerouting",
+    "risk and notional frontier",
+    "immediate official 2024H1 transition for a pre-2024 survivor"
+  ],
+  "source_result_observed": false,
+  "market_archive_opened": false,
+  "model_metric_observed": false,
+  "trade_or_pnl_observed": false,
+  "official_2024_2026_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
