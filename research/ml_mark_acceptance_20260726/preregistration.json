@@ -1,0 +1,130 @@
+{
+  "authority": {
+    "credentials": false,
+    "orders": false,
+    "paper_live": false,
+    "ranking_change_requires_recorded_decision_ready_result": true
+  },
+  "chronology": {
+    "calibration": [
+      "2022-07-01"
+    ],
+    "conditional_development": [
+      "2023-01-01",
+      "2023-03-01",
+      "2023-05-01",
+      "2023-07-01",
+      "2023-09-01",
+      "2023-11-01"
+    ],
+    "confirmation": [
+      "2022-09-01",
+      "2022-11-01"
+    ],
+    "prohibited_years": [
+      2024,
+      2025,
+      2026
+    ],
+    "train": [
+      "2022-01-01",
+      "2022-03-01",
+      "2022-05-01"
+    ]
+  },
+  "claim_id": "CLM-20260726-1940-ML-MARK-ACCEPTANCE-001",
+  "contract_sha256": "e065414333a89cb6279010b8a6278b3b8c8e4a6bdf917c9e3818b415f22285c4",
+  "development_gate": {
+    "12bp_top10pct_winner_removed_positive": true,
+    "18bp_total_return_positive": true,
+    "24bp_total_return_positive": true,
+    "positive_dates_min": 4
+  },
+  "engine_version": "ML-MARK-ACCEPTANCE-FIRST-PASSAGE-V1",
+  "event": {
+    "cooldown_seconds": 60,
+    "objective_range_fraction": 0.5,
+    "prior_range_seconds": 300,
+    "response_seconds": 1
+  },
+  "execution": {
+    "costs_bps": [
+      12,
+      18,
+      24
+    ],
+    "elapsed_time_exit": false,
+    "entry": "first observed Bybit BBO at or after decision+100ms",
+    "exit": "frozen target or stop only",
+    "notional_cap_multiple": 3.0,
+    "risk_fraction": 0.005,
+    "same_second_ambiguity": "stop_first",
+    "source_boundary": "full_structural_stop",
+    "top_quote_participation": 0.2
+  },
+  "features": [
+    "raid_sign",
+    "range_width_bps",
+    "raid_depth_bps",
+    "response_return_signed_bps",
+    "flow_imbalance_1s_signed",
+    "flow_imbalance_5s_signed",
+    "mid_vs_mark_signed_bps",
+    "mark_vs_index_signed_bps",
+    "mark_acceptance_signed_bps",
+    "oi_change_5s_signed",
+    "bbo_imbalance_signed",
+    "spread_bps"
+  ],
+  "fit_gate": {
+    "auc_lift_over_stronger_distance_or_mark_baseline_min": 0.01,
+    "both_confirmation_dates_positive": true,
+    "brier_skill_over_distance_positive": true,
+    "confirmation_12bp_median_positive": true,
+    "confirmation_12bp_top10pct_winner_removed_positive": true,
+    "confirmation_18bp_total_return_positive": true,
+    "confirmation_18bp_trades_min": 80,
+    "confirmation_resolved_events_min": 500,
+    "model_auc_min": 0.55,
+    "no_liquidation": true
+  },
+  "markets": {
+    "contract": "USDT linear perpetual",
+    "execution_exchange": "Bybit",
+    "global_slots": 1,
+    "instruments": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ]
+  },
+  "model": {
+    "calibrator": "IsotonicRegression",
+    "count": 1,
+    "decision_rule": "choose LONG, SHORT, or FLAT by exact structural EV after 18bp signal cost",
+    "direction_reversal_allowed": true,
+    "family": "HistGradientBoostingClassifier",
+    "hyperparameter_grid": false,
+    "l2_regularization": 1.0,
+    "learning_rate": 0.05,
+    "max_iter": 220,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 30,
+    "random_state": 20260726
+  },
+  "objective": "Predict which of two causally frozen structural objectives is reached first after a Bybit executable-range raid and completed one-second response, then trade only when exact 18bp expected value is positive.",
+  "run_py_sha256": "03684c32b09aadc75e7d939e6111ea1ed269b0dca4efe19e48071c16947d02d7",
+  "schema_version": 1,
+  "smc_ict_explanation": "A prior five-minute executable range defines external buy-side and sell-side liquidity. A raid plus one completed response second is classified as mark/index acceptance or execution-price rejection. The selected frozen objective is target and the opposite objective is stop.",
+  "source": {
+    "data_types": [
+      "quotes",
+      "trades",
+      "derivative_ticker"
+    ],
+    "decision_latency_us": 100000,
+    "exchange": "bybit",
+    "provider": "Tardis normalized public first-day data",
+    "timestamp_order": "local_timestamp"
+  },
+  "test_py_sha256": "d1ff42a6e6d469d2a94194e370213d3e37deca9fe32b28e147ca30b48f26e89e"
+}
