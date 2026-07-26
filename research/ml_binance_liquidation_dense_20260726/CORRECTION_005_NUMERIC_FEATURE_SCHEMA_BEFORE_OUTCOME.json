@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-BINANCE-LIQ-NUMERIC-FEATURE-SCHEMA-005",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_at": "2026-07-27T00:36:00+09:00",
+  "timing": "BEFORE_ANY_DECISION_READY_SOURCE_PASS_MARKET_ROW_LABEL_MODEL_TRADE_OR_PNL",
+  "observed_before_correction": {
+    "decision_ready_source_pass": false,
+    "market_price_opened": false,
+    "future_label_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "clarification": "The preregistration names fourteen trader-readable feature groups. Two groups contain multiple separately modeled numeric columns: completed returns contain 1m, 5m and 15m returns, and structural geometry contains upper and lower distances. The frozen model matrix therefore has sixteen numeric columns without adding a new economic feature family.",
+  "numeric_feature_columns": [
+    "signed_log_executed_usd_notional",
+    "log_absolute_executed_usd_notional",
+    "log_published_executed_snapshot_count",
+    "published_snapshot_price_notional_hhi",
+    "signed_same_side_share",
+    "observed_btc_eth_snapshot_breadth",
+    "log_notional_to_prior_60m_quote_volume",
+    "published_flow_price_impact_efficiency",
+    "prior_completed_1m_return",
+    "prior_completed_5m_return",
+    "prior_completed_15m_return",
+    "prior_completed_60m_realized_volatility",
+    "prior_available_oi_change",
+    "prior_available_funding_rate",
+    "distance_to_frozen_upper_liquidity",
+    "distance_to_frozen_lower_liquidity"
+  ],
+  "conceptual_group_mapping": {
+    "completed_returns": [
+      "prior_completed_1m_return",
+      "prior_completed_5m_return",
+      "prior_completed_15m_return"
+    ],
+    "structural_distances": [
+      "distance_to_frozen_upper_liquidity",
+      "distance_to_frozen_lower_liquidity"
+    ]
+  },
+  "availability_rule": "Every market feature ends at the last minute whose close is available by the completed source-bucket decision timestamp. The next-minute open is execution only and cannot affect feature values, row eligibility, side or expected value.",
+  "unchanged": [
+    "COIN-M BTCUSD_PERP and ETHUSD_PERP executed-snapshot source semantics",
+    "Bybit BTCUSDT and ETHUSDT execution mapping",
+    "one pooled HistGradientBoostingClassifier and one chronological isotonic map",
+    "model hyperparameters",
+    "chronological fit, calibration, confirmation and development partitions",
+    "structural target and stop",
+    "one global slot",
+    "12, 18 and 24bp replay",
+    "risk and notional frontier",
+    "immediate official 2024H1 after a positive frozen pre-2024 survivor",
+    "no elapsed-time liquidation",
+    "no credentials and no orders"
+  ]
+}
