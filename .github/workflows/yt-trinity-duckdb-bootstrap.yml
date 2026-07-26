@@ -1,0 +1,81 @@
+name: YT Trinity DuckDB bootstrap artifact
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-duckdb-bootstrap.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-duckdb-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download exact binary wheel and verify import
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          python -m pip download --only-binary=:all: --no-deps --dest artifact duckdb==1.5.5
+          wheel="$(find artifact -maxdepth 1 -type f -name 'duckdb-1.5.5-cp313-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install --no-deps "$wheel"
+          python - <<'PY'
+          import duckdb
+          assert duckdb.__version__ == '1.5.5', duckdb.__version__
+          print({'duckdb_version': duckdb.__version__})
+          PY
+          sha256sum "$wheel" > artifact/SHA256SUMS
+      - name: Upload immutable reader artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-duckdb-cp313-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Persist run pointer and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-duckdb-cp313-{os.environ['GITHUB_SHA']}",
+              'duckdb_version': '1.5.5',
+              'purpose': 'local read-only access to canonical zstd Parquet shards',
+          }
+          Path('research/yt_trinity_ml/DUCKDB_BOOTSTRAP_POINTER.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git rm -f .github/workflows/yt-trinity-duckdb-bootstrap.yml
+          git add research/yt_trinity_ml/DUCKDB_BOOTSTRAP_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Record canonical Parquet reader bootstrap artifact'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
