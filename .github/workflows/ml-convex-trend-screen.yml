@@ -28,9 +28,37 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Install runtime families
-        run: python -m pip install --disable-pip-version-check numpy pandas scikit-learn
+          python-version: '3.13'
+      - name: Install byte-compatible scientific runtime
+        run: |
+          python -m pip install --disable-pip-version-check \
+            -r research/ml_convex_trend_20260726/requirements-lock.txt
+          python - <<'PY'
+          import json
+          import numpy
+          import pandas
+          import scipy
+          import sklearn
+          from pathlib import Path
+
+          observed = {
+              "numpy": numpy.__version__,
+              "pandas": pandas.__version__,
+              "scipy": scipy.__version__,
+              "scikit_learn": sklearn.__version__,
+          }
+          expected = {
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "scipy": "1.17.0",
+              "scikit_learn": "1.8.0",
+          }
+          if observed != expected:
+              raise RuntimeError(f"runtime mismatch: {observed} != {expected}")
+          Path("research/ml_convex_trend_20260726/RUNTIME.json").write_text(
+              json.dumps(observed, indent=2, sort_keys=True) + "\n"
+          )
+          PY
       - name: Download checksum-identified source artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,6 +99,8 @@ jobs:
             research/ml_convex_trend_20260726/preregistration.json
             research/ml_convex_trend_20260726/FINGERPRINTS.json
             research/ml_convex_trend_20260726/dataset_manifest.json
+            research/ml_convex_trend_20260726/requirements-lock.txt
+            research/ml_convex_trend_20260726/RUNTIME.json
             research/ml_convex_trend_20260726/RUN.log
             research/ml_convex_trend_20260726/RUN.exit
             research/ml_convex_trend_20260726/AUDIT.log
