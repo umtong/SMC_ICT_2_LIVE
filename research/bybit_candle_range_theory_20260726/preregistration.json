@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1630-CRT-001",
+  "created_at": "2026-07-26T16:30:00+09:00",
+  "base_revision": 11,
+  "status": "PREREGISTERED_BEFORE_ANY_CRT_STRATEGY_OUTCOME",
+  "purpose": "Fatal pre-2024 test of an exact Candle Range Theory model: raid one side of the previous completed candle, causally reclaim or change delivery, then target the opposite side of that frozen candle range.",
+  "smc_ict_translation": {
+    "dealing_range": "The high and low of the immediately preceding completed parent candle.",
+    "external_liquidity": "The two frozen boundaries of that preceding candle.",
+    "manipulation": "The current parent candle first trades at least the registered depth through exactly one prior-candle boundary.",
+    "reclaim": "A completed child candle closes back inside the preceding candle range.",
+    "cisd": "After the raid, the completed child candle closes through the open of the most recent opposing child candle and back inside the preceding range.",
+    "draw_on_liquidity": "The untouched opposite boundary of the preceding candle.",
+    "stop": "One observed tick beyond the most adverse raid extreme known at confirmation."
+  },
+  "market": {
+    "venue": "Bybit USDT linear perpetual public trades",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "source_url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz"
+  },
+  "candidate_grid": {
+    "parent_seconds": [300, 900, 1800],
+    "child_seconds": [5, 15],
+    "minimum_parent_range_bps": [30.0, 60.0],
+    "minimum_raid_depth_fraction_of_parent_range": [0.0, 0.05],
+    "confirmation": ["RECLAIM", "CISD"],
+    "confirmation_directional_flow_min": [0.0, 0.3],
+    "minimum_target_to_stop_ratio": 1.5,
+    "roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "candidate_count": 96
+  },
+  "information_contract": {
+    "parent_range": "Every parent candle becomes usable only after its final UTC second completes. The next parent candle is the only manipulation window for that range.",
+    "child_bars": "Non-overlapping UTC-aligned child bars built from actual public trades. A child bar with no actual trade is unavailable.",
+    "first_raid_only": "Use the first registered one-side raid in the current parent candle. If both boundaries are raided before confirmation, the setup is invalid.",
+    "raid_depth": "Zero fraction still requires one observed tick beyond the boundary. Five-percent fraction requires max(one tick, 5% of the prior candle range).",
+    "cisd_reference": "Bullish after a low raid uses the open of the most recent bearish child candle at or before the raid. Bearish after a high raid uses the most recent bullish child-candle open.",
+    "entry": "First actual trade in the first UTC second after the completed confirmation child candle.",
+    "pre_entry_invalidation": "No delayed fill. If the next UTC second has no trade, the setup is unavailable.",
+    "same_second_exit": "Protective stop wins stop/target ambiguity in the entry second and thereafter.",
+    "position_exit": "Frozen opposite prior-candle boundary or structural stop only; no elapsed-time liquidation.",
+    "source_boundary": "An unresolved filled position at a non-contiguous sample boundary is charged its structural stop plus the full registered cost."
+  },
+  "account_and_path": {
+    "global_slots": 1,
+    "setup_priority": "Earlier confirmation timestamp, then larger raid depth in basis points, larger target-to-stop ratio, lexical setup id.",
+    "setups_while_position_open": "Discarded rather than queued.",
+    "top_winner_removal": "Remove the largest ceiling(10%) positive 12bp setup ids from the initial account route and rerun the global slot from the beginning."
+  },
+  "stages": {
+    "fit_dates": ["2023-01-15", "2023-03-19", "2023-05-21"],
+    "development_dates": ["2023-07-16", "2023-09-17", "2023-11-19"],
+    "2024_2026_sealed": true
+  },
+  "fit_gate": {
+    "minimum_global_slot_trades": 30,
+    "positive_mean_net_at_12_and_24bps": true,
+    "positive_median_net_at_12bps": true,
+    "minimum_profit_factor_12bps": 1.1,
+    "positive_top10_removed_total_return_12bps": true,
+    "minimum_positive_symbol_date_segments_12bps": 3,
+    "maximum_top_five_positive_profit_share_12bps": 0.5,
+    "select_at_most": 3
+  },
+  "development_gate": {
+    "minimum_global_slot_trades": 30,
+    "positive_mean_and_median_net_at_24bps": true,
+    "minimum_profit_factor_24bps": 1.0,
+    "positive_top10_removed_total_return_12bps": true,
+    "minimum_positive_symbol_date_segments_12bps": 3,
+    "maximum_top_five_positive_profit_share_12bps": 0.4
+  },
+  "distinct_scope": "Every completed candle creates a new range. No fixed session, BPR, FVG/IFVG, breaker/order block, OTE, cross-asset SMT, OI, options, L2 cancellation, liquidation or OCO state is used.",
+  "promotion_boundary": {
+    "if_zero_fit_survivors": "Retire exact previous-candle raid, reclaim/CISD and opposite-boundary target dependency without adjacent threshold tuning.",
+    "if_fit_survivor_but_development_fails": "Retire selected dependency and do not open 2024.",
+    "if_development_survives": "Expand unchanged over additional pre-2024 dates, add exact Bybit funding and executable BBO audit, then freeze before 2024.",
+    "risk_or_leverage_optimization": false,
+    "orders_submitted": false,
+    "2024_2026_opened": false
+  }
+}
