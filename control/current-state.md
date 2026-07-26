@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 11
+- revision: 12
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260725-DYNAMIC-STATE-021FBAB6`
 - first-place stage: `EXPLORATORY`
@@ -53,31 +53,27 @@ The provisional third place is `perp_overshoot_reversal 191444bb0a4348e2a52b` fr
 
 It is hard-valid but failed five development gates, including sample count, positive median trade and top-trade-removal robustness. Zero of 496 candidates survived; later stages remained unopened. Its rank reflects target proximity only, with low comparison confidence.
 
-The provisional fourth place is the raw DVOL-conditioned residual candidate `1b4ec83c59bb98660c23` from `RES-20260726-DVOL-XSEC-001`.
+The newly reconciled provisional fourth place is `exhaustion_reversal 0c0b773a5be4eab4` from `RES-20260726-LIQUIDATION-REFILL-001` / PR #58.
 
-- 12 bps geometric daily growth: `0.0034002%`
-- target gap: `0.9965998 percentage points per trading day`
-- total return: `+0.9291%`
-- maximum drawdown: `3.4484%`
-- trades: `76`
-- profit factor: `1.0684`
-- top-10%-removed return: `-7.3742%`
+- 18 bps development full-calendar geometric daily growth: `0.00358316%`
+- target gap: `0.99641684 percentage points per trading day`
+- development total return: `+1.31642%`
+- development maximum drawdown: `1.4925%`
+- development trades: `19`
+- development profit factor: `1.32394`
+- development median trade return: `+0.3092%`
+- 24 bps development total return: `+0.24768%`
 
-It lost at 18 and 24 bps, had a negative median trade and produced zero development survivors. The former `high_resistance_sweep c232ae43b7a1401d` remains rank 5.
+This candidate is inserted because hard validity and the normalized positive account-growth metric satisfy provisional ranking eligibility even though the economic gate failed. Comparison confidence is very low: the same rule lost `7.35461%` in the 2021–2022 fit period, the 18-bps top-10%-winner-removal return was `-0.00784%`, only eight development sample days were active, and validation plus 2024–2026 remained unopened.
 
-The provisional sixth place is `fragmented_flow_reversal 95f3b144d5a291abc61c` from `RES-20260726-FLOW-IMPACT-EFFICIENCY-001` / PR #52.
+The former fourth through eighth places shift down one rank:
 
-- 12 bps geometric daily growth: `0.0020533%`
-- target gap: `0.9979467 percentage points per trading day`
-- total return: `+0.7523%`
-- maximum drawdown: `0.3551%`
-- trades: `4`
-- profit factor: `2.1284`
-- top-five positive-trade share: `100%`
-- top-10%-removed return: `-0.0751%`
-- 18/24 bps total return: `+0.5491%` / `+0.3461%`
+- rank 5: `LOW_VRP_RESIDUAL_CONTINUATION 1b4ec83c59bb98660c23` from `RES-20260726-DVOL-XSEC-001`, `0.0034002%` daily growth;
+- rank 6: `high_resistance_sweep c232ae43b7a1401d` from `RES-20260725-ALPHA-HYP-001`, `0.0024555%` daily growth;
+- rank 7: `fragmented_flow_reversal 95f3b144d5a291abc61c` from `RES-20260726-FLOW-IMPACT-EFFICIENCY-001`, `0.0020533%` daily growth;
+- ranks 8 and 9 remain the negative `balance_to_imbalance` and cross-asset lead-lag records.
 
-It is hard-valid but failed the sample, concentration, top-trade-removal and half-year gates. Zero of 864 candidates survived, every candidate with at least 200 trades had negative after-cost growth, and later stages remained unopened. Comparison confidence is very low and the family is not deployable.
+The positive 10-symbol cross-sectional funding result is excluded because its tradable universe is outside the fixed four-symbol contract. Positive execution proxies and records explicitly marked non-rank-eligible remain outside the strategy ranking with their reasons recorded rather than being silently discarded.
 
 The current execution-routing component first place remains `RES-20260725-1510-L1-EXEC-001`, which improved modeled execution drag but has negative standalone expectancy.
 
@@ -93,13 +89,13 @@ The current execution-routing component first place remains `RES-20260725-1510-L
 
 ## Active work
 
-Material active claims include the fixed raw-event two-strategy portfolio, L2 maker toxicity, exact-arrival cross-venue V5D, multi-asset positioning states, COIN-M/cross-margin collateral stress and option-surface skew/term structure. The flow-size/impact-efficiency claim is now reported and should not receive adjacent-threshold tuning under the recorded dependency fingerprint.
+The slower Coinbase institutional-flow branch PR #159 was closed before any scientific result because it duplicated the faster Coinbase spot-to-Bybit dependency. The retained active path is `CLM-20260726-1935-ML-COINBASE-SPOT-001` / PR #155: one Coinbase BTC spot-flow displacement, one calibrated ML router, 500/1,000-ms causal Bybit execution and one structural payoff. Exact-arrival cross-venue V5D also remains active but its latest run stopped during source-frame preparation before a decision-ready economic result.
 
-Reported work has rejected causal alpha wave 1, exact funding-settlement families, completed-bar fixed lead-lag, fixed BTC OI-shock families, transcript-derived five-minute formulations, liquidity-sweep engulfing first-touch variants, ordinary five-minute absorption, prior-volume dollar-clock absorption, completed-bar spot/perpetual price-discovery thresholds, DVOL-conditioned residual routing and ordinary one-minute activity/impact threshold routing under their tested dependencies.
+Reported work has rejected the tested first-passage, leverage-positioning, option-flow, option-surface, L2 hazard, L2 sweep-router, wallet-skill, parent-cadence and adjacent completed-bar dependencies under their recorded contracts. They do not receive threshold, feature, risk or leverage rescue.
 
 ## Current objective
 
-Finish and reuse decision-ready outputs from active claims, especially the fixed account-level portfolio and corrected sub-minute cross-venue replay. If none materially closes the target gap, change the payoff structure rather than retuning reported directional thresholds. A high-information next direction is movement-hazard-conditioned two-sided OCO execution, provided active cross-venue and L2 scopes do not already cover it.
+Consume the retained fast Coinbase spot-flow ML result and corrected exact-arrival cross-venue result as soon as they become decision-ready. A positive hard-valid result is inserted into the cumulative ranking immediately under normalized conditions; a negative result is retired immediately. Do not spend the remaining research budget polishing ranked failures.
 
 ## Current blockers
 
@@ -107,4 +103,4 @@ Every positive raw rank remains far below the 1% target and has material concent
 
 ## Next exact action
 
-Consume decision-ready fixed-portfolio, cross-venue V5D, L2 maker, positioning, COIN-M/cross-margin and option-surface outputs as they finish. Do not retune dynamic-factor, ordinary absorption, DVOL, completed-bar spot/perpetual or one-minute flow-impact dependencies. If active outputs remain below target, search claims and open a non-overlapping movement-hazard-conditioned two-sided OCO or other structurally different sub-minute payoff study.
+Finish the retained Coinbase 500/1,000-ms source correction and frozen ML screen in PR #155, then consume the exact-arrival V5D output. If neither produces cost-surviving incremental information, switch the primary information source or payoff rather than retuning their models, thresholds, stops, risk rates or leverage.
