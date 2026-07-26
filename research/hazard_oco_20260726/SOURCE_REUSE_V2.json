@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "source_artifact": {
+    "repository": "umtong/SMC_ICT_2_LIVE",
+    "workflow_run_id": 30183063220,
+    "artifact_id": 8626169763,
+    "artifact_name": "bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216",
+    "artifact_sha256": "a6f5c943231ca4e7b22df35d5cf79c236da55dc6fe2f0be40739fb3141142841",
+    "reuse_boundary": "Reuse only the exact completed 100ms causal state tables and their SHA-identified raw Bybit source identities. Do not reuse the prior cancellation-replenishment labels, models, candidates, trades or economic conclusion."
+  },
+  "compact_states": [
+    {
+      "stage": "fit",
+      "date": "2022-07-01",
+      "market": "Bybit BTCUSDT USDT-linear perpetual",
+      "path": "output/compact_states/2022-07-01_BTCUSDT_state.parquet",
+      "bytes": 195672607,
+      "raw_book_snapshot_5_sha256": "7787c36c35a591c8fcf1bf629d8b82624ac61a6b970f09cdbcff01c9afb624b6",
+      "raw_trades_sha256": "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
+    },
+    {
+      "stage": "development",
+      "date": "2023-07-01",
+      "market": "Bybit BTCUSDT USDT-linear perpetual",
+      "path": "output/compact_states/2023-07-01_BTCUSDT_state.parquet",
+      "bytes": 130017972,
+      "raw_book_snapshot_5_sha256": "4ed34a4de337e276e8e58df96780bbb8868d1ead3b9c49839d295fe532aa2753",
+      "raw_trades_sha256": "0707925b9320626560a5aa2ce89c78666b27266c92626fc6a6ff5236a0d5b301"
+    }
+  ],
+  "availability_clock": "Tardis local_timestamp embedded in the completed-state construction",
+  "physical_stage_rule": "Only the two registered pre-2024 state tables may be opened. Every 2024-2026 source is prohibited by this claim.",
+  "source_limit": "Third-party normalized historical data can reject the mechanism. A positive survivor cannot support ranking or practical use until independently reconstructed from official Bybit data or another independent source.",
+  "orders_permitted": false
+}
