@@ -8,4 +8,4 @@ The evaluator reuses only the immutable causal state parquet files produced by P
 - 2022 state SHA-256: `da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b`
 - 2023 state SHA-256: `8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f`
 
-Tardis `local_timestamp` is the information-availability clock. Only exact contiguous 500 ms states may form a bar, and missing states begin a new causal segment.
+Tardis `local_timestamp` is the information-availability clock. PR #72 constructs every completed **100 ms** state. Only exact contiguous 100 ms states may form a bar, and a missing state begins a new causal segment. The first CISD run's 500 ms interpretation is invalidated by `amendment_001_source_frequency_correction.json`.
