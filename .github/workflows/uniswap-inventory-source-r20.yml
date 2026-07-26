@@ -53,19 +53,30 @@ jobs:
         run: |
           set -euo pipefail
           root=research/uniswap_inventory_relay_20260726
-          python -m py_compile "$root/source_gate.py" "$root/test_source_gate.py"
-          PYTHONPATH="$root" python -m pytest -q "$root/test_source_gate.py"
+          python -m py_compile \
+            "$root/source_gate.py" \
+            "$root/source_gate_launcher.py" \
+            "$root/test_source_gate.py" \
+            "$root/test_source_gate_launcher.py"
+          PYTHONPATH="$root" python -m pytest -q \
+            "$root/test_source_gate.py" \
+            "$root/test_source_gate_launcher.py"
+          python "$root/source_gate_launcher.py" --verify-only
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json" >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
           root=Path('research/uniswap_inventory_relay_20260726')
           p=json.loads((root/'preregistration.json').read_text())
           a=json.loads((root/'AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json').read_text())
+          c=json.loads((root/'CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json').read_text())
           assert a['recorded_before_source_or_market_outcome'] is True
           assert a['source_gate_result_observed'] is False
           assert a['market_outcome_observed'] is False
+          assert c['strategy_outcome_observed_before_correction'] is False
+          assert c['model_fitted_before_correction'] is False
           assert p['pre2024_cost_possibility']['development_24bps_total_return_positive'] is True
           assert p['pre2024_cost_possibility']['opens_official_2024H1_immediately_after_freeze'] is True
           assert p['official_sequential_research']['no_extra_pre2024_purity_gate'] is True
@@ -77,8 +88,9 @@ jobs:
         run: |
           set -euo pipefail
           root=research/uniswap_inventory_relay_20260726
+          rm -rf research_runs/uniswap_inventory "$RUNNER_TEMP/uniswap-inventory-cache"
           mkdir -p research_runs/uniswap_inventory/source
-          PYTHONPATH="$root" python "$root/source_gate.py" \
+          python "$root/source_gate_launcher.py" \
             --output research_runs/uniswap_inventory/source \
             --cache "$RUNNER_TEMP/uniswap-inventory-cache" \
             2>&1 | tee research_runs/uniswap_inventory/source.log
@@ -97,6 +109,7 @@ jobs:
           assert result["ethereum_blocks"]["min_block"] <= result["uniswap"]["min_block"]
           assert result["ethereum_blocks"]["max_block"] >= result["uniswap"]["max_block"]
           assert len(result["bybit_probe"]) == 3
+          assert all(int(item["year"]) <= 2023 for item in result["bybit_probe"])
           assert result["outcome_market_data_opened"] is False
           assert result["model_fitted"] is False
           assert result["strategy_pnl_opened"] is False
@@ -106,7 +119,7 @@ jobs:
               "status": result["status"],
               "uniswap_rows": result["uniswap"]["rows"],
               "block_files": result["ethereum_blocks"]["file_count"],
-              "bybit_probe_files": len(result["bybit_probe"]),
+              "bybit_probe_years": [item["year"] for item in result["bybit_probe"]],
           }, sort_keys=True))
           PY
           python scripts/validate_project.py || true
@@ -120,8 +133,11 @@ jobs:
             research/uniswap_inventory_relay_20260726/README.md \
             research/uniswap_inventory_relay_20260726/preregistration.json \
             research/uniswap_inventory_relay_20260726/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json \
+            research/uniswap_inventory_relay_20260726/CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json \
             research/uniswap_inventory_relay_20260726/source_gate.py \
+            research/uniswap_inventory_relay_20260726/source_gate_launcher.py \
             research/uniswap_inventory_relay_20260726/test_source_gate.py \
+            research/uniswap_inventory_relay_20260726/test_source_gate_launcher.py \
             .github/workflows/uniswap-inventory-source-r20.yml \
             > research_runs/uniswap_inventory/INPUT_SHA256SUMS.txt
 
