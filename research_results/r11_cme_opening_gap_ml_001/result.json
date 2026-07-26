@@ -1,0 +1,198 @@
+{
+  "artifact_fingerprint": "d6e8ce3ebe23b608a17c0be3f5556d7839101d4d3239bd421a6f7908a4ac385e",
+  "artifact_id": 8629877538,
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "code_commit": "a8ff96a944265ac8523e0052f8e8ebdeaf54417a",
+  "created_at": "2026-07-26T17:50:00+09:00",
+  "dataset_ids": [
+    "DS-YAHOO-CME-BTCETH-BINANCE-USDM-BTCETH-15M-FUNDING-2021-2022-CME-GAP-ML-R1"
+  ],
+  "decision": "RETIRE_EXACT_FIVE_FEATURE_CME_GAP_ML_DEPENDENCY",
+  "dependency_fingerprint": "96c5709d084439a0a163a57cbed621fd7f2187789db43f359ce2e06bd749f5b8",
+  "economic_status": "DEVELOPMENT_BELOW_GATE",
+  "evaluation_contract_sha256": "3a710e878b225974a0e4f6665e158e3e38fd5513445acb4a943078ccf331fbff",
+  "hard_validity_status": "PRELIMINARY_CAUSAL_FIVE_FEATURE_ML_PROXY",
+  "known_limitations": [
+    "Yahoo continuous-front CME daily open/close and Binance USD-M execution are fatal-screen proxies, not exact CME contract and Bybit BBO/depth execution.",
+    "Only 56 causally resolved training labels and 80 labeled development opportunities were available.",
+    "The positive account path was concentrated in a small number of winners and in Q4.",
+    "Median trade expectancy was negative at every tested cost.",
+    "2023 confirmation and official 2024-2026 were not opened."
+  ],
+  "metrics": {
+    "confirmation_opened": false,
+    "cost_12bps": {
+      "eligible_opportunity_count": 80,
+      "funding_bps_total": -38.68120000000001,
+      "geometric_daily_growth": 0.00045942506559409766,
+      "maximum_drawdown": 0.12481564234180187,
+      "mean_trade_bps": 50.166557196006224,
+      "median_trade_bps": -58.34538853171429,
+      "period_returns": {
+        "Q1": -0.022435707878156408,
+        "Q2": -0.022748666332033873,
+        "Q3": 0.0276491885871748,
+        "Q4": 0.20451911733648753
+      },
+      "positive_period_fraction": 0.5,
+      "profit_factor": 1.6413088895055685,
+      "route_counts": {
+        "cme_gap_ml_continuation": 26,
+        "cme_gap_ml_rebalance": 12
+      },
+      "routed_positive_ev_count": 45,
+      "skipped_global_slot_count": 7,
+      "symbol_counts": {
+        "BTCUSDT": 16,
+        "ETHUSDT": 22
+      },
+      "top_10_percent_positive_removed_return": -0.05051795340724963,
+      "top_five_positive_trade_share": 0.7769408145440916,
+      "total_return": 0.18252459486419337,
+      "trade_count": 38,
+      "unresolved_positions": 0
+    },
+    "cost_18bps": {
+      "eligible_opportunity_count": 80,
+      "funding_bps_total": -38.68120000000001,
+      "geometric_daily_growth": 0.00039715447113120944,
+      "maximum_drawdown": 0.13168822823874282,
+      "mean_trade_bps": 44.166557196006224,
+      "median_trade_bps": -64.34538853171429,
+      "period_returns": {
+        "Q1": -0.027716524865745384,
+        "Q2": -0.026860297194706506,
+        "Q3": 0.01967706633820887,
+        "Q4": 0.19815411096219981
+      },
+      "positive_period_fraction": 0.5,
+      "profit_factor": 1.537484998195617,
+      "route_counts": {
+        "cme_gap_ml_continuation": 26,
+        "cme_gap_ml_rebalance": 12
+      },
+      "routed_positive_ev_count": 45,
+      "skipped_global_slot_count": 7,
+      "symbol_counts": {
+        "BTCUSDT": 16,
+        "ETHUSDT": 22
+      },
+      "top_10_percent_positive_removed_return": -0.0708458147229245,
+      "top_five_positive_trade_share": 0.7833149219690984,
+      "total_return": 0.1559616599324707,
+      "trade_count": 38,
+      "unresolved_positions": 0
+    },
+    "cost_24bps": {
+      "eligible_opportunity_count": 80,
+      "funding_bps_total": -38.68120000000001,
+      "geometric_daily_growth": 0.0003348504650920563,
+      "maximum_drawdown": 0.13851096785061656,
+      "mean_trade_bps": 38.166557196006224,
+      "median_trade_bps": -70.34538853171429,
+      "period_returns": {
+        "Q1": -0.03297197084581127,
+        "Q2": -0.030957092686205723,
+        "Q3": 0.011762063438268466,
+        "Q4": 0.19181900997663015
+      },
+      "positive_period_fraction": 0.5,
+      "profit_factor": 1.443178783286834,
+      "route_counts": {
+        "cme_gap_ml_continuation": 26,
+        "cme_gap_ml_rebalance": 12
+      },
+      "routed_positive_ev_count": 45,
+      "skipped_global_slot_count": 7,
+      "symbol_counts": {
+        "BTCUSDT": 16,
+        "ETHUSDT": 22
+      },
+      "top_10_percent_positive_removed_return": -0.09075030979094911,
+      "top_five_positive_trade_share": 0.7898995701700868,
+      "total_return": 0.129980031741886,
+      "trade_count": 38,
+      "unresolved_positions": 0
+    },
+    "current_first_place_daily_growth_percent": 0.0573077,
+    "current_first_place_unchanged": true,
+    "development_labeled_opportunity_count": 80,
+    "development_model_diagnostics": {
+      "average_precision": 0.5926317704850312,
+      "brier_score": 0.18068079143737123,
+      "continuation_count": 24,
+      "labeled_count": 80,
+      "mean_probability_continuation": 0.2324532780918477,
+      "rebalance_count": 56,
+      "roc_auc": 0.7529761904761905
+    },
+    "development_opportunity_count": 80,
+    "development_pass": false,
+    "target_gap_at_12bps_daily_percentage_points": 0.9540574934405902,
+    "target_gap_at_18bps_daily_percentage_points": 0.9602845528868791
+  },
+  "model": {
+    "coefficients": {
+      "gap_signed_atr": -0.20038062414261004,
+      "log_continuation_to_rebalance_distance": -0.7915301944144614,
+      "rebalance_progress": 0.14143271534792937,
+      "residual_in_gap_direction": 0.13944546066761873,
+      "response_in_gap_direction_atr": 0.44403073605385807
+    },
+    "feature_names": [
+      "gap_signed_atr",
+      "residual_in_gap_direction",
+      "response_in_gap_direction_atr",
+      "rebalance_progress",
+      "log_continuation_to_rebalance_distance"
+    ],
+    "hyperparameters": {
+      "C": 0.25,
+      "decision_bars": 2,
+      "decision_cost_bps": 18.0,
+      "max_iter": 5000,
+      "maximum_absolute_roll_residual_bps": 35.0,
+      "minimum_gap_atr": 0.15,
+      "penalty": "l2",
+      "solver": "lbfgs"
+    },
+    "intercept": -1.4036657605400604,
+    "model_id": "CME_GAP_COMPETING_RISK_LOGIT_V2",
+    "policy_id": "da1b9e2861d6b396b81e",
+    "training_diagnostics": {
+      "average_precision": 0.678692819247118,
+      "brier_score": 0.12839535995667337,
+      "continuation_count": 13,
+      "labeled_count": 56,
+      "mean_probability_continuation": 0.2321385716379746,
+      "rebalance_count": 43,
+      "roc_auc": 0.8067978533094813
+    },
+    "training_labeled_count": 56,
+    "training_strategy_pnl_computed": false,
+    "type": "shared_standardized_l2_logistic_competing_risk"
+  },
+  "orders_submitted": false,
+  "output_hashes": {
+    "development_2022_opportunities.csv": "15322303d88b3a72430d552511fb9e703bb4a84ec9346b1fce202b11abf106ff",
+    "development_result.json": "867d2fed39b680eabdc56352779ba8d3f38f84c7cbd2b9f644979cb6566df668",
+    "result_summary.json": "be9c84cae4782cfa4a6314f5d9d0cc1b698ffa31ac1750bb409faa38b77cfb86",
+    "source_manifest.json": "2a68c20d2f32d718b7a5e8ff65374675d6643c5bb1984bee6c7af08906a7f7b7",
+    "training_2021_opportunities.csv": "8bdde18ce0dd2189316de38dfdd5ffdb8333b41890e3a3904aef8442083f8f73",
+    "training_model.json": "2945579f54e6cd9361465cd9075afb72134356a9e74a59261d1b7993a2412974"
+  },
+  "paper_live_enabled": false,
+  "ranking_role": "NONE_FATAL_PROXY_SCREEN",
+  "result_id": "RES-20260726-CME-GAP-ML-FATAL-001",
+  "schema_version": 1,
+  "source_ids": [
+    "yahoo-finance:CME-continuous-front:BTC=F",
+    "yahoo-finance:CME-continuous-front:ETH=F",
+    "binance-vision:usdm:official-15m-and-funding-archives"
+  ],
+  "status": "TESTED_BELOW_GATE",
+  "strategy_explanation": "Map the real CME NDOG/NWOG to BTCUSDT or ETHUSDT, wait for two completed 15-minute bars, and let one five-feature ML model choose between two premarked ICT/SMC liquidity draws: the mapped prior CME close for rebalancing or the nearest previous-day/week external liquidity in the gap direction for accepted delivery. Enter next open only when structural expectancy after 18bp is positive; the unselected destination is the stop.",
+  "summary": "One shared five-feature standardized L2 logistic competing-risk model trained on 56 causally resolved 2021 CME BTC/ETH opening-gap events and evaluated on untouched 2022. It routed 45 positive-EV setups, accepted 38 after one-global-slot arbitration and returned +18.2525%/+15.5962%/+12.9980% at 12/18/24bp. The model had 2022 event-label ROC AUC 0.7530, but the tradable path failed: median trade was negative at every cost, top-10%-positive-winner removal was negative, the five largest winners supplied about 78% of positive PnL, only Q3-Q4 were positive, and trade count was 38 versus the 40 gate. Development failed, 2023 and 2024-2026 stayed sealed, and the exact model is retired without adding features, models or thresholds.",
+  "worker_id": "gpt-5.6-pro-20260726-1638",
+  "workflow_run": 30195160649
+}
