@@ -51,7 +51,7 @@ def download(session: requests.Session, url: str, path: Path) -> dict[str, Any]:
     if not path.exists() or path.stat().st_size == 0:
         tmp = path.with_suffix(path.suffix + ".part")
         last: Exception | None = None
-n        for attempt in range(6):
+        for attempt in range(6):
             try:
                 with session.get(url, stream=True, timeout=(30, 300), allow_redirects=True) as response:
                     response.raise_for_status()
