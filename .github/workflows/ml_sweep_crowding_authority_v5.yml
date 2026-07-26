@@ -1,0 +1,166 @@
+name: ML sweep crowding observable authority v5
+
+on:
+  push:
+    branches:
+      - agent/r22-ml-sweep-crowding-001
+    paths:
+      - research/triggers/ml_sweep_crowding_authority_v5/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ml-sweep-crowding-authority-v5-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+    steps:
+      - name: Check out frozen branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Publish started status
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research/results/ml_sweep_crowding
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          Path('research/results/ml_sweep_crowding/workflow_status.json').write_text(
+              json.dumps({
+                  'schema_version': 1,
+                  'authority_id': 'AUTH-20260727-ML-SWEEP-CROWDING-V5-001',
+                  'claim_id': 'CLM-20260727-0245-ML-SWEEP-CROWDING-001',
+                  'status': 'STARTED',
+                  'run_id': os.environ.get('GITHUB_RUN_ID'),
+                  'run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
+                  'head_sha': os.environ.get('GITHUB_SHA'),
+                  'started_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                  'economic_contract_changed': False,
+                  'orders_submitted': False,
+              }, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/results/ml_sweep_crowding/workflow_status.json
+          git commit -m "research: mark sweep authority started"
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Restore immutable public-data cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/ml_sweep_crowding
+          key: ml-sweep-crowding-v5-${{ hashFiles('research/ml_sweep_crowding/contract.json') }}
+
+      - name: Install pinned runtime
+        id: install
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pip install --upgrade pip 2>&1 | tee research/results/ml_sweep_crowding/install.log
+          python -m pip install \
+            numpy==2.1.3 \
+            pandas==2.2.3 \
+            pyarrow==18.1.0 \
+            requests==2.32.3 \
+            scikit-learn==1.5.2 \
+            pytest==8.3.4 2>&1 | tee -a research/results/ml_sweep_crowding/install.log
+
+      - name: Verify deterministic accounting and source invariants
+        id: verify
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m py_compile research/ml_sweep_crowding/*.py 2>&1 | tee research/results/ml_sweep_crowding/verify.log
+          pytest -q \
+            research/ml_sweep_crowding/test_run.py \
+            research/ml_sweep_crowding/test_source_hf_pinned.py 2>&1 | tee -a research/results/ml_sweep_crowding/verify.log
+
+      - name: Execute sealed source-to-account sequence
+        id: economic
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m research.ml_sweep_crowding.run_hf_pinned \
+            --contract research/ml_sweep_crowding/contract.json \
+            --cache-dir .cache/ml_sweep_crowding \
+            --output-dir research/results/ml_sweep_crowding \
+            2>&1 | tee research/results/ml_sweep_crowding/economic.log
+
+      - name: Publish terminal status and all decision evidence
+        if: always()
+        shell: bash
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          ECONOMIC_OUTCOME: ${{ steps.economic.outcome }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          root = Path('research/results/ml_sweep_crowding')
+          result_path = root / 'result.json'
+          result_status = None
+          if result_path.exists():
+              try:
+                  result_status = json.loads(result_path.read_text(encoding='utf-8')).get('status')
+              except Exception:
+                  result_status = 'UNREADABLE_RESULT'
+          outcomes = {
+              'install': os.environ.get('INSTALL_OUTCOME'),
+              'verify': os.environ.get('VERIFY_OUTCOME'),
+              'economic': os.environ.get('ECONOMIC_OUTCOME'),
+          }
+          terminal = 'COMPLETE' if outcomes['economic'] == 'success' and result_status else 'FAILED'
+          (root / 'workflow_status.json').write_text(json.dumps({
+              'schema_version': 1,
+              'authority_id': 'AUTH-20260727-ML-SWEEP-CROWDING-V5-001',
+              'claim_id': 'CLM-20260727-0245-ML-SWEEP-CROWDING-001',
+              'status': terminal,
+              'step_outcomes': outcomes,
+              'result_status': result_status,
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
+              'head_sha_at_dispatch': os.environ.get('GITHUB_SHA'),
+              'finished_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'economic_contract_changed': False,
+              'orders_submitted': False,
+          }, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/results/ml_sweep_crowding
+          git commit -m "research: publish observable sweep economic decision" || true
+          git pull --rebase origin ${GITHUB_REF_NAME}
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Upload complete evidence bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-sweep-crowding-authority-v5
+          path: research/results/ml_sweep_crowding
+          if-no-files-found: error
+          retention-days: 30
