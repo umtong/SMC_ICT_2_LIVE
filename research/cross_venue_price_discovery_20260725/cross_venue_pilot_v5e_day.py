@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -19,6 +20,10 @@ def run(day: str, output: Path, cache: Path) -> dict:
     )
     path = output / "PILOT_RESULT.json"
     path.write_text(json.dumps(result, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    (output / "PILOT_RESULT.sha256").write_text(
+        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n",
+        encoding="utf-8",
+    )
     return result
 
 
