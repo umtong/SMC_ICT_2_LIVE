@@ -1,13 +1,13 @@
 name: Stablecoin Blockscout source gate
 
 on:
-  push:
-    branches: [agent/r13-ml-stablecoin-issuance-001]
+  pull_request:
+    branches: [main]
     paths:
       - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
       - 'research/ml_stablecoin_issuance_20260726/**'
-  pull_request:
-    branches: [main]
+  push:
+    branches: [agent/r20-stablecoin-source-economic-snapshot-001]
     paths:
       - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
       - 'research/ml_stablecoin_issuance_20260726/**'
@@ -17,114 +17,162 @@ permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-blockscout-authoritative-${{ github.sha }}
+  group: stablecoin-pinned-authority-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   source:
-    runs-on: macos-14
-    timeout-minutes: 240
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
     env:
       PYTHONHASHSEED: '0'
       PYTHONUNBUFFERED: '1'
       PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      SOURCE_ROOT: research/ml_stablecoin_issuance_20260726
+      SOURCE_OUT: research_runs/ml_stablecoin_pinned_authority/source
+      ECON_ROOT: research/ml_stablecoin_issuance_economic_20260726
+      ECON_OUT: research_runs/ml_stablecoin_pinned_authority/economic
+      MARKET_CACHE: ${{ runner.temp }}/stablecoin-market
+      ECONOMIC_SHA: 6cbff14ed8dd5ebba3b6b47bf6854bf090e4db2c
+
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/r13-ml-stablecoin-issuance-001
           fetch-depth: 1
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install fixed source environment
+
+      - name: Install frozen source and economic environment
         run: |
           set -euo pipefail
-          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
-      - name: Validate corrected source identity under the unchanged outcome seal
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5 \
+            numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1 pyarrow==18.1.0
+
+      - name: Validate corrected source identity and pinned execution
         run: |
           set -euo pipefail
-          root=research/ml_stablecoin_issuance_20260726
-          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
-          mkdir -p "$out"
-          python -m py_compile "$root"/source_gate*.py "$root/test_source_gate.py"
-          PYTHONPATH="$root" pytest -q "$root/test_source_gate.py" 2>&1 | tee "$out/PYTEST.log"
-          PYTHONPATH="$root" python "$root/source_gate_blockscout_authoritative.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
-          python -m json.tool "$root/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/EXECUTION_CORRECTION_012_UBUNTU_SOURCE_RUNNER_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/EXECUTION_CORRECTION_013_BLOCKSCOUT_RATE_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/EXECUTION_CORRECTION_016_PR_VISIBLE_SHA_SCOPED_BEFORE_OUTCOME.json" >/dev/null
-          python -m json.tool "$root/EXECUTION_TRIGGER_015_FINAL_CORRECTED_SOURCE.json" >/dev/null
+          mkdir -p "$SOURCE_OUT"
+          python -m json.tool "$SOURCE_ROOT/EXECUTION_CORRECTION_017_PINNED_SOURCE_ECONOMIC_SNAPSHOT_BEFORE_OUTCOME.json" >/dev/null
+          python -m py_compile "$SOURCE_ROOT"/source_gate*.py "$SOURCE_ROOT/test_source_gate.py" "$SOURCE_ROOT/run_pinned_snapshot_source.py"
+          PYTHONPATH="$SOURCE_ROOT" pytest -q "$SOURCE_ROOT/test_source_gate.py" 2>&1 | tee "$SOURCE_OUT/PYTEST.log"
+          PYTHONPATH="$SOURCE_ROOT" python "$SOURCE_ROOT/source_gate_blockscout_authoritative.py" --self-test 2>&1 | tee "$SOURCE_OUT/AUTHORITY_SELF_TEST.log"
+          PYTHONPATH="$SOURCE_ROOT" python "$SOURCE_ROOT/run_pinned_snapshot_source.py" --self-test 2>&1 | tee "$SOURCE_OUT/BATCH_SELF_TEST.log"
+
       - name: Query complete pre-2024 issuance source only
         run: |
-          set -u
-          root=research/ml_stablecoin_issuance_20260726
-          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
           set +e
-          PYTHONPATH="$root" python "$root/source_gate_blockscout_authoritative.py" --output "$out" 2>&1 | tee "$out/RUN.log"
+          PYTHONPATH="$SOURCE_ROOT" python "$SOURCE_ROOT/run_pinned_snapshot_source.py" \
+            --output "$SOURCE_OUT" 2>&1 | tee "$SOURCE_OUT/RUN.log"
           rc=${PIPESTATUS[0]}
           set -e
-          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
-          if [[ ! -f "$out/SOURCE_GATE_RESULT.json" ]]; then
-            python "$root/write_transport_failure.py" --output "$out" --transport TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003 --exit-code "$rc"
+          echo "$rc" > "$SOURCE_OUT/RUN_EXIT_CODE.txt"
+          if [[ ! -f "$SOURCE_OUT/SOURCE_GATE_RESULT.json" ]]; then
+            python "$SOURCE_ROOT/write_transport_failure.py" \
+              --output "$SOURCE_OUT" \
+              --transport TRANSPORT-20260726-ML-STABLECOIN-PINNED-BATCH-017 \
+              --exit-code "$rc"
           fi
-          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
-            echo "transport failure recorded under the unchanged outcome seal"
-          fi
+
       - name: Verify source decision and outcome seal
+        id: source
         run: |
           set -euo pipefail
-          root=research/ml_stablecoin_issuance_20260726
-          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
-          python "$root/verify_source_result.py" "$out/SOURCE_GATE_RESULT.json" TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003
           python - <<'PY'
-          import json
+          import json, os
           from pathlib import Path
-          result=json.loads(Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source/SOURCE_GATE_RESULT.json').read_text())
-          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
-          assert result['market_outcome_opened'] is False
-          assert result['model_fit'] is False
-          assert result['trade_or_pnl_opened'] is False
-          assert result['official_2024_2026_opened'] is False
-          assert result['orders_submitted'] is False
-          print(json.dumps({
-            'status':result['status'],
-            'event_count':result.get('event_count'),
-            'months_with_events':len(result.get('months_with_events',[])),
-            'distinct_tokens':result.get('distinct_tokens'),
-            'conditional_model_screen_authorized':result.get('conditional_model_screen_authorized',False),
-          },sort_keys=True))
+          r=json.loads((Path(os.environ['SOURCE_OUT'])/'SOURCE_GATE_RESULT.json').read_text())
+          assert r['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert r['status'] in {'PASS','FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE','SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE'}
+          assert r['market_outcome_opened'] is False
+          assert r['model_fit'] is False
+          assert r['trade_or_pnl_opened'] is False
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as f:
+              f.write(f"authorized={'true' if r['status']=='PASS' else 'false'}\n")
+          print(json.dumps({'status':r['status'],'events':r.get('event_count'),'months':len(r.get('months_with_events',[])),'tokens':r.get('distinct_tokens')},sort_keys=True))
           PY
-      - name: Validate current control plane without blocking source evidence
-        if: always()
-        continue-on-error: true
+
+      - uses: actions/cache@v4
+        if: steps.source.outputs.authorized == 'true'
+        with:
+          path: ${{ env.MARKET_CACHE }}
+          key: stablecoin-market-2020-12-2023-12-v1
+
+      - name: Materialize and validate pinned economic engine
+        if: steps.source.outputs.authorized == 'true'
         run: |
           set -euo pipefail
-          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
-          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
-      - name: Freeze evidence hashes
+          git fetch --no-tags --depth=1 origin "$ECONOMIC_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$ECONOMIC_SHA"
+          rm -rf "$ECON_ROOT"
+          git archive "$ECONOMIC_SHA" "$ECON_ROOT" | tar -x
+          python "$ECON_ROOT/reconstruct.py"
+          python -m py_compile "$ECON_ROOT/run.py" "$ECON_ROOT/test_run.py" "$ECON_ROOT/reconstruct.py"
+          PYTHONPATH="$ECON_ROOT" pytest -q "$ECON_ROOT/test_run.py"
+          PYTHONPATH="$ECON_ROOT" python "$ECON_ROOT/run.py" self-test
+
+      - name: Run frozen pre-2024 economic screen immediately
+        if: steps.source.outputs.authorized == 'true'
+        run: |
+          set -u
+          mkdir -p "$ECON_OUT" "$MARKET_CACHE"
+          set +e
+          PYTHONPATH="$ECON_ROOT" python "$ECON_ROOT/run.py" run \
+            --events "$SOURCE_OUT/EVENTS.jsonl" \
+            --market-cache "$MARKET_CACHE" \
+            --output "$ECON_OUT" 2>&1 | tee "$ECON_OUT/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$ECON_OUT/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
+          test -f "$ECON_OUT/RESULT.json"
+
+      - name: Enforce unchanged scientific and sequential boundaries
         if: always()
         run: |
           set -euo pipefail
-          root=research/ml_stablecoin_issuance_20260726
-          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
-          mkdir -p "$out/source"
-          cp "$root"/{WORK_CLAIM.json,preregistration.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,source_gate_blockscout.py,source_gate_blockscout_authoritative.py,test_source_gate.py,verify_source_result.py,write_transport_failure.py,EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_012_UBUNTU_SOURCE_RUNNER_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_013_BLOCKSCOUT_RATE_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_016_PR_VISIBLE_SHA_SCOPED_BEFORE_OUTCOME.json,EXECUTION_TRIGGER_015_FINAL_CORRECTED_SOURCE.json,CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json,CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json} "$out/source/"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          s=json.loads((Path(os.environ['SOURCE_OUT'])/'SOURCE_GATE_RESULT.json').read_text())
+          if s['status']=='PASS':
+              r=json.loads((Path(os.environ['ECON_OUT'])/'RESULT.json').read_text())
+              assert r['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+              assert r['orders_submitted'] is False
+              assert r['official_2024h1_opened'] is False
+              assert r['official_2024_2026_opened'] is False
+              assert r['status'] in {'PRE2024_BELOW_GATE','PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1'}
+              print(json.dumps({'source':s['status'],'economic':r['status'],'confirmation_gate':r['confirmation_gate'].get('all'),'development_opened':r['development_opened'],'next':'OFFICIAL_2024H1' if r['status'].endswith('READY_FOR_SEQUENTIAL_2024H1') else 'CHANGE_ALPHA'},sort_keys=True))
+          else:
+              print(json.dumps({'source':s['status'],'economic':'NOT_OPENED','next':'CLOSE_SOURCE_OR_TRANSPORT_ONLY'},sort_keys=True))
+          PY
+
+      - name: Freeze immutable evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
           python - <<'PY'
           import hashlib
           from pathlib import Path
-          out=Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source')
+          root=Path('research_runs/ml_stablecoin_pinned_authority'); root.mkdir(parents=True,exist_ok=True)
           rows=[]
-          for path in sorted(p for p in out.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
-              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
-          (out/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          for p in sorted(x for x in root.rglob('*') if x.is_file() and x.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
           PY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stablecoin-blockscout-macos-source-${{ github.run_id }}
-          path: research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          name: stablecoin-pinned-authority-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_pinned_authority
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
