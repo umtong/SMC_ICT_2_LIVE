@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001",
+  "correction_id": "EXECUTION-CORRECTION-20260726-UNISWAP-INVENTORY-SOURCE-TYPO-001",
+  "timing": "BEFORE_ANY_SOURCE_DOWNLOAD_MARKET_OUTCOME_MODEL_TRADE_OR_PNL",
+  "reason": "The frozen source-gate file contains one accidental leading character before the download retry loop, making the file syntactically invalid. The launcher replaces exactly that one byte sequence at runtime and refuses to proceed if its count is not exactly one.",
+  "changed": [
+    "runtime syntax repair: replace the unique sequence '\\nn        for attempt in range(6):' with '\\n        for attempt in range(6):'"
+  ],
+  "unchanged": [
+    "information unit",
+    "datasets and source identities",
+    "source coverage requirements",
+    "features",
+    "model and calibration",
+    "partitions",
+    "entry, stop, target and exit",
+    "cost, risk and notional contracts",
+    "sequential 2024H1 rule",
+    "outcome seal",
+    "order authority"
+  ],
+  "market_rows_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "strategy_outcome_observed_before_correction": false,
+  "orders_submitted": false
+}
