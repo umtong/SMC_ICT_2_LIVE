@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 20
+- revision: 21
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-ML-DONCHIAN-HGBT-2024H1-24BPS`
 - first-place stage: `OFFICIAL_2024H1_SEQUENTIAL_BINANCE_PROXY_RETIRED_WINNER_CONCENTRATED`
@@ -32,24 +32,9 @@ Rank does not determine research priority.
 
 ## UTC state-machine correction and retirement
 
-The former first place `RES-20260726-ML-HOURWEEK-XRP-001` recorded `0.223030%/day` at 24bp, but its 720 session/asset/side/threshold routes were selected after observing the complete 2024-2025 development path. It is retained as a development diagnostic, not an active causal strategy candidate.
+The former first place `RES-20260726-ML-HOURWEEK-XRP-001` recorded `0.223030%/day` at 24bp, but its 720 session/asset/side/threshold routes were selected after observing the complete 2024-2025 development path. It remains a development diagnostic, not an active causal strategy candidate.
 
-To apply the required sequence correctly:
-
-1. The base Ridge model and KEEP/SWITCH/FLAT logic were kept unchanged.
-2. All 720 filters were selected on `2023H2` only.
-3. The frozen winner was all UTC hours, long-only, BTCUSDT/SOLUSDT/XRPUSDT, threshold multiplier `0.75`.
-4. The system was frozen at `2023-12-31` and 2024H1 was opened immediately.
-
-Pre-2024, the selected path looked strong: `0.522298%/day` at 24bp, 42 trades, PF 3.5678, MDD 21.92%, positive median and positive exact winner-removal return.
-
-Official 2024H1 invalidated the alpha:
-
-- 12bp: `+0.011545%/day`, but negative median and negative exact winner-removal return
-- 18bp: `-0.014829%/day`
-- 24bp: `-0.041195%/day`, `-7.2247%` total, 80 trades, MDD 37.00%, median `-0.6460%`
-- 24bp Q1 / Q2: `+28.39% / -27.74%`
-- exact winner-removal: `-12.0168%`, `-0.070319%/day`
+The full filter family was selected again using 2023H2 only, frozen at `2023-12-31`, and opened immediately on 2024H1. The frozen all-hours, long-only BTCUSDT/SOLUSDT/XRPUSDT route lost at 18bp and 24bp. At 24bp it returned `-7.2247%`, grew `-0.041195%/day`, made 80 trades, suffered 37.00% MDD and had a `-0.6460%` median trade. Exact winner-removal returned `-12.0168%` and `-0.070319%/day`.
 
 The entire hourweek/session/asset/side/threshold family is retired. 2024H2 through 2026H1 remain unopened for this family. No adjacent filter, feature, risk or leverage rescue is permitted.
 
@@ -66,16 +51,29 @@ The entire hourweek/session/asset/side/threshold family is retired. 2024H2 throu
 
 All remain structurally far below 1%. None has deployment authority. Rank creates no incumbency protection.
 
-## Current objective
+## Newly closed source dependency
 
-Do not tune Donchian or UTC time filters. Their first official sequential evidence is structurally distant.
+`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the cumulative Hugging Face USDC/WETH source before market outcomes. Its `USDC` and `WETH` columns are cumulative unsigned volumes, not pool balances or signed `amount0/amount1` Swap flow, so WETH purchase versus sale direction cannot be reconstructed causally. No price, label, model, PnL or official period opened. The route may reopen only with canonical signed V3 Swap events or an equivalent immutable source.
 
-The only active alpha directions are materially distinct information sources capable of creating cost-sized order pressure before Bybit delivery:
+This is a source-semantics result, not negative alpha evidence against signed Uniswap inventory transfer.
 
-1. causally confirmed USDT/USDC issuance and destruction;
-2. completed Uniswap WETH-stable inventory transfer and subsequent hedge relay;
-3. finalized account liquidation or joint liquidation/OI/order-book state.
+## Active high-information ML work
 
-Each route follows the same minimal sequence: one information unit, one ML model, one structural action rule, immediate 2024H1 evaluation once frozen with information through 2023-12-31, then causal half-year continuation only while the observed performance remains structurally capable of closing the target gap.
+Only two primary information units remain active:
 
-Updated: 2026-07-26 23:00 KST
+1. corrected Ethereum USDT `Issue/Redeem` plus USDC zero-address `Transfer` supply shocks, followed by one frozen BTC/ETH HGBT and immediate 2024H1 evaluation for a pre-2024 survivor;
+2. checksum-verified Binance COIN-M `BTCUSD_PERP` and `ETHUSD_PERP` forced-liquidation records, signal-mapped to Bybit BTCUSDT/ETHUSDT, followed by one pooled HGBT and the same immediate sequential rule.
+
+Broad-universe completed-bar diffusion, extra UTC filters, unsigned cumulative Uniswap volumes, duplicate source transports and polling-only economic workflows are paused or closed before outcomes.
+
+## Current objective and next exact action
+
+Do not tune Donchian or UTC time filters. Consume the two source gates immediately.
+
+- A source PASS opens its already-frozen pre-2024 ML/account stage in the same information unit.
+- A positive cost-surviving system is frozen using information through 2023-12-31 and opens official 2024H1 immediately.
+- A source or economic failure closes the exact route without adjacent feature, threshold, target, stop, risk or leverage rescue.
+- Any superior hard-valid account path is inserted into the cumulative ranking immediately.
+- Growth above 1% is retained at full strength; 1% is never treated as a ceiling.
+
+Updated: 2026-07-27 00:10 KST
