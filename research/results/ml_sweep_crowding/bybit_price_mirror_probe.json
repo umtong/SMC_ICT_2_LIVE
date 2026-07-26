@@ -1,6 +1,6 @@
 {
   "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
-  "created_at": "2026-07-26T19:46:50.045565Z",
+  "created_at": "2026-07-26T19:50:33.374701Z",
   "dataset_id": "rogerdehe/klines-bybit",
   "dataset_last_modified": "2026-07-26T18:02:16.000Z",
   "dataset_revision": "271697a938c8cf47c8378566848eb2ed7caab792",
@@ -8,12 +8,19 @@
     "BTCUSDT": "futures/1m/BTC_USDT_USDT.parquet",
     "ETHUSDT": "futures/1m/ETH_USDT_USDT.parquet"
   },
+  "listing_boundary_correction": {
+    "economic_outcome_opened_before_correction": false,
+    "observed_first_timestamp": "2021-03-15T00:00:00Z",
+    "prior_assumption": "2021-03-01T00:00:00Z",
+    "reason": "The first probe showed no internal gap: all 20,160 missing minutes were the fourteen days before the mirror's observed ETHUSDT contract start.",
+    "symbol": "ETHUSDT"
+  },
   "market_outcome_opened": false,
   "minimum_coverage": 0.995,
   "model_opened": false,
   "orders_submitted": false,
   "pnl_opened": false,
-  "probe_id": "PROBE-20260727-HF-BYBIT-1M-PINNED-001",
+  "probe_id": "PROBE-20260727-HF-BYBIT-1M-PINNED-002",
   "records": [
     {
       "columns": [
@@ -101,9 +108,9 @@
         "close",
         "volume"
       ],
-      "coverage": 0.9885057471264368,
+      "coverage": 1.0,
       "duplicate_rows": 0,
-      "expected_minutes": 1753920,
+      "expected_minutes": 1733760,
       "file_bytes": 57892635,
       "file_sha256": "d9fab6b1fd3d1599cc98a0397127d0ed30ca3a518e1a2bf7981705d123bb266c",
       "finite_ohlc": true,
@@ -114,9 +121,9 @@
       "maximum_price": 4878.35,
       "minimum_price": 877.7,
       "minute_aligned": true,
-      "missing_minutes": 20160,
+      "missing_minutes": 0,
       "month_coverage": {
-        "2021-03": 0.5483870967741935,
+        "2021-03": 1.0,
         "2021-04": 1.0,
         "2021-05": 1.0,
         "2021-06": 1.0,
@@ -162,12 +169,12 @@
       "raw_valid_rows": 2814242,
       "repository_path": "futures/1m/ETH_USDT_USDT.parquet",
       "required_end_exclusive": "2024-07-01T00:00:00+00:00",
-      "required_start": "2021-03-01T00:00:00+00:00",
-      "status": "FAIL",
+      "required_start": "2021-03-15T00:00:00+00:00",
+      "status": "PASS",
       "symbol": "ETHUSDT",
       "timestamp_column": "date"
     }
   ],
   "schema_version": 1,
-  "status": "FAIL"
+  "status": "PASS"
 }
