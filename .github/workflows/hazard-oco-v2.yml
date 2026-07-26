@@ -52,15 +52,25 @@ jobs:
             "pyarrow==18.1.0" \
             "requests==2.32.4" \
             "pytest==8.3.4"
-      - name: Reconstruct one-order local-trigger source
+      - name: Reconstruct and correct one-order local-trigger source
         run: |
           set -euo pipefail
           root=research/hazard_oco_20260726
           python "$root/reconstruct_local_trigger.py"
+          python "$root/apply_decision_time_correction_006.py"
           python -m py_compile \
             "$root/reconstruct_local_trigger.py" \
+            "$root/apply_decision_time_correction_006.py" \
             "$root/local_trigger_runner.py" \
             "$root/test_local_trigger_runner.py"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          p=Path('research/hazard_oco_20260726/local_trigger_runner.py')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='46b3ba0f1875ba66c827d3e48c044dabf3108890446fba9e3f0542e4ada3bb0d'
+          assert len(p.read_bytes())==32593
+          print('CORRECTED_RUNNER_IDENTITY_PASS')
+          PY
           PYTHONPATH="$root" python "$root/local_trigger_runner.py" self-test
           PYTHONPATH="$root" python -m pytest -q "$root/test_local_trigger_runner.py"
       - name: Validate corrected frozen contracts
@@ -68,17 +78,20 @@ jobs:
           set -euo pipefail
           root=research/hazard_oco_20260726
           python -m json.tool "$root/CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_006_DERIVE_STRIDE_FROM_TIMESTAMP_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/preregistration_local_trigger_v3.json" >/dev/null
           python -m json.tool "$root/local_trigger_bundle_manifest.json" >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
           root=Path('research/hazard_oco_20260726')
-          cor=json.loads((root/'CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json').read_text())
+          cor5=json.loads((root/'CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json').read_text())
+          cor6=json.loads((root/'CORRECTION_006_DERIVE_STRIDE_FROM_TIMESTAMP_BEFORE_OUTCOME.json').read_text())
           pre=json.loads((root/'preregistration_local_trigger_v3.json').read_text())
-          assert cor['scientific_outcome_observed'] is False
-          assert cor['correction']['maximum_entry_orders']==1
-          assert cor['correction']['resting_entry_orders']==0
+          assert cor5['scientific_outcome_observed'] is False
+          assert cor6['scientific_outcome_observed'] is False
+          assert cor5['correction']['maximum_entry_orders']==1
+          assert cor5['correction']['resting_entry_orders']==0
           assert pre['global_entry_contract']['maximum_exchange_entry_orders']==1
           assert pre['global_entry_contract']['resting_exchange_entry_orders']==0
           assert pre['exit']['elapsed_time_exit'] is False
@@ -146,9 +159,11 @@ jobs:
           mkdir -p research_runs/hazard_local_trigger/input
           sha256sum \
             "$root/CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_006_DERIVE_STRIDE_FROM_TIMESTAMP_BEFORE_OUTCOME.json" \
             "$root/preregistration_local_trigger_v3.json" \
             "$root/local_trigger_bundle_manifest.json" \
             "$root/reconstruct_local_trigger.py" \
+            "$root/apply_decision_time_correction_006.py" \
             "$root/local_trigger_runner.py.gz.b64.part00" \
             "$root/local_trigger_runner.py.gz.b64.part01" \
             "$root/local_trigger_runner.py.gz.b64.part02" \
@@ -156,6 +171,7 @@ jobs:
             .github/workflows/hazard-oco-v2.yml \
             > research_runs/hazard_local_trigger/input/INPUT_SHA256SUMS.txt
           cp "$root/CORRECTION_005_SINGLE_ORDER_LOCAL_TRIGGER_BEFORE_OUTCOME.json" research_runs/hazard_local_trigger/input/
+          cp "$root/CORRECTION_006_DERIVE_STRIDE_FROM_TIMESTAMP_BEFORE_OUTCOME.json" research_runs/hazard_local_trigger/input/
           cp "$root/preregistration_local_trigger_v3.json" research_runs/hazard_local_trigger/input/
       - uses: actions/upload-artifact@v4
         if: always()
