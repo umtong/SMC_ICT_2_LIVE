@@ -10,6 +10,13 @@ on:
       - tests/test_youtube_triad_collector.py
       - control/youtube-triad-corpus-trigger.json
       - .github/workflows/youtube-triad-corpus.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/youtube/research_triad_channels.py
+      - tests/test_youtube_triad_collector.py
+      - control/youtube-triad-corpus-trigger.json
+      - .github/workflows/youtube-triad-corpus.yml
 
 concurrency:
   group: youtube-triad-corpus-${{ github.ref }}
