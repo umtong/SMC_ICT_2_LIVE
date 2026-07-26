@@ -1,0 +1,79 @@
+name: Apply official Tardis Coinbase dataset ID
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-coinbase-spot-leader-001
+    paths:
+      - ".github/workflows/coinbase-apply-tardis-dataset-id.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coinbase-apply-tardis-dataset-id
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-ml-coinbase-spot-leader-001
+          fetch-depth: 1
+
+      - name: Apply transport-only dataset-ID correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/ml-coinbase-spot-leader-r11.yml')
+          text = path.read_text(encoding='utf-8')
+          old = 'https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTC-USD.csv.gz'
+          new = 'https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTCUSD.csv.gz'
+          count = text.count(old)
+          if count != 2:
+              raise SystemExit(f'expected exactly two BTC-USD dataset URLs, observed {count}')
+          text = text.replace(old, new)
+
+          marker = '          fi\n\n      - name: Download only frozen fit sources'
+          insertion = (
+              '          fi\n'
+              '          python -m json.tool "$root/CORRECTION_003_TARDIS_DATASET_ID_BEFORE_DATA.json" >/dev/null\n\n'
+              '      - name: Download only frozen fit sources'
+          )
+          if marker not in text:
+              raise SystemExit('premarket validation insertion marker not found')
+          text = text.replace(marker, insertion, 1)
+
+          hash_marker = '            "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" \\\n'
+          hash_insert = hash_marker + '            "$root/CORRECTION_003_TARDIS_DATASET_ID_BEFORE_DATA.json" \\\n'
+          if text.count(hash_marker) != 1:
+              raise SystemExit('input-hash insertion marker not unique')
+          text = text.replace(hash_marker, hash_insert, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          grep -c 'BTCUSD.csv.gz' .github/workflows/ml-coinbase-spot-leader-r11.yml | grep -qx '2'
+          ! grep -q 'BTC-USD.csv.gz' .github/workflows/ml-coinbase-spot-leader-r11.yml
+          python -m json.tool research/ml_coinbase_spot_leader_20260726/CORRECTION_003_TARDIS_DATASET_ID_BEFORE_DATA.json >/dev/null
+
+      - name: Commit corrected workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/ml-coinbase-spot-leader-r11.yml \
+            research/ml_coinbase_spot_leader_20260726/CORRECTION_003_TARDIS_DATASET_ID_BEFORE_DATA.json
+          if git diff --cached --quiet; then
+            echo "No correction change"
+            exit 0
+          fi
+          git commit -m "Use official Tardis Coinbase BTCUSD dataset ID"
+          git push origin HEAD:agent/r11-ml-coinbase-spot-leader-001
