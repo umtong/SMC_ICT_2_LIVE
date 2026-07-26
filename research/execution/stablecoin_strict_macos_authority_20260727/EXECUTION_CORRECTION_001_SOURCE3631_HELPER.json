@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-MACOS-SOURCE3631-HELPER-001",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T01:05:00+09:00",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "recorded_before_model_fit": true,
+  "defect": "The installed macOS workflow pinned helper commit afb0af5e29b2176b477764f35a278fae448e9cbd and accepted either source SHA 73aac90e or 3631cf01. The current canonical authority is uniquely source SHA 3631cf01, so the installed workflow could not prove the current source snapshot.",
+  "correction": "Pin immutable helper commit 2d6b0ceb2e373a66f7be2fb314b5aa17d43ce9f4, which directly pins source 3631cf01a2a2b91d690b81160e14ba033a298f75 and strict V3 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c, accepts source exit 1 only as a sealed transport failure path, and verifies exact source schema, correction 019, coverage, chronology and event hash. Require the compact marker to identify source3631 exactly; no alternate source SHA is accepted.",
+  "execution_helper_sha": "2d6b0ceb2e373a66f7be2fb314b5aa17d43ce9f4",
+  "source_sha": "3631cf01a2a2b91d690b81160e14ba033a298f75",
+  "strict_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "scientific_changes": [],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer identity",
+    "block plus 12 and block plus 64 information availability",
+    "explicit-no-records-only and explicit-range-limit-only Blockscout status-zero policy",
+    "all other transport responses fail closed",
+    "strict completed-bar-at-finalized-event-second feature boundary",
+    "next-minute open used for execution only",
+    "one HGBT and one isotonic calibration map",
+    "structural first-passage target and stop",
+    "one global BTC/ETH slot",
+    "12/18/24bp cost paths and preregistered risk/notional frontier",
+    "official 2024H1 opens only for a complete positive no-liquidation pre-2024 survivor",
+    "no credentials and no orders"
+  ],
+  "source_result_observed_before_correction": false,
+  "market_outcome_observed_before_correction": false,
+  "orders_submitted": false
+}
