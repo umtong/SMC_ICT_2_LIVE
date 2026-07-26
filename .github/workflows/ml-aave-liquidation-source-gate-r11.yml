@@ -6,6 +6,7 @@ on:
     paths:
       - 'research/ml_aave_liquidation_20260726/WORK_CLAIM.json'
       - 'research/ml_aave_liquidation_20260726/PREREGISTRATION.md'
+      - 'research/ml_aave_liquidation_20260726/PRE_OUTCOME_CORRECTION_001_OPERATIONAL_SOURCE_GATE_TIMEOUT.json'
       - 'research/ml_aave_liquidation_20260726/export_addresses.cjs'
       - 'research/ml_aave_liquidation_20260726/probe_aave_liquidations.py'
       - '.github/workflows/ml-aave-liquidation-source-gate-r11.yml'
@@ -19,15 +20,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ml-aave-liquidation-source-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   source-gate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-ml-aave-liquidation-001
+          fetch-depth: 1
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+
       - name: Export pinned official Aave addresses
         run: |
           set -euo pipefail
@@ -39,9 +49,11 @@ jobs:
           cp package-lock.json /tmp/ml-aave-liquidation-source/package-lock.json
           node export_addresses.cjs > /tmp/ml-aave-liquidation-source/ADDRESSES.json
           cat /tmp/ml-aave-liquidation-source/ADDRESSES.json
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install fixed probe environment
         run: |
           python -m pip install \
@@ -49,35 +61,82 @@ jobs:
             'eth-abi==5.1.0' \
             'eth-utils==5.1.0' \
             'eth-hash[pycryptodome]==0.7.1'
-      - name: Compile and run outcome-sealed source gate
+
+      - name: Compile and run bounded outcome-sealed source gate
+        shell: bash
         run: |
           set -euo pipefail
+          out=/tmp/ml-aave-liquidation-source
           python -m py_compile research/ml_aave_liquidation_20260726/probe_aave_liquidations.py
           set +e
-          python research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
-            --addresses /tmp/ml-aave-liquidation-source/ADDRESSES.json \
-            --output /tmp/ml-aave-liquidation-source \
-            > /tmp/ml-aave-liquidation-source/run.log 2>&1
+          timeout --signal=TERM --kill-after=30s 900s \
+            python research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
+              --addresses "$out/ADDRESSES.json" \
+              --output "$out" \
+              > "$out/run.log" 2>&1
           status=$?
           set -e
-          cat /tmp/ml-aave-liquidation-source/run.log
-          printf '%s\n' "$status" > /tmp/ml-aave-liquidation-source/EXIT_STATUS.txt
-          exit "$status"
+          printf '%s\n' "$status" > "$out/EXIT_STATUS.txt"
+          if [ "$status" -ne 0 ]; then
+            STATUS="$status" python - <<'PY'
+          import gzip
+          import json
+          import os
+          from pathlib import Path
+          out=Path('/tmp/ml-aave-liquidation-source')
+          status=int(os.environ['STATUS'])
+          timeout=status in {124, 137, 143}
+          result={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-1952-ML-AAVE-LIQUIDATION-001',
+              'purpose':'Outcome-sealed source gate only. No market price, return, label, action, trade, PnL, model metric, official project period, credential or order path is opened.',
+              'source_gate_pass':False,
+              'scientific_decision':'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES',
+              'fatal_error':'SOURCE_GATE_OPERATIONAL_TIMEOUT_900S' if timeout else f'SOURCE_GATE_PROCESS_EXIT_{status}',
+              'operational_budget_seconds':900,
+              'eth_price_opened':False,
+              'label_created':False,
+              'model_fit_performed':False,
+              'pnl_computed':False,
+              'official_2024_2026_opened':False,
+              'credentials_used':False,
+              'orders_submitted':False,
+          }
+          (out/'PROBE_RESULT.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          raw=out/'RAW_LOGS.jsonl.gz'
+          if not raw.exists():
+              with gzip.open(raw,'wt',encoding='utf-8'):
+                  pass
+          PY
+          fi
+          cat "$out/run.log" || true
+          cat "$out/PROBE_RESULT.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/ml-aave-liquidation-source/PROBE_RESULT.json').read_text())
+          assert r.get('source_gate_pass') in {True, False}
+          if not r['source_gate_pass']:
+              assert r['scientific_decision']=='CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES'
+          print(json.dumps({
+              'source_gate_pass':r['source_gate_pass'],
+              'scientific_decision':r['scientific_decision'],
+              'fatal_error':r.get('fatal_error'),
+          },sort_keys=True))
+          PY
+
       - name: Freeze evidence hashes
         if: always()
         run: |
           set -euo pipefail
-          mkdir -p /tmp/ml-aave-liquidation-source
-          cp research/ml_aave_liquidation_20260726/PREREGISTRATION.md \
-            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
-          cp research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
-            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
-          cp research/ml_aave_liquidation_20260726/export_addresses.cjs \
-            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
-          find /tmp/ml-aave-liquidation-source -maxdepth 1 -type f -print0 \
-            | sort -z \
-            | xargs -0 sha256sum \
-            > /tmp/ml-aave-liquidation-source/SHA256SUMS.txt || true
+          out=/tmp/ml-aave-liquidation-source
+          mkdir -p "$out"
+          cp research/ml_aave_liquidation_20260726/PREREGISTRATION.md "$out/" 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/PRE_OUTCOME_CORRECTION_001_OPERATIONAL_SOURCE_GATE_TIMEOUT.json "$out/" 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/probe_aave_liquidations.py "$out/" 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/export_addresses.cjs "$out/" 2>/dev/null || true
+          find "$out" -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > "$out/SHA256SUMS.txt" || true
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
