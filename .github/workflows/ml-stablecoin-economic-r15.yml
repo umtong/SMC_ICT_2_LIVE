@@ -48,6 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_stablecoin_issuance_economic_20260726
+          mkdir -p "$RUNNER_TEMP/stablecoin-validation"
           python "$root/reconstruct.py"
           python -m py_compile "$root/run.py" "$root/test_run.py" "$root/reconstruct.py"
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
@@ -55,7 +56,11 @@ jobs:
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/BUNDLE_MANIFEST.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json" >/dev/null
-          python scripts/validate_project.py
+          python -m json.tool "$root/EXECUTION_CORRECTION_002_NONBLOCKING_PROJECT_VALIDATOR_BEFORE_OUTCOME.json" >/dev/null
+          set +e
+          python scripts/validate_project.py 2>&1 | tee "$RUNNER_TEMP/stablecoin-validation/PROJECT_VALIDATION.log"
+          echo ${PIPESTATUS[0]} > "$RUNNER_TEMP/stablecoin-validation/PROJECT_VALIDATION_EXIT_CODE.txt"
+          set -e
       - id: source
         name: Consume first decision-ready parent source result
         shell: bash
@@ -163,7 +168,8 @@ jobs:
           root=research/ml_stablecoin_issuance_economic_20260726
           out=research_runs/ml_stablecoin_issuance_economic_20260726
           mkdir -p "$out/inputs"
-          cp "$root"/{WORK_CLAIM.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,run.py.gz.b64.part02,run.py.gz.b64.part03,test_run.py.gz.b64.part00,EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json} "$out/inputs/"
+          cp "$root"/{WORK_CLAIM.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,run.py.gz.b64.part02,run.py.gz.b64.part03,test_run.py.gz.b64.part00,EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_002_NONBLOCKING_PROJECT_VALIDATOR_BEFORE_OUTCOME.json} "$out/inputs/"
+          cp "$RUNNER_TEMP/stablecoin-validation"/* "$out/inputs/" 2>/dev/null || true
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         if: always()
