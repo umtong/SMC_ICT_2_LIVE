@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 14
+- revision: 15
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9E484`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
@@ -70,28 +70,31 @@ The fixed 2024 portfolio combining the invalid dynamic component with aligned co
 
 Coinbase spot-flow ML is closed as `SOURCE_UNAVAILABLE`; no market row or model outcome existed. Bybit mark/index raid-acceptance ML is a complete negative result. Neither route receives threshold, risk or leverage rescue.
 
+ML path-continuity first passage is retired as `RES-20260726-ML-PATH-CONTINUITY-001`: confirmation AUC `0.571277` versus structural-distance `0.635450`; 24-bp development return `-71.9336%`; top-10%-winner-removed 18-bp return `-76.9107%`.
+
+OKX spot-swap consensus/OI relay is retired as `RES-20260726-ML-OKX-CONSENSUS-001`: 116 train, 67 calibration and only 8 untouched confirmation events, with zero events on the second confirmation date; no model or PnL stage opened.
+
 ## Active high-information ML work
 
-- four-asset direct after-cost utility regression with turnover-aware `KEEP / SWITCH / FLAT` actions;
-- OKX spot-swap consensus and OI sponsorship relay into delayed executable Bybit BBO;
-- path-continuity structural first-passage ML;
-- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH ML screen.
+- four-asset direct after-cost utility regression with one turnover-aware `KEEP / SWITCH / FLAT` account policy, gap-safe no-imputation handling and a development hurdle above the current 24-bp first place;
+- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH first-passage ML screen.
 
-These paths are prioritized because they can create cost-sized information before Bybit delivery, not because of the current rank.
+These are the only active primary alpha paths in this state. They are prioritized because they can either optimize the full permitted account directly or introduce external forced flow before Bybit delivery.
 
 ## Current blockers
 
-The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived realistic sequential 2024-2026 Bybit execution, funding, winner removal and regime changes, and the leading routes are not a deployable ML system.
+The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived realistic sequential 2024-2026 Bybit execution, funding, winner removal and regime changes, and the leading route is not a deployable ML system.
+
+GitHub execution capacity and historical public-source transport have delayed the two active ML decisions, but neither scientific contract is being loosened.
 
 ## Current objective
 
-Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the active direct-utility, OKX, path-continuity and Aave paths; insert any superior result immediately and retire any failed dependency immediately.
+Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the direct-utility and Aave paths; insert any superior hard-valid account result immediately and retire either dependency immediately if it fails.
 
 ## Next exact action
 
-1. Complete the direct-utility gap-boundary correction without imputation and run its frozen chronological screen.
-2. Consume the OKX and path-continuity results as soon as immutable account paths exist.
-3. Finish the Aave source gate; pass opens the frozen ML screen, failure retires the source.
-4. If all fail, open a materially new forced-flow or inventory-transfer source rather than another completed-bar parameter family.
+1. Complete the authoritative gap-safe direct-utility run. If development exceeds `0.07001887213879954%` geometric daily growth at 24 bps after winner removal, insert it into the cumulative rank immediately; otherwise retire the exact information unit.
+2. Complete the compressed Aave source gate. A pass opens exactly the frozen pre-2024 ETH ML screen; a failure retires the source before market outcomes.
+3. If both fail, open one materially new point-in-time inventory-transfer source rather than another completed-bar parameter family.
 
-Updated: 2026-07-26 21:08 KST
+Updated: 2026-07-26 21:25 KST
