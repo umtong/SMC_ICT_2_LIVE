@@ -4,6 +4,7 @@
 Only daily archives before 2024 are accepted. Every source observation receives
 an explicit `available_time_ms = create_time + 5 minutes` field so downstream
 research cannot use an OI snapshot before one full reported interval has passed.
+Provider-missing numeric cells remain NaN; they are never future-filled.
 """
 from __future__ import annotations
 
@@ -51,6 +52,8 @@ class SourceRecord:
     sha256: str
     expected_sha256: str
     rows: int
+    invalid_oi_rows: int
+    invalid_ratio_cells: int
     first_create_time_ms: int
     last_create_time_ms: int
 
@@ -117,7 +120,18 @@ def parse_checksum(payload: bytes, expected_name: str) -> str:
 
 def parse_float(value: str) -> float:
     stripped = value.strip()
-    return math.nan if stripped == "" else float(stripped)
+    if stripped == "":
+        return math.nan
+    try:
+        parsed = float(stripped)
+    except ValueError:
+        return math.nan
+    return parsed if math.isfinite(parsed) else math.nan
+
+
+def parse_positive_float(value: str) -> float:
+    parsed = parse_float(value)
+    return parsed if math.isfinite(parsed) and parsed > 0.0 else math.nan
 
 
 def parse_archive(
@@ -156,8 +170,8 @@ def parse_archive(
         rows.append(
             [
                 float(create_time_ms),
-                float(row[2]),
-                float(row[3]),
+                parse_positive_float(row[2]),
+                parse_positive_float(row[3]),
                 parse_float(row[4]),
                 parse_float(row[5]),
                 parse_float(row[6]),
@@ -177,9 +191,9 @@ def parse_archive(
         raise RuntimeError(f"{url}: non-exact five-minute grid")
     if np.any(times >= CUTOFF_MS):
         raise RuntimeError(f"{url}: post-cutoff source observation")
-    if np.any(~np.isfinite(array[:, 1:3])) or np.any(array[:, 1:3] <= 0):
-        raise RuntimeError(f"{url}: invalid open-interest fields")
 
+    invalid_oi = ~np.all(np.isfinite(array[:, 1:3]), axis=1)
+    invalid_ratio_cells = int(np.size(array[:, 3:]) - np.isfinite(array[:, 3:]).sum())
     record = SourceRecord(
         symbol=symbol,
         day=day,
@@ -189,6 +203,8 @@ def parse_archive(
         sha256=actual_sha,
         expected_sha256=expected_sha,
         rows=len(array),
+        invalid_oi_rows=int(invalid_oi.sum()),
+        invalid_ratio_cells=invalid_ratio_cells,
         first_create_time_ms=int(times[0]),
         last_create_time_ms=int(times[-1]),
     )
@@ -233,6 +249,11 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
         "source_timeframe": "5m",
         "source_information_cutoff": "2023-12-31T23:59:59.999Z",
         "causal_delay_ms": DELAY_MS,
+        "missing_value_contract": (
+            "Provider-missing or non-positive OI cells are preserved as NaN. They are never "
+            "future-filled or interpolated; downstream event formation requires finite current "
+            "and lagged OI and therefore skips only affected states."
+        ),
         "causal_contract": (
             "Each metrics row is unusable until create_time + one complete reported "
             "five-minute interval. Downstream one-minute decisions then apply the project "
@@ -271,6 +292,7 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
         elif not np.array_equal(reference_times, times):
             raise RuntimeError(f"{symbol}: annual timestamps do not align")
 
+        valid_oi = np.all(np.isfinite(array[:, 1:3]), axis=1)
         path = out_dir / f"{symbol}_metrics_5m_2023.npz"
         np.savez_compressed(
             path,
@@ -289,6 +311,12 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
                 "symbol": symbol,
                 "path": path.name,
                 "rows": int(len(times)),
+                "valid_oi_rows": int(valid_oi.sum()),
+                "invalid_oi_rows": int((~valid_oi).sum()),
+                "valid_oi_fraction": float(valid_oi.mean()),
+                "invalid_optional_ratio_cells": int(
+                    np.size(array[:, 3:]) - np.isfinite(array[:, 3:]).sum()
+                ),
                 "first_create_time_ms": int(times[0]),
                 "last_create_time_ms": int(times[-1]),
                 "first_available_time_ms": int(times[0] + DELAY_MS),
@@ -312,6 +340,9 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
                 "symbols": list(SYMBOLS),
                 "daily_archives": len(tasks),
                 "rows_per_symbol": int(0 if reference_times is None else len(reference_times)),
+                "invalid_oi_rows": {
+                    item["symbol"]: item["invalid_oi_rows"] for item in manifest["snapshots"]
+                },
             },
             indent=2,
         )
