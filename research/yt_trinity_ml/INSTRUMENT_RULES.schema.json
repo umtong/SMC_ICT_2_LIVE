@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "YT Trinity Bybit instrument rule snapshot",
+  "type": "object",
+  "required": ["snapshot_id", "effective_at_utc", "source_sha256", "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "properties": {
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "effective_at_utc": {"type": "string", "format": "date-time"},
+    "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "BTCUSDT": {"$ref": "#/$defs/rule"},
+    "ETHUSDT": {"$ref": "#/$defs/rule"},
+    "SOLUSDT": {"$ref": "#/$defs/rule"},
+    "XRPUSDT": {"$ref": "#/$defs/rule"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["quantity_step", "minimum_quantity"],
+      "properties": {
+        "quantity_step": {"type": "number", "exclusiveMinimum": 0},
+        "minimum_quantity": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}
