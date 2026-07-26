@@ -52,6 +52,7 @@ The 10-symbol cross-sectional funding account remains outside ranking because it
 - Forced liquidation or irrecoverable account damage cannot outrank a survival-qualified candidate solely through raw return.
 - Drawdown/recovery, tail loss, concentration, independent trade count, execution robustness, capital efficiency and comparison confidence resolve similar or uncertain growth.
 - Economic-gate failure, validation stage, deployment status and research priority remain separate from rank.
+- Rank does not determine research priority, validation budget, protection or the next work item.
 - Results are recorded once; a rank change does not trigger repeated backup or validation.
 
 ## Active work
