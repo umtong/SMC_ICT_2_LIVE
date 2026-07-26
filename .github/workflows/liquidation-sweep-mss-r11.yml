@@ -1,0 +1,126 @@
+name: Bybit liquidation sweep reclaim MSS fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-liq-sweep-mss-001
+    paths:
+      - "research/liquidation_sweep_mss_20260726/**"
+      - ".github/workflows/liquidation-sweep-mss-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/liquidation_sweep_mss_20260726/**"
+      - ".github/workflows/liquidation-sweep-mss-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liquidation-sweep-mss-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+  TZ: UTC
+  CACHE: /tmp/liquidation-sweep-mss-r11
+  OUT: ${{ github.workspace }}/research_runs/liquidation_sweep_mss_20260726
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deterministic research environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
+
+      - name: Verify immutable implementation and causal engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/liquidation_sweep_mss_20260726
+          mkdir -p "$OUT"
+          python -m py_compile "$root/run.py" "$root/test_run.py"
+          pytest -q "$root/test_run.py" | tee "$OUT/tests.log"
+          python "$root/run.py" self-test | tee "$OUT/self_test.log"
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python scripts/validate_project.py
+          sha256sum \
+            "$root/run.py" \
+            "$root/test_run.py" \
+            "$root/implementation_manifest.json" \
+            "$root"/implementation.py.gz.b64.part* \
+            "$root/preregistration.json" \
+            > "$OUT/INPUT_SHA256SUMS.txt"
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/liquidation-sweep-mss-r11
+          key: liquidation-sweep-mss-r11-${{ runner.os }}-${{ hashFiles('research/liquidation_sweep_mss_20260726/preregistration.json') }}
+          restore-keys: |
+            liquidation-sweep-mss-r11-${{ runner.os }}-
+
+      - name: Run frozen fit and conditional development screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/liquidation_sweep_mss_20260726/run.py run \
+            --cache "$CACHE" \
+            --output "$OUT/result" \
+            2>&1 | tee "$OUT/run.log"
+
+      - name: Enforce causal stage and research-only boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['OUT'])/'result'
+          summary=json.loads((root/'summary.json').read_text())
+          assert summary['hard_validity']=='PASS_FATAL_SCREEN_ONLY'
+          assert summary['candidate_count']==768
+          assert summary['2024_opened'] is False
+          assert summary['2025_opened'] is False
+          assert summary['2026_opened'] is False
+          assert summary['orders_submitted'] is False
+          assert summary['ranking_eligible'] is False
+          if summary['fit_survivor_count']==0:
+              assert summary['development_opened'] is False
+              assert summary['development_event_count'] >= 0
+              assert summary['development_survivor_count']==0
+          print('SEALED_RESEARCH_STATE_PASS')
+          print('DECISION_READY_RESULT='+json.dumps(summary,sort_keys=True,separators=(',',':')))
+          PY
+
+      - name: Record immutable output hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: liquidation-sweep-mss-${{ github.sha }}
+          path: research_runs/liquidation_sweep_mss_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
