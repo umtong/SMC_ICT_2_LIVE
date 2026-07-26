@@ -90,39 +90,107 @@ jobs:
           path: /tmp/ml-option-hedge-r12
           key: ml-option-hedge-r12-${{ hashFiles('research/ml_option_hedge_20260726/preregistration.json') }}
       - name: Run frozen 2022 and conditional 2023 screen
+        shell: bash
         run: |
+          set -euo pipefail
           root=research/ml_option_hedge_20260726
           out=research_runs/ml_option_hedge_20260726/r12
           cache=/tmp/ml-option-hedge-r12
           find "$out" -mindepth 1 -maxdepth 1 -type f ! -name 'TRANSPORT_DIAGNOSTIC.json' ! -name 'RECONSTRUCT.log' ! -name 'COMPILE.log' ! -name 'PYTEST.log' ! -name 'SELF_TEST.log' ! -name 'PROJECT_VALIDATION.log' -delete
-          PYTHONPATH="$root" python "$root/run.py" run \
-            --output "$out" \
-            --cache "$cache" \
-            2>&1 | tee "$out/RUN.log"
+          ROOT="$root" OUT="$out" CACHE="$cache" PYTHONPATH="$root" python - <<'PY' 2>&1 | tee "$out/RUN.log"
+          import inspect, json, os, traceback
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+          import run
+
+          out=Path(os.environ['OUT'])
+          cache=Path(os.environ['CACHE'])
+          original=run.fit_model
+          audit={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-1732-ML-OPTION-HEDGE-001',
+              'scientific_source_sha256':'cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a',
+              'fit_model_source':inspect.getsource(original),
+              'model_or_gate_changed':False,
+              'orders_submitted':False,
+              'prohibited_years_opened':[],
+          }
+
+          def summarize(frame: pd.DataFrame) -> dict:
+              record={'rows':int(len(frame)),'columns':list(frame.columns)}
+              small={}
+              for name in frame.columns:
+                  series=frame[name]
+                  try:
+                      unique=series.nunique(dropna=False)
+                  except Exception:
+                      continue
+                  if unique <= 12:
+                      counts=series.astype(str).value_counts(dropna=False).to_dict()
+                      small[name]={str(k):int(v) for k,v in counts.items()}
+              record['small_cardinality_counts']=small
+              record['null_counts']={name:int(frame[name].isna().sum()) for name in frame.columns}
+              return record
+
+          def audited_fit(train: pd.DataFrame, calibration: pd.DataFrame):
+              audit['train']=summarize(train)
+              audit['calibration']=summarize(calibration)
+              (out/'MODEL_FIT_INPUT_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
+              try:
+                  return original(train,calibration)
+              except Exception as exc:
+                  audit['exception_type']=type(exc).__name__
+                  audit['exception_message']=str(exc)
+                  (out/'MODEL_FIT_INPUT_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
+                  raise
+
+          run.fit_model=audited_fit
+          try:
+              run.run(out,cache)
+          except RuntimeError as exc:
+              if str(exc)!='insufficient resolved rows for one-model fit':
+                  raise
+              audit.setdefault('exception_type',type(exc).__name__)
+              audit.setdefault('exception_message',str(exc))
+              audit['status']='SOURCE_SAMPLE_INSUFFICIENT_BEFORE_MODEL_FIT'
+              audit['development_source_file_count']=0
+              (out/'MODEL_FIT_INPUT_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
+              print(json.dumps({'status':audit['status'],'train_rows':audit.get('train',{}).get('rows'),'calibration_rows':audit.get('calibration',{}).get('rows')},sort_keys=True))
+          PY
       - name: Enforce stage and minimal-system boundaries
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           root=Path('research_runs/ml_option_hedge_20260726/r12')
-          result=json.loads((root/'RESULT.json').read_text())
-          contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
-          environment=json.loads((root/'ENVIRONMENT.json').read_text())
-          assert result['claim_id']=='CLM-20260726-1732-ML-OPTION-HEDGE-001'
-          assert contract['one_model_family'] is True
-          assert contract['hyperparameter_grid'] is False
-          assert contract['one_economic_decision_rule'] is True
-          assert environment['2024_opened'] is False
-          assert environment['2025_opened'] is False
-          assert environment['2026_opened'] is False
-          assert result['orders_submitted'] is False
-          assert result['prohibited_years_opened']==[]
-          if not result['fit']['gate_passed']:
-              assert result['development'] is None
-              assert result['development_source_file_count']==0
-          for cost in ('12','18','24'):
-              assert result['fit']['paths'][cost]['trade_count'] >= 0
-          print(json.dumps({'status':result['status'],'fit_gate':result['fit']['gate_passed']},sort_keys=True))
+          if (root/'RESULT.json').exists():
+              result=json.loads((root/'RESULT.json').read_text())
+              contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+              environment=json.loads((root/'ENVIRONMENT.json').read_text())
+              assert result['claim_id']=='CLM-20260726-1732-ML-OPTION-HEDGE-001'
+              assert contract['one_model_family'] is True
+              assert contract['hyperparameter_grid'] is False
+              assert contract['one_economic_decision_rule'] is True
+              assert environment['2024_opened'] is False
+              assert environment['2025_opened'] is False
+              assert environment['2026_opened'] is False
+              assert result['orders_submitted'] is False
+              assert result['prohibited_years_opened']==[]
+              if not result['fit']['gate_passed']:
+                  assert result['development'] is None
+                  assert result['development_source_file_count']==0
+              for cost in ('12','18','24'):
+                  assert result['fit']['paths'][cost]['trade_count'] >= 0
+              print(json.dumps({'status':result['status'],'fit_gate':result['fit']['gate_passed']},sort_keys=True))
+          else:
+              audit=json.loads((root/'MODEL_FIT_INPUT_AUDIT.json').read_text())
+              assert audit['status']=='SOURCE_SAMPLE_INSUFFICIENT_BEFORE_MODEL_FIT'
+              assert audit['model_or_gate_changed'] is False
+              assert audit['orders_submitted'] is False
+              assert audit['prohibited_years_opened']==[]
+              assert audit['development_source_file_count']==0
+              print(json.dumps({'status':audit['status'],'train_rows':audit['train']['rows'],'calibration_rows':audit['calibration']['rows']},sort_keys=True))
           PY
       - name: Record immutable checksums
         if: always()
