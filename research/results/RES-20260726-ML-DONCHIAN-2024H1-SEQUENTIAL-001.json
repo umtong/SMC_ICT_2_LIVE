@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
+  "claim_id": "CLM-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
+  "worker_id": "gpt-5.6-pro-20260726-sequential-reconcile",
+  "status": "TESTED_2024H1_SEQUENTIAL_BELOW_GATE",
+  "hard_validity_status": "PASS_CAUSAL_BINANCE_PROXY_INDEPENDENT_RERUN_IDENTICAL",
+  "economic_status": "STRUCTURALLY_BELOW_OBJECTIVE",
+  "ranking_role": "PROVISIONAL_RANK_4",
+  "candidate": "one pooled HGBT accept/flat filter on Donchian all-breakout a70626d9e484285f2cb4|all",
+  "chronology": {
+    "train": "2023H1",
+    "calibration": "2023Q3",
+    "pre2024_confirmation": "2023Q4",
+    "official_first_research_interval": "2024H1",
+    "information_cutoff": "2023-12-31T23:59:59Z",
+    "2024H2_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "model": {
+    "family": "HistGradientBoostingRegressor",
+    "feature_count": 23,
+    "train_rows": 136,
+    "calibration_rows": 66,
+    "pre2024_confirmation_rows": 59,
+    "2024H1_resolved_rows": 146,
+    "authorized_2024H1_events": 40,
+    "calibration_scale": 0.13837019366705572,
+    "pre2024_confirmation": {
+      "spearman": 0.3520748100526009,
+      "mae_skill": -0.028391855315635484,
+      "rmse_skill": 0.0031434876528183553
+    },
+    "official_2024H1": {
+      "spearman": 0.12673112702804318,
+      "mae_skill": -0.016896747107063792,
+      "rmse_skill": 0.0011939420899379494,
+      "target_mean_bps": -32.423127145234055,
+      "prediction_mean_bps": -11.119262918878329
+    }
+  },
+  "baseline_24bps": {
+    "calendar_days": 182,
+    "completed_trade_count": 49,
+    "total_return": 0.01846140123876716,
+    "geometric_daily_growth": 0.00010051636083741045,
+    "profit_factor_completed": 1.1090480483211003,
+    "maximum_drawdown": 0.12699732131116814,
+    "median_completed_account_return_bps": -50.00000000000004,
+    "top5_positive_share_completed": 0.9141699356215213,
+    "open_position_at_boundary": true
+  },
+  "account_paths": {
+    "12bps": {
+      "calendar_days": 182,
+      "completed_trade_count": 24,
+      "total_return": 0.0937431960844477,
+      "geometric_daily_growth": 0.0004924615377805974,
+      "profit_factor_completed": 2.1044858658288805,
+      "maximum_drawdown": 0.10473357941955963,
+      "median_completed_account_return_bps": -49.999999999998934,
+      "top5_positive_share_completed": 1.0,
+      "winner_removed_total_return": -0.07187930714288138,
+      "winner_removed_geometric_daily_growth": -0.0004097704041026162,
+      "open_position_at_boundary": true
+    },
+    "18bps": {
+      "calendar_days": 182,
+      "completed_trade_count": 24,
+      "total_return": 0.08281749069335387,
+      "geometric_daily_growth": 0.00043727377321256533,
+      "profit_factor_completed": 1.9817144241187055,
+      "maximum_drawdown": 0.10313176097504406,
+      "median_completed_account_return_bps": -49.999999999998934,
+      "top5_positive_share_completed": 1.0,
+      "winner_removed_total_return": -0.07438571043920095,
+      "winner_removed_geometric_daily_growth": -0.00042462226783157586,
+      "open_position_at_boundary": true
+    },
+    "24bps": {
+      "calendar_days": 182,
+      "completed_trade_count": 24,
+      "total_return": 0.07302102602013516,
+      "geometric_daily_growth": 0.0003873170703223572,
+      "profit_factor_completed": 1.8711953493879065,
+      "maximum_drawdown": 0.1016557360891246,
+      "median_completed_account_return_bps": -49.99999999999949,
+      "top5_positive_share_completed": 1.0,
+      "winner_removed_total_return": -0.07661046043680741,
+      "winner_removed_geometric_daily_growth": -0.0004378387203566314,
+      "open_position_at_boundary": true
+    }
+  },
+  "comparison": {
+    "primary_cost_bps": 24,
+    "baseline_2024H1_geometric_daily_growth": 0.00010051636083741045,
+    "ml_2024H1_geometric_daily_growth": 0.0003873170703223572,
+    "incremental_daily_growth": 0.00028680070948494674,
+    "target_daily_growth": 0.01,
+    "target_gap": 0.009612682929677643
+  },
+  "decision": "Retire the exact Donchian HGBT accept/flat information unit. It improved the unfiltered official 2024H1 path but predicted worse than a constant baseline by MAE, retained a negative trade median, concentrated all positive PnL in five winners and became negative after exact winner-removal rerouting. 2024H1 is seen sequential evidence and is not reusable as fresh independent OOS for a revised strategy.",
+  "known_limitations": [
+    "Binance USD-M completed 60-minute bars are a proxy rather than exact Bybit BBO/depth execution.",
+    "Historical funding is omitted.",
+    "The training sample contains 136 resolved events for 23 features.",
+    "The 24bp median completed trade is -50bp and the five positive winners provide 100% of positive PnL.",
+    "Winner-removal rerouting changes the 24bp account from +7.3021% to -7.6610%.",
+    "One position remains open at the 2024-07-01 boundary and NAV is marked with hypothetical exit cost without forcing strategy closure.",
+    "2024H1 is now seen sequential research evidence and cannot be reused as fresh independent OOS for a modified strategy."
+  ],
+  "reproduction": {
+    "result_byte_identical": true,
+    "summary_byte_identical": true,
+    "event_predictions_byte_identical": true,
+    "result_sha256": "36dac200ed51787449347a456d3aa550ac913f678fe365069d49b15a6869266e",
+    "run_sha256": "870ebfcbc91b7e5a5cbd34e1d14ca379ef21022fdaebd06fd7b3efb5ad1e7940",
+    "baseline_engine_sha256": "0374a2e3e86da68d0843aa4990cdee3db342e48dffb3ee0f3f4a78a496961148",
+    "preregistration_sha256": "8be976896facc024aa01c5c220b7b51ef6efa054fd664884955dcd42df990501",
+    "dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "evidence_archive_sha256": "f3a800d84e10aac802d406b0447733a64bd39437f45ceb77380c9f19ccee66d1"
+  },
+  "orders_submitted": false,
+  "paper_live_started": false
+}
