@@ -38,7 +38,7 @@ jobs:
           python-version: "3.11"
       - name: Install deterministic dependency
         run: pip install --disable-pip-version-check requests==2.32.4
-      - name: Reconstruct and validate frozen implementation
+      - name: Validate frozen implementation
         shell: bash
         run: |
           rm -rf artifacts/usdc_leadlag
@@ -46,11 +46,10 @@ jobs:
           set -o pipefail
           {
             python scripts/validate_project.py
-            python research/usdc_leadlag_20260726/reconstruct.py
             python -m py_compile research/usdc_leadlag_20260726/run_screen.py
             python research/usdc_leadlag_20260726/run_screen.py self-test
             python -m json.tool research/usdc_leadlag_20260726/preregistration.json >/dev/null
-          } 2>&1 | tee artifacts/usdc_leadlag/reconstruction.log
+          } 2>&1 | tee artifacts/usdc_leadlag/implementation_validation.log
       - name: Cache immutable preregistered archives
         uses: actions/cache@v4
         with:
