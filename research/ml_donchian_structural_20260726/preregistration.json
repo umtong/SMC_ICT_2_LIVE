@@ -18,6 +18,7 @@
     "orders": false
   },
   "claim_id": "CLM-20260726-2110-ML-DONCHIAN-STRUCTURAL-001",
+  "correction_file": "SEQUENTIAL_RESEARCH_CORRECTION_001.json",
   "data": {
     "exchange_and_contract": "Bybit USDT-linear perpetual",
     "initial_symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
@@ -28,7 +29,18 @@
   "evaluation": {
     "calibration": "2022-04-01 through 2022-06-30",
     "conditional_development": "calendar 2023, opened only after every 2022H2 confirmation gate passes",
-    "official_sequential_replay": "2024-01-01 through 2026-06-30 continuous NAV with the frozen pre-2024 model and risk configuration, opened only after every 2023 gate passes",
+    "official_sequential_replay": "2024H1 only: 2024-01-01 through 2024-06-30 with the frozen model and risk configuration fixed from information through 2023-12-31, opened immediately after every 2023 gate passes",
+    "official_half_year_contract": {
+      "2024H1": {
+        "information_cutoff": "2023-12-31T23:59:59Z",
+        "evaluation_start": "2024-01-01T00:00:00Z",
+        "evaluation_end": "2024-06-30T23:59:59Z",
+        "role": "first official sequential research evaluation"
+      },
+      "later_half_years": "A later strategy version may use only information available before that half-year. An already observed period is not relabeled independent OOS for the revised version.",
+      "continuous_nav": true,
+      "one_frozen_2024_2026_block": false
+    },
     "prohibited_without_gate": [2024, 2025, 2026],
     "training": "2021-10-01 through 2022-03-31; event labels must resolve before 2022-04-01",
     "untouched_fit_confirmation": "2022-07-01 through 2022-12-31"
@@ -64,6 +76,11 @@
       "base 24bp daily growth above the fixed 0.07001887213879954% current-rank benchmark",
       "both 2023 half-years positive",
       "no liquidation or unresolved position"
+    ],
+    "2024H1_reporting": [
+      "evaluate the frozen pre-2024 version immediately after every 2023 gate passes",
+      "record full-calendar 24bp growth, total return, median, PF, MDD, winner removal, month breadth, liquidation and unresolved positions",
+      "do not open 2024H2 or later data inside this strategy version"
     ]
   },
   "model": {
