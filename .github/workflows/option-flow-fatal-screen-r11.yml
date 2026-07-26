@@ -1,0 +1,117 @@
+name: Deribit option-flow hedge-pressure fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r11-option-flow-hedge-001
+    paths:
+      - research/option_flow_hedge_20260726/screen_preregistration.json
+      - research/option_flow_hedge_20260726/greek_formula_fixture.csv
+      - research/option_flow_hedge_20260726/screen.py.gz.b64
+      - research/option_flow_hedge_20260726/reconstruct_screen.py
+      - .github/workflows/option-flow-fatal-screen-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/option_flow_hedge_20260726/screen_preregistration.json
+      - research/option_flow_hedge_20260726/greek_formula_fixture.csv
+      - research/option_flow_hedge_20260726/screen.py.gz.b64
+      - research/option_flow_hedge_20260726/reconstruct_screen.py
+      - .github/workflows/option-flow-fatal-screen-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: option-flow-fatal-screen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deterministic dependency
+        run: pip install --disable-pip-version-check requests==2.32.4
+      - name: Reconstruct and validate frozen screen
+        run: |
+          python scripts/validate_project.py
+          python research/option_flow_hedge_20260726/reconstruct_screen.py
+          python -m py_compile research/option_flow_hedge_20260726/screen.py
+          python research/option_flow_hedge_20260726/screen.py self-test
+          python -m json.tool research/option_flow_hedge_20260726/screen_preregistration.json >/dev/null
+      - name: Cache immutable pre-2024 source files
+        uses: actions/cache@v4
+        with:
+          path: /tmp/option-flow-screen
+          key: option-flow-screen-v1-${{ hashFiles('research/option_flow_hedge_20260726/screen_preregistration.json') }}
+      - name: Run frozen fit and development fatal screen
+        run: |
+          rm -rf artifacts/option_flow_screen
+          python research/option_flow_hedge_20260726/screen.py run \
+            --cache /tmp/option-flow-screen \
+            --output artifacts/option_flow_screen
+      - name: Verify causal, stage and cost boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/option_flow_screen")
+          result = json.loads((root / "result_summary.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          candidates = json.loads((root / "candidate_results.json").read_text())
+          contract = json.loads(Path("research/option_flow_hedge_20260726/screen_preregistration.json").read_text())
+
+          assert result["result_id"] == contract["provisional_result_id"]
+          assert result["candidate_count"] == contract["frozen_candidate_grid"]["candidate_count"] == 480
+          assert len(candidates) == 480
+          assert manifest["source_count"] == len(manifest["sources"]) == 40
+          assert manifest["fit_dates"] == contract["chronological_stages"]["fit_dates"]
+          assert manifest["development_dates"] == contract["chronological_stages"]["development_dates"]
+          assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
+          assert manifest["official_2024_opened"] is False
+          assert manifest["official_2025_opened"] is False
+          assert manifest["official_2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["option_orders_submitted"] is False
+          assert result["cross_region_microsecond_latency_claimed"] is False
+          assert manifest["orders_submitted"] is False
+          assert result["qualification"] == "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE"
+          assert result["fixture_audit"]["fixture_rows_checked"] >= 10
+          assert all(row["date"].startswith(("2022-", "2023-")) for row in manifest["sources"])
+          assert all(int(row["compressed_bytes"]) > 0 and len(row["sha256"]) == 64 for row in manifest["sources"])
+
+          for candidate in candidates:
+              costs = candidate["cost_metrics"]
+              assert costs["12"]["trade_count"] == costs["18"]["trade_count"] == costs["24"]["trade_count"]
+              assert costs["12"]["total_return"] >= costs["18"]["total_return"] >= costs["24"]["total_return"]
+
+          print("OPTION_FLOW_FROZEN_CONTRACT_PASS")
+          print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+          PY
+      - name: Build immutable output inventory
+        run: |
+          find artifacts/option_flow_screen -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > artifacts/option_flow_screen/CI_SHA256SUMS.txt
+          sha256sum artifacts/option_flow_screen/CI_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: option-flow-fatal-screen-20260726
+          path: artifacts/option_flow_screen
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
