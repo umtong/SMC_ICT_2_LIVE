@@ -43,6 +43,18 @@ jobs:
           set -euo pipefail
           python research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py \
             2>&1 | tee /tmp/rank-all-breakout-r14.log
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('control/current-state.md')
+          text=path.read_text(encoding='utf-8')
+          phrase='Rank does not determine research priority.\n\n'
+          marker='## Current objective\n\n'
+          if phrase not in text:
+              if marker not in text:
+                  raise SystemExit('current objective marker missing')
+              text=text.replace(marker, marker+phrase, 1)
+              path.write_text(text, encoding='utf-8')
+          PY
           python -m json.tool control/ranking.json >/dev/null
           python -m json.tool research_results/rank_contract_reconcile_20260726/RESULT.json >/dev/null
           python -m json.tool research_results/rank_contract_reconcile_20260726/DECISION.json >/dev/null
@@ -53,12 +65,14 @@ jobs:
           from pathlib import Path
           ranking=json.loads(Path('control/ranking.json').read_text())
           repro=json.loads(Path('research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json').read_text())
+          state=Path('control/current-state.md').read_text()
           assert ranking['revision']==14
           assert ranking['first_place']['first_place_id']=='FIRST-20260726-DONCHIAN-ALL-A70626D9'
           assert ranking['first_place']['metrics']['base_cost_bps']==24
           assert abs(ranking['first_place']['metrics']['geometric_daily_growth']-0.0007001887213879954)<1e-15
           assert ranking['ranked_candidates'][1]['rank']==2
           assert 'after_loser' in ranking['ranked_candidates'][1]['candidate_label']
+          assert 'Rank does not determine research priority.' in state
           assert repro['authority']['official_2024_2026_opened'] is False
           assert repro['authority']['orders_submitted'] is False
           print(json.dumps({
