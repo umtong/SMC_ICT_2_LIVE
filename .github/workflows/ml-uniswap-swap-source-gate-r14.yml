@@ -74,6 +74,7 @@ jobs:
             python -m json.tool "$root/EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json" >/dev/null
             python -m json.tool "$root/EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" >/dev/null
             python -m json.tool "$root/EXECUTION_CORRECTION_008_BATCH_TIMESTAMP_IMPLEMENTATION_BEFORE_OUTCOME.json" >/dev/null
+            python -m json.tool "$root/EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json" >/dev/null
             python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
           } 2>&1 | tee "$out/PRECHECK.log"
           rc=${PIPESTATUS[0]}
@@ -159,6 +160,7 @@ jobs:
             "$root/EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_008_BATCH_TIMESTAMP_IMPLEMENTATION_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json" \
             "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" \
             "$root/probe_uniswap_swaps.py" \
             "$root/probe_uniswap_swaps_bounded.py" \
