@@ -28,6 +28,8 @@ The current first place is the frozen pooled HGBT Donchian accept/flat route fro
 
 It is first only because it is the strongest recorded account path whose complete route was frozen before the interval under the current sequential contract. It is not an active improvement target: the information unit is retired because the model was baseline-inferior, the median trade was negative and all positive PnL came from five winners.
 
+Rank does not determine research priority.
+
 ## UTC state-machine correction and retirement
 
 The former first place `RES-20260726-ML-HOURWEEK-XRP-001` recorded `0.223030%/day` at 24bp, but its 720 session/asset/side/threshold routes were selected after observing the complete 2024-2025 development path. It is retained as a development diagnostic, not an active causal strategy candidate.
