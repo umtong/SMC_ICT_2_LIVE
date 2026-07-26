@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-BLOCKSCOUT-RATE-013",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_or_model_outcome": true,
+  "reason": "The Blockscout source client used a 0.24-second interval, which can exceed the documented default unauthenticated limit of approximately three requests per second.",
+  "change": "Set the authoritative Blockscout client interval to 0.36 seconds, below three requests per second, while preserving retries and exact responses.",
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer identities",
+    "provider empty-topic-padding normalization",
+    "all 36 source months",
+    "12-block primary and 64-block stress availability",
+    "source-density gates",
+    "conditional ML system and sequential 2024H1 contract",
+    "no credentials or orders"
+  ],
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
