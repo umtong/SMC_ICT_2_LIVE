@@ -22,6 +22,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ranking-state-reconciliation-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: false
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -117,6 +121,7 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$STRICT_SHA"
           git archive "$STRICT_SHA" "$ECON_ROOT" "$FIX_ROOT" | tar -x
           python -m json.tool "$STRICT_EXEC_ROOT/EXECUTION_CORRECTION.json" >/dev/null
+          python -m json.tool "$STRICT_EXEC_ROOT/CORRECTION_003_SIMULTANEOUS_AVAILABILITY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$SOURCE_ROOT/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$SOURCE_ROOT/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$SOURCE_ROOT/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json" >/dev/null
@@ -124,7 +129,12 @@ jobs:
       - name: Validate source and strict economic engines
         run: |
           set -euo pipefail
-          mkdir -p "$OUT_ROOT/source"
+          mkdir -p "$OUT_ROOT/source" "$OUT_ROOT/authority"
+          cp \
+            "$STRICT_EXEC_ROOT/EXECUTION_CORRECTION.json" \
+            "$STRICT_EXEC_ROOT/CORRECTION_003_SIMULTANEOUS_AVAILABILITY_BEFORE_OUTCOME.json" \
+            "$STRICT_EXEC_ROOT/strict_v4_simultaneous.py" \
+            "$OUT_ROOT/authority/"
           python -m py_compile \
             "$SOURCE_ROOT"/source_gate*.py "$SOURCE_ROOT/run_pinned_snapshot_source.py" \
             "$SOURCE_ROOT/test_source_gate.py" "$SOURCE_ROOT/write_transport_failure.py"
@@ -134,10 +144,13 @@ jobs:
           python -m py_compile \
             "$ECON_ROOT/run.py" "$ECON_ROOT/run_causal.py" \
             "$ECON_ROOT/test_run.py" "$ECON_ROOT/test_run_causal.py" \
-            "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/causal_guard.py" "$FIX_ROOT/test_causal_guard.py"
+            "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/causal_guard.py" "$FIX_ROOT/test_causal_guard.py" \
+            "$STRICT_EXEC_ROOT/strict_v4_simultaneous.py"
           PYTHONPATH="$ECON_ROOT" pytest -q "$ECON_ROOT/test_run.py" "$ECON_ROOT/test_run_causal.py" 2>&1 | tee "$OUT_ROOT/ECON_PYTEST.log"
           PYTHONPATH="$ECON_ROOT:$FIX_ROOT" pytest -q "$FIX_ROOT/test_causal_guard.py" 2>&1 | tee "$OUT_ROOT/STRICT_PYTEST.log"
-          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/causal_guard.py" self-test 2>&1 | tee "$OUT_ROOT/STRICT_SELF_TEST.log"
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT:$STRICT_EXEC_ROOT" \
+            python "$STRICT_EXEC_ROOT/strict_v4_simultaneous.py" self-test \
+            2>&1 | tee "$OUT_ROOT/STRICT_V4_SELF_TEST.log"
           printf '%s\n' "$SOURCE_SHA" > "$OUT_ROOT/PINNED_SOURCE_SHA.txt"
           printf '%s\n' "$STRICT_SHA" > "$OUT_ROOT/PINNED_STRICT_SHA.txt"
       - name: Run complete corrected 2021-2023 source gate
@@ -154,7 +167,7 @@ jobs:
           if [[ ! -f "$OUT_ROOT/source/run/SOURCE_GATE_RESULT.json" ]]; then
             python "$SOURCE_ROOT/write_transport_failure.py" \
               --output "$OUT_ROOT/source/run" \
-              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-VISIBLE-021 \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-VISIBLE-022 \
               --exit-code "$rc"
           fi
           python - <<'PY'
@@ -193,7 +206,7 @@ jobs:
         if: steps.source.outputs.authorized == 'true'
         with:
           path: ${{ env.MARKET_CACHE }}
-          key: stablecoin-market-2020-12-2023-12-strict-v3-source021
+          key: stablecoin-market-2020-12-2023-12-strict-v4-source022
       - name: Run strict causal pre-2024 economic screen immediately
         if: steps.source.outputs.authorized == 'true'
         run: |
@@ -201,7 +214,8 @@ jobs:
           rm -rf "$OUT_ROOT/economic"
           mkdir -p "$OUT_ROOT/economic" "$MARKET_CACHE"
           set +e
-          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/causal_guard.py" run \
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT:$STRICT_EXEC_ROOT" \
+            python "$STRICT_EXEC_ROOT/strict_v4_simultaneous.py" run \
             --events "${{ steps.source.outputs.events }}" \
             --market-cache "$MARKET_CACHE" \
             --output "$OUT_ROOT/economic" 2>&1 | tee "$OUT_ROOT/economic/RUN.log"
@@ -221,9 +235,12 @@ jobs:
           if s['status']=='PASS':
               r=json.loads((root/'economic/RESULT.json').read_text()); full=json.loads((root/'economic/FULL_RESULT.json').read_text())
               assert r['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
-              assert r['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
+              assert r['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V4'
               guard=r['strict_causal_guard']
               assert guard['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002'
+              assert guard['simultaneous_availability_correction_id']=='CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-AVAILABILITY-003'
+              assert guard['simultaneous_availability_second_excluded_from_prior_features'] is True
+              assert guard['same_timestamp_row_permutation_invariant'] is True
               assert guard['source_decision_second_respected'] is True
               assert guard['latest_completed_bar_cutoff_enforced'] is True
               assert guard['decision_reference_price_pre_entry'] is True
