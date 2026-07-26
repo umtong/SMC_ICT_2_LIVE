@@ -7,11 +7,16 @@ from pathlib import Path
 
 import cross_venue_execution_v5d as v5d
 import cross_venue_failclosed_v5d as failclosed_v5d
+import cross_venue_performance_v5d as performance_v5d
 import cross_venue_pilot as v1
 import cross_venue_pilot_v5c as pilot_v5c
 
 
 def run(output: Path, cache: Path, days: tuple[str, ...] = v1.PILOT_DAYS) -> dict:
+    # Performance patch only memoizes the immutable executable-quote index.
+    # Apply it before the causal patches so every V5D entry/exit lookup uses
+    # the same exact arrays without rescanning the full day for every event.
+    performance_v5d.patch()
     failclosed_v5d.patch()
     result = pilot_v5c.run(output, cache, tuple(days))
     result["stage"] = "MICROSECOND_LOCAL_ARRIVAL_FATAL_EDGE_PILOT_V5D"
@@ -27,6 +32,9 @@ def run(output: Path, cache: Path, days: tuple[str, ...] = v1.PILOT_DAYS) -> dic
     )
     result["exit_floor_contract"] = "no economic 10%-of-quote floor; numerical positive floor only"
     result["drawdown_contract"] = "single chronological marked account path without closed-plus-intratrade double counting"
+    result["performance_contract"] = (
+        "immutable first-executable-quote positions/times are computed once per aligned frame and reused exactly"
+    )
     result["v1_v2_v3_v4_v4b_v5_v5b_v5c_outputs_admissible"] = False
     result["ranking_eligible"] = False
     path = output / "PILOT_RESULT.json"
