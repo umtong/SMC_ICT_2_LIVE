@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 14
+- revision: 15
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9E484`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
@@ -27,7 +27,7 @@ The provisional first place is the Donchian all-breakout route `a70626d9e484285f
 - maximum used leverage: `0.875x / 0.723x`
 - exits: `25` channel exits, `74` ATR stops
 
-It is first because it has the highest recorded after-cost geometric growth among current-contract-compatible paths. It is not a solution: the source is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, winner removal destroys the account, and the route is non-ML.
+It remains first only because it has the highest recorded after-cost geometric growth among current-contract-compatible paths. It is not close to the project objective: the 12-bp path still requires approximately `11.10x` more daily growth, winner removal destroys the account, the source is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, and the route is non-ML.
 
 Rank does not determine research priority.
 
@@ -55,43 +55,53 @@ All eight are below the 1% reference and none has deployment authority.
 
 These historical results remain recorded but cannot rank under the fixed no-elapsed-time-liquidation contract.
 
-## Ranking policy
+## Sequential 2024-2026 research contract
 
-- A result-local label such as `fatal screen` or `non-rank-eligible` does not erase a current-contract-compatible account path from the project cumulative ranking.
-- Incomplete cost, data or execution comparability is represented by a provisional rank and explicit comparison confidence.
-- A prohibited elapsed-time liquidation is a contract failure and cannot be offset by higher return.
-- Below 1%, higher sustainable after-cost geometric growth and the smaller target gap rank ahead.
-- Economic-gate status, validation stage, deployment status and research priority remain separate from rank.
-- A new positive hard-valid result is inserted immediately; a newly discovered contract failure removes the candidate immediately.
+The five official half-years are sequential research intervals, not one final block kept sealed indefinitely.
 
-## Work stopped and retired
+- `2024H1` is the first official test and uses only information available through `2023-12-31`.
+- A pre-2024 candidate that is genuinely promising is evaluated in `2024H1` immediately; OOS purity is not used to postpone the test.
+- After `2024H1` is observed, its result may guide a revised rule fixed with information available through `2024-06-30` for `2024H2`.
+- The same causal progression applies to every later half-year while NAV remains one continuous account path.
+- A period already used for revision or selection is never relabeled as a new independent final OOS for the revised strategy.
+- If a result is structurally far from the objective, research changes alpha or payoff rather than preserving unused official periods or adding defensive pre-gates.
 
-The fixed 2024 portfolio combining the invalid dynamic component with aligned continuation remains closed before any 2024 strategy outcome.
+Any active claim that still describes one frozen continuous `2024-01-01` through `2026-06-30` replay must be corrected before opening official outcomes.
 
-Coinbase spot-flow ML is closed as `SOURCE_UNAVAILABLE`; no market row or model outcome existed. Bybit mark/index raid-acceptance ML is a complete negative result. Neither route receives threshold, risk or leverage rescue.
+## Newly completed and retired work
 
-## Active high-information ML work
+- Direct after-cost utility ML: the frozen calibration scale became zero; confirmation predictions were constant zero and the account made no trades. Development, risk search and official periods stayed closed.
+- Path-continuity first-passage ML: model AUC and Brier were worse than structural distance; 264 development trades lost `54.49% / 64.14% / 71.93%` at 12/18/24 bps and winner removal worsened the loss.
+- OKX spot-swap consensus relay: only `116 / 67 / 8` train/calibration/confirmation events; the population gate failed before model fitting.
+- Cross-venue fair-value maker: confirmation had zero conservative queue fills and fit gross returns were far below even 12-bp cost.
+- Aave liquidation source: canonical identities and historical block access passed, but keyless archive endpoints could not deliver the bounded historical `LiquidationCall` logs. This is source unavailability, not negative alpha evidence.
 
-- four-asset direct after-cost utility regression with turnover-aware `KEEP / SWITCH / FLAT` actions;
-- OKX spot-swap consensus and OI sponsorship relay into delayed executable Bybit BBO;
-- path-continuity structural first-passage ML;
-- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH ML screen.
+None changes the cumulative strategy order. Failed economic dependencies receive no sign flip, threshold, model, risk or leverage rescue.
 
-These paths are prioritized because they can create cost-sized information before Bybit delivery, not because of the current rank.
+## Active highest-information work
+
+- `CLM-20260726-2110-ML-DONCHIAN-STRUCTURAL-001` / PR #194: one ML utility filter on the fixed highest-growth structural breakout. Its official-period contract must open `2024H1` first rather than replay all of 2024-2026 as one frozen block.
+- `CLM-20260726-2058-ML-HL-LIQUIDATION-001` / PR #191: explicit finalized Hyperliquid liquidation forced flow; source gate first, then one pooled structural first-passage model.
+- `CLM-20260726-2115-ML-XVENUE-PRESHOCK-MAKER-001`: place before rather than after an external shock, with actual queue occupancy and structural cancellation.
+- `CLM-20260726-2045-ML-COMPRESSION-FVG-001`: one state-defined compression-to-expansion ML route with structural exits.
+- `CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001` / PR #189: explicit stablecoin mint/burn liquidity-supply source gate.
+- `CLM-20260726-2135-ML-SWEEP-BREAKER-001`: causal sweep, MSS, breaker/FVG retest and one ML target-first estimate.
+
+These are not protected. A positive hard-valid result is inserted immediately; a negative result is retired immediately.
 
 ## Current blockers
 
-The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived realistic sequential 2024-2026 Bybit execution, funding, winner removal and regime changes, and the leading routes are not a deployable ML system.
+The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived a causal `2024H1` Bybit evaluation with realistic funding, execution and winner-removal robustness, and the leading strategy is still non-ML.
 
 ## Current objective
 
-Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the active direct-utility, OKX, path-continuity and Aave paths; insert any superior result immediately and retire any failed dependency immediately.
+Maximize realistic after-cost account growth. Do not tune or protect the Donchian benchmark merely because it is first. Use one high-information test of its fixed structure, while prioritizing explicit forced-flow, inventory-transfer and pre-positioned execution sources that can materially exceed the present growth scale.
 
 ## Next exact action
 
-1. Complete the direct-utility gap-boundary correction without imputation and run its frozen chronological screen.
-2. Consume the OKX and path-continuity results as soon as immutable account paths exist.
-3. Finish the Aave source gate; pass opens the frozen ML screen, failure retires the source.
-4. If all fail, open a materially new forced-flow or inventory-transfer source rather than another completed-bar parameter family.
+1. Correct PR #194 before any official outcome so a passing 2023 path opens only `2024H1`; later half-years are separately fixed using only then-available information.
+2. Consume the Hyperliquid liquidation source gate and open its frozen ML screen immediately on a pass; close only the transport on a source failure.
+3. Consume pre-shock maker, stablecoin issuance, compression-FVG and sweep-breaker results as soon as decision-ready.
+4. If no route produces a materially larger, winner-removal-positive cost-sized edge, change the information source or payoff again rather than expanding the current rank-one family.
 
-Updated: 2026-07-26 21:08 KST
+Updated: 2026-07-26 21:41 KST
