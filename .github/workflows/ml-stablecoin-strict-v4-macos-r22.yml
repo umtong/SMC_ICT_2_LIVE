@@ -1,18 +1,21 @@
-name: Stablecoin supply shock strict causal V4 decision macOS
+name: Stablecoin supply shock strict causal V4 main authority
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths:
-      - 'research/triggers/stablecoin_strict_v4_macos/**'
+      - 'research/triggers/stablecoin_strict_v3/**'
+      - '.github/workflows/ml-stablecoin-strict-v4-macos-r22.yml'
+      - 'research/execution/stablecoin_strict_v4_20260727/EXECUTION_CORRECTION_006_MAIN_PUSH_RESULT_PUBLISH_BEFORE_OUTCOME.json'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 concurrency:
-  group: stablecoin-strict-v4-macos-${{ github.sha }}
-  cancel-in-progress: false
+  group: stablecoin-strict-v4-macos-main-authority
+  cancel-in-progress: true
 
 env:
   PYTHONHASHSEED: '0'
@@ -58,6 +61,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUN_ROOT"
           python -m json.tool "$V4_ROOT/EXECUTION_CORRECTION_005_MACOS_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$V4_ROOT/EXECUTION_CORRECTION_006_MAIN_PUSH_RESULT_PUBLISH_BEFORE_OUTCOME.json" >/dev/null
           git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
           rm -rf "$SOURCE_ROOT"
@@ -114,7 +118,7 @@ jobs:
           if [[ ! -f "$SOURCE_OUT/run/SOURCE_GATE_RESULT.json" ]]; then
             python "$SOURCE_ROOT/write_transport_failure.py" \
               --output "$SOURCE_OUT/run" \
-              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V4-MACOS \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V4-MACOS-MAIN \
               --exit-code "$rc"
           fi
           if [[ "$rc" != 0 && "$rc" != 2 ]]; then
@@ -170,7 +174,7 @@ jobs:
         if: steps.source.outputs.authorized == 'true'
         with:
           path: ${{ env.MARKET_CACHE }}
-          key: stablecoin-market-macos-2020-12-2023-12-strict-v4
+          key: stablecoin-market-macos-2020-12-2023-12-strict-v4-main
 
       - name: Run strict causal V4 pre-2024 ML and account screen
         if: steps.source.outputs.authorized == 'true'
@@ -191,59 +195,124 @@ jobs:
           test -f "$ECON_OUT/run/RESULT.json"
           test -f "$ECON_OUT/run/FULL_RESULT.json"
 
-      - name: Enforce strict V4 result and immediate sequential decision
+      - name: Enforce strict V4 result and write compact decision
         if: always()
         run: |
           set -euo pipefail
           python - <<'PY'
           import json, os
           from pathlib import Path
-          source=json.loads((Path(os.environ['SOURCE_OUT'])/'run/SOURCE_GATE_RESULT.json').read_text())
-          if source['status']!='PASS':
-              print(json.dumps({'source_status':source['status'],'economic_status':'NOT_OPENED','next_stage':'CLOSE_SOURCE_OR_REPAIR_TRANSPORT_ONLY'},sort_keys=True))
-              raise SystemExit(0)
-          root=Path(os.environ['ECON_OUT'])/'run'
-          result=json.loads((root/'RESULT.json').read_text())
-          full=json.loads((root/'FULL_RESULT.json').read_text())
-          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
-          assert result['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
-          assert result['status'] in {'PRE2024_BELOW_GATE','PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1'}
-          assert result['orders_submitted'] is False
-          assert result['official_2024h1_opened'] is False
-          assert result['official_2024_2026_opened'] is False
-          strict=result['strict_causal_guard']
-          assert strict['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002'
-          assert strict['source_decision_second_respected'] is True
-          assert strict['latest_completed_bar_cutoff_enforced'] is True
-          assert strict['decision_reference_price_pre_entry'] is True
-          assert strict['future_entry_open_used_for_model_or_action'] is False
-          assert strict['entry_open_used_for_realized_execution_only'] is True
-          assert strict['stage_boundary_positions_marked_not_closed'] is True
-          assert strict['fatal_validity_violation'] is False
-          v4=result['simultaneous_event_and_liquidation_guard']
-          assert v4['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-EVENT-LIQUIDATION-DISTANCE-004'
-          assert v4['simultaneous_event_prior_rule']=='STRICTLY_EARLIER_AVAILABILITY_SECOND_GROUPED_BEFORE_APPEND'
-          assert v4['planned_quantity_rule']=='PREENTRY_EXPECTED_STOP_DISTANCE_PLUS_COST'
-          assert v4['liquidation_test_rule']=='ACTUAL_FILL_TO_STRUCTURAL_STOP_OR_ADVERSE_STOP_GAP'
-          assert v4['entry_gap_cost_only_liquidation_distance']==0.0
-          assert v4['fatal_validity_violation'] is False
-          serialized=json.dumps(full,sort_keys=True)
-          assert '"exit_reason": "SOURCE_BOUNDARY"' not in serialized
-          def walk(value):
-              if isinstance(value,dict):
-                  if 'forced_boundary_close' in value:
-                      assert value['forced_boundary_close'] is False
-                  for child in value.values(): walk(child)
-              elif isinstance(value,list):
-                  for child in value: walk(child)
-          walk(full)
-          next_stage='CHANGE_ALPHA'
-          if result['status']=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
-              assert result['development_gate']['all'] is True
-              selected=result['risk_search']['selected']
-              assert selected is not None and selected['growth']>0 and selected['liquidation'] is False
-              next_stage='OFFICIAL_2024H1_IMMEDIATELY'
-          print(json.dumps({'source_status':source['status'],'economic_status':result['status'],'development_gate':result['development_gate'].get('all'),'selected_risk_path':result.get('risk_search',{}).get('selected'),'next_stage':next_stage},sort_keys=True))
+
+          source_path=Path(os.environ['SOURCE_OUT'])/'run/SOURCE_GATE_RESULT.json'
+          run_root=Path(os.environ['RUN_ROOT'])
+          run_root.mkdir(parents=True,exist_ok=True)
+          payload={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001',
+              'source_sha':os.environ['SOURCE_SHA'],
+              'strict_sha':os.environ['STRICT_SHA'],
+              'v4_correction':'CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-EVENT-LIQUIDATION-DISTANCE-004',
+              'source':{'status':'EXECUTION_FAILURE_BEFORE_SOURCE_DECISION'},
+              'economic':{'status':'NOT_OPENED','orders_submitted':False},
+              'next_stage':'REPAIR_EXECUTION_ONLY',
+          }
+          if source_path.exists():
+              source=json.loads(source_path.read_text())
+              payload['source']={
+                  'status':source.get('status'),
+                  'event_count':source.get('event_count'),
+                  'event_month_count':len(source.get('months_with_events',[])),
+                  'distinct_tokens':source.get('distinct_tokens'),
+                  'token_counts':source.get('token_counts'),
+                  'pass_checks':source.get('pass_checks'),
+                  'source_schema_id':source.get('source_schema_id'),
+                  'source_correction_id':source.get('source_correction_id'),
+                  'transport_response_policy_correction':source.get('transport_response_policy_correction'),
+                  'fatal_error':source.get('fatal_error'),
+              }
+              if source['status']!='PASS':
+                  payload['next_stage']='CLOSE_SOURCE_OR_REPAIR_TRANSPORT_ONLY'
+              else:
+                  root=Path(os.environ['ECON_OUT'])/'run'
+                  result=json.loads((root/'RESULT.json').read_text())
+                  full=json.loads((root/'FULL_RESULT.json').read_text())
+                  assert result['claim_id']==payload['claim_id']
+                  assert result['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
+                  assert result['status'] in {'PRE2024_BELOW_GATE','PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1'}
+                  assert result['orders_submitted'] is False
+                  assert result['official_2024h1_opened'] is False
+                  assert result['official_2024_2026_opened'] is False
+                  strict=result['strict_causal_guard']
+                  assert strict['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002'
+                  assert strict['source_decision_second_respected'] is True
+                  assert strict['latest_completed_bar_cutoff_enforced'] is True
+                  assert strict['decision_reference_price_pre_entry'] is True
+                  assert strict['future_entry_open_used_for_model_or_action'] is False
+                  assert strict['entry_open_used_for_realized_execution_only'] is True
+                  assert strict['stage_boundary_positions_marked_not_closed'] is True
+                  assert strict['fatal_validity_violation'] is False
+                  v4=result['simultaneous_event_and_liquidation_guard']
+                  assert v4['correction_id']==payload['v4_correction']
+                  assert v4['simultaneous_event_prior_rule']=='STRICTLY_EARLIER_AVAILABILITY_SECOND_GROUPED_BEFORE_APPEND'
+                  assert v4['planned_quantity_rule']=='PREENTRY_EXPECTED_STOP_DISTANCE_PLUS_COST'
+                  assert v4['liquidation_test_rule']=='ACTUAL_FILL_TO_STRUCTURAL_STOP_OR_ADVERSE_STOP_GAP'
+                  assert v4['entry_gap_cost_only_liquidation_distance']==0.0
+                  assert v4['fatal_validity_violation'] is False
+                  serialized=json.dumps(full,sort_keys=True)
+                  assert '"exit_reason": "SOURCE_BOUNDARY"' not in serialized
+                  def walk(value):
+                      if isinstance(value,dict):
+                          if 'forced_boundary_close' in value:
+                              assert value['forced_boundary_close'] is False
+                          for child in value.values():
+                              walk(child)
+                      elif isinstance(value,list):
+                          for child in value:
+                              walk(child)
+                  walk(full)
+                  development=result.get('development',{})
+                  costs=development.get('costs',{}) if isinstance(development,dict) else {}
+                  primary=costs.get('24',{}) if isinstance(costs,dict) else {}
+                  confirmation=result.get('confirmation',{})
+                  selected=result.get('risk_search',{}).get('selected')
+                  payload['economic']={
+                      'status':result.get('status'),
+                      'engine':result.get('engine'),
+                      'source_event_count':result.get('source_event_count'),
+                      'row_count_12':result.get('row_count_12'),
+                      'row_count_64':result.get('row_count_64'),
+                      'confirmation':{
+                          'resolved_labels':confirmation.get('resolved_labels'),
+                          'model_auc':confirmation.get('model_auc'),
+                          'distance_baseline_auc':confirmation.get('distance_baseline_auc'),
+                          'brier_skill':confirmation.get('brier_skill'),
+                      },
+                      'development_24bp':{
+                          'total_return':primary.get('total_return'),
+                          'geometric_calendar_day_growth':primary.get('geometric_calendar_day_growth'),
+                          'trade_count':primary.get('trade_count'),
+                          'median_trade_bps':primary.get('median_trade_bps'),
+                          'profit_factor':primary.get('profit_factor'),
+                          'maximum_drawdown':primary.get('maximum_drawdown'),
+                          'liquidation':primary.get('liquidation'),
+                          'winner_removed':primary.get('winner_removed'),
+                      },
+                      'development_gate':result.get('development_gate'),
+                      'selected_risk_path':selected,
+                      'simultaneous_event_and_liquidation_guard':v4,
+                      'official_2024h1_opened':result.get('official_2024h1_opened'),
+                      'orders_submitted':result.get('orders_submitted'),
+                  }
+                  payload['next_stage']='CHANGE_ALPHA'
+                  if result['status']=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
+                      assert result['development_gate']['all'] is True
+                      assert selected is not None and selected['growth']>0 and selected['liquidation'] is False
+                      payload['next_stage']='OFFICIAL_2024H1_IMMEDIATELY'
+          (run_root/'RESULT_SUMMARY.json').write_text(
+              json.dumps(payload,indent=2,sort_keys=True,allow_nan=False)+'\n',
+              encoding='utf-8',
+          )
+          print('STABLECOIN_STRICT_V4_DECISION',json.dumps(payload,sort_keys=True,allow_nan=False))
           PY
 
       - name: Freeze immutable evidence hashes
@@ -251,20 +320,21 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUN_ROOT/inputs"
-          cp "$SOURCE_ROOT"/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$SOURCE_ROOT"/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$GUARD_ROOT"/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$V4_ROOT"/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$V4_ROOT"/EXECUTION_CORRECTION_005_MACOS_AUTHORITY_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/"
-          cp "$GUARD_ROOT"/strict_guard.py "$GUARD_ROOT"/test_causal_guard.py "$RUN_ROOT/inputs/"
-          cp "$V4_ROOT"/strict_guard_v4.py "$RUN_ROOT/inputs/"
+          cp "$SOURCE_ROOT"/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$SOURCE_ROOT"/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$GUARD_ROOT"/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$V4_ROOT"/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$V4_ROOT"/EXECUTION_CORRECTION_005_MACOS_AUTHORITY_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$V4_ROOT"/EXECUTION_CORRECTION_006_MAIN_PUSH_RESULT_PUBLISH_BEFORE_OUTCOME.json "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$GUARD_ROOT"/strict_guard.py "$GUARD_ROOT"/test_causal_guard.py "$RUN_ROOT/inputs/" 2>/dev/null || true
+          cp "$V4_ROOT"/strict_guard_v4.py "$RUN_ROOT/inputs/" 2>/dev/null || true
           python - <<'PY'
           import hashlib, os
           from pathlib import Path
           root=Path(os.environ['RUN_ROOT'])
           rows=[]
           for path in sorted(item for item in root.rglob('*') if item.is_file() and item.name!='OUTPUT_SHA256SUMS.txt'):
-              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n")
           (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
           PY
 
@@ -276,3 +346,63 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
+
+      - name: Publish immutable V4 evidence branch and result PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target="research_runs/stablecoin_strict_v4_macos_${GITHUB_RUN_ID}"
+          rm -rf "$target"
+          cp -R "$RUN_ROOT" "$target"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          target=Path('research_runs')/f"stablecoin_strict_v4_macos_{os.environ['GITHUB_RUN_ID']}"
+          marker=target/'RESULT_SUMMARY.json'
+          if marker.exists():
+              x=json.loads(marker.read_text())
+              source=x.get('source',{})
+              economic=x.get('economic',{})
+              title=f"Record strict stablecoin V4 decision: {source.get('status','UNKNOWN')} / {economic.get('status','NOT_OPENED')}"
+              d24=economic.get('development_24bp',{}) if isinstance(economic,dict) else {}
+              body=(
+                  '## Decision-ready strict stablecoin V4 execution\n\n'
+                  f"- claim: `{x.get('claim_id')}`\n"
+                  f"- source SHA: `{x.get('source_sha')}`\n"
+                  f"- strict SHA: `{x.get('strict_sha')}`\n"
+                  f"- V4 correction: `{x.get('v4_correction')}`\n"
+                  f"- source status: **{source.get('status')}**\n"
+                  f"- source events/months/tokens: `{source.get('event_count')}` / `{source.get('event_month_count')}` / `{source.get('distinct_tokens')}`\n"
+                  f"- economic status: **{economic.get('status')}**\n"
+                  f"- 24-bp growth / total return / trades: `{d24.get('geometric_calendar_day_growth')}` / `{d24.get('total_return')}` / `{d24.get('trade_count')}`\n"
+                  f"- selected risk path: `{economic.get('selected_risk_path')}`\n"
+                  f"- next stage: **{x.get('next_stage')}**\n"
+                  f"- orders submitted: `{economic.get('orders_submitted', False)}`\n\n"
+                  'This PR contains the compact decision, complete source/economic output and SHA-256 manifest. '
+                  'A no-liquidation survivor advances immediately to official 2024H1; otherwise the exact alpha changes without adjacent tuning.\n'
+              )
+          else:
+              title='Record strict stablecoin V4 execution failure before decision'
+              body=(
+                  'The V4 macOS authority failed before emitting a compact scientific decision. '
+                  'The immutable evidence separates execution failure from source or economic failure. '
+                  'No strategy result, credential or order is claimed.\n'
+              )
+          (target/'RESULT_PR_TITLE.txt').write_text(title+'\n',encoding='utf-8')
+          (target/'RESULT_PR_BODY.md').write_text(body,encoding='utf-8')
+          PY
+          branch="automation/stablecoin-strict-v4-${GITHUB_RUN_ID}"
+          git config user.name github-actions
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git checkout -b "$branch"
+          git add "$target"
+          git commit -m "Record strict stablecoin V4 run ${GITHUB_RUN_ID}"
+          git push origin "$branch"
+          title=$(head -n 1 "$target/RESULT_PR_TITLE.txt")
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "$title" \
+            --body-file "$target/RESULT_PR_BODY.md"
