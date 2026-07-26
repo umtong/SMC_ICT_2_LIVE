@@ -1,4 +1,4 @@
-name: ML Donchian structural delivery
+name: ML Donchian structural source materialization
 
 on:
   push:
@@ -15,26 +15,27 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ml-donchian-structural-r13-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  research:
+  materialize-source-before-outcome:
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: agent/r13-ml-donchian-structural-001
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install frozen environment
+      - name: Install frozen verification environment
         shell: bash
         run: |
           set -euo pipefail
@@ -46,7 +47,7 @@ jobs:
             "scikit-learn==1.6.1" \
             "pytest==8.3.4"
 
-      - name: Reconstruct and run causal tests
+      - name: Reconstruct and verify immutable source without market access
         shell: bash
         run: |
           set -euo pipefail
@@ -56,72 +57,45 @@ jobs:
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
           PYTHONPATH="$root" python "$root/run.py" --self-test
           python scripts/validate_project.py
-
-      - name: Run frozen pre-2024 model and conditional official replay
-        shell: bash
-        run: |
-          set -euo pipefail
-          root=research/ml_donchian_structural_20260726
-          out=research_runs/ml_donchian_structural_20260726/r13
-          cache="$RUNNER_TEMP/ml-donchian-structural-cache"
-          mkdir -p "$out"
           python - <<'PY'
-          import json, platform, sys
+          import json
           from pathlib import Path
-          import numpy, pandas, requests, sklearn
-          out=Path('research_runs/ml_donchian_structural_20260726/r13')
-          out.mkdir(parents=True, exist_ok=True)
-          (out/'ENVIRONMENT.json').write_text(json.dumps({
-              'python':sys.version,
-              'platform':platform.platform(),
-              'numpy':numpy.__version__,
-              'pandas':pandas.__version__,
-              'requests':requests.__version__,
-              'scikit_learn':sklearn.__version__,
-              'claim_id':'CLM-20260726-2110-ML-DONCHIAN-STRUCTURAL-001',
-              'engine_version':'ML-DONCHIAN-STRUCTURAL-V1',
-              'orders_submitted':False,
-              '2024_opened_before_gate':False,
-              '2025_opened_before_gate':False,
-              '2026_opened_before_gate':False,
-          }, indent=2, sort_keys=True)+'\n', encoding='utf-8')
+          root = Path('research/ml_donchian_structural_20260726')
+          correction = json.loads((root/'CORRECTION_001_OFFICIAL_HALF_YEAR_RESEARCH_INTENT_BEFORE_OUTCOME.json').read_text())
+          assert correction['recorded_before_outcome'] is True
+          assert correction['market_rows_opened_before_correction'] is False
+          assert correction['model_fitted_before_correction'] is False
+          assert correction['official_2024_2026_opened_before_correction'] is False
+          print(json.dumps({
+              'status':'SOURCE_MATERIALIZED_NO_MARKET_OUTCOME',
+              'run_sha256':__import__('hashlib').sha256((root/'run.py').read_bytes()).hexdigest(),
+              'test_sha256':__import__('hashlib').sha256((root/'test_run.py').read_bytes()).hexdigest(),
+          }, sort_keys=True))
           PY
-          PYTHONPATH="$root" python "$root/run.py" \
-            --output "$out" \
-            --cache "$cache" \
-            2>&1 | tee "$out/RUN.log"
 
-      - name: Record immutable checksums
-        if: always()
+      - name: Commit readable source for official-half-year amendment
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
           set -euo pipefail
           root=research/ml_donchian_structural_20260726
-          out=research_runs/ml_donchian_structural_20260726/r13
-          mkdir -p "$out"
-          sha256sum \
-            "$root/WORK_CLAIM.json" \
-            "$root/preregistration.json" \
-            "$root/README.md" \
-            "$root/SOURCES.md" \
-            "$root/SOURCE_BUNDLE_MANIFEST.json" \
-            "$root/reconstruct.py" \
-            "$root/source_bundle.tar.gz.b64.part00" \
-            "$root/source_bundle.tar.gz.b64.part01" \
-            "$root/source_bundle.tar.gz.b64.part02" \
-            "$root/run.py" \
-            "$root/test_run.py" \
-            > "$out/INPUT_SHA256SUMS.txt"
-          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$root/run.py" "$root/test_run.py"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Materialize ML Donchian source before official replay [skip ci]"
+          git push origin HEAD:agent/r13-ml-donchian-structural-001
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-donchian-structural-r13-${{ github.sha }}
+          name: ml-donchian-source-before-outcome-${{ github.sha }}
           path: |
-            research_runs/ml_donchian_structural_20260726/r13
             research/ml_donchian_structural_20260726/run.py
             research/ml_donchian_structural_20260726/test_run.py
+            research/ml_donchian_structural_20260726/CORRECTION_001_OFFICIAL_HALF_YEAR_RESEARCH_INTENT_BEFORE_OUTCOME.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
