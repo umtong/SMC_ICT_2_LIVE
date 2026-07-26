@@ -18,9 +18,15 @@ PROFIT_CORRECTION = "CORRECTION-20260727-ML-STABLECOIN-PROFIT-FIRST-ADVANCEMENT-
 RESULT_ID = "RES-20260727-ML-STABLECOIN-PROFIT-FIRST-V5-001"
 
 
-def validate_profit_result(economic_out: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    result = json.loads((economic_out / "RESULT.json").read_text(encoding="utf-8"))
-    full = json.loads((economic_out / "FULL_RESULT.json").read_text(encoding="utf-8"))
+def validate_profit_result(
+    economic_out: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    result = json.loads(
+        (economic_out / "RESULT.json").read_text(encoding="utf-8")
+    )
+    full = json.loads(
+        (economic_out / "FULL_RESULT.json").read_text(encoding="utf-8")
+    )
     if result["claim_id"] != CLAIM_ID:
         raise AssertionError(result["claim_id"])
     if result["engine"] != ENGINE:
@@ -31,22 +37,25 @@ def validate_profit_result(economic_out: Path) -> tuple[dict[str, Any], dict[str
         "PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1",
     }:
         raise AssertionError(result["status"])
-    if result.get("official_2024h1_opened") is not False:
-        raise AssertionError("official 2024H1 opened inside pre-2024 authority")
-    if result.get("official_2024_2026_opened") is not False:
-        raise AssertionError("official period opened inside pre-2024 authority")
-    if result.get("orders_submitted") is not False:
-        raise AssertionError("orders submitted")
+    for key in (
+        "official_2024h1_opened",
+        "official_2024_2026_opened",
+        "orders_submitted",
+    ):
+        if result.get(key) is not False:
+            raise AssertionError(f"{key}={result.get(key)!r}")
 
     strict = result["strict_causal_guard"]
-    if strict.get("correction_id") != v4auth.STRICT_CORRECTION:
-        raise AssertionError(strict)
-    if strict.get("fatal_validity_violation") is not False:
+    if (
+        strict.get("correction_id") != v4auth.STRICT_CORRECTION
+        or strict.get("fatal_validity_violation") is not False
+    ):
         raise AssertionError(strict)
     v4 = result["simultaneous_event_and_liquidation_guard"]
-    if v4.get("correction_id") != v4auth.V4_CORRECTION:
-        raise AssertionError(v4)
-    if v4.get("fatal_validity_violation") is not False:
+    if (
+        v4.get("correction_id") != v4auth.V4_CORRECTION
+        or v4.get("fatal_validity_violation") is not False
+    ):
         raise AssertionError(v4)
     profit = result["profit_first_advancement_guard"]
     if profit.get("correction_id") != PROFIT_CORRECTION:
@@ -73,6 +82,11 @@ def validate_profit_result(economic_out: Path) -> tuple[dict[str, Any], dict[str
                 walk(child)
 
     walk(full)
+    search = result.get("risk_search")
+    if search is not None and int(search["candidate_count"]) != 99:
+        raise AssertionError(
+            f"risk/notional grid changed: {search['candidate_count']} != 99"
+        )
     if result["status"] == "PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1":
         gate = result["development_gate"]
         if gate.get("all") is not True:
@@ -80,12 +94,17 @@ def validate_profit_result(economic_out: Path) -> tuple[dict[str, Any], dict[str
         selected = result["risk_search"]["selected"]
         if selected is None:
             raise AssertionError("survivor has no selected risk path")
-        if float(selected["growth"]) <= 0.0 or selected["liquidation"] is not False:
+        if (
+            float(selected["growth"]) <= 0.0
+            or selected["liquidation"] is not False
+        ):
             raise AssertionError(selected)
     return result, full
 
 
-def primary_development_metrics(result: dict[str, Any]) -> dict[str, Any] | None:
+def primary_development_metrics(
+    result: dict[str, Any],
+) -> dict[str, Any] | None:
     development = result.get("development")
     if not isinstance(development, dict):
         return None
@@ -100,8 +119,12 @@ def build_profit_decision(
     source_out: Path,
     economic_out: Path,
     strict_v4_decision: dict[str, Any] | None,
+    strict_v4_execution_error: str | None,
 ) -> dict[str, Any]:
-    survivor = result["status"] == "PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1"
+    survivor = (
+        result["status"]
+        == "PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1"
+    )
     primary = primary_development_metrics(result)
     selected = (result.get("risk_search") or {}).get("selected")
     return {
@@ -115,7 +138,9 @@ def build_profit_decision(
         "source": {
             "status": source["status"],
             "event_count": source.get("event_count"),
-            "event_bearing_months": len(source.get("months_with_events", [])),
+            "event_bearing_months": len(
+                source.get("months_with_events", [])
+            ),
             "tokens": source.get("distinct_tokens"),
             "source_schema_id": source.get("source_schema_id"),
             "source_correction_id": source.get("source_correction_id"),
@@ -134,6 +159,9 @@ def build_profit_decision(
         "economic": {
             "engine": result["engine"],
             "profit_first_correction_id": PROFIT_CORRECTION,
+            "risk_notional_grid_candidate_count": (
+                result.get("risk_search") or {}
+            ).get("candidate_count"),
             "confirmation_diagnostics_not_gate": result.get(
                 "confirmation_diagnostics_not_gate"
             ),
@@ -150,12 +178,15 @@ def build_profit_decision(
             "profit_first_advancement_guard": result.get(
                 "profit_first_advancement_guard"
             ),
-            "result_sha256": v4auth.sha256_file(economic_out / "RESULT.json"),
+            "result_sha256": v4auth.sha256_file(
+                economic_out / "RESULT.json"
+            ),
             "full_result_sha256": v4auth.sha256_file(
                 economic_out / "FULL_RESULT.json"
             ),
         },
         "strict_v4_diagnostic": strict_v4_decision,
+        "strict_v4_execution_error_before_v5": strict_v4_execution_error,
         "source_sha": v4auth.SOURCE_SHA,
         "strict_sha": v4auth.STRICT_SHA,
         "execution_checkout_sha": checkout_sha,
@@ -174,10 +205,19 @@ def build_profit_decision(
 
 def execute(work_dir: Path, publish_dir: Path) -> int:
     checkout_sha = v4auth.git("rev-parse", "HEAD")
-    v4auth.execute(work_dir, publish_dir)
+    strict_v4_execution_error: str | None = None
+    try:
+        v4auth.execute(work_dir, publish_dir)
+    except Exception as error:
+        strict_v4_execution_error = repr(error)
+        if not (work_dir / "source" / "SOURCE_GATE_RESULT.json").is_file():
+            raise
+
     strict_v4_decision_path = publish_dir / "DECISION.json"
     strict_v4_decision = (
-        json.loads(strict_v4_decision_path.read_text(encoding="utf-8"))
+        json.loads(
+            strict_v4_decision_path.read_text(encoding="utf-8")
+        )
         if strict_v4_decision_path.exists()
         else None
     )
@@ -190,8 +230,24 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         decision.update(
             {
                 "result_id": RESULT_ID,
+                "claim_id": CLAIM_ID,
+                "status": source["status"],
+                "hard_validity_status": (
+                    "PASS_OUTCOME_SEALED_SOURCE_DECISION"
+                ),
+                "economic_status": "NOT_OPENED",
+                "ranking_role": "NONE_SOURCE_DECISION",
                 "profit_first_correction_id": PROFIT_CORRECTION,
+                "strict_v4_execution_error_before_v5": (
+                    strict_v4_execution_error
+                ),
                 "execution_checkout_sha": checkout_sha,
+                "next_action": (
+                    "CHANGE_ALPHA"
+                    if source["status"]
+                    == "FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE"
+                    else "CLOSE_SOURCE_OR_REPAIR_TRANSPORT_ONLY"
+                ),
                 "official_2024_2026_opened": False,
                 "orders_submitted": False,
             }
@@ -204,10 +260,22 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         return 0
 
     repository = work_dir / "repository"
-    base_root = repository / "research" / "ml_stablecoin_issuance_economic_20260726"
-    guard_root = repository / "sourcefix" / "ml_stablecoin_causal_guard_20260726"
-    v4_root = ROOT / "research" / "execution" / "stablecoin_strict_v4_20260727"
-    v5_root = ROOT / "research" / "execution" / "stablecoin_profit_v5_20260727"
+    base_root = (
+        repository
+        / "research"
+        / "ml_stablecoin_issuance_economic_20260726"
+    )
+    guard_root = (
+        repository
+        / "sourcefix"
+        / "ml_stablecoin_causal_guard_20260726"
+    )
+    v4_root = (
+        ROOT / "research" / "execution" / "stablecoin_strict_v4_20260727"
+    )
+    v5_root = (
+        ROOT / "research" / "execution" / "stablecoin_profit_v5_20260727"
+    )
     market_cache = work_dir / "market"
     economic_out = work_dir / "economic_profit_v5"
     shutil.rmtree(economic_out, ignore_errors=True)
@@ -218,20 +286,38 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         )
     }
     v4auth.run(
-        [sys.executable, "-m", "json.tool", str(v5_root / "CORRECTION_005_PROFIT_FIRST_ADVANCEMENT_BEFORE_OUTCOME.json")]
+        [
+            sys.executable,
+            "-m",
+            "json.tool",
+            str(
+                v5_root
+                / "CORRECTION_005_PROFIT_FIRST_ADVANCEMENT_BEFORE_OUTCOME.json"
+            ),
+        ]
     )
     v4auth.run(
-        [sys.executable, "-m", "py_compile", str(v5_root / "profit_guard_v5.py")]
+        [
+            sys.executable,
+            "-m",
+            "py_compile",
+            str(v5_root / "profit_guard_v5.py"),
+            str(v5_root / "profit_guard_v5_exact.py"),
+        ]
     )
     v4auth.run(
-        [sys.executable, str(v5_root / "profit_guard_v5.py"), "self-test"],
+        [
+            sys.executable,
+            str(v5_root / "profit_guard_v5_exact.py"),
+            "self-test",
+        ],
         env=environment,
         log=work_dir / "PROFIT_V5_SELF_TEST.log",
     )
     process = v4auth.run(
         [
             sys.executable,
-            str(v5_root / "profit_guard_v5.py"),
+            str(v5_root / "profit_guard_v5_exact.py"),
             "run",
             "--events",
             str(source_out / "EVENTS.jsonl"),
@@ -248,7 +334,9 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         f"{process.returncode}\n", encoding="utf-8"
     )
     if process.returncode not in {0, 2}:
-        raise RuntimeError(f"profit-first V5 process failed: {process.returncode}")
+        raise RuntimeError(
+            f"profit-first V5 process failed: {process.returncode}"
+        )
     result, _ = validate_profit_result(economic_out)
 
     if (publish_dir / "RESULT.json").exists():
@@ -256,17 +344,22 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
             publish_dir / "RESULT.json",
             publish_dir / "STRICT_V4_DIAGNOSTIC_RESULT.json",
         )
-    v4auth.copy_if_exists(economic_out / "RESULT.json", publish_dir / "RESULT.json")
     v4auth.copy_if_exists(
-        economic_out / "FULL_RESULT.json", publish_dir / "FULL_RESULT.json"
+        economic_out / "RESULT.json", publish_dir / "RESULT.json"
+    )
+    v4auth.copy_if_exists(
+        economic_out / "FULL_RESULT.json",
+        publish_dir / "FULL_RESULT.json",
     )
     v4auth.copy_if_exists(
         economic_out / "SHA256SUMS.txt",
         publish_dir / "PROFIT_V5_ECONOMIC_SHA256SUMS.txt",
     )
     v4auth.copy_if_exists(
-        v5_root / "CORRECTION_005_PROFIT_FIRST_ADVANCEMENT_BEFORE_OUTCOME.json",
-        publish_dir / "CORRECTION_005_PROFIT_FIRST_ADVANCEMENT_BEFORE_OUTCOME.json",
+        v5_root
+        / "CORRECTION_005_PROFIT_FIRST_ADVANCEMENT_BEFORE_OUTCOME.json",
+        publish_dir
+        / "CORRECTION_005_PROFIT_FIRST_ADVANCEMENT_BEFORE_OUTCOME.json",
     )
     decision = build_profit_decision(
         source=source,
@@ -275,6 +368,7 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         source_out=source_out,
         economic_out=economic_out,
         strict_v4_decision=strict_v4_decision,
+        strict_v4_execution_error=strict_v4_execution_error,
     )
     v4auth.write_json(publish_dir / "DECISION.json", decision)
     v4auth.write_json(
@@ -285,9 +379,15 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
             "source_sha": v4auth.SOURCE_SHA,
             "strict_sha": v4auth.STRICT_SHA,
             "execution_checkout_sha": checkout_sha,
-            "strict_v4_diagnostic_completed": strict_v4_decision is not None,
+            "strict_v4_diagnostic_completed": (
+                strict_v4_decision is not None
+            ),
+            "strict_v4_execution_error_before_v5": (
+                strict_v4_execution_error
+            ),
             "profit_first_v5_completed": True,
             "profit_first_correction_id": PROFIT_CORRECTION,
+            "risk_notional_grid_candidate_count": 99,
             "source_outcome_seal_passed": True,
             "official_2024_2026_opened": False,
             "orders_submitted": False,
@@ -307,7 +407,9 @@ def main() -> int:
     parser.add_argument("--publish-dir", type=Path, required=True)
     args = parser.parse_args()
     try:
-        return execute(args.work_dir.resolve(), args.publish_dir.resolve())
+        return execute(
+            args.work_dir.resolve(), args.publish_dir.resolve()
+        )
     except Exception as error:
         args.publish_dir.mkdir(parents=True, exist_ok=True)
         failure = {
@@ -323,9 +425,14 @@ def main() -> int:
             "official_2024_2026_opened": False,
             "orders_submitted": False,
         }
-        v4auth.write_json(args.publish_dir / "EXECUTION_FAILURE.json", failure)
+        v4auth.write_json(
+            args.publish_dir / "EXECUTION_FAILURE.json", failure
+        )
         v4auth.freeze_hashes(args.publish_dir)
-        print(json.dumps(failure, indent=2, sort_keys=True), file=sys.stderr)
+        print(
+            json.dumps(failure, indent=2, sort_keys=True),
+            file=sys.stderr,
+        )
         return 1
 
 
