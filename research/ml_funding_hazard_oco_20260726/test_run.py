@@ -24,6 +24,46 @@ def test_prohibited_year_is_blocked() -> None:
         raise AssertionError("2024 source URL was not blocked")
 
 
+def test_read_source_uses_local_availability_and_preserves_capture_order(tmp_path: Path) -> None:
+    path = tmp_path / "source.csv.gz"
+    rows = pd.DataFrame(
+        [
+            {
+                "exchange": "bybit",
+                "symbol": "BTCUSDT",
+                "timestamp": 2_000_000,
+                "local_timestamp": 1_000_000,
+                "funding_timestamp": 8_000_000,
+                "funding_rate": 0.0001,
+                "predicted_funding_rate": 0.0001,
+                "open_interest": 10.0,
+                "last_price": 100.0,
+                "index_price": 100.0,
+                "mark_price": 100.0,
+            },
+            {
+                "exchange": "bybit",
+                "symbol": "BTCUSDT",
+                "timestamp": 1_000_000,
+                "local_timestamp": 2_000_000,
+                "funding_timestamp": 8_000_000,
+                "funding_rate": 0.0001,
+                "predicted_funding_rate": 0.0001,
+                "open_interest": 10.0,
+                "last_price": 101.0,
+                "index_price": 101.0,
+                "mark_price": 101.0,
+            },
+        ]
+    )
+    rows.to_csv(path, index=False, compression="gzip")
+    observed = mod.read_source(path)
+    assert observed["_seq"].tolist() == [0, 1]
+    assert observed["availability_ms"].tolist() == [1_000, 2_000]
+    assert observed["exchange_timestamp_ms"].tolist() == [2_000, 1_000]
+    assert observed["last_price"].tolist() == [100.0, 101.0]
+
+
 def test_target_path_and_cost_monotonicity() -> None:
     times = np.arange(0, 20_000, 100, dtype=np.int64)
     prices = np.full(times.shape, 100.0, dtype=float)
