@@ -1,0 +1,46 @@
+{
+  "attestation_id": "VAL-20260726-ML-HOURWEEK-PRE2024-SOL-001",
+  "claim_id": "CLM-20260726-2237-ML-HOURWEEK-PRE2024-001",
+  "created_at": "2026-07-26T22:48:00+09:00",
+  "dependency_fingerprint": "c4510487acb236ad6ed9a634a1c77aefa4a761b1679ab5ff47e37e406dd3e339",
+  "evidence": {
+    "artifact_id": 8616632878,
+    "artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "evaluation_script_sha256": "adc0e448fd90e2aeeca3a3c3b99de892df82bed0fab7b06a200d1bdba618e3bc",
+    "minimum_session_prediction": -0.01119145604313856,
+    "official_2024h1_eligible_entries": 0,
+    "primary_24bps_geometric_daily_growth": 0.0,
+    "q3_survivor_count": 50,
+    "q4_confirmed_count": 1,
+    "required_prediction": -0.013466328577653525,
+    "result_sha256": "db9f3dbe13d2e621c05b7e8ae63c81b6b711a010a48b290f8d82883037996ccf",
+    "selected_route": {
+      "absolute_threshold": 0.013466328577653525,
+      "session": "UTC00_11",
+      "side_filter": "SHORT",
+      "symbol": "SOLUSDT",
+      "threshold_multiplier": 0.75
+    },
+    "selection_sha256": "872964b4b29765e43ad990184339c321b6318b56133dc29f51af38578fc7bfac"
+  },
+  "result_id": "RES-20260726-ML-HOURWEEK-PRE2024-SOL-001",
+  "schema_version": 1,
+  "scope_boundary": "Validates a hard-valid negative 2024H1 sequential conclusion for the exact route chosen only from 2023 information. It does not validate the future-selected XRP rank-one route, exact Bybit execution, later half-years or deployment.",
+  "status": "PASS_CAUSAL_NEGATIVE_OFFICIAL_2024H1",
+  "validation_scope": [
+    "immutable source artifact identity",
+    "completed-hour feature availability and next-hour-open entry",
+    "2023H1 Ridge fit",
+    "fixed 720-route Q3 selection",
+    "unchanged Q4 confirmation",
+    "single surviving SOLUSDT SHORT UTC00-11 0.75 route",
+    "identical all-2023 refit before 2024H1",
+    "official 2024H1 only",
+    "one global slot and fixed base quantity",
+    "12/18/24bp replay and adverse funding reserve",
+    "no elapsed-time liquidation",
+    "top-10%-winner removal before rerouting",
+    "later half-years sealed",
+    "no credentials or orders"
+  ]
+}
