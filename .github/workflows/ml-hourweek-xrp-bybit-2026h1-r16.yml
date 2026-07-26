@@ -53,11 +53,13 @@ jobs:
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/LOCAL_REPLICATION_BEFORE_2026.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_001_BINANCE_HEADER_BEFORE_MODEL.json" >/dev/null
           python "$ROOT/reconstruct.py" | tee "$OUT/RECONSTRUCT.log"
-          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py"
+          python "$ROOT/apply_header_correction.py" | tee "$OUT/HEADER_CORRECTION.log"
+          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/apply_header_correction.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_run.py" | tee "$OUT/PYTEST.log"
           PYTHONPATH="$ROOT" python "$ROOT/run.py" --self-test | tee "$OUT/SELF_TEST.log"
-          cp "$ROOT"/*.json "$ROOT"/*.md "$ROOT"/run.py.gz.b64.part* "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py" "$OUT/source/"
+          cp "$ROOT"/*.json "$ROOT"/*.md "$ROOT"/run.py.gz.b64.part* "$ROOT/reconstruct.py" "$ROOT/apply_header_correction.py" "$ROOT/run.py" "$ROOT/test_run.py" "$OUT/source/"
           sha256sum "$OUT/source"/* | sort > "$OUT/source/SOURCE_SHA256SUMS.txt"
       - uses: actions/cache@v4
         with:
