@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-SWEEP-BYBIT-V5-TRANSPORT-002",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "previous_result_id": "RES-20260727-ML-SWEEP-CROWDING-001",
+  "previous_status": "SOURCE_GATE_FAIL",
+  "previous_failure": "The configured public.bybit.com kline_for_metatrader4 ETHUSDT January 2021 object returned HTTP 404.",
+  "outcome_opened_before_correction": false,
+  "market_rows_opened_before_correction": false,
+  "model_metric_opened_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_period_opened_before_correction": false,
+  "source_change": {
+    "from": "nonexistent public.bybit.com kline_for_metatrader4 monthly path",
+    "to": "official Bybit V5 GET /v5/market/kline, category=linear, interval=1, reverse-time pagination, deterministic monthly gzip cache",
+    "endpoint": "https://api.bybit.com/v5/market/kline",
+    "page_limit": 1000,
+    "canonical_output": "timestamp,open,high,low,close,volume with UTC minute alignment",
+    "page_evidence": "request boundary, row count, timestamp range and canonical JSON SHA-256"
+  },
+  "unchanged": [
+    "symbols and one global slot",
+    "five-minute signal clock and twelve-hour external-liquidity sweep",
+    "all features and one-observation Binance metric delay",
+    "HGBT class and hyperparameters",
+    "target and structural stop",
+    "500ms latency and first observable one-minute entry",
+    "24bp base cost, 18/30bp stresses and actual Bybit funding",
+    "risk, leverage and probability grids",
+    "2021-2022 fit, calendar-2023 selection and immediate official 2024H1 rule"
+  ],
+  "orders_submitted": false,
+  "paper_live_started": false,
+  "decision": "Rerun the exact sealed economic route once through the corrected official source. A source-valid economic failure closes the route without adjacent rescue; a superior official result is inserted into the cumulative ranking immediately."
+}
