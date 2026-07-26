@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-STRICT-V4-BRANCH-PUSH-006",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T01:12:00+09:00",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "reason": "Pull-request workflow discovery exposed only the generic repository validator even after the byte-identical macOS authority was installed on main. This correction executes the same strict V4 contract on an exact branch-name push and commits only the decision-ready source/economic JSON and hashes back to that execution branch. The result commit does not match the trigger path and cannot retrigger the workflow.",
+  "source_sha": "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+  "strict_v3_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "strict_v4_overlay": "research/execution/stablecoin_strict_v4_20260727/strict_guard_v4.py",
+  "publication": {
+    "branch_pattern": "agent/r22-run-stablecoin-v4-*",
+    "trigger_path": "research/triggers/stablecoin_strict_v4_push/**",
+    "result_path": "research_results/r22_stablecoin_strict_v4_001/**",
+    "result_path_retriggers_workflow": false,
+    "full_market_data_committed": false,
+    "complete_evidence_retained_as_actions_artifact": true
+  },
+  "scientific_change": false,
+  "authority_before_correction": {
+    "source_decision_ready": false,
+    "market_outcome_opened": false,
+    "model_metric_opened": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  }
+}
