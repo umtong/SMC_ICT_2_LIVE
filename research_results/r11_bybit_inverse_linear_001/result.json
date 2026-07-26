@@ -1,0 +1,106 @@
+{
+  "artifact_fingerprint": "3fdc04f386e75f590f5b5c0cbb32f8d39e557fe3b3ec81f893bed687f34b90bf",
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/91",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30191671233",
+    "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30191671233/artifacts/8628766629"
+  ],
+  "claim_id": "CLM-20260726-1102-BYBIT-INVERSE-LINEAR-001",
+  "code_commit": "4b18acefa9e90ddb947091876adc75a5aedeb95c",
+  "created_at": "2026-07-26T15:52:00+09:00",
+  "dataset_ids": [
+    "DS-TARDIS-BYBIT-BTCETH-INVERSE-LINEAR-QUOTES-202303-202307-R1"
+  ],
+  "dependency_fingerprint": "6b14265fa8ee95669b75ccd547e64f0eb44edfbe62dedec104cbdf2bc7ae37e1",
+  "economic_status": "FATAL_FIT_UPPER_BOUND_BELOW_GATE",
+  "engine_sha256": "39a5a3a6156bb43e5c650e8ecd0ac12b94bcf4e8d2af027b5f743b891220f959",
+  "evaluation_contract_sha256": "cd4cd7417f3fea52bdab1acdac465c6be5af46a784af92ae19252ac7ccef2ed1",
+  "hard_validity_status": "PASS",
+  "known_limitations": [
+    "Public first-day monthly samples are a fatal discovery screen, not a full-calendar performance estimate.",
+    "No candidate approached the preregistered 20-trade minimum; parameter polishing cannot establish a repeatable edge.",
+    "The strongest causal path depended on one ETH winner and one BTC loss across two dates.",
+    "Funding is immaterial on the tested sub-30-second horizon but full Bybit production execution was not opened.",
+    "2024-2026 official periods remained sealed."
+  ],
+  "metrics": {
+    "all_raw_outcomes": {
+      "fixed_10s_18bps_mean_bps": -26.65854561937364,
+      "fixed_10s_18bps_positive_rows": 4,
+      "oracle_30s_18bps_mean_bps": -5.420151171520242,
+      "oracle_30s_18bps_positive_rows": 18
+    },
+    "best_causal_fixed_10s_candidate": {
+      "config_id": "9ab9f3118ec02abc33cb",
+      "fixed_10s_18bps_mean_bps": 8.04739637482136,
+      "fixed_30s_18bps_mean_bps": 5.917422185987006,
+      "oracle_30s_18bps_mean_bps": 11.876223681949435,
+      "positive_day_fraction": 0.3333333333333333,
+      "trade_path": [
+        {
+          "date": "2023-03-01",
+          "fixed_10s_18bps": -18.61864034472233,
+          "oracle_30s_18bps": -18.04387509075476,
+          "symbol": "BTCUSDT"
+        },
+        {
+          "date": "2023-05-01",
+          "fixed_10s_18bps": 34.71343309436505,
+          "oracle_30s_18bps": 41.79632245465363,
+          "symbol": "ETHUSDT"
+        }
+      ],
+      "trades": 2
+    },
+    "best_summary_candidate": {
+      "config_id": "6f90cbd5717e961e81a4",
+      "date": "2023-05-01",
+      "fixed_10s_18bps_mean_bps": -35.417684045169025,
+      "fixed_30s_18bps_mean_bps": -6.142622476256454,
+      "oracle_30s_18bps_mean_bps": 12.825754397265488,
+      "symbol": "BTCUSDT",
+      "trades": 1
+    },
+    "candidate_count": 324,
+    "candidate_trade_count_distribution": {
+      "0": 238,
+      "1": 42,
+      "2": 18,
+      "3": 6,
+      "4": 12,
+      "5": 6,
+      "6": 2
+    },
+    "development_opened": false,
+    "event_outcome_rows": 68,
+    "fit_survivor_count": 0,
+    "maximum_candidate_trade_count": 6,
+    "positive_causal_fixed_10s_mean_candidates_at_18bps": 4,
+    "positive_causal_fixed_30s_mean_candidates_at_18bps": 4,
+    "positive_oracle_30s_mean_candidates_at_18bps": 28,
+    "unique_broad_events_with_outcomes": 23
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "output_hashes": {
+    "candidate_results.json": "7ee14db147b3f39a21956fcbb70b39c2461fa0b4386032b03d6281afca4ad1de",
+    "event_outcomes.csv.gz": "cebd94db6b4e971c9a3e1e1fdb49adfaa8a542ad718d9f5b98b24a193689cf92",
+    "source_manifest.json": "1a12cf63d49fc683d047be9957eadcadadc997da5276853ea69cce6f0ac3443a",
+    "summary.json": "cb55b0c9a85cf448eb7df613cff6bee5b2763f5dd47c8fb53b47a85fd24dca10"
+  },
+  "paper_live_enabled": false,
+  "preregistration_file_sha256": "ccee7015336bf4ca72d248660b27af24de3af3051067f92837f92d49b6c33b97",
+  "ranking_role": "NONE_FATAL_ALPHA_SCREEN",
+  "result_id": "RES-20260726-BYBIT-INVERSE-LINEAR-UPPERBOUND-001",
+  "schema_version": 1,
+  "source_ids": [
+    "tardis:bybit:quotes:public-first-day"
+  ],
+  "status": "TESTED_BELOW_GATE",
+  "strategy_explanation": {
+    "entry_invalidation": "No entry after the linear contract reprices through more than half the gap, target/leader spread limits fail, or modeled full-fill impact breaches the marketable-limit price.",
+    "smc_ict": "The Bybit inverse perpetual makes a completed displacement while the USDT-linear perpetual fails to confirm, producing a measurable inter-contract SMT divergence and prior-basis-adjusted fair-value imbalance. The linear contract is entered toward rebalance only while at least half of that causal imbalance remains after latency."
+  },
+  "summary": "Hard-valid Bybit inverse-to-linear perpetual executable upper-bound screen. Across 324 frozen BTCUSD/ETHUSD leader to BTCUSDT/ETHUSDT target configurations, zero fit survivors. Candidate trade count was at most six; 238 policies had zero trades. The future-information 30-second executable oracle was positive at 18bp for 28 policies, but the best summary-ranked policy had only one BTC trade (+12.8258bp oracle, -35.4177bp causal fixed-10s). Only four policies had positive mean fixed-10s return at 18bp and each had two trades, consisting of one loss and one winner on two dates. Development and 2024-2026 remained unopened. The exact inverse-linear SMT/FVG dependency is closed without exit, risk or leverage tuning.",
+  "worker_id": "gpt-5.6-pro-20260726-1102"
+}
