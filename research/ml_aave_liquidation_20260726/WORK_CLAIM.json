@@ -1,0 +1,32 @@
+{
+  "claim_id": "CLM-20260726-1952-ML-AAVE-LIQUIDATION-001",
+  "worker_id": "gpt-5.6-pro-20260726-1952",
+  "base_revision": 11,
+  "base_main_sha": "056878ea9f95cd6290dd08ec2fd5c96fd1700d0a",
+  "status": "RUNNING",
+  "started_at": "2026-07-26T19:52:00+09:00",
+  "lease_until": "2026-07-27T03:52:00+09:00",
+  "objective_fingerprint": "e8602888a4b7d3d463ec49329f8b45659a35480dd95f8e0944893a214e2c18b7",
+  "scope_fingerprint": "657ac94262f63fb3577ed04ee0471fcd5b0a2b1ffc378d4b22b48a361238c1a3",
+  "github_branch": "agent/r11-ml-aave-liquidation-001",
+  "scope": {
+    "information_unit": "Causally finalized Ethereum Aave V2 and V3 Pool LiquidationCall logs: actual collateral transfer and debt repayment, not CEX liquidation prints or inferred inventory.",
+    "source_gate": "Keyless historical eth_getLogs access, pinned official Aave address book, canonical event ABI, block timestamps, decoding and event density. No market outcome is opened in this phase.",
+    "model": "Exactly one fixed HistGradientBoosting first-passage classifier and one fixed calibration rule after the source gate.",
+    "decision": "Exactly one cost-adjusted LONG/SHORT/FLAT rule toward two prior-only structural ETH liquidity objectives.",
+    "execution": "ETHUSDT USDT-linear perpetual only; one global pending/open slot; options and on-chain assets are signal-only.",
+    "chronology": "2021 through 2022H1 fit, 2022H2 calibration, 2023H1 untouched confirmation, 2023H2 conditional development. Official 2024-2026 remains sealed.",
+    "non_overlap": [
+      "CEX forced-liquidation burst work observes exchange liquidation messages; this claim observes immutable DeFi collateral transfer and debt repayment on Ethereum.",
+      "Inventory-map, OI, funding and taker-flow work infer vulnerable positions from exchange state; this claim uses completed protocol liquidation events only.",
+      "No cross-venue latency, mark/index premium, option, maker, stable-quote, macro or ordinary price-lead input is admitted."
+    ],
+    "prohibited_tuning": "No model family, feature subset, event-window, threshold, target, stop, risk or leverage grid."
+  },
+  "permissions": {
+    "credentials": false,
+    "paper_orders": false,
+    "testnet_orders": false,
+    "live_orders": false
+  }
+}
