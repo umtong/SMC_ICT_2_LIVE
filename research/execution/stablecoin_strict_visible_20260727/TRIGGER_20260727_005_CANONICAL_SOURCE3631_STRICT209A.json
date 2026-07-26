@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "trigger_id": "EXEC-20260727-ML-STABLECOIN-STRICT-V3-CANONICAL-005",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "created_at": "2026-07-27T00:52:00+09:00",
+  "authority": {
+    "workflow": ".github/workflows/ranking-exit-contract-r14.yml",
+    "source_sha": "3631cf01a2a2b91d690b81160e14ba033a298f75",
+    "strict_economic_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+    "source_policy": "SCHEMA_BOUND_EXPLICIT_EMPTY_EXPLICIT_RANGE_OTHERWISE_FAIL_CLOSED",
+    "economic_engine": "ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3"
+  },
+  "execution_sequence": [
+    "complete corrected 2021-2023 source gate",
+    "strict causal pre-2024 model and account only on source PASS",
+    "freeze complete survivor through 2023-12-31",
+    "open official 2024H1 immediately only for a robust survivor"
+  ],
+  "before_trigger": {
+    "source_pass_consumed": false,
+    "market_outcome_opened": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024h1_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "no_parameter_change": true,
+  "orders_submitted": false
+}
