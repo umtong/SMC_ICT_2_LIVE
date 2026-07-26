@@ -1,0 +1,1 @@
+Run `python run.py --parent-root <verified-artifact-root> --cache <cache> --output <out>` only through the frozen workflow. The workflow rejects 2024-2026 and opens 2023-07-01 only after every 2022 confirmation gate passes.
