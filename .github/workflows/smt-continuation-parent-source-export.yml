@@ -1,0 +1,71 @@
+name: SMT continuation parent source export
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/smt_continuation_ml_meta_20260726/**"
+      - ".github/workflows/smt-continuation-parent-source-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Reconstruct frozen parent engines without market access
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p exported/acceptance exported/meta exported/base exported/reversal
+
+          git fetch --depth=1 origin agent/r11-smt-acceptance-continuation-001
+          for f in reconstruct.py implementation.b64.part00 implementation.b64.part01 implementation.b64.part02; do
+            git show FETCH_HEAD:research/smt_acceptance_continuation_20260726/$f > exported/acceptance/$f
+          done
+          python exported/acceptance/reconstruct.py
+          mv exported/acceptance/run.py exported/acceptance/acceptance_engine.py
+
+          git fetch --depth=1 origin agent/r11-smt-reclaim-ml-meta-001
+          for f in extract.py extract_entry.py train.py train_entry.py; do
+            git show FETCH_HEAD:research/smt_reclaim_ml_meta_20260726/$f > exported/meta/$f
+          done
+
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 > exported/base/probe.py.zlib.b64
+          python - <<'PY'
+          import base64,pathlib,zlib
+          root=pathlib.Path('exported/base')
+          source=zlib.decompress(base64.b64decode((root/'probe.py.zlib.b64').read_text().strip()))
+          (root/'base_probe.py').write_bytes(source)
+          PY
+
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research/smt_overreaction_reclaim_20260726/run.py > exported/reversal/reversal_engine.py
+
+          python -m py_compile \
+            exported/acceptance/acceptance_engine.py \
+            exported/meta/extract.py exported/meta/extract_entry.py \
+            exported/meta/train.py exported/meta/train_entry.py \
+            exported/base/base_probe.py \
+            exported/reversal/reversal_engine.py
+          find exported -type f -print0 | sort -z | xargs -0 sha256sum > exported/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smt-continuation-parent-sources-${{ github.sha }}
+          path: exported
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
