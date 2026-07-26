@@ -25,65 +25,136 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Probe frozen URL identities without parsing market rows
+
+      - name: Fetch public Tardis dataset metadata without market rows
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p probe
+          curl -fsSL --retry 6 --retry-delay 3 --retry-all-errors \
+            https://api.tardis.dev/v1/exchanges/coinbase \
+            -o probe/coinbase_metadata.json
+          curl -fsSL --retry 6 --retry-delay 3 --retry-all-errors \
+            https://api.tardis.dev/v1/exchanges/bybit \
+            -o probe/bybit_metadata.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          def symbol_rows(payload):
+              datasets = payload.get('datasets', {}) if isinstance(payload, dict) else {}
+              rows = datasets.get('symbols', []) if isinstance(datasets, dict) else []
+              return rows if isinstance(rows, list) else []
+
+          coinbase = json.loads(Path('probe/coinbase_metadata.json').read_text())
+          bybit = json.loads(Path('probe/bybit_metadata.json').read_text())
+          selected = {
+              'coinbase': [
+                  row for row in symbol_rows(coinbase)
+                  if str(row.get('id', '')).upper() in {'BTCUSD', 'BTC-USD'}
+              ],
+              'bybit': [
+                  row for row in symbol_rows(bybit)
+                  if str(row.get('id', '')).upper() in {'BTCUSDT', 'BTCUSD'}
+              ],
+          }
+          Path('probe/METADATA_SELECTION.json').write_text(
+              json.dumps(selected, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(selected, sort_keys=True))
+          PY
+
+      - name: Probe frozen normalized CSV identities with GET range only
+        shell: bash
+        run: |
+          set -euo pipefail
           python - <<'PY'
           import json
           from pathlib import Path
           urls = {
-              'coinbase_btcusd': 'https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTCUSD.csv.gz',
-              'coinbase_btc_dash_usd': 'https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTC-USD.csv.gz',
-              'bybit_btcusdt': 'https://datasets.tardis.dev/v1/bybit/quotes/2022/01/01/BTCUSDT.csv.gz',
+              'coinbase_normalized_btcusd': 'https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTCUSD.csv.gz',
+              'coinbase_raw_style_btc_dash_usd': 'https://datasets.tardis.dev/v1/coinbase/trades/2022/01/01/BTC-USD.csv.gz',
+              'bybit_normalized_btcusdt_quotes': 'https://datasets.tardis.dev/v1/bybit/quotes/2022/01/01/BTCUSDT.csv.gz',
+              'bybit_normalized_btcusdt_l2': 'https://datasets.tardis.dev/v1/bybit/incremental_book_L2/2022/01/01/BTCUSDT.csv.gz',
           }
           Path('probe/URLS.json').write_text(json.dumps(urls, indent=2, sort_keys=True)+'\n')
           PY
+
           while IFS='=' read -r name url; do
             echo "=== $name ===" | tee -a probe/PROBE.log
             set +e
-            curl -sSIL --max-time 60 \
-              -A 'SMC-ICT-2-LIVE-source-probe/1.0' \
-              -w '\nCURL_HTTP=%{http_code}\nCURL_URL=%{url_effective}\nCURL_CONTENT_TYPE=%{content_type}\n' \
+            curl -sS -L \
+              --range 0-0 \
+              --max-filesize 1048576 \
+              --max-time 60 \
+              --retry 3 --retry-delay 2 --retry-all-errors \
+              -A 'SMC-ICT-2-LIVE-source-probe/2.0' \
+              -D "probe/${name}.headers" \
+              -o "probe/${name}.sample" \
+              -w 'CURL_HTTP=%{http_code}\nCURL_URL=%{url_effective}\nCURL_CONTENT_TYPE=%{content_type}\nCURL_SIZE=%{size_download}\n' \
               "$url" \
-              > "probe/${name}.headers" 2>>probe/PROBE.log
+              > "probe/${name}.curl" 2>>probe/PROBE.log
             status=$?
             set -e
             echo "CURL_EXIT=$status" | tee -a probe/PROBE.log
+            cat "probe/${name}.curl" | tee -a probe/PROBE.log
             cat "probe/${name}.headers" | tee -a probe/PROBE.log
+            python - "$name" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+          name=sys.argv[1]
+          p=Path(f'probe/{name}.sample')
+          data=p.read_bytes() if p.exists() else b''
+          Path(f'probe/{name}.sample.json').write_text(json.dumps({
+              'bytes':len(data),
+              'sha256':hashlib.sha256(data).hexdigest(),
+              'gzip_magic':data[:2].hex() == '1f8b',
+          },indent=2,sort_keys=True)+'\n')
+          PY
           done < <(python - <<'PY'
           import json
           for k,v in json.load(open('probe/URLS.json')).items():
               print(f'{k}={v}')
           PY
           )
+
           python - <<'PY'
           import json,re
           from pathlib import Path
           urls=json.load(open('probe/URLS.json'))
+          metadata=json.load(open('probe/METADATA_SELECTION.json'))
           result={
-              'schema_version':1,
+              'schema_version':2,
               'claim_id':'CLM-20260726-1935-ML-COINBASE-SPOT-001',
+              'stage':'SOURCE_IDENTITY_ONLY',
               'market_rows_parsed':False,
               'model_fit':False,
+              'labels_computed':False,
               'pnl_computed':False,
               'orders_submitted':False,
+              'metadata_selection':metadata,
               'probes':{},
           }
           for name,url in urls.items():
-              text=Path(f'probe/{name}.headers').read_text(errors='replace')
-              codes=[int(x) for x in re.findall(r'HTTP/\S+\s+(\d{3})',text)]
+              headers=Path(f'probe/{name}.headers').read_text(errors='replace')
+              curl_text=Path(f'probe/{name}.curl').read_text(errors='replace')
+              sample=json.load(open(f'probe/{name}.sample.json'))
               result['probes'][name]={
                   'url':url,
-                  'http_chain':codes,
-                  'content_type_headers':re.findall(r'(?im)^content-type:\s*([^\r\n]+)',text),
-                  'content_length_headers':re.findall(r'(?im)^content-length:\s*([^\r\n]+)',text),
-                  'location_headers':re.findall(r'(?im)^location:\s*([^\r\n]+)',text),
+                  'http_chain':[int(x) for x in re.findall(r'HTTP/\S+\s+(\d{3})',headers)],
+                  'curl_http':[int(x) for x in re.findall(r'CURL_HTTP=(\d+)',curl_text)],
+                  'content_type_headers':re.findall(r'(?im)^content-type:\s*([^\r\n]+)',headers),
+                  'content_length_headers':re.findall(r'(?im)^content-length:\s*([^\r\n]+)',headers),
+                  'content_range_headers':re.findall(r'(?im)^content-range:\s*([^\r\n]+)',headers),
+                  'location_headers':re.findall(r'(?im)^location:\s*([^\r\n]+)',headers),
+                  'sample':sample,
               }
           Path('probe/RESULT.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
           print(json.dumps(result,sort_keys=True))
           PY
+
       - uses: actions/upload-artifact@v4
         with:
           name: ml-coinbase-source-probe-${{ github.sha }}
