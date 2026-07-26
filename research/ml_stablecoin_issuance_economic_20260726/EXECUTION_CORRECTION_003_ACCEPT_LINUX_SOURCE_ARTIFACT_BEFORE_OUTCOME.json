@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-STABLECOIN-ECONOMIC-ACCEPT-LINUX-SOURCE-003",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "execution_id": "EXEC-20260726-ML-STABLECOIN-ECONOMIC-001",
+  "timing": "BEFORE_ANY_CORRECTED_SOURCE_PASS_WAS_CONSUMED_OR_ANY_MARKET_OUTCOME_WAS_OPENED",
+  "observed_problem": "The economic continuation searched legacy and macOS workflow names but omitted the corrected authoritative workflow name 'Stablecoin Blockscout source gate Linux'. A valid Linux PASS artifact would therefore remain undiscoverable and the frozen model stage would incorrectly end as NO_PASS_SOURCE_ARTIFACT.",
+  "change": [
+    "Add the exact authoritative Linux workflow name to the source-run discovery predicate.",
+    "Validate and preserve this correction with the immutable economic evidence bundle."
+  ],
+  "unchanged": [
+    "corrected USDT Issue/Redeem and USDC zero-address Transfer source semantics",
+    "all 2021-2023 source months and 12/64-block availability delays",
+    "source PASS thresholds",
+    "single HGBT, calibration map, features, labels and LONG/SHORT/FLAT equation",
+    "2021 fit, 2022H1 calibration, 2022H2 confirmation and 2023 development chronology",
+    "12/18/24-bp account paths, one global slot and structural exits",
+    "pre-2024 risk/notional search and immediate sequential 2024H1 rule",
+    "credential and order prohibition"
+  ],
+  "corrected_source_pass_consumed_before_change": false,
+  "market_outcome_opened_before_change": false,
+  "model_fit_before_change": false,
+  "official_2024h1_opened_before_change": false,
+  "orders_submitted": false
+}
