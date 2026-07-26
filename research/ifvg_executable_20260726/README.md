@@ -26,7 +26,7 @@ This is distinct from the active Unicorn claim, which requires an order block to
 ## Frozen first-stage contract
 
 - instrument: Bybit BTCUSDT linear perpetual;
-- source: immutable 500 ms executable BBO/trade states from GitHub Actions artifact `8626169763`;
+- source: immutable completed **100 ms** executable BBO/trade states from GitHub Actions artifact `8626169763`;
 - fit: `2022-07-01`;
 - untouched development: `2023-07-01`, opened only after a fit survivor;
 - `2024-2026`: mechanically prohibited;
@@ -41,9 +41,14 @@ This is distinct from the active Unicorn claim, which requires an order block to
 
 The fit gate requires at least 20 accepted events, positive 24 bp mean and median, PF above one, at least 1% sample-day NAV growth at 1% planned risk, and the same 1% growth after winner removal and rerouting. A zero-survivor result closes this exact formulation immediately.
 
+## Source-frequency correction
+
+The first run incorrectly treated PR #72's completed 100 ms state rows as 500 ms states and rejected every bar before the IFVG state machine. `amendment_001_source_frequency_correction.json` invalidates that zero-event output. The rerun changes only the checksum-verified row count and spacing used to form the already frozen 1/3/5-second bars; the SMC/ICT rule, dates, candidates, costs and account logic are unchanged.
+
 ## Reproduction
 
 ```bash
+python reconstruct.py
 python run_screen.py self-test
 pytest -q test_run_screen.py
 python run_screen.py run \
