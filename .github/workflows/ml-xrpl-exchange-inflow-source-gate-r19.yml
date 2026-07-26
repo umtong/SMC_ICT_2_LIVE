@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-xrpl-exchange-inflow-source-gate-r19
-  cancel-in-progress: true
+  group: ml-xrpl-exchange-inflow-source-gate-r19-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   PYTHONHASHSEED: '0'
