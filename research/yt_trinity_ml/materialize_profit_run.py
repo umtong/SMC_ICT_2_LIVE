@@ -62,6 +62,22 @@ def normalize_canonical_joins(root: Path) -> tuple[bool, bool]:
     return dtype_changed, timestamp_changed
 
 
+def bind_action_label_numpy(root: Path) -> bool:
+    path = root / "system" / "research_pipeline.py"
+    text = path.read_text(encoding="utf-8")
+    if "np.nan" not in text or "import numpy as np" in text:
+        return False
+    marker = "import pandas as pd\n"
+    if text.count(marker) != 1:
+        raise RuntimeError("unexpected research pipeline import block")
+    path.write_text(
+        text.replace(marker, "import numpy as np\nimport pandas as pd\n"),
+        encoding="utf-8",
+        newline="\n",
+    )
+    return True
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent
     chunks = sorted((root / "profit_run_payload").glob("profit.*"))
@@ -75,9 +91,11 @@ def main() -> int:
     destination = root / "run_profit_first.py"
     destination.write_bytes(raw)
     dtype_changed, timestamp_changed = normalize_canonical_joins(root)
+    numpy_changed = bind_action_label_numpy(root)
     print(
         f"materialized {destination} sha256={actual} bytes={len(raw)} "
-        f"asof_dtype_fix={dtype_changed} source_timestamp_cleanup={timestamp_changed}"
+        f"asof_dtype_fix={dtype_changed} source_timestamp_cleanup={timestamp_changed} "
+        f"action_label_numpy_import={numpy_changed}"
     )
     return 0
 
