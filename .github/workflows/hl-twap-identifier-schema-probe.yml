@@ -9,13 +9,19 @@ on:
       - "research/hyperliquid_wallet_flow_20260726/preregistration_twap_schema_v1.json"
       - "research/hyperliquid_wallet_flow_20260726/probe_twap_schema.py"
       - ".github/workflows/hl-twap-identifier-schema-probe.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_twap_schema_v1.json"
+      - "research/hyperliquid_wallet_flow_20260726/probe_twap_schema.py"
+      - ".github/workflows/hl-twap-identifier-schema-probe.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: hl-twap-schema-${{ github.ref }}
+  group: hl-twap-schema-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
