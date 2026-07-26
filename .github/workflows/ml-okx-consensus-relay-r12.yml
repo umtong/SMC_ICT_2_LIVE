@@ -6,13 +6,17 @@ on:
       - agent/r12-ml-okx-consensus-relay-001
     paths:
       - '.github/workflows/ml-okx-consensus-relay-r12.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-okx-consensus-relay-r12.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-okx-consensus-relay-${{ github.ref }}
+  group: ml-okx-consensus-relay-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
