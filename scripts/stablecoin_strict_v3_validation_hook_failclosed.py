@@ -6,6 +6,7 @@ from typing import Any
 
 import stablecoin_strict_v3_validation_hook as base
 
+CANONICAL_SOURCE_SHA = "3631cf01a2a2b91d690b81160e14ba033a298f75"
 CORRECTION = (
     base.ROOT
     / "research"
@@ -27,6 +28,8 @@ def _load_correction() -> dict[str, Any]:
         raise AssertionError("correction was not frozen before source decision")
     if payload.get("recorded_before_market_outcome") is not True:
         raise AssertionError("correction was not frozen before market outcome")
+    if payload.get("canonical_source_sha") != CANONICAL_SOURCE_SHA:
+        raise AssertionError("canonical source SHA changed")
     return payload
 
 
@@ -90,9 +93,9 @@ def self_test() -> None:
         _original_run = saved
 
 
-
 def main() -> int:
     self_test()
+    base.SOURCE_SHA = CANONICAL_SOURCE_SHA
     base.run = _run_failclosed
     return base.main()
 
