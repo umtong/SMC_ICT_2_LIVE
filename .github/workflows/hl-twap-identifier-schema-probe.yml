@@ -1,0 +1,118 @@
+name: Hyperliquid TWAP identifier schema probe
+
+on:
+  push:
+    branches:
+      - agent/r11-hl-wallet-flow-001
+    paths:
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_twap_schema_v1.json"
+      - "research/hyperliquid_wallet_flow_20260726/probe_twap_schema.py"
+      - ".github/workflows/hl-twap-identifier-schema-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hl-twap-schema-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            orjson==3.10.18 \
+            pyarrow==20.0.0 \
+            requests==2.32.4
+
+      - name: Verify code and no-price structural test
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          python -m py_compile "$root/probe_twap_schema.py"
+          python "$root/probe_twap_schema.py" --self-test
+          python scripts/validate_project.py
+
+      - name: Freeze input hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          output=research_runs/hyperliquid_twap_schema_probe_20260726
+          mkdir -p "$output"
+          sha256sum \
+            "$root/preregistration_twap_schema_v1.json" \
+            "$root/probe_twap_schema.py" \
+            > "$output/INPUT_SHA256SUMS.txt"
+
+      - name: Probe exact warmup file without accessing price values
+        shell: bash
+        run: |
+          set -o pipefail
+          root=research/hyperliquid_wallet_flow_20260726
+          output=research_runs/hyperliquid_twap_schema_probe_20260726
+          python "$root/probe_twap_schema.py" \
+            --preregistration "$root/preregistration_twap_schema_v1.json" \
+            --work-dir /tmp/hyperliquid_twap_schema_probe \
+            --output "$output" \
+            2>&1 | tee "$output/run.log"
+
+      - name: Enforce structural-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('research_runs/hyperliquid_twap_schema_probe_20260726/TWAP_SCHEMA_REPORT.json').read_text())
+          assert report['stage'] == 'PRE_2026_TWAP_IDENTIFIER_SCHEMA_PROBE'
+          assert report['download']['bytes'] == 31076403
+          assert report['download']['sha256'] == '88fbe8b2868631d6ce4c655e0e40e04c96a83c8f5e0fa62156898dc5d0c801ee'
+          assert report['price_values_accessed'] is False
+          assert report['price_or_size_values_serialized'] is False
+          assert report['return_or_markout_computed'] is False
+          assert report['strategy_pnl_computed'] is False
+          assert report['bybit_execution_opened'] is False
+          assert report['official_2024_2026_opened'] is False
+          assert report['orders_submitted'] is False
+          print(json.dumps({
+              'explicit_twap_groups': report['explicit_twap_groups']['group_count'],
+              'groups_with_at_least_3_fills': report['explicit_twap_groups']['groups_with_at_least_n_fills']['3'],
+              'groups_lasting_at_least_30_seconds': report['explicit_twap_groups']['groups_lasting_at_least_seconds']['30'],
+              'target_coins_with_any_explicit_twap': report['target_coins_with_any_explicit_twap'],
+              'promotion_gate_passed': report['promotion_gate_passed'],
+              'decision': report['decision'],
+          }, sort_keys=True))
+          PY
+
+      - name: Record output hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          output=research_runs/hyperliquid_twap_schema_probe_20260726
+          find "$output" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$output/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hyperliquid-twap-schema-probe-${{ github.sha }}
+          path: research_runs/hyperliquid_twap_schema_probe_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
