@@ -1,0 +1,67 @@
+name: Report SMT overreaction reclaim decision
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-overreaction-reclaim-001
+    paths:
+      - "research_results/r11_smt_overreaction_reclaim_001/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build decision comment
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_results/r11_smt_overreaction_reclaim_001')
+          r=json.loads((root/'result.json').read_text())
+          best=r['best_raw_candidate']
+          b18=best['base_metrics']['18']
+          b24=best['base_metrics']['24']
+          rem=best['winner_removed_18bp_metrics']
+          lines=[
+              '## Decision-ready SMT overreaction reclaim result',
+              '',
+              f"- status: `{r['status']}`",
+              f"- hard validity: `{r['hard_validity']}`",
+              f"- main MSS survivors: **{r['main_mss_survivor_count']}**",
+              f"- immediate-control survivors: **{r['immediate_control_survivor_count']}**",
+              f"- tested candidates: **{r['candidate_count']}**",
+              f"- opportunity event rows: **{r['opportunity_event_rows']}**",
+              f"- best raw policy: `{best['policy_key']}`",
+              f"- best policy trades: **{b18['trade_count']}**",
+              f"- best policy 18bp sample-day growth: **{b18['geometric_sample_day_growth']:.6%}**",
+              f"- best policy 24bp mean / median: **{b24['mean_net_bps'] if b24['mean_net_bps'] is not None else 'NA'} / {b24['median_net_bps'] if b24['median_net_bps'] is not None else 'NA'} bp**",
+              f"- winner-removed 18bp return: **{rem['total_return']:.6%}**",
+              f"- winner-removed 18bp sample-day growth: **{rem['geometric_sample_day_growth']:.6%}**",
+              '',
+              'SMC/ICT interpretation: BTC displacement created a beta-relative SOL/XRP liquidity overrun; the promotable path waited for opposite one-second aggressor flow and residual contraction as causal CISD/MSS, then targeted equilibrium reclaim.',
+              '',
+              'No 2024–2026 source or order path was opened. A survivor remains pre-2024 and requires exact Bybit BBO/depth, funding, capacity and continuously marked NAV before ranking eligibility.',
+          ]
+          Path('/tmp/comment.md').write_text('\n'.join(lines)+'\n')
+          PY
+
+      - name: Comment on Work Claim and pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment 116 --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/comment.md
+          pr_number=$(gh pr list --repo umtong/SMC_ICT_2_LIVE --head agent/r11-smt-overreaction-reclaim-001 --state open --json number --jq '.[0].number')
+          if [ -n "$pr_number" ] && [ "$pr_number" != "null" ]; then
+            gh pr comment "$pr_number" --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/comment.md
+          fi
