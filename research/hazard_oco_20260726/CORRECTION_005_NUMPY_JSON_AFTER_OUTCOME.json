@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T18:31:00+09:00",
+  "timing": "Workflow 30196435210 completed the frozen model fit and all three fit-account paths, wrote RESULT.json and FIT_MODEL_DIAGNOSTICS.json, then failed while writing the detailed FIT_FULL_RESULTS.json evidence file.",
+  "observed_result_boundary": {
+    "model_calibration_auc": 0.7624778356790818,
+    "volatility_baseline_auc": 0.8345918821482142,
+    "auc_lift": -0.07211404646913244,
+    "fit_gate_pass_count": 0,
+    "development_opened": false,
+    "all_three_18bp_returns_negative": true
+  },
+  "defect": "json.dumps had no default conversion for NumPy int64/float64/ndarray values retained in the detailed event and ledger evidence. Compact RESULT.json happened to contain only standard Python values and was written before the failure.",
+  "correction": "Add a JSON default converter that maps NumPy integers to int, finite NumPy floating scalars to float, and NumPy arrays to lists. Non-finite values and unsupported objects continue to fail closed. Add a pre-data regression check for these conversions.",
+  "scientific_effect": "None. Features, independent hazard labels, HGBT parameters and fitted model, score threshold, decision rows, order triggers, fills, cancellation races, payoff cells, costs, sizing, account paths, gates and period seals are unchanged.",
+  "acceptance_rule": "The rerun must exactly reproduce the already observed model diagnostics and compact cell metrics before the result is registered. Any mismatch hard-invalidates both runs and requires diagnosis without retuning.",
+  "partial_artifact": {
+    "workflow_run_id": 30196435210,
+    "artifact_id": 8630265190,
+    "status": "PARTIAL_NONREGISTERABLE_EVIDENCE"
+  },
+  "orders_permitted": false
+}
