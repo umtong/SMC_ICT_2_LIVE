@@ -57,11 +57,12 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_coinbase_spot_leader_20260726
-          python "$root/reconstruct.py"
-          python -m py_compile "$root/reconstruct.py" "$root/run.py" "$root/test_run.py"
+          python -m json.tool "$root/CORRECTION_001_COMPLETED_BAR_AGGREGATION_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" >/dev/null
+          python "$root/reconstruct_v2.py"
+          python -m py_compile "$root/reconstruct_v2.py" "$root/run.py" "$root/test_run.py"
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
           PYTHONPATH="$root" python "$root/run.py" self-test
-          python -m json.tool "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" >/dev/null
           python scripts/validate_project.py
 
       - name: Download only frozen fit sources
@@ -162,14 +163,17 @@ jobs:
           PY
           sha256sum \
             "$root/WORK_CLAIM.json" \
+            "$root/CORRECTION_001_COMPLETED_BAR_AGGREGATION_BEFORE_DATA.json" \
+            "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" \
             "$root/preregistration.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
-            "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" \
-            "$root/bundle_manifest.json" \
-            "$root/reconstruct.py" \
-            "$root/source_bundle.tar.gz.b64.part00" \
-            "$root/source_bundle.tar.gz.b64.part01" \
+            "$root/bundle_manifest_v2.json" \
+            "$root/reconstruct_v2.py" \
+            "$root/source_bundle_v2.tar.gz.b64.part00" \
+            "$root/source_bundle_v2.tar.gz.b64.part01" \
+            "$root/source_bundle_v2.tar.gz.b64.part02" \
+            "$root/source_bundle_v2.tar.gz.b64.part03" \
             "$root/run.py" \
             "$root/test_run.py" \
             .github/workflows/ml-coinbase-spot-leader-r11.yml \
