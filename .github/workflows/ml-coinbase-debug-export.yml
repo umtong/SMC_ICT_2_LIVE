@@ -38,7 +38,7 @@ jobs:
             "scikit-learn==1.6.1" \
             "pytest==8.3.4"
 
-      - name: Reconstruct exact source and capture all pre-market failures
+      - name: Reconstruct original exact source and capture all pre-market evidence
         shell: bash
         run: |
           set -u
@@ -46,17 +46,17 @@ jobs:
           out=research_runs/ml_coinbase_debug_export
           mkdir -p "$out"
 
-          python "$root/reconstruct_v2.py" >"$out/reconstruct.stdout" 2>"$out/reconstruct.stderr"
+          python "$root/reconstruct.py" >"$out/reconstruct.stdout" 2>"$out/reconstruct.stderr"
           echo "$?" >"$out/reconstruct.status"
 
-          for file in run.py test_run.py bundle_manifest_v2.json reconstruct_v2.py preregistration.json; do
+          for file in run.py test_run.py bundle_manifest.json reconstruct.py preregistration.json; do
             if test -f "$root/$file"; then
               cp "$root/$file" "$out/$file"
             fi
           done
           sha256sum "$out"/* >"$out/EXPORTED_SHA256SUMS.txt" 2>/dev/null || true
 
-          python -m py_compile "$root/reconstruct_v2.py" "$root/run.py" "$root/test_run.py" \
+          python -m py_compile "$root/reconstruct.py" "$root/run.py" "$root/test_run.py" \
             >"$out/compile.stdout" 2>"$out/compile.stderr"
           echo "$?" >"$out/compile.status"
 
@@ -78,7 +78,7 @@ jobs:
           out=Path('research_runs/ml_coinbase_debug_export')
           payload={
               'claim_id':'CLM-20260726-1935-ML-COINBASE-SPOT-001',
-              'stage':'SOURCE_AND_TEST_DEBUG_ONLY_NO_MARKET_DATA_NO_MODEL_NO_PNL',
+              'stage':'ORIGINAL_SOURCE_AND_TEST_DEBUG_ONLY_NO_MARKET_DATA_NO_MODEL_NO_PNL',
               'market_rows_parsed':False,
               'model_fit':False,
               'pnl_computed':False,
