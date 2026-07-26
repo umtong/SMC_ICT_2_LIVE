@@ -1,12 +1,6 @@
 name: ML XRPL exchange-inflow source gate r19
 
 on:
-  push:
-    branches:
-      - agent/r19-ml-xrpl-exchange-inflow-001
-    paths:
-      - '.github/workflows/ml-xrpl-exchange-inflow-source-gate-r19.yml'
-      - 'research/ml_xrpl_exchange_inflow_20260726/**'
   pull_request:
     branches: [main]
     paths:
@@ -19,7 +13,7 @@ permissions:
 
 concurrency:
   group: ml-xrpl-exchange-inflow-source-gate-r19
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   PYTHONHASHSEED: '0'
