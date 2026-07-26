@@ -1,0 +1,63 @@
+{
+  "claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001",
+  "engine_version": "ML-LIQUIDITY-DRAW-FIRST-PASSAGE-V1",
+  "scientific_question": "Does a nonlinear model predict which of the nearest causal external-liquidity pools BTCUSDT or ETHUSDT reaches first well enough to create positive realistic-cost account growth?",
+  "markets": ["BTCUSDT", "ETHUSDT"],
+  "exchange_and_contract": "Bybit USDT-linear perpetual",
+  "information_clock": "completed one-minute data aggregated to completed 15-minute bars",
+  "structure": {
+    "pivot_span_completed_bars_each_side": 2,
+    "pool_lookback_15m_bars": 192,
+    "decision_stride_15m_bars": 4,
+    "minimum_pool_width_atr": 0.75,
+    "maximum_pool_width_atr": 8.0,
+    "entry": "next one-minute open after the decision close",
+    "long_target_stop": "upper frozen pool / lower frozen pool",
+    "short_target_stop": "lower frozen pool / upper frozen pool",
+    "same_minute_rule": "stop first",
+    "source_gap_rule": "stop label scan; accepted unresolved account position pays full structural stop",
+    "elapsed_time_exit": false
+  },
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "single_model_only": true,
+    "calibration": "one frozen isotonic map",
+    "probability_baseline": "distance-only zero-drift first-passage probability",
+    "signal_cost_bps": 18,
+    "minimum_probability_advantage_over_exact_break_even": 0.05,
+    "threshold_grid": false
+  },
+  "time_partitions": {
+    "training": "2022-01-01T00:00:00Z through 2022-06-30, labels must resolve before 2022-07-01",
+    "calibration": "2022-07-01T00:00:00Z through 2022-09-30, labels must resolve before 2022-10-01",
+    "fit_confirmation": "2022-10-01T00:00:00Z through 2022-12-31",
+    "conditional_development": "untouched calendar 2023, opened only after every fit gate passes",
+    "prohibited": [2024, 2025, 2026]
+  },
+  "fit_gate_all_required": {
+    "resolved_confirmation_rows": ">=500",
+    "model_auc": ">=0.53",
+    "auc_lift_over_distance_baseline": ">=0.01",
+    "brier_skill_over_distance_baseline": ">0",
+    "trade_count_at_18bps": ">=80",
+    "total_return_at_18bps": ">0",
+    "median_net_trade_at_12bps": ">0",
+    "top_10_percent_winner_removed_return_at_12bps": ">0",
+    "positive_month_fraction_at_18bps": ">=2/3"
+  },
+  "account": {
+    "initial_nav_usdt": 10000,
+    "risk_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "prior_15m_volume_participation_cap": 0.001,
+    "global_slot_count": 1,
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "top_trade_counterfactual": "remove largest positive 10 percent and release affected global slots before replay"
+  },
+  "authority": {
+    "credentials": false,
+    "orders": false,
+    "live_permission_change": false,
+    "rank_eligibility": false
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-ML-LIQUIDITY-DRAW-001",
+  "result_id": "RES-20260726-ML-LIQUIDITY-DRAW-001",
+  "dependency_fingerprint": "9b16777180abb1566387aec7a47b89020fa2ec1f88c4c7033b051d3ec46b0ada",
+  "status": "PASS",
+  "validation_scope": "Checksum-identified Bybit one-minute archives, completed-bar external-liquidity pools, causal first-passage labels, chronological train/calibration/confirmation partitions, frozen HGBT and isotonic calibration, exact distance baseline comparison, next-minute one-global-slot execution, identical 12/18/24bp paths, counterfactual winner removal and physical later-stage seals.",
+  "changed_surface": [
+    "single ML external-liquidity first-passage direction model",
+    "calibrated cost-adjusted LONG/SHORT/FLAT decision",
+    "distance-only first-passage baseline",
+    "pre-2024 fatal screen"
+  ],
+  "evidence": [
+    "Workflow 30194348946 completed successfully after project harness run 30194348934 passed.",
+    "The artifact contained 24 SHA-recorded 2022 source files and opened zero 2023 development files because the fit gate failed.",
+    "Confirmation model AUC was 0.6936557 versus 0.7348655 for the distance baseline; AUC lift and Brier skill were both negative.",
+    "The identical 156-trade path lost 5.2115%, 9.1929% and 12.4182% at 12/18/24bp.",
+    "The 18bp median trade was -58.4337bp and top-10%-removed return was -16.4685%.",
+    "No 2023-2026 source was opened and no credential or order path was used."
+  ],
+  "code_commit": "0900a631db03ed81b2db62388132efd6bd57039b",
+  "artifact_id": 8629624480,
+  "artifact_sha256": "e986870c95f524a5c6a872d38534b5714111746f215096c722ff9ee62986a817",
+  "created_at": "2026-07-26T17:20:00+09:00"
+}

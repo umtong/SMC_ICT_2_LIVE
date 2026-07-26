@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-LIQUIDITY-DRAW-001",
+  "claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "economic_status": "FIT_BELOW_GATE",
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "summary": "A single HistGradientBoostingClassifier with frozen isotonic calibration predicted which of the nearest causally confirmed external buy-side or sell-side liquidity pools would be reached first. The 2022 chronological train/calibration/fit-confirmation run was hard-valid but failed both predictive lift and after-cost account gates. Untouched 2023 and all 2024-2026 periods remained unopened.",
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "calibration": "frozen isotonic",
+    "train_rows": 7765,
+    "calibration_rows": 4035,
+    "confirmation_prediction_rows": 4025,
+    "confirmation_auc": 0.6936557405890079,
+    "distance_baseline_auc": 0.7348654930127331,
+    "auc_lift_over_distance": -0.041209752423725154,
+    "confirmation_brier": 0.2244036136117951,
+    "distance_baseline_brier": 0.20879303993890497,
+    "brier_skill_over_distance": -0.07476577608840773,
+    "confirmation_log_loss": 0.6403278997752327
+  },
+  "fit_confirmation": {
+    "event_rows": 15854,
+    "resolved_rows": 15831,
+    "ambiguous_rows": 17,
+    "source_gap_rows": 6,
+    "authorized_actions": 375,
+    "accepted_trades_per_cost_path": 156,
+    "paths": {
+      "12bps": {
+        "total_return": -0.05211463656899118,
+        "geometric_daily_growth": -0.0005815885149491606,
+        "profit_factor": 0.8802630112239467,
+        "median_net_return_bps_on_notional": -52.44580810651839,
+        "maximum_drawdown": 0.12382567672835687,
+        "positive_month_fraction": 0.3333333333333333,
+        "top10pct_removed_return": -0.12385588087883315
+      },
+      "18bps": {
+        "total_return": -0.09192902190367136,
+        "geometric_daily_growth": -0.0010476327375807948,
+        "profit_factor": 0.7889243103326442,
+        "median_net_return_bps_on_notional": -58.43366707947021,
+        "maximum_drawdown": 0.13417899649775633,
+        "positive_month_fraction": 0.3333333333333333,
+        "top10pct_removed_return": -0.16468523620967968
+      },
+      "24bps": {
+        "total_return": -0.12418203637106218,
+        "geometric_daily_growth": -0.0014402337546997046,
+        "profit_factor": 0.713832451275947,
+        "median_net_return_bps_on_notional": -64.42152605242204,
+        "maximum_drawdown": 0.14252972559801735,
+        "positive_month_fraction": 0.3333333333333333,
+        "top10pct_removed_return": -0.1969464426153128
+      }
+    },
+    "gate_pass_count": 0,
+    "gate_failures": [
+      "model AUC did not exceed the distance-only first-passage baseline",
+      "Brier score was worse than the distance-only baseline",
+      "18-bps total return was negative",
+      "12-bps median trade was negative",
+      "12-bps winner-removed return was negative",
+      "only one of three confirmation months was positive"
+    ]
+  },
+  "post_result_information_unit_audit": {
+    "authority": "DIAGNOSTIC_ONLY_NOT_A_CLEAN_HOLDOUT",
+    "method": "Preserve the analytical distance-only log-odds as a fixed offset and add only six preselected directional state variables through one strongly regularized logistic residual correction.",
+    "confirmation_auc": 0.7353444808054013,
+    "distance_baseline_auc": 0.7348654930127331,
+    "auc_lift": 0.0004789877926682178,
+    "confirmation_brier": 0.2085765946457523,
+    "distance_baseline_brier": 0.20879303993890497,
+    "interpretation": "The additional completed-candle state contributed essentially no stable first-passage information beyond structural distance. This supports retiring the information unit rather than tuning the original nonlinear model."
+  },
+  "source_and_execution": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "source_file_count": 24,
+    "source_year": 2022,
+    "one_global_slot": true,
+    "risk_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "prior_volume_participation_cap": 0.001,
+    "cost_paths_bps": [12, 18, 24],
+    "historical_bbo_depth_complete": false,
+    "actual_funding_reconstructed": false
+  },
+  "stage_boundaries": {
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false,
+    "orders_submitted": false
+  },
+  "workflow": {
+    "run_id": 30194348946,
+    "artifact_id": 8629624480,
+    "artifact_digest": "sha256:e986870c95f524a5c6a872d38534b5714111746f215096c722ff9ee62986a817",
+    "head_commit": "0900a631db03ed81b2db62388132efd6bd57039b",
+    "result_json_sha256": "991b8663ca4623cdbe0821f149943175ef3fab9056a984517afb399bda7bf794",
+    "event_ledger_sha256": "72f8bc2e0f3b1332096a6cd67711eaa916a4b5a01bfea13c31531b7ec127efc0"
+  },
+  "decision": "Retire the completed-candle nearest-liquidity-pool first-passage information unit. Do not tune adjacent model hyperparameters, feature sets, probability thresholds, pool spans or risk/leverage. Continue ML research only with a materially new information source that can alter fair value before the Bybit price path, such as option transaction flow or another point-in-time inventory signal.",
+  "created_at": "2026-07-26T17:28:00+09:00"
+}
