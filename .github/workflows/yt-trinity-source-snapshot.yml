@@ -7,14 +7,9 @@ on:
     paths:
       - .github/workflows/yt-trinity-source-snapshot.yml
       - control/yt-trinity-source-snapshot-trigger.json
-  pull_request:
-    branches: [main]
-    paths:
-      - .github/workflows/yt-trinity-source-snapshot.yml
-      - control/yt-trinity-source-snapshot-trigger.json
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -45,7 +40,6 @@ jobs:
           retention-days: 3
 
   pre2024-economic-screen:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -53,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Checkout exact canonical-data loader
         uses: actions/checkout@v4
@@ -75,7 +69,12 @@ jobs:
           python -m pip install -q numpy pandas scikit-learn pyarrow pytest
           python - <<'PY'
           import numpy, pandas, pyarrow, sklearn
-          print({'numpy': numpy.__version__, 'pandas': pandas.__version__, 'pyarrow': pyarrow.__version__, 'scikit_learn': sklearn.__version__})
+          print({
+              'numpy': numpy.__version__,
+              'pandas': pandas.__version__,
+              'pyarrow': pyarrow.__version__,
+              'scikit_learn': sklearn.__version__,
+          })
           PY
 
       - name: Download immutable corpus and canonical 2023 BTC/ETH artifacts
@@ -84,8 +83,21 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p inputs/corpus inputs/data/PRE_2024_2023/BTCUSDT inputs/data/PRE_2024_2023/ETHUSDT
-          fetch_artifact() {
-            local id="$1" target="$2"
+          verify_and_fetch_artifact() {
+            local id="$1" expected_digest="$2" target="$3"
+            local actual_digest
+            actual_digest="$(
+              curl --fail --silent --show-error \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}" \
+              | python -c 'import json,sys; print(json.load(sys.stdin)["digest"])'
+            )"
+            [[ "${actual_digest}" == "${expected_digest}" ]] || {
+              echo "artifact digest mismatch id=${id} expected=${expected_digest} actual=${actual_digest}" >&2
+              exit 1
+            }
             curl --fail --silent --show-error --location \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -93,12 +105,18 @@ jobs:
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
               -o "${target}"
           }
-          fetch_artifact 8637502720 /tmp/corpus.zip
-          fetch_artifact 8636781702 /tmp/btc.zip
-          fetch_artifact 8636761741 /tmp/eth.zip
-          echo "9ca83d236373164129ebfa4515cbcc0dca48608a6cc5c61ef3b1e14e8ca3dc4a  /tmp/corpus.zip" | sha256sum --check --strict
-          echo "88ac7a4da817746dd165fc46b5be86ada65ecd1273270a3f90ddfaf3ae0df860  /tmp/btc.zip" | sha256sum --check --strict
-          echo "7e916dac17e66ea43067fa324d471ed20f1dafed9e19b64e02bebdd19d4cf2b8  /tmp/eth.zip" | sha256sum --check --strict
+          verify_and_fetch_artifact \
+            8637502720 \
+            sha256:9ca83d236373164129ebfa4515cbcc0dca48608a6cc5c61ef3b1e14e8ca3dc4a \
+            /tmp/corpus.zip
+          verify_and_fetch_artifact \
+            8636781702 \
+            sha256:88ac7a4da817746dd165fc46b5be86ada65ecd1273270a3f90ddfaf3ae0df860 \
+            /tmp/btc.zip
+          verify_and_fetch_artifact \
+            8636761741 \
+            sha256:7e916dac17e66ea43067fa324d471ed20f1dafed9e19b64e02bebdd19d4cf2b8 \
+            /tmp/eth.zip
           unzip -q /tmp/corpus.zip -d inputs/corpus
           unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2023/BTCUSDT
           unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2023/ETHUSDT
@@ -114,14 +132,29 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+
           manifest = json.loads(Path('inputs/corpus/yt-trinity-complete-corpus/manifest.json').read_text())
           assert manifest['decision'] == 'PASS_COMPLETE', manifest
-          assert manifest['unique_public_video_count'] == 186, manifest
-          assert manifest['caption_status_counts'] == {'ok': 186}, manifest
+          assert manifest['inventory_count'] == 186, manifest
+          assert manifest['transcript_video_count'] == 186, manifest
+          assert manifest['status_counts'] == {'ok': 186}, manifest
+          assert manifest['channel_counts'] == {
+              'chartbro': 62,
+              'indicator_sensei': 98,
+              'swipalnam': 26,
+          }, manifest
+          assert manifest['corpus_digest_sha256'] == '913aa9e98bb696b1c029b410cf3efd5158122f9cf1ff84adaeb536e31157cc53'
+
           for symbol in ('BTCUSDT', 'ETHUSDT'):
               payload = json.loads(Path(f'inputs/data/PRE_2024_2023/{symbol}/DATASET_MANIFEST.json').read_text())
-              assert payload['status'] == 'PASS_COMPLETE', (symbol, payload.get('status'))
-              assert payload['segment'] == 'PRE_2024_2023', payload
+              assert payload['symbol'] == symbol, payload
+              assert payload['logical_segment'] == 'PRE_2024', payload
+              assert payload['physical_segment'] == 'PRE_2024_2023', payload
+              assert payload['start'] == '2023-01-01T00:00:00Z', payload
+              assert payload['end_exclusive'] == '2024-01-01T00:00:00Z', payload
+              assert payload['product'] == 'USDT linear perpetual', payload
+              for stream in ('trade_price_1m', 'mark_price_1m', 'index_price_1m', 'premium_index_1m'):
+                  assert payload['coverage'][stream]['coverage'] == 1.0, (symbol, stream, payload['coverage'][stream])
           PY
           pytest -q \
             research/yt_trinity_ml/tests/test_corpus_alpha.py \
@@ -142,7 +175,6 @@ jobs:
             --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.schema.json \
             --output output \
             --segments PRE_2024_2023 \
-            --risk-fraction 0.01 \
             --validation-start 2023-07-01T00:00:00Z \
             --validation-end-exclusive 2024-01-01T00:00:00Z \
             2>&1 | tee output/STDOUT.log
@@ -158,9 +190,11 @@ jobs:
               'schema_version': 1,
               'stage': 'PRE2024_2023H2_COARSE_1M_NOT_RANKABLE',
               'source_commit': os.environ['GITHUB_SHA'],
+              'github_run_id': int(os.environ['GITHUB_RUN_ID']),
               'canonical_loader_commit': 'a2bb231966a517d29495bed7673e4d08ab8e30a9',
               'corpus_artifact_id': 8637502720,
               'corpus_artifact_digest': 'sha256:9ca83d236373164129ebfa4515cbcc0dca48608a6cc5c61ef3b1e14e8ca3dc4a',
+              'corpus_digest_sha256': '913aa9e98bb696b1c029b410cf3efd5158122f9cf1ff84adaeb536e31157cc53',
               'btc_artifact_id': 8636781702,
               'btc_artifact_digest': 'sha256:88ac7a4da817746dd165fc46b5be86ada65ecd1273270a3f90ddfaf3ae0df860',
               'eth_artifact_id': 8636761741,
@@ -188,3 +222,69 @@ jobs:
           path: output
           if-no-files-found: error
           retention-days: 90
+
+      - name: Persist compact economic-screen pointer
+        if: always()
+        env:
+          SCREEN_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          output = Path('output')
+          summary_path = output / 'PRIMARY_SCREEN_SUMMARY.json'
+          stdout_path = output / 'STDOUT.log'
+          summary = None
+          summary_sha256 = None
+          if summary_path.exists():
+              raw = summary_path.read_bytes()
+              summary = json.loads(raw)
+              summary_sha256 = hashlib.sha256(raw).hexdigest()
+          stdout_tail = None
+          if stdout_path.exists():
+              lines = stdout_path.read_text(encoding='utf-8', errors='replace').splitlines()
+              stdout_tail = '\n'.join(lines[-80:])[-20000:]
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'workflow': 'YT Trinity source snapshot / pre2024-economic-screen',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ.get('GITHUB_RUN_ATTEMPT', '1')),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+              'job_status': os.environ['SCREEN_JOB_STATUS'],
+              'artifact_name': f"yt-trinity-pre2024-screen-{os.environ['GITHUB_SHA']}",
+              'stage': 'PRE2024_2023H2_COARSE_1M_NOT_RANKABLE',
+              'summary_sha256': summary_sha256,
+              'summary': summary,
+              'stdout_tail': stdout_tail,
+          }
+          target = output / 'PRE2024_SCREEN_POINTER.json'
+          target.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          Path('/tmp/PRE2024_SCREEN_POINTER.json').write_bytes(target.read_bytes())
+          PY
+
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          mkdir -p research/yt_trinity_ml
+          cp /tmp/PRE2024_SCREEN_POINTER.json research/yt_trinity_ml/PRE2024_SCREEN_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/PRE2024_SCREEN_POINTER.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record 2023 YT Trinity economic screen ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
