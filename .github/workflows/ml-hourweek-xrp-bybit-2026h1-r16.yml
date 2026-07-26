@@ -1,0 +1,114 @@
+name: ML hourweek XRP Bybit 2026H1 forward
+
+on:
+  push:
+    branches: [agent/r16-ml-hourweek-xrp-bybit-2026h1-001]
+    paths:
+      - 'research/ml_hourweek_xrp_bybit_20260726/**'
+      - '.github/workflows/ml-hourweek-xrp-bybit-2026h1-r16.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_hourweek_xrp_bybit_20260726/**'
+      - '.github/workflows/ml-hourweek-xrp-bybit-2026h1-r16.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-hourweek-xrp-bybit-2026h1-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: '0'
+  PYTHONUNBUFFERED: '1'
+  PYTHONFAULTHANDLER: '1'
+  OMP_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '2'
+  MKL_NUM_THREADS: '2'
+  ROOT: research/ml_hourweek_xrp_bybit_20260726
+  OUT: research_runs/ml_hourweek_xrp_bybit_20260726/r16
+  CACHE: /tmp/ml-hourweek-xrp-bybit-r16
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 \
+            scikit-learn==1.6.1 pytest==8.3.5
+      - name: Prove frozen implementation before market access
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/source"
+          python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$ROOT/preregistration.json" >/dev/null
+          python -m json.tool "$ROOT/LOCAL_REPLICATION_BEFORE_2026.json" >/dev/null
+          python "$ROOT/reconstruct.py" | tee "$OUT/RECONSTRUCT.log"
+          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py"
+          PYTHONPATH="$ROOT" pytest -q "$ROOT/test_run.py" | tee "$OUT/PYTEST.log"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" --self-test | tee "$OUT/SELF_TEST.log"
+          cp "$ROOT"/*.json "$ROOT"/*.md "$ROOT"/run.py.gz.b64.part* "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py" "$OUT/source/"
+          sha256sum "$OUT/source"/* | sort > "$OUT/source/SOURCE_SHA256SUMS.txt"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE }}
+          key: ml-hourweek-xrp-bybit-r16-${{ hashFiles('research/ml_hourweek_xrp_bybit_20260726/preregistration.json') }}
+      - name: Open official 2026H1 once under the frozen replica
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" --output "$OUT" --cache "$CACHE" 2>&1 | tee "$OUT/RUN.log"
+      - name: Enforce causal, account and authority boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['OUT'])
+          result=json.loads((root/'RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-2026H1-001'
+          assert result['strategy']['elapsed_time_liquidation'] is False
+          assert result['authority']['official_2026H1_opened'] is True
+          assert result['authority']['official_2026H1_is_forward_for_this_frozen_replica'] is True
+          assert result['authority']['credentials_used'] is False
+          assert result['authority']['orders_submitted'] is False
+          forward=result['results']['official_forward_2026H1']
+          for cost in ('12bps','24bps','72bps','96bps'):
+              assert forward[cost]['actual_funding']['account_ruin'] in (True, False)
+              assert forward[cost]['winner_removed_actual_funding']['account_ruin'] in (True, False)
+          print(json.dumps({
+              'forward_24bp':forward['24bps']['actual_funding'],
+              'forward_24bp_winner_removed':forward['24bps']['winner_removed_actual_funding'],
+              'forward_24bp_adverse_funding':forward['24bps']['adverse_unsigned_funding'],
+          },sort_keys=True))
+          PY
+      - name: Validate moving project control plane without blocking frozen evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py 2>&1 | tee "$OUT/PROJECT_VALIDATION.log"
+      - name: Freeze output hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-hourweek-xrp-bybit-2026h1-r16-${{ github.run_id }}
+          path: research_runs/ml_hourweek_xrp_bybit_20260726/r16
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
