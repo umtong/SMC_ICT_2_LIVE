@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "correction_id": "IMPLEMENTATION-CORRECTION-20260726-ML-DONCHIAN-SINGLE-EVALUATOR-001",
+  "claim_id": "CLM-20260726-2122-ML-DONCHIAN-TAIL-001",
+  "timing": "BEFORE_ANY_MARKET_DOWNLOAD_MODEL_FIT_LABEL_ACTION_TRADE_OR_PNL",
+  "trigger": "Concurrent work on the same active claim produced a compressed evaluator, tests and workflow whose callable contract did not match the newly committed raw evaluator. The mismatch was detected by source inspection before an authoritative market outcome existed.",
+  "authoritative_execution_source": {
+    "path": "research/ml_donchian_tail_20260726/run.py",
+    "git_blob_sha": "dadd1aac20a72ca818df5c1b7f4f2374f64d38a8",
+    "workflow": ".github/workflows/ml-donchian-tail-r13.yml",
+    "tests": "research/ml_donchian_tail_20260726/test_run.py"
+  },
+  "superseded_transport_files_retained_but_not_executed": [
+    "research/ml_donchian_tail_20260726/reconstruct.py",
+    "research/ml_donchian_tail_20260726/run.py.gz.b64"
+  ],
+  "unchanged": [
+    "fixed 60-minute entry lookback 96, exit channel 48 and 2 ATR stop",
+    "next-open entry and strategy-defined stop/channel exit only",
+    "one HGBT regressor, nineteen frozen features and one positive-expected-R action rule",
+    "2021 through 2022H1 train, 2022H2 calibration and historical 2023 confirmation",
+    "conditional 2024H1 validation only after every pre-2024 gate",
+    "12/18/24bp replay, adverse funding reserve and one global slot",
+    "wide risk and notional-cap search only after robust base alpha",
+    "2025-2026 prohibition and no credentials or orders"
+  ],
+  "outcome_state_before_correction": {
+    "market_rows_opened": false,
+    "model_fitted": false,
+    "labels_computed": false,
+    "actions_computed": false,
+    "trades_computed": false,
+    "pnl_computed": false,
+    "2024_opened": false,
+    "2025_2026_opened": false,
+    "orders_submitted": false
+  }
+}
