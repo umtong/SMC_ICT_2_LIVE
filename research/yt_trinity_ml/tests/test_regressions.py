@@ -9,6 +9,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from system.canonical_adapter import causal_asof_join  # noqa: E402
 from system.coarse import CoarseEventReplay, CoarseExecutionConfig  # noqa: E402
 from system.core import EventCandidate, EventFamily, RiskConfig  # noqa: E402
 from system.model import ChronologicalEventModel, ScoredCandidate  # noqa: E402
@@ -72,6 +73,27 @@ def test_model_scoring_uses_same_structural_features_as_training() -> None:
     assert row["raw_reward_risk"] == 3.0
     assert row["family_liquidity_sweep"] == 1.0
     assert row["symbol_btc"] == 1.0
+
+
+def test_canonical_asof_join_normalizes_nullable_integer_keys() -> None:
+    decision_times = pd.to_datetime(["2023-01-01T00:01:00Z", "2023-01-01T00:02:00Z"])
+    base = pd.DataFrame(
+        {
+            "available_at_ms": pd.Series([1672531260000, 1672531320000], dtype="Int64"),
+            "close": [100.0, 101.0],
+        },
+        index=decision_times,
+    )
+    auxiliary = pd.DataFrame(
+        {
+            "available_at_ms": np.asarray([1672531200000, 1672531290000], dtype="int64"),
+            "open_interest": [1.0, 2.0],
+        },
+        index=pd.to_datetime(["2023-01-01T00:00:00Z", "2023-01-01T00:01:30Z"]),
+    )
+    joined = causal_asof_join(base, auxiliary)
+    assert joined["available_at_ms"].dtype == "int64"
+    assert joined["open_interest"].tolist() == [1.0, 2.0]
 
 
 def test_coarse_replay_cannot_use_barrier_after_evaluation_cutoff() -> None:
