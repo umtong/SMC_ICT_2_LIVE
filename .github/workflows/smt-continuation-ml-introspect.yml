@@ -1,0 +1,54 @@
+name: SMT continuation ML source introspection
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-continuation-ml-meta-001
+    paths:
+      - ".github/workflows/smt-continuation-ml-introspect.yml"
+      - "research/smt_continuation_ml_meta_20260726/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smt-continuation-ml-introspect-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  introspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixed compile environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "scikit-learn==1.6.1" "requests==2.32.4" "joblib==1.4.2"
+      - name: Reconstruct source and parent engines
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          python "$root/reconstruct.py"
+          bash "$root/prepare_parent_sources.sh" "$PWD" "$RUNNER_TEMP/smt-cont-parent"
+          python -m py_compile "$root/extract.py" "$root/train.py"
+      - name: Print frozen CLI and run self-tests
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          export PYTHONPATH="$RUNNER_TEMP/smt-cont-parent/base:$RUNNER_TEMP/smt-cont-parent/acceptance:$root"
+          echo '=== EXTRACT HELP ==='
+          python "$root/extract.py" --help
+          echo '=== TRAIN HELP ==='
+          python "$root/train.py" --help
+          echo '=== EXTRACT SELF TEST ==='
+          python "$root/extract.py" --self-test
+          echo '=== TRAIN SELF TEST ==='
+          python "$root/train.py" --self-test
+          echo 'INTROSPECTION_PASS'
