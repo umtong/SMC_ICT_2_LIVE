@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-LIQ-SWEEP-RETEST-FATAL-001",
+  "claim_id": "CLM-20260726-LIQ-SWEEP-RETEST-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_FATAL_SCREEN_ONLY",
+  "economic_status": "FIT_BELOW_GATE",
+  "ranking_role": "NONE",
+  "summary": "The preregistered liquidation-sweep, range-reclaim and MSS signal was retested with post-only passive mitigation rather than taker-chasing. All causal, passive-order and source-boundary tests passed, but none of 1,024 immutable policies survived the 2023 fit gate. There were 34 fit events. The frozen ordering selected a one-trade candidate as best: +10.3456 bp after 12 bp stress, +4.3456 bp after 18 bp, and -1.6544 bp after 24 bp. Removing its only positive event leaves zero trades and zero return. Development was therefore not opened. This exact passive sweep-MSS payoff is retired without adjacent tuning.",
+  "trader_translation": "Completed prior external liquidity was raided with actual Bybit forced liquidations, then opposite aggressive flow, BBO refill, range reclaim and a completed MSS confirmed rejection. A post-only order waited at the raided liquidity level or 50% mitigation of the sweep-to-MSS leg; touch alone was not a fill. The structure did not create repeatable after-cost fills even after avoiding taker entry costs.",
+  "metrics": {
+    "candidate_count": 1024,
+    "fit_event_count": 34,
+    "fit_survivor_count": 0,
+    "development_event_count_preinventoried": 28,
+    "development_opened": false,
+    "development_survivor_count": 0,
+    "best_fit_candidate_id": "e3d88ae5d59257cc2f33",
+    "best_fit_parameters": {
+      "lookback": 300,
+      "sweep_min_bps": 2.0,
+      "refill_ratio": 0.8,
+      "flow_flip": 0.0,
+      "pivot": 10,
+      "confirm_window": 10,
+      "entry_mode": "half_leg",
+      "queue_bps": 1.0,
+      "latency_ms": 100,
+      "target_mode": "two_r"
+    },
+    "best_12bp": {
+      "trade_count": 1,
+      "mean_net_bps": 10.3456441338,
+      "median_net_bps": 10.3456441338,
+      "total_return": 0.0022311377,
+      "geometric_growth_per_sample_day": 0.0007431601,
+      "positive_dates": 1,
+      "top5_positive_share": 1.0,
+      "top10_winner_removed_trade_count": 0,
+      "top10_winner_removed_total_return": 0.0
+    },
+    "best_18bp": {
+      "trade_count": 1,
+      "mean_net_bps": 4.3456441338,
+      "median_net_bps": 4.3456441338,
+      "total_return": 0.0007445077,
+      "geometric_growth_per_sample_day": 0.0002481077,
+      "positive_dates": 1,
+      "top5_positive_share": 1.0
+    },
+    "best_24bp": {
+      "trade_count": 1,
+      "mean_net_bps": -1.6543558662,
+      "median_net_bps": -1.6543558662,
+      "total_return": -0.0002350960,
+      "geometric_growth_per_sample_day": -0.0000783715,
+      "positive_dates": 0
+    },
+    "unresolved_fraction": 0.0,
+    "official_target_met": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "interpretation": {
+    "supported": "The causal liquidation sweep, reclaim and MSS state can be reconstructed with realistic post-only acknowledgement, rejection, penetration fill and one-slot routing.",
+    "rejected": "Waiting passively at the swept level or half-leg mitigation does not turn the exact signal into a repeatable positive-expectancy payoff.",
+    "retired_dependency": "Liquidation sweep plus reclaim plus MSS followed by passive mitigation at the swept level or half displacement leg.",
+    "next_information_requirement": "Change the information source or the structural state; do not tune adjacent mitigation, queue or target parameters."
+  },
+  "source_manifest_sha256": "4d0993012ba57339acbe654ea277d67f4f85ab5d53b6167e300aff76c42135a4",
+  "code_commit": "e2c1001ccd05acd3cfae70b6f6ade035319097d9",
+  "workflow_run_id": 30193107088,
+  "artifact_id": 8629244252,
+  "artifact_sha256": "041f326984a96f4234630f09e06350ecc3e8cfa6f21c82b97781db059a076e22",
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/108",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30193107088"
+  ],
+  "orders_submitted": false,
+  "paper_or_live_enabled": false,
+  "created_at": "2026-07-26T16:58:00+09:00"
+}
