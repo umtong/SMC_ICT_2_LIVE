@@ -76,7 +76,7 @@ jobs:
           python -m pytest -q
 
   stablecoin-source-economic:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     timeout-minutes: 360
     env:
       PYTHONHASHSEED: '0'
@@ -85,7 +85,8 @@ jobs:
       OMP_NUM_THREADS: '2'
       OPENBLAS_NUM_THREADS: '2'
       MKL_NUM_THREADS: '2'
-      SOURCE_SHA: 3631cf01a2a2b91d690b81160e14ba033a298f75
+      VECLIB_MAXIMUM_THREADS: '2'
+      SOURCE_SHA: 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539
       STRICT_SHA: 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c
       SOURCE_ROOT: research/ml_stablecoin_issuance_20260726
       ECON_ROOT: research/ml_stablecoin_issuance_economic_20260726
@@ -117,6 +118,7 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$STRICT_SHA"
           git archive "$STRICT_SHA" "$ECON_ROOT" "$FIX_ROOT" | tar -x
           python -m json.tool "$STRICT_EXEC_ROOT/EXECUTION_CORRECTION.json" >/dev/null
+          python -m json.tool "$STRICT_EXEC_ROOT/EXECUTION_CORRECTION_REGISTERED_MACOS_022.json" >/dev/null
           python -m json.tool "$SOURCE_ROOT/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$SOURCE_ROOT/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$SOURCE_ROOT/CORRECTION_019_BLOCKSCOUT_STATUS0_FAIL_CLOSED_BEFORE_OUTCOME.json" >/dev/null
@@ -154,7 +156,7 @@ jobs:
           if [[ ! -f "$OUT_ROOT/source/run/SOURCE_GATE_RESULT.json" ]]; then
             python "$SOURCE_ROOT/write_transport_failure.py" \
               --output "$OUT_ROOT/source/run" \
-              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-VISIBLE-021 \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-REGISTERED-MACOS-022 \
               --exit-code "$rc"
           fi
           python - <<'PY'
@@ -193,7 +195,7 @@ jobs:
         if: steps.source.outputs.authorized == 'true'
         with:
           path: ${{ env.MARKET_CACHE }}
-          key: stablecoin-market-2020-12-2023-12-strict-v3-source021
+          key: stablecoin-market-2020-12-2023-12-strict-v3-source022-macos
       - name: Run strict causal pre-2024 economic screen immediately
         if: steps.source.outputs.authorized == 'true'
         run: |
@@ -269,7 +271,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stablecoin-strict-visible-${{ github.run_id }}
+          name: stablecoin-strict-registered-macos-${{ github.run_id }}
           path: research_runs/stablecoin_strict_visible_20260727
           if-no-files-found: error
           retention-days: 30
