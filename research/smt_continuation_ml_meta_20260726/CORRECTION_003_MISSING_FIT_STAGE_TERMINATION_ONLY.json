@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1906-SMT-CONTINUATION-ML-001",
+  "correction_id": "CORRECTION_003_MISSING_FIT_STAGE_TERMINATION_ONLY",
+  "recorded_after_run": 30198945712,
+  "recorded_before_any_model_fit": true,
+  "recorded_before_any_model_metric": true,
+  "recorded_before_any_trade_or_pnl": true,
+  "observed_immutable_evidence": {
+    "artifact_id": 8631104581,
+    "artifact_digest": "sha256:b3019abacc9a77ea37da53b6e6b4b5df8b3c6b06a6253226c5fe243821e943f4",
+    "dates_attempted": 52,
+    "source_files_verified": 156,
+    "raw_event_rows": 60,
+    "deduplicated_events": 55,
+    "pullback_rows": 18,
+    "fit_rows_2022_jan_jun": 0,
+    "score_calibration_rows_2022_jul_sep": 6,
+    "fit_confirmation_rows_2022_oct_dec": 12,
+    "development_2023_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "observed_failure": "The complete 2022 extraction succeeded, but train.py required all three stage names to be present among nonempty matrices before executing its already-frozen early sample gate. Because the FIT period produced zero rows, the stage name was absent and the runner raised instead of writing FIT_SAMPLE_BELOW_GATE.",
+  "change": {
+    "scope": "termination and result materialization only",
+    "original_train_sha256": "eaa13329f74fa0a8f8ed5698f36e2c9549c592974f4af4a0ab5f26c72ce7f06e",
+    "old_behavior": "Require observed stage names to equal FIT, SCORE_CALIBRATION and FIT_CONFIRMATION exactly.",
+    "new_behavior": "Reject unknown stage names, but allow a frozen stage with zero rows to remain absent so the existing early sample gate records zero and returns FIT_SAMPLE_BELOW_GATE.",
+    "expected_result": "FIT_SAMPLE_BELOW_GATE with fit_rows=0, no model bundle and all later periods sealed"
+  },
+  "scientific_contract_unchanged": [
+    "all market dates and sources",
+    "event extraction and deduplication",
+    "BTC displacement and SOL/XRP overdelivery definition",
+    "first pullback entry",
+    "features and labels",
+    "model and calibration specification",
+    "100ms and 300ms execution",
+    "24bp cost",
+    "target and invalidation",
+    "account risk and capacity",
+    "all economic gates",
+    "2023 conditional opening rule",
+    "2024-2026 seals"
+  ],
+  "outcome_interpretation": "Hard-valid event/sample scarcity. The model cannot be estimated because the entire frozen FIT partition contains zero complete rows; no directional or economic inference is made from calibration or confirmation rows.",
+  "orders_permitted": false
+}
