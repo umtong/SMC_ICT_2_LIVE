@@ -1,0 +1,49 @@
+name: YT Trinity public inventory union
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/build_public_inventory_union.py
+      - research/yt_trinity_ml/channels.json
+      - .github/workflows/yt-trinity-public-inventory-union.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-public-inventory-union-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install current YouTube inventory transport
+        run: python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+      - name: Build uploads/videos/shorts/streams union
+        run: python research/yt_trinity_ml/build_public_inventory_union.py
+      - name: Persist exact union inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl \
+            research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record exact YT Trinity public inventory union"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
