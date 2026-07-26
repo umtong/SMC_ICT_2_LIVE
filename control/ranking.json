@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 21,
+  "revision": 22,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260727-R21",
+  "ranking_id": "STRATEGY-RANKING-20260727-R22",
   "ranking_rule": {
     "eligibility": "hard-valid or preliminary causal strategy whose complete route was frozen using only information available before its evaluated interval; interval-selected routes remain development diagnostics only",
     "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
@@ -79,6 +79,7 @@
     {"rank": 8, "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001", "candidate_label": "Liquidation exhaustion reversal at 18bp", "geometric_daily_growth": 0.0000358316, "target_gap": 0.0099641684, "comparison_confidence": "VERY_LOW", "comparison_status": "SPARSE_FIT_SIGN_REVERSAL_WINNER_REMOVAL_NEGATIVE"}
   ],
   "unranked_results": [
+    {"source_result_id": "RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001", "reason": "Official COIN-M liquidationSnapshot archives begin on 2023-06-25; frozen 2021-2023 coverage is about 17%, below the 80% source gate. No economic account path opened."},
     {"source_result_id": "RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001", "reason": "Source semantics invalid before market outcomes: cumulative unsigned USDC/WETH volume cannot identify signed inventory transfer."},
     {"source_result_id": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001", "reason": "Official 2024H1 negative at 18/24bp; exact family retired."},
     {"source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001", "reason": "Filter selected using the complete 2024-2025 path; retained as a development diagnostic only. Recorded diagnostic growth was 0.223030%/day at 24bp."},
@@ -97,10 +98,10 @@
     {"component": "execution_routing", "rank": 1, "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER", "source_result_id": "RES-20260725-1510-L1-EXEC-001", "reason": "Best recorded execution-routing component; not a standalone strategy."}
   ],
   "reconciliation_notes": [
-    "Recorded the Uniswap cumulative-volume source as source-semantics invalid before any market outcome; it does not enter the strategy ranking.",
-    "Removed unsigned cumulative Uniswap volume and broad completed-bar diffusion from active primary work.",
+    "Recorded the Binance COIN-M continuous liquidationSnapshot source as coverage-ineligible before any market outcome; it does not enter the strategy ranking.",
+    "Retained the Uniswap cumulative-volume source as source-semantics invalid before any market outcome.",
     "Retained the current weak first place unchanged because no superior decision-ready account path exists.",
-    "Active primary work is reduced to corrected stablecoin supply shocks and checksum-verified dense COIN-M forced liquidations."
+    "Active primary work is reduced to the strict-causal stablecoin supply-shock information unit."
   ],
-  "updated_at": "2026-07-27T00:10:00+09:00"
+  "updated_at": "2026-07-27T00:39:00+09:00"
 }
