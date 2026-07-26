@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "PRE_OUTCOME_RUNTIME_CORRECTION_004_UTC_START",
+  "timing": "after source aggregation, before raw-tape binning, event detection, matrix rows, model fit, scores, actions or PnL",
+  "failed_workflow_run": 30197571130,
+  "failure": "The current shared base_probe module no longer exports utc_start, while the frozen parent rule engine uses it only to map an ISO UTC date to its midnight Unix timestamp.",
+  "correction": "Provide utc_start(date) as pandas.Timestamp(date, tz='UTC').timestamp() only when the shared module lacks the helper.",
+  "outcome_access": {
+    "matrix_rows_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "unchanged": [
+    "all source bytes and dates",
+    "100ms bin definitions and aggregation mathematics",
+    "overreaction, MSS, feature and outcome definitions",
+    "models, fixed quantiles, latency, 24bp cost and structural payoff",
+    "risk, notional cap, global slot, winner-removal logic and gates"
+  ],
+  "orders_submitted": false
+}
