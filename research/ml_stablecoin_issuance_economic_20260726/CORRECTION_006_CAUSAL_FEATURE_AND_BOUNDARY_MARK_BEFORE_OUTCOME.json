@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-CAUSAL-FEATURE-BOUNDARY-MARK-006",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "PRE_MARKET_OUTCOME_HARD_VALIDITY_CORRECTION",
+  "recorded_at": "2026-07-26T23:58:00+09:00",
+  "observed_problems": [
+    "The frozen entry is the next one-minute open after source availability, but prior_15m_return, prior_60m_realized_volatility, prior_60m_path_efficiency and cross-asset breadth were read at that entry-minute index. Those arrays include the entry minute close and therefore one minute of unavailable future information.",
+    "When neither frozen liquidity target nor structural stop was reached before an internal partition boundary, the account code assigned the stop price at the boundary. That created a clock-driven synthetic stop and violated the no-elapsed-time-liquidation contract.",
+    "The executable code still used confirmation AUC, Brier skill, median, PF, breadth and winner-removal diagnostics as pre-2024 advancement vetoes despite AMENDMENT-20260726-ML-STABLECOIN-IMMEDIATE-2024H1-AFTER-COST-POSSIBILITY-004 explicitly making them reported diagnostics rather than opening gates."
+  ],
+  "changes": [
+    "Read all completed return, volatility, efficiency and breadth features from entry_index minus one while keeping the frozen prior-liquidity levels evaluated at the entry open.",
+    "When a structural path remains unresolved at a partition boundary, mark the open position at the last completed close with hypothetical exit cost for NAV valuation; do not assign the stop price and do not call it a strategy exit.",
+    "Open calendar-2023 development after a successful causal model fit regardless of confirmation diagnostic signs.",
+    "Advance to the frozen risk/notional search and immediate 2024H1 handoff when calendar-2023 total return is positive at 24bp and no liquidation or bankruptcy occurs. Winner removal and all other diagnostics remain reported but are not pre-2024 vetoes.",
+    "Align the risk and notional grids exactly with amendment 004 and select the highest-growth positive no-liquidation 24bp path without a growth ceiling."
+  ],
+  "unchanged": [
+    "corrected source event semantics and source density gate",
+    "12 and 64 block causal availability",
+    "one HGBT and one isotonic calibration map",
+    "feature names and economic interpretation",
+    "structural target and stop",
+    "one global BTC ETH slot",
+    "12 18 24bp costs",
+    "2023-12-31 information cutoff",
+    "immediate official 2024H1 after pre-2024 freeze",
+    "no credentials or orders"
+  ],
+  "source_pass_observed_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
