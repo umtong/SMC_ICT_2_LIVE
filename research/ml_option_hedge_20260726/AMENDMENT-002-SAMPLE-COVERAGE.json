@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "amendment_id": "AMEND-20260726-ML-OPTION-SAMPLE-COVERAGE-002",
+  "created_after_workflow_run": 30195637056,
+  "created_before_new_source_access": true,
+  "observed_failure": {
+    "status": "SOURCE_SAMPLE_INSUFFICIENT_BEFORE_MODEL_FIT",
+    "training_raw_rows": 1073,
+    "training_resolved_rows": 205,
+    "training_source_gap_rows": 868,
+    "required_training_resolved_rows": 300,
+    "calibration_raw_rows": 484,
+    "calibration_resolved_rows": 245,
+    "required_calibration_resolved_rows": 100,
+    "model_fit_attempted": false,
+    "model_metric_observed": false,
+    "strategy_pnl_observed": false,
+    "development_2023_opened": false
+  },
+  "cause": "The public first-day files end before most structural first-passage paths resolve. The fixed one-model implementation correctly rejected training rather than fitting to 205 resolved rows.",
+  "source_only_change": {
+    "add_to_training_dates": ["2022-02-01", "2022-04-01", "2022-06-01"],
+    "add_to_calibration_dates": ["2022-08-01"],
+    "training_dates_after_amendment": ["2022-01-01", "2022-02-01", "2022-03-01", "2022-04-01", "2022-05-01", "2022-06-01"],
+    "calibration_dates_after_amendment": ["2022-07-01", "2022-08-01"],
+    "confirmation_dates_unchanged": ["2022-09-01", "2022-11-01"],
+    "conditional_development_dates_unchanged": ["2023-01-01", "2023-03-01", "2023-05-01", "2023-07-01", "2023-09-01", "2023-11-01"]
+  },
+  "unchanged": {
+    "scientific_question": true,
+    "model_family_and_hyperparameters": true,
+    "feature_columns_and_greek_reconstruction": true,
+    "five_minute_option_flow_window": true,
+    "two_second_cross_provider_delay": true,
+    "liquidity_pool_and_first_passage_label": true,
+    "distance_only_baseline": true,
+    "isotonic_calibration_rule": true,
+    "long_short_flat_ev_rule": true,
+    "confirmation_and_development_gates": true,
+    "costs_account_risk_capacity_and_global_slot": true,
+    "prohibited_2024_2025_2026": true
+  },
+  "decision": "If the added unopened first-day samples still leave fewer than 300 training resolved rows or fewer than 100 calibration resolved rows, retire the exact option-flow information unit without further date, feature, model, threshold, risk or leverage changes."
+}
