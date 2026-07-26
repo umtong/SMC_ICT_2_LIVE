@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2005-ML-FUNDING-HAZARD-OCO-001",
+  "study_id": "BYBIT_TARDIS_FUNDING_HAZARD_OCO_V1",
+  "objective": "Test whether one explainable ML filter can select scheduled funding-settlement movement hazards whose same-symbol two-sided OCO payoff remains positive after realistic cost stress.",
+  "distinctness": {
+    "retired_funding_rules": "Directional continuation, reversal and fixed-horizon markout after settlement.",
+    "retired_oco_rules": "Unscheduled own-symbol or cross-asset shock activation.",
+    "this_rule": "Scheduled cash-transfer state selects movement hazard; first barrier determines direction."
+  },
+  "source": {
+    "provider": "Tardis normalized downloadable CSV",
+    "exchange": "bybit",
+    "data_type": "derivative_ticker",
+    "free_sample_rule": "first day of each month",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "fit_years": [2020, 2021],
+    "calibration": ["2022-01-01", "2022-06-30"],
+    "confirmation": ["2022-07-01", "2022-12-31"],
+    "conditional_development": ["2023-01-01", "2023-12-31"],
+    "prohibited": ["2024", "2025", "2026"]
+  },
+  "causality": {
+    "features_end_strictly_before_funding_timestamp": true,
+    "activation_latency_ms": 1000,
+    "opposite_cancel_latency_ms": 1000,
+    "row_order_tiebreaker": "original capture order",
+    "pending_expiry_minutes": 30,
+    "filled_position_elapsed_time_exit": false,
+    "source_boundary": "unresolved filled positions receive the full structural stop"
+  },
+  "features": [
+    "final pre-settlement funding rate in bp",
+    "final pre-settlement predicted funding rate in bp",
+    "final pre-settlement mark/index premium in bp",
+    "one-hour open-interest change in bp",
+    "one-hour log return in bp",
+    "one-minute return volatility in bp",
+    "one-hour log range in bp",
+    "ETH indicator"
+  ],
+  "model": {
+    "count": 1,
+    "type": "StandardScaler plus L2 LogisticRegression",
+    "C": 1.0,
+    "class_weight": "balanced",
+    "random_state": 0,
+    "search": false,
+    "label": "frozen OCO event net return after 18 bp is positive",
+    "action_rule": "arm only when probability times calibration mean positive return plus complement times calibration mean nonpositive return exceeds +5 bp"
+  },
+  "payoff": {
+    "trigger_bps": "clip(max(8, 2 * prior one-minute volatility bp, 0.08 * prior one-hour range bp), 8, 28)",
+    "target_bps": "3.5 * trigger_bps",
+    "stop_bps": "1.25 * trigger_bps",
+    "double_trigger": "-2 * trigger_bps gross and two round-turn costs",
+    "costs_bps": [12, 18, 24],
+    "later_funding_charge": "sum of absolute final funding rates crossed while open",
+    "global_slot": "highest predicted EV at a shared activation timestamp; no new pending/open order until slot release"
+  },
+  "diagnostic_account": {
+    "risk_fraction": 0.005,
+    "leverage_cap": 3.0,
+    "risk_or_leverage_search": false
+  },
+  "confirmation_gate": {
+    "minimum_trades": 8,
+    "positive_total_return_18bp": true,
+    "positive_total_return_24bp": true,
+    "positive_median_trade_18bp": true,
+    "positive_after_top_10_percent_winner_removal_18bp": true,
+    "minimum_positive_months": 3,
+    "both_half_period_returns_positive_18bp": true
+  },
+  "development_gate": {
+    "minimum_trades": 16,
+    "positive_total_return_18bp": true,
+    "positive_total_return_24bp": true,
+    "positive_median_trade_18bp": true,
+    "positive_after_top_10_percent_winner_removal_18bp": true,
+    "minimum_positive_months": 6,
+    "both_half_period_returns_positive_18bp": true
+  },
+  "ranking_role": "NOT_RANK_ELIGIBLE_TARDIS_FIRSTDAY_PROXY_SCREEN",
+  "orders_submitted": false
+}
