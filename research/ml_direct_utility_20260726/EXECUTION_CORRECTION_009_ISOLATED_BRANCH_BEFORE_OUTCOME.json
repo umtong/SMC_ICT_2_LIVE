@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-DIRECT-UTILITY-ISOLATED-RUN-009",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "created_at": "2026-07-26T21:30:00+09:00",
+  "source_commit": "b41785d66423dd287cf8f73ffdde241c3687339a",
+  "execution_branch": "agent/r14-ml-direct-utility-authoritative-run-002",
+  "observed_failure": "The shared research branch contained several historical workflow files, causing each execution-only commit to create multiple queued or cancelled jobs before model fitting.",
+  "correction": [
+    "Create one branch from the exact frozen scientific head.",
+    "Add exactly one push-triggered workflow whose branch filter matches only this execution branch.",
+    "Do not modify market data, chronology, features, target, model, calibration, account rule, cost, funding reserve, stop, confirmation gates, development benchmark, risk search, winner removal or period seals."
+  ],
+  "outcome_state_before_correction": {
+    "gap_safe_model_fitted": false,
+    "prediction_metrics_opened": false,
+    "actions_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false
+  },
+  "scientific_contract_unchanged": true,
+  "orders_submitted": false
+}
