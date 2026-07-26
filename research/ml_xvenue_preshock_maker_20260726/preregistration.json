@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2115-ML-XVENUE-PRESHOCK-MAKER-001",
+  "result_id": "RES-20260726-ML-XVENUE-PRESHOCK-MAKER-001",
+  "engine_version": "ML-XVENUE-PRESHOCK-INSIDE-SPREAD-MAKER-R13-V1",
+  "objective": "Test whether pre-positioning a price-improving Bybit maker order before an externally predicted Binance Futures displacement can materially change queue priority and create repeatable after-cost utility above the current 24bp rank-one growth benchmark.",
+  "economic_thesis": {
+    "problem_repaired": "The reported reactive cross-venue maker route entered behind the displayed best-quote queue after the shock and filled only after edge decay.",
+    "material_change": "This route scores and places a new inside-spread best quote before the displacement, so modeled initial queue ahead is zero rather than the historical displayed best queue.",
+    "label": "Direct realized gross basis-point utility of LONG, SHORT or implicit FLAT. No-placement and structurally canceled unfilled orders receive zero. Filled orders receive structural target/stop return after exit latency.",
+    "growth_path": "One dense 500ms decision clock and direct cost-adjusted action selection can accumulate many small independent utilities without leverage rescue."
+  },
+  "market_scope": {
+    "execution_exchange": "Bybit",
+    "execution_product": "BTCUSDT USDT linear perpetual",
+    "signal_exchange": "Binance Futures",
+    "signal_product": "BTCUSDT USD-M perpetual",
+    "global_pending_or_open_slots": 1,
+    "same_time_long_short_actions": "one action selected only by predicted utility after global chronological arbitration",
+    "orders_submitted": false
+  },
+  "source_contract": {
+    "provider": "Tardis normalized downloadable CSV public first-day samples",
+    "availability_clock": "local_timestamp",
+    "state_frequency_ms": 100,
+    "quotes_fields": ["local_timestamp", "ask_amount", "ask_price", "bid_price", "bid_amount"],
+    "trades_fields": ["local_timestamp", "side", "price", "amount"],
+    "free_public_sample_dates": {
+      "train": "2022-07-01",
+      "calibration": "2023-03-01",
+      "untouched_confirmation": "2023-07-01"
+    },
+    "official_2024_2026_prohibited": true
+  },
+  "decision_state": {
+    "clock": "every completed 500ms, built only from completed 100ms local-arrival buckets",
+    "pre_shock_condition": "absolute completed Binance 500ms return at most 3bp",
+    "basis": "prior-only shifted 10-minute EWM of log Bybit/Binance executable mids",
+    "structural_range": "prior-only shifted five-minute rolling high/low of Binance fair value expressed on Bybit",
+    "spread_condition": "Bybit spread at least two ticks at signal; post-only activation still requires strict non-crossing after latency",
+    "long_action": "one tick price-improving bid",
+    "short_action": "one tick price-improving ask",
+    "flat_action": "do not place"
+  },
+  "execution_contract": {
+    "placement_latencies_ms": [100, 300],
+    "signal_availability": "completed signal bucket plus one full 100ms boundary before latency bins",
+    "activation_quote": "last known Bybit BBO immediately before activation",
+    "post_only": "order must remain strictly inside the activation BBO",
+    "initial_queue_ahead": 0,
+    "modeled_order_size": "5% of the activation-side displayed best-quote amount",
+    "counterfactual_fill": "Because the order improves the best price, later opposite aggressor amount is credited only while the historical same-side best is not better than our order; historical cross-through fills immediately. No cancellation-ahead credit exists.",
+    "pending_cancel": "prior external-liquidity target or opposite-liquidity stop is reached before fill",
+    "filled_exit": "opposite-liquidity stop first, otherwise external-liquidity target; completed state plus 100ms exit latency",
+    "source_boundary": "full frozen structural stop",
+    "elapsed_time_exit": false,
+    "one_global_slot": "pending and filled states occupy the slot from actual placement until structural release"
+  },
+  "features": [
+    "side-signed Binance 100ms, 500ms and 1s return",
+    "side-signed Binance 100ms, 500ms and 1s aggressor flow",
+    "side-signed Binance and Bybit quote imbalance",
+    "side-signed Binance and Bybit microprice edge",
+    "side-signed fair-value gap",
+    "Bybit spread in ticks and relative spread",
+    "Binance and Bybit one-second quote-update intensity",
+    "Binance five-second volatility",
+    "frozen target and stop distances and ratio",
+    "signal-side displayed quote amount",
+    "UTC time-of-day sine/cosine"
+  ],
+  "model": {
+    "family": "one pooled side-conditioned HistGradientBoostingRegressor",
+    "target": "direct gross utility in basis points including zeros for no placement and unfilled cancellation",
+    "max_iter": 180,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 40,
+    "l2_regularization": 2.0,
+    "random_state": 20260726,
+    "calibration": "one monotone isotonic map on the calibration date only",
+    "no_model_feature_threshold_grid": true
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "planned_risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "capacity": "5% of activation-side displayed best-quote notional",
+    "costs_bps_round_trip": [12, 18, 24],
+    "authorization": "calibrated predicted gross utility at least selected cost plus 2bp",
+    "winner_removal": "remove the largest positive 10% accepted event keys before complete global-slot rerouting",
+    "funding": "not opened in the initial one-day fatal screen; any survivor requires actual Bybit funding before ranking",
+    "liquidation": false
+  },
+  "minimum_samples": {
+    "training_events": 2000,
+    "calibration_events": 500,
+    "confirmation_events": 500,
+    "confirmation_fills": 50
+  },
+  "per_latency_confirmation_gates": {
+    "prediction_spearman_above": 0.05,
+    "top_decile_actual_gross_positive": true,
+    "total_return_positive_at_24bp": true,
+    "median_net_trade_positive_at_24bp": true,
+    "top10_positive_event_removed_return_positive_at_24bp": true,
+    "sample_day_geometric_growth_above_current_rank_one_24bp": 0.0007001887213879954,
+    "maximum_drawdown_below": 0.25
+  },
+  "combined_decision": {
+    "advance": "Both 100ms and 300ms paths pass every frozen gate, then expand the exact model and mechanism across additional pre-2024 dates and add actual funding before ranking.",
+    "retire": "Either path fails after adequate samples or direct utility remains sub-cost/concentrated. Do not tune spread, pre-shock threshold, tick improvement, participation, latency, model, target, stop, risk or leverage.",
+    "initial_ranking_role": "NONE_NOT_RANK_ELIGIBLE_PRE2024_FATAL_SCREEN"
+  }
+}
