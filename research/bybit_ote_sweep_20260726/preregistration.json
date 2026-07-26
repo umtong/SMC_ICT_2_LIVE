@@ -1,0 +1,119 @@
+{
+  "account_and_path": {
+    "global_slots": 1,
+    "priority": "Earlier causal fill timestamp, then larger displacement z, deeper OTE, larger target-to-stop ratio, lexical candidate id.",
+    "top_winner_removal": "Remove the largest ceiling(10%) positive 12bp trade ids from the initial route and rerun the global slot from the beginning."
+  },
+  "base_revision": 11,
+  "candidate_grid": {
+    "bar_seconds": [
+      5,
+      15
+    ],
+    "candidate_count": 96,
+    "cumulative_directional_flow_min": [
+      0.45,
+      0.65
+    ],
+    "displacement_z_min": [
+      2.0,
+      3.0
+    ],
+    "external_liquidity_seconds": [
+      300,
+      900
+    ],
+    "internal_structure_seconds": [
+      60,
+      180
+    ],
+    "maximum_mss_confirmation_bars": [
+      3,
+      6
+    ],
+    "minimum_target_to_stop_ratio": 1.5,
+    "ote_retracement": [
+      0.62,
+      0.705,
+      0.79
+    ],
+    "roundtrip_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ]
+  },
+  "claim_id": "CLM-20260726-1603-OTE-SWEEP-001",
+  "created_at": "2026-07-26T16:03:00+09:00",
+  "development_gate": {
+    "maximum_top_five_positive_profit_share_12bps": 0.4,
+    "minimum_global_slot_trades": 20,
+    "minimum_positive_symbol_date_segments_12bps": 3,
+    "minimum_profit_factor_24bps": 1.0,
+    "positive_mean_and_median_net_at_24bps": true,
+    "positive_top10_removed_total_return_12bps": true
+  },
+  "distinct_scope": "No BPR overlap, FVG/IFVG requirement, breaker/order-block state, session/kill-zone filter, cross-asset SMT, OI, options, L2 cancellation, liquidation or OCO payoff. Entry is the frozen Fibonacci retracement of the raid-to-MSS dealing range.",
+  "fit_gate": {
+    "maximum_top_five_positive_profit_share_12bps": 0.5,
+    "minimum_global_slot_trades": 20,
+    "minimum_positive_symbol_date_segments_12bps": 3,
+    "minimum_profit_factor_12bps": 1.1,
+    "positive_mean_net_at_12_and_24bps": true,
+    "positive_median_net_at_12bps": true,
+    "positive_top10_removed_total_return_12bps": true,
+    "select_at_most": 3
+  },
+  "information_contract": {
+    "bars": "Completed 5s or 15s trade-derived OHLC and aggressive quote-notional flow only.",
+    "entry_activation": "The OTE limit is active from the first bar after completed MSS confirmation.",
+    "fill": "Require an actual trade-through by at least one observed tick beyond the OTE level; mere touch does not fill.",
+    "position_exit": "Structural stop or frozen opposite-liquidity target only; no elapsed-time liquidation.",
+    "pre_entry_invalidation": "Cancel if the structural stop is breached or the frozen target is reached before fill.",
+    "rolling_state": "Volatility, internal structure and external liquidity end before the raid; the raid and MSS bars are excluded from their own baselines.",
+    "same_bar_after_fill": "Protective stop wins target ambiguity.",
+    "source_boundary": "An unresolved filled position at a non-contiguous sample boundary is charged its full structural stop plus cost."
+  },
+  "market": {
+    "source_url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "venue": "Bybit USDT linear perpetual public trades"
+  },
+  "promotion_boundary": {
+    "2024_2026_opened": false,
+    "if_development_survives": "Expand unchanged on additional pre-2024 dates, add exact Bybit funding and executable BBO/queue audit, then freeze before 2024.",
+    "if_fit_survivor_but_development_fails": "Retire selected dependency and do not open 2024.",
+    "if_zero_fit_survivors": "Retire exact sweep-MSS-OTE dependency; do not tune adjacent Fibonacci levels.",
+    "orders_submitted": false,
+    "risk_or_leverage_optimization": false
+  },
+  "purpose": "Fatal pre-2024 test of a causal SMC/ICT liquidity-sweep, market-structure-shift and Optimal Trade Entry retracement model on Bybit USDT perpetual public trades.",
+  "schema_version": 1,
+  "smc_ict_translation": {
+    "dealing_range": "Bullish: raid low to MSS close; bearish: raid high to MSS close.",
+    "displacement": "The raid-extreme to MSS-close move is at least 2 or 3 prior-volatility units and its cumulative aggressive quote-notional flow is aligned by at least 0.45 or 0.65.",
+    "draw_on_liquidity": "The opposite external-liquidity extreme frozen at MSS confirmation.",
+    "external_liquidity": "Prior completed 300s or 900s high/low; frozen before the raid.",
+    "liquidity_raid": "A completed 5s/15s bar trades through the frozen external extreme and closes back inside it.",
+    "market_structure_shift": "Within 3 or 6 completed bars after the raid, price closes through the frozen prior 60s/180s internal extreme in the reversal direction.",
+    "optimal_trade_entry": "A resting entry at 62%, 70.5% or 79% retracement of the frozen dealing range, active only after the MSS bar completes.",
+    "stop": "One observed tick beyond the liquidity-raid extreme."
+  },
+  "stages": {
+    "2024_2026_sealed": true,
+    "development_dates": [
+      "2023-07-16",
+      "2023-09-17",
+      "2023-11-19"
+    ],
+    "fit_dates": [
+      "2023-01-15",
+      "2023-03-19",
+      "2023-05-21"
+    ]
+  },
+  "status": "PREREGISTERED_BEFORE_ANY_OTE_STRATEGY_OUTCOME"
+}
