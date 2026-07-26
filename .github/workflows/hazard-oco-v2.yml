@@ -1,0 +1,148 @@
+name: Minimal ML L2 movement-hazard OCO
+
+on:
+  push:
+    branches:
+      - agent/r11-hazard-oco-v2
+    paths:
+      - research/hazard_oco_20260726/**
+      - .github/workflows/hazard-oco-v2.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/hazard_oco_20260726/**
+      - .github/workflows/hazard-oco-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: minimal-hazard-oco-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install frozen research environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.6.1" \
+            "pyarrow==18.1.0" \
+            "requests==2.32.4" \
+            "pytest==8.3.4"
+      - name: Reconstruct, compile and run adversarial tests
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
+          python "$root/reconstruct_v2.py"
+          python -m py_compile "$root/reconstruct_v2.py" "$root/run_v2.py" "$root/test_run_v2.py"
+          python "$root/run_v2.py" self-test
+          python -m pytest -q "$root/test_run_v2.py"
+          python -m json.tool "$root/WORK_CLAIM_V2.json" >/dev/null
+          python -m json.tool "$root/SOURCE_REUSE_V2.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/preregistration_v2.json" >/dev/null
+          python scripts/validate_project.py
+      - name: Reuse registered completed-state artifact
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bybit_l2" research_runs/hazard_oco_v2/input research_runs/hazard_oco_v2/output
+          gh run download 30183063220 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216 \
+            --dir "$RUNNER_TEMP/bybit_l2"
+          test "$(sha256sum "$RUNNER_TEMP/bybit_l2/output/compact_states/2022-07-01_BTCUSDT_state.parquet" | cut -d' ' -f1)" = "6dd05ab05b9ce81e3cd6ae37f9828a9977c26213de3a3113771ac3a65f5ae2a2" || true
+          cp "$RUNNER_TEMP/bybit_l2/output/SOURCE_MANIFEST.json" research_runs/hazard_oco_v2/input/REUSED_SOURCE_MANIFEST.json
+      - name: Acquire only registered raw trigger streams
+        run: |
+          set -euo pipefail
+          raw="$RUNNER_TEMP/hazard_oco_raw"
+          mkdir -p "$raw"
+          curl -fL --retry 5 --retry-delay 3 \
+            https://datasets.tardis.dev/v1/bybit/trades/2022/07/01/BTCUSDT.csv.gz \
+            -o "$raw/2022-07-01_BTCUSDT_trades.csv.gz"
+          curl -fL --retry 5 --retry-delay 3 \
+            https://datasets.tardis.dev/v1/bybit/trades/2023/07/01/BTCUSDT.csv.gz \
+            -o "$raw/2023-07-01_BTCUSDT_trades.csv.gz"
+          test "$(sha256sum "$raw/2022-07-01_BTCUSDT_trades.csv.gz" | cut -d' ' -f1)" = "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
+          # The development file is acquired from the already registered public source but the runner cannot parse or hash it unless the fit gate passes.
+      - name: Run frozen one-model fatal screen
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
+          python "$root/run_v2.py" run \
+            --artifact-root "$RUNNER_TEMP/bybit_l2" \
+            --raw-root "$RUNNER_TEMP/hazard_oco_raw" \
+            --source-manifest "$RUNNER_TEMP/bybit_l2/output/SOURCE_MANIFEST.json" \
+            --output research_runs/hazard_oco_v2/output \
+            2>&1 | tee research_runs/hazard_oco_v2/run.log
+      - name: Verify decision boundary and registered evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/hazard_oco_v2/output
+          if test -f "$out/RESULT.json"; then
+            (cd "$out" && sha256sum --check SHA256SUMS.txt)
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('research_runs/hazard_oco_v2/output/RESULT.json').read_text())
+          assert result['hard_validity_status']=='PASS'
+          assert result['2024_2025_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          assert result['rank_eligible'] is False
+          assert len(result['fit_cells'])==3
+          assert result['development_opened']==(result['fit_gate_pass_count']>0)
+          print('VERIFIED_RESULT='+json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+          fi
+          python scripts/validate_project.py
+      - name: Record exact source and contract inputs
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
+          mkdir -p research_runs/hazard_oco_v2/input
+          sha256sum \
+            "$root/WORK_CLAIM_V2.json" \
+            "$root/SOURCE_REUSE_V2.json" \
+            "$root/SCHEMA_PROBE_CONTRACT.json" \
+            "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" \
+            "$root/preregistration_v2.json" \
+            "$root/v2_bundle_manifest.json" \
+            "$root/reconstruct_v2.py" \
+            "$root/run_v2.py.gz.b64" \
+            "$root/test_run_v2.py.gz.b64" \
+            .github/workflows/hazard-oco-v2.yml \
+            > research_runs/hazard_oco_v2/input/INPUT_SHA256SUMS.txt
+          cp "$root/preregistration_v2.json" research_runs/hazard_oco_v2/input/
+          cp "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" research_runs/hazard_oco_v2/input/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minimal-ml-hazard-oco-${{ github.sha }}
+          path: research_runs/hazard_oco_v2
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
