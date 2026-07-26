@@ -1,0 +1,189 @@
+name: Minimal ML PO3 delivery-state fatal screen
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ml_po3_state_router_20260726/**"
+      - ".github/workflows/ml-po3-state-router-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-po3-state-router-r11-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+  OMP_NUM_THREADS: "2"
+  OPENBLAS_NUM_THREADS: "2"
+  MKL_NUM_THREADS: "2"
+  NUMEXPR_NUM_THREADS: "2"
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen scientific environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "requests==2.32.4" \
+            "scikit-learn==1.5.2"
+
+      - name: Verify frozen contract and causal self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_po3_state_router_20260726
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path("research/ml_po3_state_router_20260726")
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          for name, expected in manifest["files"].items():
+              data = (root / name).read_bytes()
+              assert len(data) == int(expected["bytes"]), (name, len(data), expected["bytes"])
+              assert hashlib.sha256(data).hexdigest() == expected["sha256"], name
+          print("SOURCE_MANIFEST_PASS")
+          PY
+          python "$root/reconstruct.py"
+          code="$root/reconstructed/run.py"
+          python -m py_compile "$code"
+          python "$code" self-test
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/source_manifest.json" >/dev/null
+          python scripts/validate_project.py
+          sha256sum "$code"
+
+      - name: Cache official Binance Vision archives
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ml-po3-cache
+          key: ml-po3-usdm-5m-2021-2023-v1
+
+      - name: Run one-model three-state five-feature screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_po3_state_router_20260726
+          code="$root/reconstructed/run.py"
+          out=research_runs/ml_po3_state_router_20260726/v1
+          rm -rf "$out"
+          mkdir -p "$out"
+          python "$code" run \
+            --cache "${RUNNER_TEMP}/ml-po3-cache" \
+            --output "$out" \
+            2>&1 | tee "$out/run.log"
+
+      - name: Verify result contract
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+
+          root = Path("research_runs/ml_po3_state_router_20260726/v1")
+          if not (root / "result_summary.json").exists():
+              raise SystemExit("result_summary.json missing")
+
+          result = json.loads((root / "result_summary.json").read_text())
+          model = json.loads((root / "model.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          candidates = pd.read_csv(root / "candidate_results.csv")
+
+          assert result["claim_id"] == "CLM-20260726-1712-ML-PO3-STATE-001"
+          assert result["candidate_count"] == 3
+          assert result["feature_count"] == 5
+          assert result["state_count"] == 3
+          assert result["2024_opened"] is False
+          assert result["2025_opened"] is False
+          assert result["2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["paper_or_live_started"] is False
+          assert set(model["semantic_to_state"]) == {
+              "accumulation", "manipulation", "distribution"
+          }
+          assert len(set(model["semantic_to_state"].values())) == 3
+          assert manifest["proxy_only"] is True
+          assert manifest["2024_opened"] is False
+          assert manifest["orders_submitted"] is False
+          assert all(int(row["year"]) <= 2023 for row in manifest["archives"])
+          assert all(len(str(row["sha256"])) == 64 for row in manifest["archives"])
+          assert set(candidates["stage"]) <= {"calibration", "development"}
+          assert len(candidates.loc[candidates["stage"] == "calibration"]) == 3
+
+          for prefix in ("", "removed_"):
+              a = pd.to_numeric(candidates[f"{prefix}12bp_total_return"], errors="coerce")
+              b = pd.to_numeric(candidates[f"{prefix}18bp_total_return"], errors="coerce")
+              c = pd.to_numeric(candidates[f"{prefix}24bp_total_return"], errors="coerce")
+              finite = np.isfinite(a) & np.isfinite(b) & np.isfinite(c)
+              assert (a[finite] + 1e-12 >= b[finite]).all()
+              assert (b[finite] + 1e-12 >= c[finite]).all()
+
+          if result["calibration_survivor_count"] == 0:
+              assert result["development_opened"] is False
+              assert result["development_summary"] is None
+              assert not (candidates["stage"] == "development").any()
+          else:
+              assert result["development_opened"] is True
+              assert result["selected_threshold"] in [0.45, 0.60, 0.75]
+              assert (candidates["stage"] == "development").sum() == 1
+
+          print("RESULT_CONTRACT_PASS")
+          print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+          PY
+
+      - name: Record immutable checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_po3_state_router_20260726
+          out=research_runs/ml_po3_state_router_20260726/v1
+          mkdir -p "$out"
+          sha256sum \
+            "$root/README.md" \
+            "$root/SOURCES.md" \
+            "$root/WORK_CLAIM.json" \
+            "$root/preregistration.json" \
+            "$root/source_manifest.json" \
+            "$root/reconstruct.py" \
+            "$root"/run.py.gz.b64.part* \
+            "$root/reconstructed/run.py" \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-po3-state-router-r11-${{ github.sha }}
+          path: research_runs/ml_po3_state_router_20260726/v1
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
