@@ -12,10 +12,40 @@ ROOT = Path(__file__).resolve().parent
 MANIFEST = json.loads((ROOT / "bundle_manifest.json").read_text(encoding="utf-8"))
 ENCODED_PARTS = tuple(sorted(ROOT.glob("source_bundle.tar.gz.b64.part*")))
 TARGET = ROOT / "reconstructed"
+ORIGINAL_RUN_SHA256 = "01eb44c9764b0dc2eb86f371b06cd303ebf4f063dec5fe8c497b61bba25ca2cf"
+CORRECTED_RUN_SHA256 = "659a5a64c8acbd87a89d8f576c49d9ccfecc82191829599f971859c55306ce7c"
+BOUND_REPLACEMENTS = (
+    ("for k in range(start, len(trades)):", "for k in range(start, len(t_us)):") ,
+    ("for k in range(fill_idx + 1, len(trades)):", "for k in range(fill_idx + 1, len(t_us)):") ,
+)
 
 
 def digest(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def apply_bound_runtime_correction() -> dict[str, object]:
+    path = TARGET / "run.py"
+    original = path.read_bytes()
+    if digest(original) != ORIGINAL_RUN_SHA256:
+        raise SystemExit("runtime correction original hash mismatch")
+    text = original.decode("utf-8")
+    applied: list[dict[str, str]] = []
+    for old, new in BOUND_REPLACEMENTS:
+        if text.count(old) != 1:
+            raise SystemExit(f"runtime correction occurrence mismatch: {old!r}")
+        text = text.replace(old, new, 1)
+        applied.append({"from": old, "to": new})
+    corrected = text.encode("utf-8")
+    if digest(corrected) != CORRECTED_RUN_SHA256:
+        raise SystemExit("runtime correction final hash mismatch")
+    path.write_bytes(corrected)
+    return {
+        "amendment": "IMPLEMENTATION_CORRECTION_001",
+        "original_sha256": ORIGINAL_RUN_SHA256,
+        "corrected_sha256": CORRECTED_RUN_SHA256,
+        "replacements": applied,
+    }
 
 
 def main() -> int:
@@ -48,7 +78,8 @@ def main() -> int:
             if len(payload) != expected["bytes"] or digest(payload) != expected["sha256"]:
                 raise SystemExit(f"file integrity failure: {member.name}")
             (TARGET / member.name).write_bytes(payload)
-    print(json.dumps({"status": "PASS", "target": str(TARGET), "files": names}, sort_keys=True))
+    correction = apply_bound_runtime_correction()
+    print(json.dumps({"status": "PASS", "target": str(TARGET), "files": names, "runtime_correction": correction}, sort_keys=True))
     return 0
 
 
