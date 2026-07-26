@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-HL-SINGLE-LINUX-005",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "recorded_at": "2026-07-26T21:56:29+09:00",
+  "pre_outcome_status": {
+    "source_gate_result_opened": false,
+    "market_price_opened": false,
+    "future_return_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2026_opened": false,
+    "orders_submitted": false
+  },
+  "observed_execution_defect": "Three operating-system copies and SHA-scoped non-cancelling concurrency queued duplicate executions of the identical outcome-sealed source gate. This consumed Actions capacity without increasing scientific information.",
+  "correction": [
+    "Retain Ubuntu 24.04 as the single authoritative source-gate runner.",
+    "Remove the Windows and macOS duplicate workflow definitions.",
+    "Use pull-request-or-branch-scoped concurrency with cancel-in-progress enabled so only the latest immutable source contract executes.",
+    "Preserve the same parser, 36 frozen source identities, commit-pinned Parquet transport, source gate thresholds and outcome seal."
+  ],
+  "unchanged": [
+    "Hyperliquid source repository and revision resolution",
+    "36 frozen _src identities and six UTC hours per date",
+    "DuckDB predicate-pushdown query",
+    "explicit LedgerUpdate liquidation schema",
+    "duplicate and signed-position validation",
+    "source-gate pass thresholds",
+    "conditional historical ML contract",
+    "2026H1 prohibition before gate passage",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used_to_choose_correction": false,
+  "orders_submitted": false
+}
