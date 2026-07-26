@@ -1,0 +1,182 @@
+name: ML Coinbase authoritative BTCUSD screen
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-coinbase-spot-leader-001
+    paths:
+      - ".github/workflows/ml-coinbase-authoritative-btcusd-r11.yml"
+      - "research/ml_coinbase_spot_leader_20260726/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-coinbase-authoritative-btcusd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-ml-coinbase-spot-leader-001
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.6.1" \
+            "pytest==8.3.4"
+
+      - name: Verify frozen source and causal tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_coinbase_spot_leader_20260726
+          python -m json.tool "$root/CORRECTION_001_COMPLETED_BAR_AGGREGATION_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_003_TARDIS_DATASET_ID_BEFORE_DATA.json" >/dev/null
+          python "$root/reconstruct_v2.py"
+          python -m py_compile "$root/reconstruct_v2.py" "$root/run.py" "$root/test_run.py"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py"
+          PYTHONPATH="$root" python "$root/run.py" self-test
+          python scripts/validate_project.py
+
+      - name: Download frozen 2022 fit and confirmation sources using Tardis dataset ID BTCUSD
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$RUNNER_TEMP/coinbase_spot_leader_fit"
+          mkdir -p "$data"
+          for date in 2022-01-01 2022-03-01 2022-05-01 2022-07-01 2022-09-01 2022-11-01; do
+            y=${date:0:4}; m=${date:5:2}; d=${date:8:2}
+            mkdir -p "$data/$date"
+            curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
+              "https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTCUSD.csv.gz" \
+              -o "$data/$date/coinbase_BTCUSD_trades.csv.gz"
+            curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
+              "https://datasets.tardis.dev/v1/bybit/quotes/$y/$m/$d/BTCUSDT.csv.gz" \
+              -o "$data/$date/bybit_BTCUSDT_quotes.csv.gz"
+            gzip -t "$data/$date/coinbase_BTCUSD_trades.csv.gz"
+            gzip -t "$data/$date/bybit_BTCUSDT_quotes.csv.gz"
+          done
+
+      - name: Run frozen fit and untouched confirmation
+        id: fit
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_coinbase_spot_leader_20260726
+          out=research_runs/ml_coinbase_spot_leader_20260726/authoritative_btcusd
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/run.py" run \
+            --data-root "$RUNNER_TEMP/coinbase_spot_leader_fit" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN_FIT.log"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          result=json.loads(Path('research_runs/ml_coinbase_spot_leader_20260726/authoritative_btcusd/RESULT.json').read_text())
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as f:
+              f.write('open_development=' + ('true' if result['fit_gate_passed'] else 'false') + '\n')
+          print(json.dumps({'status':result['status'],'fit_gate_passed':result['fit_gate_passed']},sort_keys=True))
+          PY
+
+      - name: Download conditional 2023 development only after complete fit gate
+        if: steps.fit.outputs.open_development == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$RUNNER_TEMP/coinbase_spot_leader_development"
+          mkdir -p "$data"
+          for date in 2023-01-01 2023-03-01 2023-05-01; do
+            y=${date:0:4}; m=${date:5:2}; d=${date:8:2}
+            mkdir -p "$data/$date"
+            curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
+              "https://datasets.tardis.dev/v1/coinbase/trades/$y/$m/$d/BTCUSD.csv.gz" \
+              -o "$data/$date/coinbase_BTCUSD_trades.csv.gz"
+            curl -fL --retry 6 --retry-delay 3 --retry-all-errors \
+              "https://datasets.tardis.dev/v1/bybit/quotes/$y/$m/$d/BTCUSDT.csv.gz" \
+              -o "$data/$date/bybit_BTCUSDT_quotes.csv.gz"
+            gzip -t "$data/$date/coinbase_BTCUSD_trades.csv.gz"
+            gzip -t "$data/$date/bybit_BTCUSDT_quotes.csv.gz"
+          done
+
+      - name: Run unchanged conditional development
+        if: steps.fit.outputs.open_development == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_coinbase_spot_leader_20260726
+          out=research_runs/ml_coinbase_spot_leader_20260726/authoritative_btcusd
+          PYTHONPATH="$root" python "$root/run.py" run \
+            --data-root "$RUNNER_TEMP/coinbase_spot_leader_fit" \
+            --development-root "$RUNNER_TEMP/coinbase_spot_leader_development" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN_DEVELOPMENT.log"
+
+      - name: Verify result authority and hash evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_coinbase_spot_leader_20260726
+          out=research_runs/ml_coinbase_spot_leader_20260726/authoritative_btcusd
+          test -f "$out/RESULT.json"
+          (cd "$out" && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('research_runs/ml_coinbase_spot_leader_20260726/authoritative_btcusd/RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-1935-ML-COINBASE-SPOT-001'
+          assert result['prohibited_years_opened']==[]
+          assert result['orders_submitted'] is False
+          assert result['paper_live_started'] is False
+          assert result['ranking_role']=='NONE_PRE2024_FATAL_SCREEN'
+          if not result['fit_gate_passed']:
+              assert result['development_opened'] is False
+          print(json.dumps(result,sort_keys=True))
+          PY
+          sha256sum \
+            "$root/WORK_CLAIM.json" \
+            "$root/CORRECTION_001_COMPLETED_BAR_AGGREGATION_BEFORE_DATA.json" \
+            "$root/CORRECTION_002_COINBASE_DATASET_SYMBOL_BEFORE_DATA.json" \
+            "$root/CORRECTION_003_TARDIS_DATASET_ID_BEFORE_DATA.json" \
+            "$root/preregistration.json" \
+            "$root/bundle_manifest_v2.json" \
+            "$root/reconstruct_v2.py" \
+            "$root/run.py" \
+            "$root/test_run.py" \
+            .github/workflows/ml-coinbase-authoritative-btcusd-r11.yml \
+            > "$out/INPUT_SHA256SUMS.txt"
+          python scripts/validate_project.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-coinbase-authoritative-btcusd-${{ github.sha }}
+          path: research_runs/ml_coinbase_spot_leader_20260726/authoritative_btcusd
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
