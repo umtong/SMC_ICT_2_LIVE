@@ -1,0 +1,42 @@
+{
+  "authority": "The corrected replay may preserve or worsen the negative conclusion. Because the prior output was observed, it cannot promote a strategy without a separately frozen untouched period. Official 2024-2026 remain unopened.",
+  "changes": [
+    "store fixed base quantity at entry and apply linear dollar PnL quantity times signed price change while KEEP is selected",
+    "charge entry exit switch and funding on actual marked notional; exposure relative to NAV drifts naturally",
+    "fill gap-through long stops at min(stop, interval_open) and short stops at max(stop, interval_open)",
+    "require decision entry and exit timestamps to remain inside each chronological partition",
+    "retain the full UTC hourly grid and reset every crossing feature and label after any missing hour"
+  ],
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "classification": "POST_OUTCOME_HARD_VALIDITY_REPAIR_NO_PROMOTION_AUTHORITY",
+  "correction_id": "VALIDITY-CORRECTION-20260726-ML-DIRECT-UTILITY-FIXED-QTY-GAP-SPLIT-009",
+  "local_verification": {
+    "pytest": "9 passed",
+    "raw_source_sha256": "4e47cca2e10d7c4a69c6366511a9098b5cd5368c7e77c5c8bfd6b09f5cfafe03",
+    "self_test": "SELF_TEST_PASS",
+    "test_source_sha256": "527fab25b3f96ce0d2df575d8769e0b0459e559336f3a4b60bf6e70042becbfc"
+  },
+  "recorded_at": "2026-07-26T21:40:00+09:00",
+  "result_id_under_repair": "RES-20260726-ML-DIRECT-UTILITY-001",
+  "schema_version": 1,
+  "tests_added": [
+    "two-step fixed-quantity long path",
+    "two-step fixed-quantity short path",
+    "trailed-stop gap-through adverse-open fill",
+    "complete-label split-boundary exclusion"
+  ],
+  "trigger": [
+    "persistent position PnL was compounded as an uncharged hourly constant-leverage rebalance instead of fixed Bybit USDT-linear quantity",
+    "a held position whose executable interval open crossed the trailed stop was filled at the favorable stop rather than the adverse open",
+    "train calibration confirmation and development membership used decision_time without requiring the complete two-hour label interval to end inside the partition"
+  ],
+  "unchanged": [
+    "one HistGradientBoostingRegressor and all hyperparameters",
+    "feature set target horizon and nonnegative zero-intercept calibration rule",
+    "KEEP SWITCH FLAT policy and one global slot",
+    "12 18 and 24 basis point cost paths and adverse funding reserve",
+    "rolling completed 24-hour structural stop and no elapsed-time liquidation",
+    "confirmation development and risk gates including the current 24bp rank-one hurdle",
+    "2024-2026 seals and order prohibition"
+  ]
+}
