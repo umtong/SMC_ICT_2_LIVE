@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: fixed-strategy-complete-source-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   export:
     runs-on: ubuntu-24.04
