@@ -1,0 +1,88 @@
+name: Validate 2023-only UTC-state SOL official 2024H1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-hourweek-pre2024-sol-r16.yml'
+      - 'research/ml_hourweek_pre2024_sol_20260726/**'
+      - 'research/results/RES-20260726-ML-HOURWEEK-PRE2024-SOL-001.json'
+  push:
+    branches:
+      - agent/r16-ml-hourweek-pre2024-sol-001
+    paths:
+      - '.github/workflows/ml-hourweek-pre2024-sol-r16.yml'
+      - 'research/ml_hourweek_pre2024_sol_20260726/**'
+      - 'research/results/RES-20260726-ML-HOURWEEK-PRE2024-SOL-001.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-hourweek-pre2024-sol-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 scikit-learn==1.6.1 pytest==8.3.5
+      - name: Fetch immutable source artifact
+        run: |
+          mkdir -p /tmp/hourweek-source
+          gh api -H 'Accept: application/vnd.github+json' \
+            /repos/${GITHUB_REPOSITORY}/actions/artifacts/8616632878/zip \
+            > /tmp/hourweek-source/source.zip
+          echo 'fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c  /tmp/hourweek-source/source.zip' | sha256sum -c -
+      - name: Compile and execute frozen evaluation
+        run: |
+          set -euo pipefail
+          root=research/ml_hourweek_pre2024_sol_20260726
+          out=research_runs/ml_hourweek_pre2024_sol_20260726/r16
+          python -m py_compile "$root/evaluate.py"
+          python "$root/evaluate.py" \
+            --artifact /tmp/hourweek-source/source.zip \
+            --work /tmp/hourweek-pre2024-work \
+            --output "$out"
+          diff -u research/results/RES-20260726-ML-HOURWEEK-PRE2024-SOL-001.json "$out/RESULT.json"
+          diff -u "$root/Q3_Q4_SELECTION.json" "$out/Q3_Q4_SELECTION.json"
+          echo 'db9f3dbe13d2e621c05b7e8ae63c81b6b711a010a48b290f8d82883037996ccf  research_runs/ml_hourweek_pre2024_sol_20260726/r16/RESULT.json' | sha256sum -c -
+          echo '872964b4b29765e43ad990184339c321b6318b56133dc29f51af38578fc7bfac  research_runs/ml_hourweek_pre2024_sol_20260726/r16/Q3_Q4_SELECTION.json' | sha256sum -c -
+      - name: Enforce authority and stage boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research_runs/ml_hourweek_pre2024_sol_20260726/r16/RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='OFFICIAL_2024H1_ZERO_ACTION'
+          assert r['official_2024h1']['eligible_entry_count']==0
+          assert r['opened_periods']==['2024H1']
+          assert r['unopened_periods']==['2024H2','2025H1','2025H2','2026H1']
+          assert r['orders_submitted'] is False
+          assert r['ranking_role']=='NONE'
+          print(json.dumps({'status':r['status'],'eligible':0,'ranking_role':'NONE'},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-hourweek-pre2024-sol-r16-${{ github.sha }}
+          path: research_runs/ml_hourweek_pre2024_sol_20260726/r16
+          if-no-files-found: warn
+          retention-days: 30
