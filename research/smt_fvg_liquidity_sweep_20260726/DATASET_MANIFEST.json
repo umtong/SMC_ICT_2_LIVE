@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "dataset_id": "DS-BYBIT-BTCETH-SMT-FVG-SWEEP-2023-R1",
+  "provider": "Bybit official public trading archive",
+  "market": "USDT linear perpetual futures",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "timeframe": "event-time public trades transformed into completed one-second trade bars and causally confirmed five-second liquidity structure",
+  "start": "2023-01-15T00:00:00Z",
+  "end": "2023-11-19T23:59:59Z",
+  "partitions": [
+    "2023-01-15",
+    "2023-03-19",
+    "2023-05-21",
+    "2023-07-16",
+    "2023-09-17",
+    "2023-11-19"
+  ],
+  "fit_partitions": [
+    "2023-01-15",
+    "2023-03-19",
+    "2023-05-21"
+  ],
+  "development_partitions": [
+    "2023-07-16",
+    "2023-09-17",
+    "2023-11-19"
+  ],
+  "archive_count": 12,
+  "raw_trade_rows": 5646495,
+  "compressed_bytes": 209945454,
+  "status": "VERIFIED_RESEARCH_ONLY",
+  "source_base_url": "https://public.bybit.com/trading/",
+  "source_manifest_path": "research_results/smt_fvg_liquidity_sweep_20260726/source_manifest.json",
+  "source_manifest_sha256": "dfa0db2afd5d251bca151897de57eca5b78ce2246c4a197fa91fa6e7532a376c",
+  "derived_event_rows": 9040,
+  "fit_event_rows": 6487,
+  "development_event_rows": 2553,
+  "license_or_terms": "Bybit public-data and exchange terms apply.",
+  "causal_availability": "Each trade is usable only at its exchange timestamp. A one-second trade bar is available only after the second completes. A five-second pivot becomes liquidity only after its right-side span completes. The first inside-to-outside crossing after confirmation defines the sweep. Paired-market non-raid state and all confirmation/FVG features use only completed observations. Entry occurs at the first observed trade no earlier than decision time plus 100ms, or after a later completed FVG-midpoint mitigation followed by the same latency. No future trade, unfinished bar, pre-confirmation pivot, missing-price imputation or favorable source-boundary mark is used.",
+  "notes": "Twelve official archive identities, URLs, byte sizes, row counts and SHA-256 values are retained in the source manifest. Raw archives are reproducible from official URLs. 2024-2026 were not downloaded or opened. The exact SMT-FVG dependency produced a hard-valid economic failure and should be reused only for a materially different information source or payoff.",
+  "implementation_sha256": "60b205f8d02b2b6ec0190e0dbf49b6db4b3a7d8d29a342139571cf5b847f9fbd",
+  "evaluation_contract_sha256": "d7576560ecc4e7881a674b5bced9f4458ac8bbeab9c22d1a90f0fda5e58d23ea",
+  "dependency_fingerprint": "5551ed5bcdd463c79e637bae700f6e9d4f507734a80d0e655a24468cc490180b",
+  "snapshot_at": "2026-07-26T16:24:00+09:00"
+}
