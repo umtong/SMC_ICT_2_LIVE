@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-QUEUE-FVG-MAKER-001",
+  "claim_id": "CLM-20260726-ML-QUEUE-FVG-MAKER-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_INITIAL_EVENT_SCARCITY",
+  "economic_status": "PRE_MODEL_EVENT_SCARCITY_BELOW_GATE",
+  "ranking_role": "NONE",
+  "rank_eligible": false,
+  "summary": "The exact raw Bybit BTCUSDT book_snapshot_5 and trades replay produced five fit and four untouched-development Sweep-MSS-FVG consequent-encroachment events. All nine orders were acknowledgement-valid but none achieved a conservative full fill after requiring actual opposing aggressive trades to consume 1.5 times displayed queue ahead plus the complete 10000-USDT research order. The frozen single multinomial model therefore could not be trained. The information unit is retired without loosening the event, queue, level, model, cost, risk or leverage contract.",
+  "metrics": {
+    "fit_event_count": 5,
+    "development_event_count": 4,
+    "total_event_count": 9,
+    "acknowledgement_valid_event_count": 9,
+    "full_fill_count": 0,
+    "fit_full_fill_count": 0,
+    "development_full_fill_count": 0,
+    "minimum_fit_events_required": 100,
+    "minimum_target_class_required": 10,
+    "minimum_stop_class_required": 10,
+    "model_fitted": false,
+    "development_gate_survivors": 0
+  },
+  "strategy": {
+    "mechanism": "completed external-liquidity sweep and rejection, opposite one-second MSS displacement, completed three-bar FVG, one post-only order at consequent encroachment, stop beyond raid and target at opposing frozen liquidity",
+    "model": "one standardized multinomial logistic model for NO_FILL TARGET STOP; not fitted because of event and class scarcity",
+    "symbol": "BTCUSDT",
+    "fit_date": "2022-07-01",
+    "untouched_development_date": "2023-07-01",
+    "entry_level_grid": false,
+    "model_grid": false,
+    "feature_grid": false,
+    "threshold_grid": false
+  },
+  "execution": {
+    "availability_clock": "local_timestamp",
+    "acknowledgement_latency_ms": 100,
+    "exit_latency_ms": 100,
+    "post_only_marketable_rejection": true,
+    "touch_is_fill": false,
+    "queue_ahead_multiplier": 1.5,
+    "order_notional_usdt": 10000.0,
+    "partial_fill_credit": false,
+    "elapsed_time_exit": false,
+    "one_global_slot": true,
+    "costs_bps": [12.0, 18.0, 24.0]
+  },
+  "sources": [
+    {
+      "date": "2022-07-01",
+      "kind": "book_snapshot_5",
+      "bytes": 50953798,
+      "sha256": "7787c36c35a591c8fcf1bf629d8b82624ac61a6b970f09cdbcff01c9afb624b6"
+    },
+    {
+      "date": "2022-07-01",
+      "kind": "trades",
+      "bytes": 36158133,
+      "sha256": "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
+    },
+    {
+      "date": "2023-07-01",
+      "kind": "book_snapshot_5",
+      "bytes": 15194559,
+      "sha256": "4ed34a4de337e276e8e58df96780bbb8868d1ead3b9c49839d295fe532aa2753"
+    },
+    {
+      "date": "2023-07-01",
+      "kind": "trades",
+      "bytes": 7480525,
+      "sha256": "0707925b9320626560a5aa2ce89c78666b27266c92626fc6a6ff5236a0d5b301"
+    }
+  ],
+  "known_weaknesses": [
+    "Only two public full-depth sample days were available under the frozen initial contract.",
+    "The complete SMC event sequence was too sparse for the preregistered model.",
+    "No conservative full fills occurred; favorable touch fills would be invalid.",
+    "The result is fatal-screen evidence only and cannot enter the strategy ranking."
+  ],
+  "decision": "Retire this exact Sweep-MSS-FVG consequent-encroachment maker dependency. Reopening requires a materially denser event definition or a different information source and may not merely loosen queue, entry, event, cost, model, risk or leverage assumptions.",
+  "2024_opened": false,
+  "2025_opened": false,
+  "2026_opened": false,
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "created_at": "2026-07-26T19:00:00+09:00"
+}
