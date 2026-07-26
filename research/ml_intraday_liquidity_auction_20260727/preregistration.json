@@ -11,6 +11,7 @@
     "initial_nav_usdt": 10000,
     "liquidation": "forced liquidation invalidates the selected account path",
     "max_notional_leverage_screen": 20.0,
+    "performance_objective": "maximize sustainable 24bp after-cost geometric daily growth on the continuous NAV path; 1% per UTC calendar day is a minimum completion threshold, not a cap, target-matching objective or reason to reduce risk, leverage, position size or opportunity",
     "position_sizing": "NAV risk budget divided by structural stop loss per unit including costs"
   },
   "actions_and_orders": {
@@ -32,10 +33,11 @@
     "structural_exit": "completed 5m acceptance/failure reversal"
   },
   "advance_or_kill": {
-    "advance": "positive non-liquidating 24bp calibration and untouched 2023H2 account freezes and opens official 2024H1 immediately",
+    "advance": "positive non-liquidating 24bp calibration and untouched 2023H2 account freezes and opens official 2024H1 immediately; this is only an advancement gate and never a success declaration",
     "kill": "negative, sub-cost, sparse or winner-concentrated pre-2024 account closes the exact route without adjacent rescue",
-    "ranking": "insert any superior hard-valid account path immediately",
-    "risk_search": "broad risk and leverage optimization only after positive base alpha"
+    "ranking": "insert any superior hard-valid account path immediately; among valid paths prefer the highest sustainable after-cost geometric growth and account multiple, including values far above 1% per day",
+    "risk_search": "broad risk and leverage optimization only after positive base alpha, maximizing the full continuous account path rather than scaling performance down toward 1%",
+    "success_threshold": "the project is complete only at at least 1% geometric growth per UTC calendar day over the full official 2024-01-01 through 2026-06-30 continuous NAV path; performance above 1% is retained at full strength"
   },
   "claim_id": "CLM-20260727-ML-INTRADAY-LIQUIDITY-AUCTION-001",
   "credentials_used": false,
@@ -107,7 +109,7 @@
     ],
     "product": "USDT linear perpetual"
   },
-  "objective": "Discover and causally validate a machine-learning SMC/ICT day-trading system on Bybit USDT linear perpetuals that captures minute-to-hour liquidity-auction moves after costs, without tick-by-tick, subsecond or queue-position alpha.",
+  "objective": "Discover and causally validate a machine-learning SMC/ICT day-trading system on Bybit USDT linear perpetuals that maximizes sustainable after-cost continuous-NAV geometric daily growth from minute-to-hour liquidity-auction moves; 1% per UTC day is a minimum completion threshold, never an optimization cap or de-risking target, and tick-by-tick, subsecond and queue-position alpha are prohibited.",
   "orders_submitted": false,
   "result_id": "RES-20260727-ML-INTRADAY-LIQUIDITY-AUCTION-001",
   "schema_version": 1,
