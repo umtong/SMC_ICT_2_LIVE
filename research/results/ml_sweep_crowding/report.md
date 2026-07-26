@@ -3,7 +3,7 @@
 - Result ID: `RES-20260727-ML-SWEEP-CROWDING-001`
 - Claim: `CLM-20260727-0245-ML-SWEEP-CROWDING-001`
 - Status: **SOURCE_GATE_FAIL**
-- Contract SHA-256: `dc0e349f9786692284dcea164e7af51855e52d0df9cec91389303a7044178efb`
+- Contract SHA-256: `2677f51b0fce67e5550920796edc248f5119fa2dfddc0067cd38fef5e8b4de8a`
 - Live orders: none
 
 ## Mechanism
@@ -12,7 +12,7 @@ A completed external-liquidity sweep creates two mutually exclusive candidates: 
 
 ## Pre-2024 decision
 
-No pre-2024 account result opened: `JSON request failed after retries: https://api.bybit.com/v5/market/kline: 403 Client Error: Forbidden for url: https://api.bytick.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=1&start=1609459200000&end=1612137599999&limit=1000`
+No pre-2024 account result opened: `BTCUSDT official static Bybit 1m coverage 90.631254% below 99.500000% from first observed 2021-01-01T00:00:00+00:00`
 
 ## Causality and execution
 
