@@ -1,0 +1,38 @@
+name: Validate ML liquidity-draw first-passage audit
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-firstpass-audit-001
+    paths:
+      - "research/ml_firstpass_audit_20260726/**"
+      - ".github/workflows/ml-firstpass-audit-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ml_firstpass_audit_20260726/**"
+      - ".github/workflows/ml-firstpass-audit-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixed test dependency
+        run: python -m pip install --disable-pip-version-check pytest==8.3.4
+      - name: Validate project and audit contract
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+          python -m json.tool research/ml_firstpass_audit_20260726/WORK_CLAIM.json >/dev/null
+          python -m json.tool research/ml_firstpass_audit_20260726/CONTRACT.json >/dev/null
+          python research/ml_firstpass_audit_20260726/audit.py self-test
+          python -m pytest -q research/ml_firstpass_audit_20260726/test_audit.py
