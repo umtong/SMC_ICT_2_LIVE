@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "worker_id": "gpt-5.6-pro-20260726-1734",
+  "objective_fingerprint": "d9a8b4f62e9d0a5b6cd7a64d3fbf1ee31b4a5096e86ae4d1f4f0ef33cde91ac7",
+  "scope_fingerprint": "3db792914550d2b5f52cc8ff6fc73b47c375bdbb253b8e569a3b111b118f3b9c",
+  "base_revision": 11,
+  "base_main_sha": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "status": "RUNNING",
+  "started_at": "2026-07-26T17:34:00+09:00",
+  "lease_until": "2026-07-27T01:34:00+09:00",
+  "branch": "agent/r11-hazard-oco-v2",
+  "supersedes": "CLM-20260726-0248-HAZARD-OCO-001 after its lease expired without a strategy outcome",
+  "scope": "One fixed HistGradientBoosting movement-hazard model on completed 100ms Bybit BTCUSDT state. The model predicts only whether a cost-sized displacement is imminent. A high score arms one symmetric pair of independent buy-stop and sell-stop market entries; realized price delivery chooses direction. The study models acknowledgment, trigger-to-fill, non-atomic cancellation, same-bin double trigger, adverse executable exits, one global slot and identical 12/18/24bp paths.",
+  "minimalism": {
+    "model_families": 1,
+    "score_thresholds": 1,
+    "entry_mechanisms": 1,
+    "payoff_cells_planned": 3,
+    "direction_model": false,
+    "elapsed_time_liquidation": false,
+    "risk_or_leverage_search_before_edge": false
+  },
+  "reused_evidence": [
+    "RES-20260725-001-ATTENTION-LIQUIDITY: movement hazard was materially more identifiable than conditional direction",
+    "RES-20260726-ML-LIQUIDITY-DRAW-001: completed-candle directional ML added no information beyond structural distance",
+    "GitHub Actions artifact 8626169763: SHA-identified completed 100ms Bybit BTCUSDT compact states built from local-timestamp book_snapshot_5 and trades"
+  ],
+  "excluded_active_scopes": [
+    "passive queue fill and maker toxicity",
+    "cross-exchange price propagation",
+    "directional SMC pattern classification",
+    "fixed strategy portfolio integration",
+    "positioning, collateral, funding cash transfer and option-surface states"
+  ],
+  "orders_permitted": false
+}
