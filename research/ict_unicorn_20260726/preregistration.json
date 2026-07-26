@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1539-UNICORN-001",
+  "screen_id": "ICT-UNICORN-BREAKER-FVG-R11-V1",
+  "status": "FROZEN_BEFORE_ANY_PROJECT_OUTCOME",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-unicorn-model-001",
+  "research_stage": "official_bybit_one_minute_proxy_fit_then_conditional_development",
+  "rank_eligibility": false,
+  "objective": "Test whether a causally confirmed external-liquidity raid followed by short-term displacement, true order-block failure, breaker/FVG overlap and first managed retracement has enough repeatable after-cost expectancy to justify exact BBO and funding reconstruction before opening 2024.",
+  "trader_explanation": {
+    "long": "Raid confirmed sell-side liquidity; reclaim it; close through a confirmed internal high with displacement; require the last bearish order block to fail and become a bullish breaker; require the displacement FVG to overlap that breaker; buy only the first accepted retracement into the overlap; stop beyond the raid; target already-confirmed buy-side liquidity.",
+    "short": "Exact mirror image.",
+    "why_distinct": "The setup requires actual order-block failure and conversion into a breaker, exact breaker/FVG intersection, a managed first-retest lifecycle and an opposing-liquidity target. A sweep, engulfing candle or FVG alone is insufficient."
+  },
+  "data_contract": {
+    "venue": "Bybit",
+    "market": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "source": "https://public.bybit.com/kline_for_metatrader4/",
+    "bar_interval": "1 minute",
+    "fit_period": "2022-01-01 through 2022-12-31",
+    "conditional_development_period": "2023-01-01 through 2023-12-31",
+    "sealed_periods": ["2024", "2025", "2026"],
+    "integrity": "Downloaded gzip/zip bytes, decompressed source hash, row count, first timestamp, last timestamp and gap count are recorded.",
+    "missing_data": "A complete UTC one-minute grid is required. Missing bars remain missing; there is no forward fill, interpolation or timeline compression."
+  },
+  "causal_market_structure": {
+    "external_liquidity": "15-minute pivots with fixed left bars and two or three right-confirmation bars; a pivot is unavailable until the right side has closed.",
+    "internal_structure": "One-minute pivots with two right-confirmation bars.",
+    "raid": "The wick crosses confirmed external liquidity and the completed candle closes back through the level.",
+    "mss": "Within five or ten completed one-minute bars after the raid, a displacement close crosses a previously confirmed opposite internal pivot.",
+    "displacement": "Body size is at least 0.8 or 1.2 times prior-only median ATR.",
+    "breaker": "The last opposite candle in the frozen pre-displacement search window is an order-block candidate only if the displacement close crosses its far edge, proving failure and breaker conversion.",
+    "fvg": "Classic same-direction three-candle fair-value gap ending at the displacement candle.",
+    "unicorn_zone": "Exact price intersection of breaker and FVG; overlap must be at least 25 percent of the smaller component zone.",
+    "first_retest": "Only the first subsequent completed candle touching the overlap may qualify. A rejected first touch permanently invalidates the setup.",
+    "entry": "Next contiguous one-minute open after the accepted first-retest close.",
+    "stop": "Beyond the original raid extreme plus 0.05 prior ATR.",
+    "target": "Nearest opposing external-liquidity pivot that was already confirmed before entry.",
+    "structural_exit": "Next contiguous open after a completed close through the adverse breaker edge.",
+    "elapsed_time_exit": false,
+    "same_bar_ambiguity": "Protective stop first.",
+    "source_gap_after_entry": "Terminal account loss; the trade is never deleted or marked at a favorable invented price."
+  },
+  "candidate_grid": {
+    "external_pivot_right_bars": [2, 3],
+    "mss_window_bars": [5, 10],
+    "minimum_displacement_body_atr": [0.8, 1.2],
+    "retest_acceptance": ["close_inside_overlap", "consequent_encroachment_reclaim"],
+    "minimum_reward_to_risk": [2.0, 3.0],
+    "external_liquidity_selection": ["nearest", "oldest_equal_extreme"],
+    "direction": ["long", "short"],
+    "candidate_count": 128,
+    "candidate_id": "first 20 hexadecimal characters of SHA-256 over canonical sorted candidate JSON"
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "planned_loss_fraction": 0.005,
+    "maximum_notional_multiple": 3.0,
+    "participation_cap": "0.1 percent of prior completed 60-minute quote turnover proxy",
+    "minimum_notional": 5.0,
+    "global_pending_or_open_slots": 1,
+    "roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "funding_proxy": "Adverse one-basis-point reserve for each UTC eight-hour funding boundary crossed; exact historical Bybit funding is mandatory before rank eligibility.",
+    "identical_signal_and_trade_path_cost_replay": true,
+    "calendar_day_denominator": "Every UTC calendar day in the evaluated year, including zero-trade days.",
+    "terminal_loss": "NAV zero, total return minus 100 percent and maximum drawdown 100 percent."
+  },
+  "fit_gate": {
+    "minimum_trades": 80,
+    "positive_total_return_at_bps": [12, 18, 24],
+    "positive_first_half_and_second_half_at_18bps": true,
+    "positive_median_trade_at_12bps": true,
+    "minimum_profit_factor_at_12bps": 1.10,
+    "maximum_drawdown_at_12bps": 0.20,
+    "maximum_top_five_positive_pnl_share": 0.35,
+    "maximum_single_symbol_positive_pnl_share": 0.70,
+    "positive_exact_top_10_percent_removed_return_at_18bps": true,
+    "no_terminal_or_unresolved_position": true
+  },
+  "freeze_rule": "Freeze up to eight diverse 2022 survivors before downloading any 2023 market file, prioritizing 18-bps geometric daily growth, exact top-10-percent-removed return, lower drawdown, lower concentration and candidate_id.",
+  "development_gate": {
+    "minimum_trades": 100,
+    "all_fit_gate_conditions": true,
+    "minimum_profit_factor_at_12bps": 1.15,
+    "minimum_positive_day_fraction": 0.08,
+    "positive_exact_top_10_percent_removed_return_at_18bps": true
+  },
+  "conditional_next_stage": {
+    "zero_development_survivors": "Register reusable hard-valid negative evidence and leave 2024 through 2026 sealed.",
+    "one_or_more_development_survivors": "Freeze representatives, independently reconstruct exact historical Bybit BBO/depth and funding, and only then create a separate sequential 2024 claim."
+  },
+  "hard_invalidations": [
+    "pivot used before right-hand confirmation",
+    "same-bar or pre-decision entry",
+    "order block called a breaker without a completed close through its far edge",
+    "breaker and FVG coexist but do not intersect",
+    "later retest accepted after the first touch failed",
+    "target chosen from future liquidity",
+    "favorable stop-target ordering",
+    "bar gap filled or timeline compressed",
+    "elapsed-time liquidation",
+    "2023 opened before frozen 2022 survivors",
+    "2024 or later data opened by this workflow"
+  ],
+  "orders_permitted": false
+}
