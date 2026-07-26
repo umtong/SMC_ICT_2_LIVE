@@ -3,8 +3,6 @@ from __future__ import annotations
 import csv
 import gzip
 import hashlib
-import inspect
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,11 +33,7 @@ def inspect_source_compat(
     url: str,
     payload: bytes,
 ) -> SourceRecordCompat:
-    """Reproduce the removed metadata-only source inspection helper.
-
-    The scientific aggregation remains in the frozen shared base_probe module.
-    This streaming pass records source identity and timestamp monotonicity only.
-    """
+    """Record source identity without changing the frozen aggregation."""
     row_count = 0
     first_timestamp = float("nan")
     last_timestamp = float("nan")
@@ -87,95 +81,54 @@ def inspect_source_compat(
 
 
 _ORIGINAL_AGGREGATE = engine.base.aggregate
-_REQUIRED_AGGREGATE_KEYS = frozenset({"mark", "trade_count"})
+_DAY_ARRAY_FIELDS = (
+    "symbol",
+    "date",
+    "mark",
+    "total_notional",
+    "signed_notional",
+    "trade_count",
+)
+_NUMERIC_ARRAY_FIELDS = (
+    "mark",
+    "total_notional",
+    "signed_notional",
+    "trade_count",
+)
+_EXPECTED_BINS = 24 * 60 * 60 * 10
 
 
-def _source_symbol(target: Path, date: str) -> str:
-    name = target.name
-    if date in name:
-        candidate = name.split(date, 1)[0]
-        if candidate:
-            return candidate
-    if target.parent.name:
-        return target.parent.name
-    raise ValueError(f"cannot derive source symbol from {target}")
-
-
-def _normalize_aggregate_result(result):
-    if isinstance(result, Mapping) and _REQUIRED_AGGREGATE_KEYS.issubset(result):
-        return result
-    if isinstance(result, (tuple, list)):
-        matches = [
-            item
-            for item in result
-            if isinstance(item, Mapping)
-            and _REQUIRED_AGGREGATE_KEYS.issubset(item)
-        ]
-        if len(matches) == 1:
-            return matches[0]
-        raise TypeError(
-            "shared aggregate returned a sequence without exactly one feature mapping; "
-            f"required keys={sorted(_REQUIRED_AGGREGATE_KEYS)}, matches={len(matches)}"
-        )
-    raise TypeError(
-        "shared aggregate returned an unsupported object: "
-        f"{type(result).__name__}"
-    )
+def _day_arrays_getitem(self, key: str):
+    if key not in _DAY_ARRAY_FIELDS:
+        raise KeyError(key)
+    return getattr(self, key)
 
 
 def aggregate_compat(target: Path, date: str):
-    """Bind path, symbol and date to the shared aggregate function once.
-
-    The upstream helper changed its call and return signatures, not its
-    scientific implementation. Argument binding is decided before invocation;
-    the produced feature mapping is then selected without altering any array.
-    """
+    """Call the audited shared API and retain its original DayArrays object."""
     path = Path(target)
-    symbol = _source_symbol(path, date)
-    signature = inspect.signature(_ORIGINAL_AGGREGATE)
+    symbol = path.name.split(date, 1)[0]
+    if not symbol:
+        raise ValueError(f"cannot derive symbol from source path: {path}")
 
-    semantic_values: dict[str, object] = {}
-    unresolved_required: list[str] = []
-    for name, parameter in signature.parameters.items():
-        if parameter.kind in (
-            inspect.Parameter.VAR_POSITIONAL,
-            inspect.Parameter.VAR_KEYWORD,
-        ):
-            continue
-        lowered = name.lower()
-        if any(token in lowered for token in ("path", "file", "target", "archive", "source")):
-            semantic_values[name] = path
-        elif any(token in lowered for token in ("symbol", "instrument", "market", "contract")):
-            semantic_values[name] = symbol
-        elif "date" in lowered or lowered in {"day", "session"}:
-            semantic_values[name] = date
-        elif parameter.default is inspect.Parameter.empty:
-            unresolved_required.append(name)
-
-    if not unresolved_required:
-        signature.bind(**semantic_values)
-        return _normalize_aggregate_result(_ORIGINAL_AGGREGATE(**semantic_values))
-
-    candidates = (
-        (path, symbol, date),
-        (path, date, symbol),
-        (symbol, path, date),
-        (symbol, date, path),
-        (date, path, symbol),
-        (date, symbol, path),
-        (path, date),
-    )
-    for arguments in candidates:
-        try:
-            signature.bind(*arguments)
-        except TypeError:
-            continue
-        return _normalize_aggregate_result(_ORIGINAL_AGGREGATE(*arguments))
-
-    raise TypeError(
-        "unsupported shared aggregate signature: "
-        f"{signature}; available values are path={path}, symbol={symbol}, date={date}"
-    )
+    arrays, record = _ORIGINAL_AGGREGATE(path, symbol, date)
+    if record.symbol != symbol or record.date != date:
+        raise AssertionError(
+            f"aggregate source identity mismatch: {record.symbol}/{record.date} "
+            f"!= {symbol}/{date}"
+        )
+    for field in _DAY_ARRAY_FIELDS:
+        if not hasattr(arrays, field):
+            raise TypeError(f"audited DayArrays field missing: {field}")
+    for field in _NUMERIC_ARRAY_FIELDS:
+        value = getattr(arrays, field)
+        if not isinstance(value, np.ndarray):
+            raise TypeError(f"DayArrays.{field} is not numpy.ndarray")
+        if value.shape != (_EXPECTED_BINS,):
+            raise AssertionError(
+                f"DayArrays.{field} shape {value.shape} != ({_EXPECTED_BINS},)"
+            )
+    return arrays
 
 
 def utc_start_compat(date: str) -> float:
@@ -205,6 +158,8 @@ def corrected_rolling_realized_volatility(mark: np.ndarray, window: int = 100) -
 
 if not hasattr(engine.base, "inspect_source"):
     engine.base.inspect_source = inspect_source_compat
+if not hasattr(engine.base.DayArrays, "__getitem__"):
+    engine.base.DayArrays.__getitem__ = _day_arrays_getitem
 engine.base.aggregate = aggregate_compat
 if not hasattr(engine.base, "utc_start"):
     engine.base.utc_start = utc_start_compat
