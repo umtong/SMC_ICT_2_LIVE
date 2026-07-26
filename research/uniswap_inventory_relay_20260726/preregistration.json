@@ -1,0 +1,78 @@
+{
+  "claim_id": "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001",
+  "schema_version": 1,
+  "base_revision": 20,
+  "objective": "discover a sustainable after-cost ML alpha from completed Uniswap WETH-stable inventory transfer before Bybit ETHUSDT structural delivery",
+  "information_unit": {
+    "pool": "Uniswap V3 USDC/WETH 0.05% 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+    "snapshot_dataset": "arthurneuron/USDC-WETH-Uniswap-V3-2021-to-2023",
+    "block_time_dataset": "vnegi10/Ethereum_blockchain_parquet",
+    "aggregation": "completed UTC one-hour cumulative-state differences",
+    "availability_delay_hours": 2,
+    "direction_proxy": "sign of completed pool-price change multiplied by positive USDC volume increment",
+    "known_limitation": "the source snapshot stores cumulative absolute pool volume rather than signed Swap amount0/amount1; unchanged Bybit-native confirmation is mandatory before ranking"
+  },
+  "model": {
+    "family_count": 1,
+    "family": "HistGradientBoostingClassifier",
+    "hyperparameter_candidate_count": 1,
+    "calibrator": "IsotonicRegression",
+    "economic_decision_rule_count": 1,
+    "actions": ["CONTINUATION", "EXHAUSTION_REVERSAL", "FLAT"]
+  },
+  "features": [
+    "signed_inventory_pressure_z",
+    "gross_usdc_volume_z",
+    "gross_weth_volume_z",
+    "transaction_increment_z",
+    "pool_return",
+    "pool_impact_efficiency",
+    "largest_block_volume_share",
+    "bybit_prior_return",
+    "pool_bybit_basis_z",
+    "bybit_atr_fraction",
+    "distance_to_upper_pool_R",
+    "distance_to_lower_pool_R"
+  ],
+  "partitions": {
+    "train": ["2021-07-01T00:00:00Z", "2022-06-30T23:59:59Z"],
+    "calibration": ["2022-07-01T00:00:00Z", "2022-12-31T23:59:59Z"],
+    "confirmation": ["2023-01-01T00:00:00Z", "2023-06-30T23:59:59Z"],
+    "development": ["2023-07-01T00:00:00Z", "2023-12-31T23:59:59Z"],
+    "official_2024H1": ["2024-01-01T00:00:00Z", "2024-06-30T23:59:59Z"]
+  },
+  "execution": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbol": "ETHUSDT",
+    "one_global_slot": true,
+    "entry": "next exact contiguous five-minute open after delayed completed-hour decision",
+    "exit": "frozen external-liquidity target, frozen structural stop or explicit structural invalidation only",
+    "elapsed_time_liquidation": false,
+    "same_bar_order": "stop_first",
+    "gap_stop": "adverse_open",
+    "cost_bps": [12, 18, 24],
+    "initial_risk_fraction": 0.02,
+    "initial_notional_cap_multiple": 8,
+    "risk_search_after_base_gate_only": [0.02, 0.05, 0.1, 0.2, 0.35, 0.5],
+    "notional_cap_search_after_base_gate_only": [8, 20, 50, 100]
+  },
+  "pre2024_gate": {
+    "confirmation_min_resolved": 80,
+    "confirmation_model_auc_above_distance_baseline": true,
+    "confirmation_brier_skill_positive": true,
+    "development_min_trades": 40,
+    "development_24bps_positive": true,
+    "development_24bps_positive_median": true,
+    "development_24bps_profit_factor_min": 1.2,
+    "development_24bps_exact_winner_removal_positive": true,
+    "development_positive_halfyears": 1,
+    "no_terminal_nav_loss": true
+  },
+  "seals": {
+    "source_gate_opens_market_outcomes": false,
+    "2024_opens_only_after_complete_pre2024_gate": true,
+    "2024H2_2026H1_initially_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  }
+}
