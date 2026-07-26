@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001",
+  "amendment_id": "AMENDMENT-20260726-UNISWAP-SQD-SIGNED-SWAP-CONTINUITY-002",
+  "timing": "BEFORE_ANY_MODEL_FIT_MARKET_LABEL_ACTION_TRADE_PNL_OR_OFFICIAL_2024H1_ACCOUNT_OUTCOME",
+  "reason": "The immutable cumulative-state reference ends before the 2023-12-31 strategy cutoff and cannot itself generate 2024H1 signals. A single measurement definition must span pre-2024 preparation and the first official interval. The primary information source is therefore frozen to finalized canonical Uniswap V3 Swap logs from the same USDC/WETH 0.05% pool through the public SQD Ethereum Portal. The immutable Hugging Face snapshot remains an identity and aggregate-coverage cross-check only.",
+  "primary_source": {
+    "provider": "SQD public Ethereum Portal",
+    "dataset": "ethereum-mainnet",
+    "endpoint_type": "finalized event-log stream",
+    "pool": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+    "event": "Swap(address,address,int256,int256,uint160,uint128,int24)",
+    "topic0": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+    "identity": "block_number + transaction_hash + log_index",
+    "availability": "finalized block timestamp plus conservative two completed UTC hours"
+  },
+  "source_sequence": {
+    "source_gate": "download and aggregate the complete signed Swap stream from 2021-07-01 through 2023-12-31; probe only two frozen small 2024H1 windows for schema and transport continuity",
+    "pre2024_model": "train, calibrate, confirm and develop only on information dated no later than 2023-12-31",
+    "official_2024H1": "download the complete 2024H1 Swap stream only after the pre-2024 model, policy, risk and notional rule are frozen and the prewritten gate passes"
+  },
+  "direction_semantics": {
+    "amount0_positive_amount1_negative": "USDC enters the pool and WETH leaves; completed WETH purchase pressure; positive signed inventory transfer",
+    "amount0_negative_amount1_positive": "USDC leaves the pool and WETH enters; completed WETH sale pressure; negative signed inventory transfer"
+  },
+  "unchanged": [
+    "one pooled HGBT and one isotonic calibration map",
+    "one continuation, exhaustion-reversal or flat structural action rule",
+    "ETHUSDT only and one global slot",
+    "12/18/24-bp account paths",
+    "structural target, stop and invalidation exits with no elapsed-time liquidation",
+    "pre-2024 chronological partitions",
+    "winner-removal rerouting",
+    "conditional pre-2024 risk and notional search",
+    "immediate official 2024H1 evaluation after freezing at 2023-12-31",
+    "no credentials and no orders"
+  ],
+  "snapshot_role": "reference_only_not_primary_signal_source",
+  "model_fitted_before_amendment": false,
+  "market_labels_opened_before_amendment": false,
+  "strategy_pnl_opened_before_amendment": false,
+  "official_2024H1_account_opened_before_amendment": false,
+  "orders_submitted": false
+}
