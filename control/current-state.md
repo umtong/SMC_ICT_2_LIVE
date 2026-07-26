@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 21
+- revision: 22
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-ML-DONCHIAN-HGBT-2024H1-24BPS`
 - first-place stage: `OFFICIAL_2024H1_SEQUENTIAL_BINANCE_PROXY_RETIRED_WINNER_CONCENTRATED`
@@ -30,13 +30,13 @@ It is first only because it is the strongest recorded account path whose complet
 
 Rank does not determine research priority.
 
-## UTC state-machine correction and retirement
+## Retired UTC-state family
 
-The former first place `RES-20260726-ML-HOURWEEK-XRP-001` recorded `0.223030%/day` at 24bp, but its 720 session/asset/side/threshold routes were selected after observing the complete 2024-2025 development path. It remains a development diagnostic, not an active causal strategy candidate.
+The former `0.223030%/day` XRP path selected its route after observing the complete 2024-2025 development path and remains a diagnostic only.
 
-The full filter family was selected again using 2023H2 only, frozen at `2023-12-31`, and opened immediately on 2024H1. The frozen all-hours, long-only BTCUSDT/SOLUSDT/XRPUSDT route lost at 18bp and 24bp. At 24bp it returned `-7.2247%`, grew `-0.041195%/day`, made 80 trades, suffered 37.00% MDD and had a `-0.6460%` median trade. Exact winner-removal returned `-12.0168%` and `-0.070319%/day`.
+The family was selected again using 2023H2 only, frozen at `2023-12-31`, and opened immediately on 2024H1. At 24bp the frozen all-hours long-only BTC/SOL/XRP route returned `-7.2247%`, grew `-0.041195%/day`, made 80 trades, suffered 37.00% MDD and had a `-0.6460%` median trade. Exact winner removal returned `-12.0168%` and `-0.070319%/day`.
 
-The entire hourweek/session/asset/side/threshold family is retired. 2024H2 through 2026H1 remain unopened for this family. No adjacent filter, feature, risk or leverage rescue is permitted.
+The entire hourweek/session/asset/side/threshold family is retired. Later official intervals remain unopened and no adjacent filter, feature, risk or leverage rescue is permitted.
 
 ## Active causal strategy ranking
 
@@ -51,29 +51,48 @@ The entire hourweek/session/asset/side/threshold family is retired. 2024H2 throu
 
 All remain structurally far below 1%. None has deployment authority. Rank creates no incumbency protection.
 
-## Newly closed source dependency
+## Newly closed source dependencies
 
-`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the cumulative Hugging Face USDC/WETH source before market outcomes. Its `USDC` and `WETH` columns are cumulative unsigned volumes, not pool balances or signed `amount0/amount1` Swap flow, so WETH purchase versus sale direction cannot be reconstructed causally. No price, label, model, PnL or official period opened. The route may reopen only with canonical signed V3 Swap events or an equivalent immutable source.
+### Unsigned cumulative Uniswap source
 
-This is a source-semantics result, not negative alpha evidence against signed Uniswap inventory transfer.
+`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the attempted cumulative USDC/WETH source before market outcomes. Its columns are unsigned cumulative volumes, not signed `amount0/amount1` Swap flow, so WETH purchase versus sale cannot be identified. No price, label, model, PnL or official period opened.
 
-## Active high-information ML work
+### Binance COIN-M liquidation snapshots
 
-Only two primary information units remain active:
+`RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001` closes the continuous 2021-2023 liquidationSnapshot dependency before market outcomes.
 
-1. corrected Ethereum USDT `Issue/Redeem` plus USDC zero-address `Transfer` supply shocks, followed by one frozen BTC/ETH HGBT and immediate 2024H1 evaluation for a pre-2024 survivor;
-2. checksum-verified Binance COIN-M `BTCUSD_PERP` and `ETHUSD_PERP` forced-liquidation records, signal-mapped to Bybit BTCUSDT/ETHUSDT, followed by one pooled HGBT and the same immediate sequential rule.
+- first BTCUSD_PERP and ETHUSD_PERP archive date: `2023-06-25`
+- frozen interval date count: `1,095`
+- BTC coverage: `187 / 1,095 = 17.0776%`
+- ETH coverage: `186 / 1,095 = 16.9863%`
+- required coverage: `80%`
+- market price, label, model, action, trade, PnL and official 2024H1: unopened
 
-Broad-universe completed-bar diffusion, extra UTC filters, unsigned cumulative Uniswap volumes, duplicate source transports and polling-only economic workflows are paused or closed before outcomes.
+This is a source-coverage failure, not negative alpha evidence. The exact continuous-history route is retired without feature, model, risk or leverage rescue.
+
+## Sole active high-information ML decision
+
+The only active primary information unit is finalized Ethereum stablecoin supply change:
+
+- USDT `Issue/Redeem` and USDC zero-address `Transfer` semantics;
+- complete 2021-2023 source gate with 12-block availability and 64-block stress;
+- one HGBT plus one calibration rule;
+- one global BTC/ETH slot at 12/18/24bp;
+- structural target and stop only;
+- prewritten risk/notional frontier only after positive surviving 2023 base alpha;
+- immediate official 2024H1 after the complete system is frozen through `2023-12-31`.
+
+The visible economic authority is `ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3`.
+
+Strict V3 ends every market feature and frozen liquidity boundary at the latest minute whose close is no later than the finalized source timestamp. The next-minute open is realized execution only. The source authority is also pinned to a token-schema-bound implementation that accepts only explicit no-record responses as empty, bisects only explicit range-limit responses and otherwise fails closed. These corrections were frozen before source passage, market access, model fitting or PnL.
 
 ## Current objective and next exact action
 
-Do not tune Donchian or UTC time filters. Consume the two source gates immediately.
+1. Execute the single corrected stablecoin source gate and strict V3 economic screen.
+2. A source failure or `PRE2024_BELOW_GATE` result closes the exact information unit immediately.
+3. A complete positive survivor freezes the highest-growth no-liquidation risk/notional path using information through `2023-12-31` and opens official `2024H1` immediately.
+4. Any superior hard-valid account path is inserted into the cumulative ranking at once.
+5. If stablecoin closes, reopen the already-defined GMX V1 Arbitrum liquidation source as the next distinct forced-flow information unit; do not return to completed-bar or UTC filter grids.
+6. Growth above 1% remains uncapped; 1% is never treated as a ceiling.
 
-- A source PASS opens its already-frozen pre-2024 ML/account stage in the same information unit.
-- A positive cost-surviving system is frozen using information through 2023-12-31 and opens official 2024H1 immediately.
-- A source or economic failure closes the exact route without adjacent feature, threshold, target, stop, risk or leverage rescue.
-- Any superior hard-valid account path is inserted into the cumulative ranking immediately.
-- Growth above 1% is retained at full strength; 1% is never treated as a ceiling.
-
-Updated: 2026-07-27 00:10 KST
+Updated: 2026-07-27 00:35 KST
