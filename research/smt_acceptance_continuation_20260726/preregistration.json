@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1630-SMT-ACCEPTANCE-CONTINUATION-001",
+  "strategy_name": "SMT_ACCEPTANCE_FVG_CONTINUATION",
+  "parent_failure": {
+    "result_id": "RES-20260726-SMT-OVERREACTION-RECLAIM-FATAL-001",
+    "workflow_run": 30193744356,
+    "artifact_id": 8629448968,
+    "artifact_sha256": "23f59d9698d19716e98546d13f1c787a91b56e690895149e7c91db6128643ee1",
+    "decision": "Retire immediate fade and MSS reclaim. Six of seven main 18 bp-floor trades hit continuation stop, motivating a materially opposite payoff on untouched dates."
+  },
+  "dates": {
+    "calendar_rule": "Last Sunday of each 2022 calendar quarter, fixed before source access.",
+    "fatal_development": ["2022-03-27", "2022-06-26", "2022-09-25", "2022-12-25"],
+    "repository_search_before_freeze": "No exact-date matches.",
+    "prohibited": "Every 2024, 2025 and 2026 source."
+  },
+  "market": {
+    "venue": "Bybit USDT linear perpetual public trade archive",
+    "signal_symbol": "BTCUSDT",
+    "execution_symbols": ["SOLUSDT", "XRPUSDT"],
+    "global_slot": 1,
+    "state_clock_ms": 100,
+    "entry_latencies_ms": [100, 300],
+    "costs_roundtrip_bps": [12, 18, 24]
+  },
+  "signal": {
+    "horizons_seconds": [1, 2, 5],
+    "btc_shock_z_min": 3.0,
+    "btc_aggressor_alignment_min": 0.5,
+    "btc_activity_ratio_min": 2.0,
+    "prior_follower_to_btc_trade_count_ratio_min": 1.0,
+    "prior_follower_to_btc_realized_volatility_ratio_min": 1.5,
+    "follower_overreaction_ratio_min": 1.25,
+    "follower_aggressor_alignment_min": 0.5,
+    "residual_gap_floors_bps": [12, 18, 24],
+    "beta": "prior-only 30-minute rolling BTC-to-follower beta",
+    "event_rearm": "BTC displacement decays to 25 percent for ten completed 100 ms states."
+  },
+  "payoff": {
+    "trade_direction": "same as BTC/follower displacement",
+    "paths": ["IMMEDIATE_ACCEPTANCE control", "FVG_PULLBACK_CONTINUATION main", "FVG_REACCELERATION_CONTINUATION strict"],
+    "pullback_entry": "Residual trades inside 50-75 percent of its initial divergence while one-second original-direction flow remains nonnegative for three completed states.",
+    "reacceleration_entry": "After pullback arming, residual recovers to 90 percent and one-second original-direction aggressive-flow alignment reaches 0.50 for three completed states.",
+    "target": "Residual expands to 150 percent for ten completed 100 ms states.",
+    "stop": "Residual reclaims to 25 percent, follower moves another 50 percent of the initial gap against the continuation, or BTC displacement loses its origin.",
+    "time_exit": null,
+    "source_boundary": "Unresolved positions receive a full stop and retain the slot through the boundary.",
+    "funding_boundary": "Crossed funding receives full-stop treatment and fails the unavailable-path gate."
+  },
+  "routing": {
+    "simultaneous_priority": ["largest residual gap", "largest BTC shock z", "SOLUSDT before XRPUSDT", "shorter horizon", "stable event key"],
+    "same_shock_reentry": false,
+    "top_trade_removal": "Remove largest ten percent positive 12 bp event keys and reroute the full global-slot path."
+  },
+  "account": {
+    "planned_risk_fraction": 0.01,
+    "notional_to_nav_cap": 3.0,
+    "sample_days_include_zero_trade_days": true
+  },
+  "gate": {
+    "both_latency_paths_required": true,
+    "minimum_trades_each": 20,
+    "positive_mean_and_median_at_24bps": true,
+    "positive_top10_removed_return_at_18bps": true,
+    "minimum_positive_dates_at_24bps": 3,
+    "maximum_top_five_positive_share": 0.4,
+    "zero_unavailable_paths": true,
+    "minimum_top10_removed_sample_day_geometric_growth_at_24bps_and_1pct_risk": 0.01
+  },
+  "implementation": {
+    "base_probe_sha256": "5ecbfddf8443fd37b76514e30ab91028dda68e16a5e51eb63f7f76f0c073ad0f",
+    "scientific_source_sha256": "6b37f2941ba41794b9e7d20cd6929ca2015b8bbfe7cf4c9496532d86e1af85be",
+    "compressed_source_sha256": "02f7d9c93cc063919573fc4bd76dc241860224e64260b85ca353680d60814e86",
+    "candidate_count": 9
+  },
+  "authority": {
+    "ranking_eligible": false,
+    "orders_submitted": false
+  }
+}
