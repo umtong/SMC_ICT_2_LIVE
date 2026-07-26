@@ -1,17 +1,18 @@
 name: Stablecoin strict causal V3 macOS authority
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths:
       - 'research/triggers/stablecoin_strict_v3_macos/**'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 concurrency:
-  group: stablecoin-strict-v3-macos-${{ github.sha }}
+  group: stablecoin-strict-v3-macos-authority
   cancel-in-progress: false
 
 jobs:
@@ -104,9 +105,19 @@ jobs:
           fi
           printf '%s\n' "$EXECUTION_SHA" > "$evidence/PINNED_EXECUTION_SHA.txt"
           python - <<'PY'
-          import hashlib, os
+          import hashlib, json, os
           from pathlib import Path
           root=Path(os.environ['RUNNER_TEMP'])/'stablecoin-strict-v3-macos-evidence'
+          metadata={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001',
+              'workflow_run_id':os.environ['GITHUB_RUN_ID'],
+              'workflow_run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],
+              'trigger_commit':os.environ['GITHUB_SHA'],
+              'execution_sha':os.environ['EXECUTION_SHA'],
+              'orders_submitted':False,
+          }
+          (root/'RUN_METADATA.json').write_text(json.dumps(metadata,indent=2,sort_keys=True)+'\n',encoding='utf-8')
           rows=[]
           for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='SHA256SUMS.txt'):
               rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n")
@@ -121,3 +132,61 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
+
+      - name: Publish immutable evidence branch and result PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/stablecoin-strict-v3-macos-evidence"
+          target="research_runs/stablecoin_strict_v3_macos_${GITHUB_RUN_ID}"
+          rm -rf "$target"
+          mkdir -p "$(dirname "$target")"
+          cp -R "$evidence" "$target"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          target=Path('research_runs')/f"stablecoin_strict_v3_macos_{os.environ['GITHUB_RUN_ID']}"
+          marker=target/'stablecoin_strict_v3_validation_hook_summary.json'
+          if marker.exists():
+              x=json.loads(marker.read_text())
+              source=x.get('source',{})
+              economic=x.get('economic',{})
+              title=f"Record strict stablecoin V3 decision: {source.get('status','UNKNOWN')} / {economic.get('status','NOT_OPENED')}"
+              body=(
+                  '## Decision-ready strict stablecoin execution\n\n'
+                  f"- claim: `{x.get('claim_id')}`\n"
+                  f"- source SHA: `{x.get('source_sha')}`\n"
+                  f"- strict SHA: `{x.get('strict_sha')}`\n"
+                  f"- source status: **{source.get('status')}**\n"
+                  f"- source events/months/tokens: `{source.get('event_count')}` / `{source.get('event_month_count')}` / `{source.get('distinct_tokens')}`\n"
+                  f"- economic status: **{economic.get('status')}**\n"
+                  f"- next stage: **{x.get('next_stage')}**\n"
+                  f"- orders submitted: `{economic.get('orders_submitted', False)}`\n\n"
+                  'This PR contains the immutable log, compact decision, source/economic output and SHA-256 manifest. '
+                  'A pre-2024 survivor must be followed immediately by official 2024H1; otherwise the exact alpha changes without adjacent tuning.\n'
+              )
+          else:
+              title='Record strict stablecoin V3 execution failure before decision'
+              body=(
+                  'The macOS authority failed before emitting a compact scientific decision. '
+                  'The attached immutable log and hashes distinguish transport/implementation failure from economic failure. '
+                  'No strategy result, credential or order is claimed.\n'
+              )
+          (target/'RESULT_PR_TITLE.txt').write_text(title+'\n',encoding='utf-8')
+          (target/'RESULT_PR_BODY.md').write_text(body,encoding='utf-8')
+          PY
+          branch="automation/stablecoin-strict-v3-${GITHUB_RUN_ID}"
+          git config user.name github-actions
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git checkout -b "$branch"
+          git add "$target"
+          git commit -m "Record strict stablecoin V3 run ${GITHUB_RUN_ID}"
+          git push origin "$branch"
+          title=$(head -n 1 "$target/RESULT_PR_TITLE.txt")
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "$title" \
+            --body-file "$target/RESULT_PR_BODY.md"
