@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "PRE_OUTCOME_RUNTIME_CORRECTION_002_SOURCE_INSPECTOR",
+  "timing": "after upstream authority passed, before any 2022 matrix row, model fit, score, trade path or PnL was produced",
+  "failed_workflow_run": 30197307365,
+  "failure": "The current shared base_probe module no longer exposes inspect_source, while the frozen extractor called that metadata-only helper before aggregation.",
+  "correction": "Add a local streaming gzip/CSV source inspector only when the shared module lacks inspect_source. It computes source bytes, SHA-256, columns, row count, first/last timestamp and monotonicity, then leaves aggregation, events, features, labels and outcomes unchanged.",
+  "failed_date_jobs_observed": [
+    "2022-01-09",
+    "2022-02-13",
+    "2022-03-13",
+    "2022-06-12",
+    "2022-09-11",
+    "2022-11-13",
+    "2022-12-11"
+  ],
+  "outcome_access": {
+    "matrix_rows_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "unchanged": [
+    "source URLs, bytes and dates",
+    "base aggregation and causal information clock",
+    "overreaction and MSS definitions",
+    "features, outcomes, models and fixed score quantiles",
+    "execution latency, 24bp cost, target and invalidation",
+    "risk, notional cap, global slot, winner removal and gates"
+  ],
+  "orders_submitted": false
+}
