@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-CME-GAP-ML-PURGE-002",
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "parent_amendment_id": "AMEND-20260726-CME-GAP-ML-CORE-001",
+  "amended_at": "2026-07-26T17:27:00+09:00",
+  "trigger": "Pre-outcome causal review found that a 2021 Jan-Aug event could otherwise carry a barrier label resolved during the Sep-Dec fit holdout.",
+  "market_outcomes_opened_before_amendment": false,
+  "correction": {
+    "training_entry_cutoff": "2021-08-31T23:59:59Z",
+    "training_label_resolution_cutoff": "2021-08-31T23:59:59Z",
+    "rule": "A training event is admissible only when both its entry timestamp and its first-touch label resolution timestamp are no later than the training cutoff.",
+    "fit_holdout_start": "2021-09-01T00:00:00Z",
+    "purged_overlap": "Any event entered before the cutoff but resolved after it is excluded from model fitting and remains unavailable to training."
+  },
+  "unchanged": [
+    "one shared L2 logistic model",
+    "11 fixed features",
+    "all hyperparameters",
+    "structural destinations and expected-value router",
+    "cost, funding and execution rules",
+    "fit, development and confirmation gates",
+    "2024-2026 prohibition"
+  ],
+  "orders_submitted": false
+}
