@@ -7,12 +7,15 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SOURCE = ROOT / "source_bundle.tar.gz.b64"
+PARTS = sorted(ROOT.glob("source.part*"))
+EXPECTED_PART_COUNT = 6
 EXPECTED_BASE64_SHA256 = "7d1d05b6aadd520197b225f06b1578e8bb91fab3b07d4b7c3bd0908dea897ba9"
 EXPECTED_TAR_SHA256 = "72adec13dbb5f6025b28a07abdd9b6ce2c9804fc78ab77f399539f56a28b1ffc"
 EXPECTED_FILES = {"run_screen.py", "test_run_screen.py"}
 
-raw = SOURCE.read_bytes()
+if len(PARTS) != EXPECTED_PART_COUNT:
+    raise SystemExit(f"expected {EXPECTED_PART_COUNT} source parts, got {len(PARTS)}")
+raw = b"".join(path.read_bytes() for path in PARTS)
 if hashlib.sha256(raw).hexdigest() != EXPECTED_BASE64_SHA256:
     raise SystemExit("source bundle base64 SHA-256 mismatch")
 payload = base64.b64decode(raw, validate=True)
