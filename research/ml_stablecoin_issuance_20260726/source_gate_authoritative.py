@@ -66,6 +66,27 @@ def event_filter_topics(token: str, direction: str) -> list[Any]:
     raise ValueError(f"unsupported token {token}")
 
 
+def _nonempty_topics(log: dict[str, Any]) -> list[str]:
+    """Normalize provider padding without admitting a genuine indexed topic.
+
+    Blockscout may serialize non-indexed events with null or empty trailing topic
+    placeholders. Those carry no event information. Any nonempty additional topic
+    remains visible and will cause the exact Issue/Redeem identity check to fail.
+    """
+    raw_topics = log.get("topics")
+    if not isinstance(raw_topics, list):
+        raise ValueError("event topics must be a list")
+    normalized: list[str] = []
+    for value in raw_topics:
+        if value is None:
+            continue
+        text = str(value).strip().lower()
+        if text in {"", "0x"}:
+            continue
+        normalized.append(text)
+    return normalized
+
+
 def decode_log(token: str, direction: str, log: dict[str, Any]) -> dict[str, Any]:
     """Decode canonical USDT Issue/Redeem or USDC zero-address Transfer."""
     contract = str(log["address"]).lower()
@@ -78,16 +99,16 @@ def decode_log(token: str, direction: str, log: dict[str, Any]) -> dict[str, Any
     if token != "USDT":
         raise ValueError(f"unsupported token {token}")
 
-    topics = log.get("topics") or []
     expected_topic = ISSUE_TOPIC if direction == "MINT" else REDEEM_TOPIC if direction == "BURN" else None
     if expected_topic is None:
         raise ValueError(direction)
-    if not topics or str(topics[0]).lower() != expected_topic:
-        raise ValueError(f"USDT {direction} event topic mismatch")
-    # Issue/Redeem carry only a non-indexed uint256 amount. Reject any attempt
-    # to reinterpret an ordinary Transfer as a supply event.
-    if len(topics) != 1:
-        raise ValueError("USDT Issue/Redeem must contain only topic0")
+    topics = _nonempty_topics(log)
+    # Issue/Redeem carry only a non-indexed uint256 amount. Provider null/empty
+    # padding is ignored, but every genuine additional nonempty topic is rejected.
+    if topics != [expected_topic]:
+        raise ValueError(
+            f"USDT {direction} event must contain exactly canonical topic0; observed={topics!r}"
+        )
     amount_raw = int(log.get("data", "0x0"), 16)
     if amount_raw <= 0:
         raise ValueError("USDT supply-event amount must be positive")
@@ -174,6 +195,11 @@ def self_test() -> None:
     if issue_row["amount_usd"] != 125_000_000 or issue_row["from_address"] != ZERO_ADDRESS:
         raise AssertionError(issue_row)
 
+    padded_issue = dict(issue)
+    padded_issue["topics"] = [ISSUE_TOPIC, None, "", "0x"]
+    if decode_log("USDT", "MINT", padded_issue)["amount_usd"] != 125_000_000:
+        raise AssertionError("provider topic padding was not normalized")
+
     redeem = dict(issue)
     redeem["topics"] = [REDEEM_TOPIC]
     redeem["transactionHash"] = "0x" + "cd" * 32
@@ -193,6 +219,15 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("ordinary USDT Transfer was accepted as issuance")
+
+    genuine_extra = dict(issue)
+    genuine_extra["topics"] = [ISSUE_TOPIC, ZERO_TOPIC]
+    try:
+        decode_log("USDT", "MINT", genuine_extra)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("genuine indexed topic was treated as provider padding")
 
     expected = int(datetime(2023, 7, 3, 20, 9, 59, tzinfo=timezone.utc).timestamp())
     if expected != 1_688_414_999:
