@@ -1,6 +1,11 @@
 name: Ranking state reconciliation
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'research/execution/stablecoin_strict_visible_20260727/**'
+      - '.github/workflows/ranking-exit-contract-r14.yml'
   pull_request:
     branches: [main]
     paths:
