@@ -7,6 +7,7 @@ on:
       - agent/r22-yt-trinity-ml-001
     paths:
       - research/yt_trinity_ml/probe_transcript_services.py
+      - research/yt_trinity_ml/probe_2outube.py
       - .github/workflows/yt-trinity-transcript-service-probe.yml
 
 permissions:
@@ -20,12 +21,13 @@ jobs:
   probe:
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 4
       matrix:
         provider:
           - youtube_to_text
           - youtube2text
           - get_video_transcript
+          - twoutube
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -39,16 +41,40 @@ jobs:
       - name: Install transport dependency
         run: |
           python -m pip install -q --upgrade pip requests
-          python -m py_compile research/yt_trinity_ml/probe_transcript_services.py
+          python -m py_compile \
+            research/yt_trinity_ml/probe_transcript_services.py \
+            research/yt_trinity_ml/probe_2outube.py
       - name: Probe provider with positive control
         run: |
           out="artifact/${{ matrix.provider }}"
           mkdir -p "$out"
-          python research/yt_trinity_ml/probe_transcript_services.py \
-            --provider "${{ matrix.provider }}" \
-            --delay-seconds 7 \
-            --output "$out" \
-            2>&1 | tee "$out/stdout.log"
+          if [[ "${{ matrix.provider }}" == "twoutube" ]]; then
+            python research/yt_trinity_ml/probe_2outube.py \
+              --delay-seconds 5 \
+              --output "$out" \
+              2>&1 | tee "$out/stdout.log"
+            python - "$out/probe.json" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          payload = json.loads(path.read_text(encoding='utf-8'))
+          recovered = int(payload.get('target_recovered_count') or 0)
+          positive = bool(payload.get('positive_control_passed'))
+          payload['provider'] = '2outube.com'
+          payload['failed_sample_recovered_count'] = recovered
+          payload['successful_video_count'] = recovered + int(positive)
+          payload['result_sha256_before_field'] = payload.get('payload_sha256_before_field')
+          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          else
+            python research/yt_trinity_ml/probe_transcript_services.py \
+              --provider "${{ matrix.provider }}" \
+              --delay-seconds 7 \
+              --output "$out" \
+              2>&1 | tee "$out/stdout.log"
+          fi
           (
             cd "$out"
             find . -type f ! -name SHA256SUMS -print0 \
