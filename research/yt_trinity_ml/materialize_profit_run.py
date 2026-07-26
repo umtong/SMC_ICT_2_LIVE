@@ -27,16 +27,39 @@ ASOF_NEW = '''    left = base.reset_index(drop=True).sort_values("available_at_m
     right = right.sort_values("available_at_ms", kind="stable")
 '''
 
+SOURCE_TIMESTAMP_OLD = '''    joined.index = pd.to_datetime(joined["available_at_ms"], unit="ms", utc=True)
+    joined.index.name = "decision_time"
+    return joined.sort_index()
+'''
 
-def normalize_asof_join_keys(root: Path) -> bool:
+SOURCE_TIMESTAMP_NEW = '''    joined = joined.drop(columns=["source_timestamp"])
+    joined.index = pd.to_datetime(joined["available_at_ms"], unit="ms", utc=True)
+    joined.index.name = "decision_time"
+    return joined.sort_index()
+'''
+
+
+def normalize_canonical_joins(root: Path) -> tuple[bool, bool]:
     path = root / "system" / "canonical_adapter.py"
     text = path.read_text(encoding="utf-8")
-    if ASOF_NEW in text:
-        return False
-    if text.count(ASOF_OLD) != 1:
-        raise RuntimeError("unexpected canonical as-of join source")
-    path.write_text(text.replace(ASOF_OLD, ASOF_NEW), encoding="utf-8", newline="\n")
-    return True
+    dtype_changed = False
+    timestamp_changed = False
+
+    if ASOF_NEW not in text:
+        if text.count(ASOF_OLD) != 1:
+            raise RuntimeError("unexpected canonical as-of join key source")
+        text = text.replace(ASOF_OLD, ASOF_NEW)
+        dtype_changed = True
+
+    if SOURCE_TIMESTAMP_NEW not in text:
+        if text.count(SOURCE_TIMESTAMP_OLD) != 1:
+            raise RuntimeError("unexpected canonical source-timestamp cleanup source")
+        text = text.replace(SOURCE_TIMESTAMP_OLD, SOURCE_TIMESTAMP_NEW)
+        timestamp_changed = True
+
+    if dtype_changed or timestamp_changed:
+        path.write_text(text, encoding="utf-8", newline="\n")
+    return dtype_changed, timestamp_changed
 
 
 def main() -> int:
@@ -51,10 +74,10 @@ def main() -> int:
         raise RuntimeError(f"profit runner SHA mismatch: {actual}")
     destination = root / "run_profit_first.py"
     destination.write_bytes(raw)
-    changed = normalize_asof_join_keys(root)
+    dtype_changed, timestamp_changed = normalize_canonical_joins(root)
     print(
         f"materialized {destination} sha256={actual} bytes={len(raw)} "
-        f"asof_dtype_fix={changed}"
+        f"asof_dtype_fix={dtype_changed} source_timestamp_cleanup={timestamp_changed}"
     )
     return 0
 
