@@ -1,43 +1,55 @@
 {
-  "base_main_sha_at_branch_creation": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
-  "base_revision": 11,
-  "branch": "agent/r11-bybit-consensus-lag-001",
+  "schema_version": 1,
   "claim_id": "CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001",
-  "economic_reason": "Existing completed-bar, ordinary trade-tape and two-venue threshold families are far below target. This scope tests whether two independently executable leaders agree before Bybit perpetual updates, a structure that can support high capital velocity only if edge survives sub-second latency and full costs.",
-  "evaluation_contract_components": {
-    "amendment_sha256": "d3eb7a02feda516636b449b1f4093ae3bacb39c51f16f4f19b8c7f9fa36def98",
-    "preregistration_sha256": "00567394199fa4379bf7bc75a8a8cf0cfcc1eebfcc56f06011eb86846fa36704"
-  },
-  "evaluation_contract_sha256": "6e05f34a9879155b0863c4b87b57ddb7ac064286598d3f0d49924ef4955aec61",
-  "excludes_active_scopes": [
-    "two-venue Binance/Bybit cross-venue V5D families targeting the Binance executable quote",
-    "Bybit-native event-time trade-tape aggression episodes",
-    "passive L2 maker/queue toxicity",
-    "exchange-reported liquidation cascade/refill",
-    "quarter-hour order flow",
-    "one-minute completed-bar spot/perpetual leadership",
-    "positioning, collateral stress and option-surface states",
-    "movement-hazard OCO"
-  ],
-  "implementation_sha256": "366aa871dcff28a49e64782560737d0a7bc54c0ad97effe40b72d24f1b0f4bf8",
+  "worker_id": "gpt-5.6-pro-20260726-0616",
+  "status": "REPORTED",
+  "started_at": "2026-07-26T06:16:54+09:00",
+  "completed_at": "2026-07-26T10:30:29+09:00",
   "lease_until": "2026-07-26T14:16:54+09:00",
+  "base_revision": 11,
+  "base_main_sha_at_branch_creation": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-bybit-consensus-lag-001",
+  "pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/67",
+  "result_id": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002",
+  "result_path": "research_results/r11_bybit_consensus_lag_001/result.json",
+  "economic_reason": "Existing completed-bar, ordinary trade-tape and two-venue threshold families were far below target. This scope tested whether two independently executable leaders agree before Bybit perpetual updates, a structure that could support high capital velocity only if edge survived sub-second latency and full costs.",
+  "scope": "Fatal upper-bound screen for a distinct same-region three-feed price-discovery mechanism: completed 100ms local-arrival consensus shocks in Binance USDT perpetual and Bybit spot that lead the executable Bybit USDT linear perpetual quote. BTCUSDT and ETHUSDT; 100/250/500ms entry latency; explicit bid/ask, completed same-message signal groups and adverse equal-timestamp execution, top-quote capacity impact, marketable-limit rejection, 12/18/24bp extra round-trip costs; 2023 staged fit/development only and all 2024+ dates sealed.",
   "objective_fingerprint": "21fa38de300ed30682168c5c41b959ed2cfebd3d7f47ee4334a97aefcc64c5e5",
+  "scope_fingerprint": "89a04331358b22d27ab26235e153b15effb3b1b45ba9e89315e239a79790efa0",
+  "evaluation_contract_sha256": "6e05f34a9879155b0863c4b87b57ddb7ac064286598d3f0d49924ef4955aec61",
+  "evaluation_contract_components": {
+    "preregistration_sha256": "00567394199fa4379bf7bc75a8a8cf0cfcc1eebfcc56f06011eb86846fa36704",
+    "source_semantic_amendment": "AMD-20260726-BYBIT-CONSENSUS-LAG-001",
+    "source_recovery_amendment": "AMD-20260726-BYBIT-CONSENSUS-LAG-002",
+    "transport_repair_amendment": "AMD-20260726-BYBIT-CONSENSUS-LAG-003"
+  },
+  "implementation": {
+    "engine_version": "BYBIT_CONSENSUS_LAG_V1C_RECOVERED_COMPLETED_MESSAGE_GROUP",
+    "raw_bytes": 38958,
+    "raw_sha256": "d3ac04f629a6114247b16a69333e43c91312247dc3dcbdd120f054014e1cf29d",
+    "code_commit": "41af88d8a53692b8be9f1f82dda4e7c3f17d7e16"
+  },
+  "result": {
+    "hard_validity": "PASS",
+    "economic_status": "FATAL_FIT_UPPER_BOUND_BELOW_GATE",
+    "candidate_count": 324,
+    "fit_survivor_count": 0,
+    "development_opened": false,
+    "event_outcome_rows": 10,
+    "maximum_candidate_trades": 2,
+    "best_oracle_30s_18bps_mean_bps": 8.326983029845302,
+    "best_oracle_30s_18bps_trades": 1,
+    "same_candidate_fixed_10s_18bps_mean_bps": -20.64338026033809,
+    "2024_opened": false,
+    "target_met": false
+  },
+  "artifact": {
+    "workflow_run": 30182824377,
+    "artifact_id": 8626108263,
+    "sha256": "905724a99fd25c1b37b59ee5e3f710b2f4bda3af1da331a3edfede72ea6e44f8"
+  },
+  "closure": "Zero of 324 candidates survived an impossible future-executable-exit upper-bound gate. The exact Binance-perpetual plus Bybit-spot consensus-lag dependency is retired without threshold, exit, risk or leverage tuning. Reopen only with a materially different information unit such as an algebraically linked synthetic cross-rate or maker-assisted payoff, not an adjacent parameter change.",
   "official_periods_opened": false,
   "orders_submitted": false,
-  "result_id_if_completed": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-002",
-  "schema_version": 1,
-  "scope": "Fatal upper-bound screen for a distinct same-region three-feed price-discovery mechanism: completed 100ms local-arrival consensus shocks in Binance USDT perpetual and Bybit spot that lead the executable Bybit USDT linear perpetual quote. BTCUSDT and ETHUSDT; 100/250/500ms entry latency; explicit bid/ask, completed same-message signal groups and adverse equal-timestamp execution, top-quote capacity impact, marketable-limit rejection, 12/18/24bp extra round-trip costs; 2023 staged fit/development only and all 2024+ dates sealed.",
-  "scope_fingerprint": "89a04331358b22d27ab26235e153b15effb3b1b45ba9e89315e239a79790efa0",
-  "started_at": "2026-07-26T06:16:54+09:00",
-  "status": "ACTIVE",
-  "supersedes_invalid_diagnostic": "RES-20260726-BYBIT-CONSENSUS-LAG-UPPERBOUND-001",
-  "transport": {
-    "base64_bytes": 14444,
-    "base64_sha256": "7a288e93a58e8fba41de928208c966a61132c72206d152b714e9ec5b0ebdde7b",
-    "gzip_bytes": 10832,
-    "gzip_sha256": "99ca27b53a771d00d89a2a289e9c10ec96a75c5ca714ab3195856e4f71a4ad46",
-    "raw_bytes": 39343,
-    "raw_sha256": "366aa871dcff28a49e64782560737d0a7bc54c0ad97effe40b72d24f1b0f4bf8"
-  },
-  "worker_id": "gpt-5.6-pro-20260726-0616"
+  "paper_or_live_enabled": false
 }
