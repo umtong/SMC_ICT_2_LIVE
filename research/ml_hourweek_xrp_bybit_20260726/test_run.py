@@ -138,3 +138,11 @@ def test_binance_header_row_is_source_metadata_not_market_data() -> None:
     assert len(frame) == 1
     assert int(frame.iloc[0]["open_time_ms"]) == 1704067200000
     assert float(frame.iloc[0]["taker_buy_quote"]) == 7.5
+
+
+def test_official_alternative_bybit_mainnet_endpoint_is_frozen() -> None:
+    import inspect
+
+    source = inspect.getsource(run)
+    assert "https://api.bytick.com" in source
+    assert "https://api.bybit.com" not in source
