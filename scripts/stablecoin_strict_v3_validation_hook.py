@@ -12,7 +12,20 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_SHA = "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539"
 STRICT_SHA = "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c"
-TRIGGER = ROOT / "research" / "execution" / "stablecoin_strict_validator_hook_20260727" / "RUN.txt"
+TRIGGER = (
+    ROOT
+    / "research"
+    / "execution"
+    / "stablecoin_strict_validator_hook_20260727"
+    / "RUN.txt"
+)
+CORRECTION = (
+    ROOT
+    / "research"
+    / "execution"
+    / "stablecoin_strict_validator_hook_20260727"
+    / "EXECUTION_CORRECTION_TRANSPORT_EXIT_004.json"
+)
 RUNNER_TEMP = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
 WORK = RUNNER_TEMP / "stablecoin_strict_v3_validation_hook"
 OUT = WORK / "output"
@@ -143,6 +156,16 @@ def main() -> int:
         emit(load_json(MARKER))
         return 0
 
+    correction = load_json(CORRECTION)
+    if correction.get("correction_id") != (
+        "EXECUTION-CORRECTION-20260727-STABLECOIN-VALIDATOR-TRANSPORT-EXIT-004"
+    ):
+        raise AssertionError("transport-exit correction identity changed")
+    if correction.get("recorded_before_source_decision") is not True:
+        raise AssertionError("transport-exit correction was not pre-outcome")
+    if correction.get("recorded_before_market_outcome") is not True:
+        raise AssertionError("market outcome preceded transport-exit correction")
+
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -233,7 +256,7 @@ def main() -> int:
             str(source_out),
         ],
         env=source_env,
-        allowed=(0, 2),
+        allowed=(0, 1, 2),
     )
     result_path = source_out / "SOURCE_GATE_RESULT.json"
     if not result_path.exists():
@@ -249,6 +272,9 @@ def main() -> int:
                 str(source_rc),
             ]
         )
+    if not result_path.exists():
+        raise AssertionError("transport failure writer did not create source result")
+
     source = load_json(result_path)
     for key in (
         "market_outcome_opened",
@@ -265,9 +291,14 @@ def main() -> int:
         "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
         "source_sha": SOURCE_SHA,
         "strict_sha": STRICT_SHA,
+        "execution_correction": correction["correction_id"],
         "source": source_summary(source),
         "economic": {"status": "NOT_OPENED"},
-        "next_stage": "CLOSE_SOURCE_OR_CHANGE_TRANSPORT_ONLY",
+        "next_stage": (
+            "CHANGE_ALPHA"
+            if source.get("status") == "FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE"
+            else "REPAIR_TRANSPORT_ONLY_OR_CHANGE_ALPHA"
+        ),
     }
 
     if source.get("status") == "PASS":
