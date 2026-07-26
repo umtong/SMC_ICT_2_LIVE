@@ -11,6 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CLAIM_ROOT = ROOT / "research" / "donchian_2024h1_20260726"
 TRIGGER = CLAIM_ROOT / "RUN_VIA_VALIDATE_PROJECT_20260726T2218KST.txt"
+BAR_BUILDER = CLAIM_ROOT / "download_bars_5m_aggregate.py"
+TRANSPORT_CORRECTION = CLAIM_ROOT / "EXECUTION_CORRECTION_005_COMPLETE_5M_AGGREGATION_BEFORE_RESULT.json"
 RUNNER_TEMP = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
 MARKER = RUNNER_TEMP / "donchian_2024h1_validation_hook_summary.json"
 DATA = RUNNER_TEMP / "donchian_2024h1_validator_data"
@@ -80,16 +82,25 @@ def main() -> int:
         "pandas==2.2.3",
         "requests==2.32.4",
     ])
+    run([sys.executable, "-m", "json.tool", str(TRANSPORT_CORRECTION)])
     run([sys.executable, str(CLAIM_ROOT / "reconstruct.py")])
-    run([sys.executable, "-m", "py_compile", str(CLAIM_ROOT / "run.py"), str(CLAIM_ROOT / "download_bars.py"), str(CLAIM_ROOT / "download_funding.py")])
+    run([
+        sys.executable,
+        "-m",
+        "py_compile",
+        str(CLAIM_ROOT / "run.py"),
+        str(CLAIM_ROOT / "download_funding.py"),
+        str(BAR_BUILDER),
+    ])
     run([sys.executable, "-m", "pytest", "-q", str(CLAIM_ROOT / "test_run.py")])
     run([sys.executable, str(CLAIM_ROOT / "run.py"), "self-test"])
+    run([sys.executable, str(BAR_BUILDER), "--self-test"])
 
     shutil.rmtree(DATA, ignore_errors=True)
     shutil.rmtree(OUT, ignore_errors=True)
     DATA.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
-    run([sys.executable, str(CLAIM_ROOT / "download_bars.py"), "--output", str(DATA)])
+    run([sys.executable, str(BAR_BUILDER), "--output", str(DATA)])
     run([sys.executable, str(CLAIM_ROOT / "download_funding.py"), "--output", str(DATA)])
     run([sys.executable, str(CLAIM_ROOT / "run.py"), "run", "--data-root", str(DATA), "--output", str(OUT)])
 
