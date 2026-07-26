@@ -2,6 +2,12 @@ name: YT Trinity public transcript corpus
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/yt_trinity_ml/**
+      - .github/workflows/yt-trinity-transcript-harvest.yml
   push:
     branches:
       - agent/r22-yt-trinity-ml-001
