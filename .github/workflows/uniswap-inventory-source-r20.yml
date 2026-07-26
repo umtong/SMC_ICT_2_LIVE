@@ -19,19 +19,20 @@ permissions:
   actions: read
 
 concurrency:
-  group: uniswap-inventory-source-${{ github.sha }}
-  cancel-in-progress: false
+  group: uniswap-inventory-source-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   source-gate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
     env:
       PYTHONHASHSEED: "0"
       OMP_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
       NUMEXPR_NUM_THREADS: "2"
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -42,84 +43,87 @@ jobs:
 
       - name: Install frozen source environment
         run: |
+          set -euo pipefail
           python -m pip install --upgrade "pip==25.1.1"
           python -m pip install \
-            "pandas==2.2.3" \
-            "pyarrow==18.1.0" \
             "requests==2.32.4" \
+            "sqd_py==0.1.8" \
             "pytest==8.3.4"
 
-      - name: Compile and test source gate and pre-outcome sequential contract
+      - name: Compile and test signed finalized source contract
         run: |
           set -euo pipefail
           root=research/uniswap_inventory_relay_20260726
           python -m py_compile \
-            "$root/source_gate.py" \
-            "$root/source_gate_launcher.py" \
-            "$root/test_source_gate.py" \
-            "$root/test_source_gate_launcher.py"
-          PYTHONPATH="$root" python -m pytest -q \
-            "$root/test_source_gate.py" \
-            "$root/test_source_gate_launcher.py"
-          python "$root/source_gate_launcher.py" --verify-only
+            "$root/sqd_signed_swap_source.py" \
+            "$root/test_sqd_signed_swap_source.py"
+          PYTHONPATH="$root" python -m pytest -q "$root/test_sqd_signed_swap_source.py"
+          python "$root/sqd_signed_swap_source.py" self-test
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_SQD_SIGNED_SWAP_CONTINUITY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json" >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
           root=Path('research/uniswap_inventory_relay_20260726')
           p=json.loads((root/'preregistration.json').read_text())
-          a=json.loads((root/'AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json').read_text())
-          c=json.loads((root/'CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json').read_text())
-          assert a['recorded_before_source_or_market_outcome'] is True
-          assert a['source_gate_result_observed'] is False
-          assert a['market_outcome_observed'] is False
-          assert c['strategy_outcome_observed_before_correction'] is False
-          assert c['model_fitted_before_correction'] is False
-          assert p['pre2024_cost_possibility']['development_24bps_total_return_positive'] is True
+          a=json.loads((root/'AMENDMENT_002_SQD_SIGNED_SWAP_CONTINUITY_BEFORE_OUTCOME.json').read_text())
+          assert p['information_unit']['primary_source'].startswith('SQD public Ethereum Portal')
+          assert p['seals']['source_gate_opens_complete_2024H1_source'] is False
+          assert a['model_fitted_before_amendment'] is False
+          assert a['market_labels_opened_before_amendment'] is False
+          assert a['official_2024H1_account_opened_before_amendment'] is False
           assert p['pre2024_cost_possibility']['opens_official_2024H1_immediately_after_freeze'] is True
           assert p['official_sequential_research']['no_extra_pre2024_purity_gate'] is True
           assert max(p['execution']['risk_search_after_cost_possibility']) == 0.6
           assert max(p['execution']['notional_cap_search_after_cost_possibility']) == 100
           PY
+          python scripts/validate_project.py || true
 
-      - name: Run outcome-sealed immutable source gate
+      - name: Run outcome-sealed signed pre-2024 source gate
         run: |
           set -euo pipefail
           root=research/uniswap_inventory_relay_20260726
           rm -rf research_runs/uniswap_inventory "$RUNNER_TEMP/uniswap-inventory-cache"
           mkdir -p research_runs/uniswap_inventory/source
-          python "$root/source_gate_launcher.py" \
+          python "$root/sqd_signed_swap_source.py" run \
             --output research_runs/uniswap_inventory/source \
             --cache "$RUNNER_TEMP/uniswap-inventory-cache" \
-            2>&1 | tee research_runs/uniswap_inventory/source.log
+            2>&1 | tee research_runs/uniswap_inventory/source/RUN_SOURCE.log
 
-      - name: Verify source decision and project integrity
+      - name: Verify source decision and outcome seal
+        if: always()
         run: |
           set -euo pipefail
+          test -f research_runs/uniswap_inventory/source/SOURCE_GATE.json
           (cd research_runs/uniswap_inventory/source && sha256sum --check SHA256SUMS.txt)
           python - <<'PY'
           import json
           from pathlib import Path
           result = json.loads(Path("research_runs/uniswap_inventory/source/SOURCE_GATE.json").read_text())
+          assert result["claim_id"] == "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001"
           assert result["status"] == "SOURCE_GATE_PASS"
           assert result["decision"] == "OPEN_FROZEN_PRE2024_MODEL_STAGE"
-          assert result["uniswap"]["rows"] >= 6_000_000
-          assert result["ethereum_blocks"]["min_block"] <= result["uniswap"]["min_block"]
-          assert result["ethereum_blocks"]["max_block"] >= result["uniswap"]["max_block"]
-          assert len(result["bybit_probe"]) == 3
-          assert all(int(item["year"]) <= 2023 for item in result["bybit_probe"])
-          assert result["outcome_market_data_opened"] is False
-          assert result["model_fitted"] is False
-          assert result["strategy_pnl_opened"] is False
-          assert result["2024_strategy_outcome_opened"] is False
-          assert result["orders_submitted"] is False
+          assert result["pre2024"]["event_count"] >= 500_000
+          assert result["pre2024"]["hourly_row_count"] >= 15_000
+          assert result["pre2024"]["missing_expected_months"] == []
+          assert len(result["official_2024H1_source_continuity_probes_only"]) == 2
+          assert all(row["event_count"] >= 100 for row in result["official_2024H1_source_continuity_probes_only"])
+          assert len(result["bybit_archive_probes"]) == 3
+          seal=result["outcome_seal"]
+          assert seal["market_labels_opened"] is False
+          assert seal["model_fitted"] is False
+          assert seal["strategy_actions_opened"] is False
+          assert seal["strategy_pnl_opened"] is False
+          assert seal["complete_2024H1_source_opened"] is False
+          assert seal["official_2024H1_account_opened"] is False
+          assert seal["orders_submitted"] is False
           print(json.dumps({
             "status": result["status"],
-            "uniswap_rows": result["uniswap"]["rows"],
-            "block_files": result["ethereum_blocks"]["file_count"],
-            "bybit_probe_years": [item["year"] for item in result["bybit_probe"]],
+            "pre2024_events": result["pre2024"]["event_count"],
+            "pre2024_hours": result["pre2024"]["hourly_row_count"],
+            "probe_counts": [row["event_count"] for row in result["official_2024H1_source_continuity_probes_only"]],
           }, sort_keys=True))
           PY
           python scripts/validate_project.py || true
@@ -128,18 +132,18 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          mkdir -p research_runs/uniswap_inventory
+          mkdir -p research_runs/uniswap_inventory/input
           sha256sum \
             research/uniswap_inventory_relay_20260726/README.md \
+            research/uniswap_inventory_relay_20260726/SIGNED_SOURCE.md \
             research/uniswap_inventory_relay_20260726/preregistration.json \
             research/uniswap_inventory_relay_20260726/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json \
+            research/uniswap_inventory_relay_20260726/AMENDMENT_002_SQD_SIGNED_SWAP_CONTINUITY_BEFORE_OUTCOME.json \
             research/uniswap_inventory_relay_20260726/CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json \
-            research/uniswap_inventory_relay_20260726/source_gate.py \
-            research/uniswap_inventory_relay_20260726/source_gate_launcher.py \
-            research/uniswap_inventory_relay_20260726/test_source_gate.py \
-            research/uniswap_inventory_relay_20260726/test_source_gate_launcher.py \
+            research/uniswap_inventory_relay_20260726/sqd_signed_swap_source.py \
+            research/uniswap_inventory_relay_20260726/test_sqd_signed_swap_source.py \
             .github/workflows/uniswap-inventory-source-r20.yml \
-            > research_runs/uniswap_inventory/INPUT_SHA256SUMS.txt
+            > research_runs/uniswap_inventory/input/INPUT_SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         if: always()
