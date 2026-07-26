@@ -7,13 +7,42 @@
   "data": {
     "bybit_1m_start": "2021-01-01T00:00:00Z",
     "bybit_1m_end": "2024-06-30T23:59:00Z",
-    "bybit_source_mode": "official_v5_paginated_kline",
-    "bybit_kline_endpoint": "https://api.bybit.com/v5/market/kline",
-    "bybit_source_correction_id": "CORRECTION-20260727-ML-SWEEP-BYBIT-V5-TRANSPORT-002",
-    "superseded_failed_archive_pattern": "https://public.bybit.com/kline_for_metatrader4/{symbol}/{year}/{symbol}_1_{month_start}_{month_end}.csv.gz",
+    "bybit_source_mode": "official_static_mt4_listing_aware",
+    "bybit_static_root": "https://public.bybit.com/kline_for_metatrader4",
+    "bybit_source_correction_id": "CORRECTION-20260727-ML-SWEEP-STATIC-MT4-PINNED-FUNDING-003",
+    "bybit_symbol_first_expected": {
+      "BTCUSDT": "2021-01-01T00:00:00Z",
+      "ETHUSDT": "2021-03-01T00:00:00Z"
+    },
+    "superseded_sources": [
+      {
+        "mode": "blind_static_month_construction",
+        "failure": "requested a nonexistent pre-listing ETHUSDT January 2021 object before opening market rows"
+      },
+      {
+        "mode": "official_v5_paginated_kline_and_funding",
+        "failure": "all documented public REST hosts returned country-restriction HTTP 403 from the GitHub US runner before opening market rows"
+      }
+    ],
+    "pinned_bybit_funding_mirror": {
+      "dataset_id": "rogerdehe/klines-bybit",
+      "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
+      "probe_id": "PROBE-20260727-HF-BYBIT-FUNDING-PINNED-002",
+      "rate_column": "open",
+      "timestamp_column": "date",
+      "cadence": "actual settlement rows; observed median and maximum gap 8h",
+      "files": {
+        "BTCUSDT": "futures/1h/BTC_USDT_USDT-funding_rate.parquet",
+        "ETHUSDT": "futures/1h/ETH_USDT_USDT-funding_rate.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "b8c40e68d075b49337e2500b99af0ed2fec172a193fe45a11891b277c7830d04",
+        "ETHUSDT": "5ec784d1691e5310187eef5e3f8f5125bf3255dee6df07cec3291d7db8e8058a"
+      },
+      "semantics": "the mirror stores the actual funding rate in open; high, low, close and volume are zero placeholders"
+    },
     "binance_metrics_mirror_pattern": "https://huggingface.co/datasets/linxy/USDT-M_Perpetual_Futures/resolve/main/{symbol}/{symbol}_metrics.parquet",
     "binance_upstream": "https://data.binance.vision/data/futures/um/daily/metrics/{symbol}/{symbol}-metrics-YYYY-MM-DD.zip",
-    "bybit_funding_endpoint": "https://api.bybit.com/v5/market/funding/history",
     "minimum_one_minute_coverage": 0.995,
     "metrics_delay_bars": 1
   },
@@ -80,7 +109,7 @@
     "same_bar_ambiguity": "stop_first",
     "stop_gap_fill": "adverse_observed_open",
     "target_gap_fill": "target_price",
-    "funding": "actual Bybit public settlement rates applied to signed open notional",
+    "funding": "actual Bybit settlement rates from the pinned immutable mirror, applied to signed open notional",
     "stage_boundary": "NAV mark; no forced strategy exit"
   },
   "sizing": {
