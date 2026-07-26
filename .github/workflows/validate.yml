@@ -42,8 +42,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stablecoin-strict-v4-validator-${{ github.run_id }}
+          name: stablecoin-profit-v5-validator-${{ github.run_id }}
           path: |
+            ${{ runner.temp }}/stablecoin_profit_v5_validator_result
+            ${{ runner.temp }}/stablecoin_profit_v5_validator_summary.json
             ${{ runner.temp }}/stablecoin_strict_v4_validator_result
             ${{ runner.temp }}/stablecoin_strict_v4_validator_summary.json
           if-no-files-found: warn
