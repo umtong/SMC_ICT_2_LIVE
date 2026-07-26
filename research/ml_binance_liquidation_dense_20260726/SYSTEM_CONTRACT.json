@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "system_contract_id": "SYS-20260727-ML-COINM-LIQUIDATION-FIRST-PASSAGE-001",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_before_decision_ready_source_or_market_outcome": true,
+  "alpha_mechanism": "A completed, positively executed Binance COIN-M forced-liquidation snapshot is a censored lower-bound observation of vulnerable inventory transfer. A pooled causal model estimates whether the mapped Bybit USDT-linear market reaches frozen upper or lower external liquidity first.",
+  "signal_source": {
+    "venue": "Binance COIN-M",
+    "symbols": ["BTCUSD_PERP", "ETHUSD_PERP"],
+    "mapping": {"BTCUSD_PERP": "BTCUSDT", "ETHUSD_PERP": "ETHUSDT"},
+    "semantics": "published executed snapshots only; never complete liquidation volume",
+    "executed_quantity": "accumulated_filled_quantity if positive, else last_filled_quantity if positive, else zero",
+    "notional": "executed contract count multiplied by hash-recorded exchangeInfo.contractSize",
+    "availability": "completion of the containing UTC one-minute source bucket plus five seconds"
+  },
+  "execution_universe": ["BTCUSDT", "ETHUSDT"],
+  "global_slot": 1,
+  "feature_schema": [
+    "signed_log_executed_usd_notional",
+    "log_absolute_executed_usd_notional",
+    "log_published_executed_snapshot_count",
+    "published_snapshot_price_notional_hhi",
+    "signed_same_side_share",
+    "observed_btc_eth_snapshot_breadth",
+    "log_notional_to_prior_60m_quote_volume",
+    "published_flow_price_impact_efficiency",
+    "prior_completed_1m_return",
+    "prior_completed_5m_return",
+    "prior_completed_15m_return",
+    "prior_completed_60m_realized_volatility",
+    "prior_available_oi_change",
+    "prior_available_funding_rate",
+    "distance_to_frozen_upper_liquidity",
+    "distance_to_frozen_lower_liquidity"
+  ],
+  "feature_availability": "Every market feature ends at the latest minute whose close is available by the source decision timestamp. The future entry open is execution only.",
+  "structural_map": {
+    "bar": "completed 15-minute bars",
+    "pivot_confirmation": "two completed bars on each side",
+    "pools": "nearest unconsumed confirmed high above and low below the decision reference within 14 calendar days",
+    "same_minute_ambiguity": "stop first"
+  },
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 160,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 40,
+      "l2_regularization": 1.0,
+      "random_state": 20260727
+    },
+    "calibration": "one chronological isotonic map when the calibration partition has at least 50 resolved rows and both classes",
+    "missing_values": "training-partition medians; an entirely missing optional feature receives zero"
+  },
+  "pre2024_chronology": {
+    "fit": ["2021-01-01", "2022-06-30"],
+    "calibration": ["2022-07-01", "2022-12-31"],
+    "confirmation_diagnostic": ["2023-01-01", "2023-06-30"],
+    "development_diagnostic": ["2023-07-01", "2023-12-31"],
+    "advancement_account": ["2023-01-01", "2023-12-31"],
+    "label_rule": "No first-passage label crosses a partition boundary"
+  },
+  "halfyear_update": {
+    "model_fit": "expanding resolved labels ending six months before each half-year cutoff",
+    "calibration": "last six completed calendar months before the cutoff",
+    "risk_notional": "highest positive 24bp no-liquidation geometric growth on the last completed 12 months",
+    "position_at_update": "carried until structural target, stop, or completed state invalidation; never liquidated for elapsed time"
+  },
+  "action": {
+    "long": "p_up*upper_distance - (1-p_up)*lower_distance - all_in_cost",
+    "short": "(1-p_up)*lower_distance - p_up*upper_distance - all_in_cost",
+    "selection": "take only the larger strictly positive action; otherwise flat",
+    "entry": "first executable minute open after the frozen decision timestamp",
+    "entry_gap": "zero gross and full modeled cost, with no favorable reroute"
+  },
+  "exit": [
+    "frozen structural target",
+    "frozen structural stop with adverse opening-gap fill",
+    "completed same-symbol state invalidation when the held-side expected edge is no longer positive"
+  ],
+  "elapsed_time_liquidation": false,
+  "costs_bps_round_trip": [12, 18, 24],
+  "funding": "actual Binance USD-M funding proxy in the pre-2024 fatal screen; exact Bybit funding required for a survivor",
+  "base_sizing": {"planned_structural_loss_fraction": 0.005, "notional_cap_multiple": 3},
+  "risk_search": {
+    "planned_structural_loss_fraction": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_cap_multiple": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+    "selection": "highest positive 24bp full-calendar geometric growth among no-liquidation paths; winner-removal growth and lower drawdown are tie-breakers",
+    "performance_ceiling": null
+  },
+  "pre2024_advancement": [
+    "authoritative source PASS",
+    "causal model successfully fitted",
+    "positive calendar-2023 total return after 24bp",
+    "no forced liquidation, bankruptcy, or terminal NAV loss"
+  ],
+  "diagnostics_not_extra_gates": [
+    "AUC and Brier skill",
+    "median trade and profit factor",
+    "chronological half returns",
+    "exact top-10%-winner-removal reroute",
+    "concentration and drawdown"
+  ],
+  "survivor_next_stage": "unchanged exact Bybit BBO, mark, funding, latency, partial-fill, capacity, margin, liquidation-distance, and continuous-NAV reconstruction, followed immediately by official 2024H1 using the 2023-12-31 cutoff",
+  "failure_action": "retire this exact information unit without adjacent feature, threshold, target, stop, risk, or leverage rescue",
+  "credentials_used": false,
+  "orders_submitted": false
+}
