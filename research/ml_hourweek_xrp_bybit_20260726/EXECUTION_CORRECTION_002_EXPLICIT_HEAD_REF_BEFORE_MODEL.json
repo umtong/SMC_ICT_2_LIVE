@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-EXPLICIT-HEAD-002",
+  "claim_id": "CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
+  "created_at": "2026-07-26T23:06:00+09:00",
+  "observed_problem": "The pull-request synthetic merge ref contained a different unmerged pre-outcome header correction, so reconstruct.py produced an unexpected executed-source SHA before market access. The scientific branch head remained unchanged.",
+  "observed_run": 30205314210,
+  "outcome_state_before_correction": {
+    "2026_account_path_opened": false,
+    "actions_opened": false,
+    "model_fitted": false,
+    "orders_submitted": false,
+    "pnl_opened": false,
+    "predictions_opened": false,
+    "trades_opened": false
+  },
+  "correction": "Both authoritative workflows explicitly checkout agent/r16-ml-hourweek-xrp-bybit-2026h1-001 rather than GitHub's synthetic pull-request merge ref, then reconstruct and verify the registered transport and corrected source hashes.",
+  "scientific_contract_unchanged": true,
+  "orders_submitted": false
+}
