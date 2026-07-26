@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "created_at": "2026-07-26T01:40:00Z",
+  "stage": "SOURCE_INVENTORY_ONLY",
+  "research_family": "identified_hyperliquid_wallet_inventory_to_bybit_execution",
+  "economic_hypothesis": "Point-in-time selected Hyperliquid wallet cohorts may reveal opening, closing, TWAP and liquidation inventory transitions before the full move is incorporated into executable Bybit USDT-linear perpetual prices.",
+  "source_probe": {
+    "provider": "Kaggle public dataset",
+    "owner": "marvingozo",
+    "slug": "hyperliquid-l1-order-flow-microstructure-10-perps",
+    "expected_advertised_streams": [
+      "wallet-level orders",
+      "wallet-level fills",
+      "L2 snapshots",
+      "funding and open interest"
+    ],
+    "trust_policy": "Do not trust advertised coverage or schema until endpoint responses and file inventory are recorded."
+  },
+  "allowed_operations": [
+    "anonymous dataset metadata fetch",
+    "anonymous dataset file-list fetch",
+    "record HTTP status, headers and raw JSON responses",
+    "extract filenames, byte sizes, advertised dates and version identifiers",
+    "hash downloaded metadata responses"
+  ],
+  "prohibited_operations": [
+    "download or read outcome-bearing parquet rows",
+    "inspect returns or forward labels",
+    "score wallets",
+    "construct signals",
+    "compute strategy PnL",
+    "inspect 2024-01-01 through 2026-06-30 evaluation data",
+    "submit any order"
+  ],
+  "inventory_gate": {
+    "minimum_requirements": [
+      "at least one usable Kaggle metadata or file-list endpoint",
+      "file-level inventory or explicit source-access failure",
+      "dataset version information when exposed",
+      "source_probe_only=true",
+      "strategy_pnl_computed=false"
+    ],
+    "pnl_promotion_requires_new_preregistration": true,
+    "minimum_coverage_for_future_public_sample_pnl": "Enough chronology for a prior-only wallet estimation interval and at least two distinct development partitions. Otherwise no PnL is permitted from this sample."
+  },
+  "eventual_execution_universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "eventual_execution_venue": "Bybit USDT linear perpetual",
+  "global_slot_limit": 1,
+  "official_2024_2026_evaluation_opened": false,
+  "live_order_permission": false
+}
