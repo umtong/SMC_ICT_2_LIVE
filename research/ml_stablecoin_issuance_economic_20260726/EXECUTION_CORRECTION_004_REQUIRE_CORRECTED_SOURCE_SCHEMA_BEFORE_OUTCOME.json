@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-STABLECOIN-ECONOMIC-REQUIRE-SCHEMA-004",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "PRE_MARKET_OUTCOME_EXECUTION_ONLY",
+  "recorded_at": "2026-07-26T23:27:00+09:00",
+  "trigger": "The consumer enumerated every successful historical source workflow on the parent branch and accepted any SOURCE_GATE_RESULT with status PASS. The result schema did not distinguish a pre-correction zero-address-only USDT decoder from the corrected canonical USDT Issue/Redeem authority.",
+  "change": [
+    "Require source_schema_id STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1 in both result and manifest.",
+    "Require source_correction_id CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010 in both result and manifest.",
+    "Require ordinary USDT transfers to be explicitly excluded.",
+    "Require positive USDT and USDC event counts and exact EVENTS.jsonl SHA-256 parity with the manifest.",
+    "Reject and record every older or unbound PASS artifact without opening market data."
+  ],
+  "outcome_state_before_correction": {
+    "source_artifact_selected": false,
+    "btc_or_eth_market_rows_opened": false,
+    "model_fitted": false,
+    "labels_or_actions_computed": false,
+    "trades_or_pnl_computed": false,
+    "official_2024h1_opened": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "one HGBT and one isotonic calibration map",
+    "twelve features and partition-local first-passage labels",
+    "train calibration confirmation and development chronology",
+    "one global slot and structural exits",
+    "12 18 and 24bp account replays",
+    "winner-removal rerouting",
+    "risk and notional search only after a robust pre-2024 survivor",
+    "immediate sequential 2024H1 handoff",
+    "no credentials or orders"
+  ]
+}
