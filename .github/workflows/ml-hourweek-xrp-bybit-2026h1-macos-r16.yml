@@ -54,11 +54,13 @@ jobs:
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/LOCAL_REPLICATION_BEFORE_2026.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_001_BINANCE_HEADER_BEFORE_MODEL.json" >/dev/null
           python "$ROOT/reconstruct.py" | tee "$OUT/RECONSTRUCT.log"
-          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py"
+          python "$ROOT/apply_header_correction.py" | tee "$OUT/HEADER_CORRECTION.log"
+          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/apply_header_correction.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_run.py" | tee "$OUT/PYTEST.log"
           PYTHONPATH="$ROOT" python "$ROOT/run.py" --self-test | tee "$OUT/SELF_TEST.log"
-          cp "$ROOT"/*.json "$ROOT"/*.md "$ROOT"/run.py.gz.b64.part* "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py" "$OUT/source/"
+          cp "$ROOT"/*.json "$ROOT"/*.md "$ROOT"/run.py.gz.b64.part* "$ROOT/reconstruct.py" "$ROOT/apply_header_correction.py" "$ROOT/run.py" "$ROOT/test_run.py" "$OUT/source/"
           (cd "$OUT/source" && for f in *; do shasum -a 256 "$f"; done | sort > SOURCE_SHA256SUMS.txt)
       - uses: actions/cache@v4
         with:
@@ -84,6 +86,9 @@ jobs:
           assert result['authority']['credentials_used'] is False
           assert result['authority']['orders_submitted'] is False
           forward=result['results']['official_forward_2026H1']
+          for cost in ('12bps','24bps','72bps','96bps'):
+              assert forward[cost]['actual_funding']['account_ruin'] in (True, False)
+              assert forward[cost]['winner_removed_actual_funding']['account_ruin'] in (True, False)
           print(json.dumps({
               'forward_24bp':forward['24bps']['actual_funding'],
               'forward_24bp_winner_removed':forward['24bps']['winner_removed_actual_funding'],
