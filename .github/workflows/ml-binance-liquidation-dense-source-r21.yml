@@ -1,0 +1,165 @@
+name: ML Binance dense liquidation source gate
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-binance-liquidation-dense-001
+    paths:
+      - 'research/ml_binance_liquidation_dense_20260726/**'
+      - '.github/workflows/ml-binance-liquidation-dense-source-r21.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_binance_liquidation_dense_20260726/**'
+      - '.github/workflows/ml-binance-liquidation-dense-source-r21.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-binance-liquidation-dense-source-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-ml-binance-liquidation-dense-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install fixed source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5
+
+      - name: Compile and validate outcome-sealed implementation
+        run: |
+          set -euo pipefail
+          root=research/ml_binance_liquidation_dense_20260726
+          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          mkdir -p "$out"
+          python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/source_gate.py" "$root/test_source_gate.py" "$root/reconstruct.py"
+          PYTHONPATH="$root" pytest -q "$root/test_source_gate.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/source_gate.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+
+      - name: Run official Binance Vision source gate
+        shell: bash
+        run: |
+          set -u
+          root=research/ml_binance_liquidation_dense_20260726
+          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          mkdir -p "$out"
+          set +e
+          PYTHONPATH="$root" python "$root/source_gate.py" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$rc" > "$out/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
+            echo "unexpected source-gate process failure: $rc" >&2
+            exit "$rc"
+          fi
+          test -f "$out/SOURCE_GATE_RESULT.json"
+          test -f "$out/SOURCE_MANIFEST.json"
+          test -f "$out/SAMPLE_ROWS.jsonl.gz"
+
+      - name: Enforce source decision and outcome seal
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          out=Path('research_runs/ml_binance_liquidation_dense_20260726/source')
+          result=json.loads((out/'SOURCE_GATE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001'
+          assert result['status'] in {'PASS','BELOW_SOURCE_GATE','SOURCE_ERROR'}
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['credentials_used'] is False
+          assert result['orders_submitted'] is False
+          if result['status']=='PASS':
+              assert result['source_gate_pass'] is True
+              assert result['scientific_decision']=='OPEN_FROZEN_PRE2024_DENSE_LIQUIDATION_MODEL_STAGE'
+              assert all(result['checks'].values())
+          else:
+              assert result['source_gate_pass'] is False
+              assert result['scientific_decision']=='CLOSE_OFFICIAL_LIQUIDATION_SNAPSHOT_ROUTE_BEFORE_OUTCOMES'
+          serialized=json.dumps(result,sort_keys=True).lower()
+          for prohibited in (
+              'future_return_value','first_passage_label_value','model_auc',
+              'trade_return','account_nav','official_2024_opened'
+          ):
+              assert prohibited not in serialized
+          print(json.dumps({
+              'status':result['status'],
+              'layout':result.get('layout'),
+              'source_gate_pass':result['source_gate_pass'],
+              'decision':result['scientific_decision'],
+              'totals':result.get('totals',{}),
+              'fatal_error':result.get('fatal_error'),
+          },sort_keys=True))
+          PY
+
+      - name: Record current project validation without suppressing scientific evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+
+      - name: Freeze source evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_binance_liquidation_dense_20260726
+          out=research_runs/ml_binance_liquidation_dense_20260726/source
+          mkdir -p "$out/source"
+          cp \
+            "$root/WORK_CLAIM.json" \
+            "$root/PREREGISTRATION.md" \
+            "$root/SOURCE_MANIFEST.json" \
+            "$root/reconstruct.py" \
+            "$root/source_gate.py" \
+            "$root/test_source_gate.py" \
+            "$out/source/"
+          cp "$root"/source_gate.py.gz.b64.part* "$out/source/"
+          sha256sum \
+            "$root/WORK_CLAIM.json" \
+            "$root/PREREGISTRATION.md" \
+            "$root/SOURCE_MANIFEST.json" \
+            "$root/reconstruct.py" \
+            "$root"/source_gate.py.gz.b64.part* \
+            "$root/test_source_gate.py" \
+            .github/workflows/ml-binance-liquidation-dense-source-r21.yml \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-binance-liquidation-dense-source-${{ github.run_id }}
+          path: research_runs/ml_binance_liquidation_dense_20260726/source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
