@@ -1,0 +1,161 @@
+name: Minimal ML Coinbase institutional-flow relay
+
+on:
+  push:
+    branches:
+      - agent/r11-coinbase-institutional-flow-001
+    paths:
+      - "research/coinbase_institutional_flow_20260726/**"
+      - ".github/workflows/ml-coinbase-flow-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/coinbase_institutional_flow_20260726/**"
+      - ".github/workflows/ml-coinbase-flow-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ROOT: research/coinbase_institutional_flow_20260726
+  OUT: research_runs/coinbase_institutional_flow_20260726/r11
+  CACHE: /tmp/ml-coinbase-flow-r11
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+  OMP_NUM_THREADS: "2"
+  OPENBLAS_NUM_THREADS: "2"
+  MKL_NUM_THREADS: "2"
+  NUMEXPR_NUM_THREADS: "2"
+
+concurrency:
+  group: ml-coinbase-flow-r11-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.6.1" \
+            "pytest==8.3.4"
+
+      - name: Reconstruct and validate the frozen minimal model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python "$ROOT/reconstruct.py" 2>&1 | tee "$OUT/RECONSTRUCT.log"
+          python -m py_compile "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/reconstruct.py"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          path=Path('research/coinbase_institutional_flow_20260726/run.py')
+          raw=path.read_bytes()
+          assert len(raw)==52596
+          assert hashlib.sha256(raw).hexdigest()=='178cfd57b0028a17333330cda8d1984b12b1499fae9981aaafaafa934e269a1a'
+          print('FROZEN_SOURCE_IDENTITY_PASS')
+          PY
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" self-test 2>&1 | tee "$OUT/SELF_TEST.log"
+          PYTHONPATH="$ROOT" python -m pytest -q "$ROOT/test_run.py" 2>&1 | tee "$OUT/PYTEST.log"
+          python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$ROOT/AMENDMENT_001_MINIMAL_ML_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$ROOT/preregistration.json" >/dev/null
+          python -m json.tool "$ROOT/source_bundle_manifest.json" >/dev/null
+          python scripts/validate_project.py 2>&1 | tee "$OUT/PROJECT_VALIDATION.log"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE }}
+          key: ml-coinbase-flow-r11-${{ hashFiles('research/coinbase_institutional_flow_20260726/preregistration.json', 'research/coinbase_institutional_flow_20260726/AMENDMENT_001_MINIMAL_ML_BEFORE_OUTCOME.json') }}
+
+      - name: Run frozen 2022 fit and conditional development
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT" "$CACHE"
+          PYTHONPATH="$ROOT" python "$ROOT/run.py" run \
+            --output "$OUT" \
+            --cache "$CACHE" \
+            2>&1 | tee "$OUT/RUN.log"
+
+      - name: Enforce result, causality and authority boundaries
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f "$OUT/RESULT.json"; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/coinbase_institutional_flow_20260726/r11')
+          result=json.loads((root/'RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-1108-COINBASE-FLOW-001'
+          assert result['engine_version']=='ML-COINBASE-INSTITUTIONAL-FLOW-RELAY-V1'
+          assert result['orders_submitted'] is False
+          assert result['rank_eligible'] is False
+          assert result['global_slot_count']==1
+          assert result['elapsed_time_exit'] is False
+          assert result['bitmex_used'] is False
+          assert result['prohibited_years_opened']==[]
+          assert result['development_opened']==(result['fit_gate_passed'] is True)
+          if not result['fit_gate_passed']:
+              assert result['development'] is None
+              assert result['development_source_file_count']==0
+          assert set(result['fit']['paths'])=={'2','5'}
+          for delay in ('2','5'):
+              assert set(result['fit']['paths'][delay])=={'12','18','24'}
+          print('VERIFIED_RESULT='+json.dumps(result,sort_keys=True,separators=(',',':')))
+          PY
+          fi
+          python scripts/validate_project.py
+
+      - name: Record immutable inputs and outputs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          sha256sum \
+            "$ROOT/README.md" \
+            "$ROOT/WORK_CLAIM.json" \
+            "$ROOT/AMENDMENT_001_MINIMAL_ML_BEFORE_OUTCOME.json" \
+            "$ROOT/SOURCES.md" \
+            "$ROOT/preregistration.json" \
+            "$ROOT/source_bundle_manifest.json" \
+            "$ROOT/reconstruct.py" \
+            "$ROOT/run.py.gz.b64.part00" \
+            "$ROOT/run.py.gz.b64.part01" \
+            "$ROOT/run.py" \
+            "$ROOT/test_run.py" \
+            .github/workflows/ml-coinbase-flow-r11.yml \
+            > "$OUT/INPUT_SHA256SUMS.txt"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-coinbase-flow-r11-${{ github.sha }}
+          path: ${{ env.OUT }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
