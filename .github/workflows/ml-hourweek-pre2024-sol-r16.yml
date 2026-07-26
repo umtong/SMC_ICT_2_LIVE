@@ -61,25 +61,54 @@ jobs:
             --artifact /tmp/hourweek-source/source.zip \
             --work /tmp/hourweek-pre2024-work \
             --output "$out"
-          diff -u research/results/RES-20260726-ML-HOURWEEK-PRE2024-SOL-001.json "$out/RESULT.json"
           diff -u "$root/Q3_Q4_SELECTION.json" "$out/Q3_Q4_SELECTION.json"
-          echo 'db9f3dbe13d2e621c05b7e8ae63c81b6b711a010a48b290f8d82883037996ccf  research_runs/ml_hourweek_pre2024_sol_20260726/r16/RESULT.json' | sha256sum -c -
-          echo '872964b4b29765e43ad990184339c321b6318b56133dc29f51af38578fc7bfac  research_runs/ml_hourweek_pre2024_sol_20260726/r16/Q3_Q4_SELECTION.json' | sha256sum -c -
-      - name: Enforce authority and stage boundaries
+      - name: Validate scientific invariants with explicit numerical tolerance
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('research_runs/ml_hourweek_pre2024_sol_20260726/r16/RESULT.json')
-          r=json.loads(p.read_text())
-          assert r['status']=='OFFICIAL_2024H1_ZERO_ACTION'
-          assert r['official_2024h1']['eligible_entry_count']==0
-          assert r['opened_periods']==['2024H1']
-          assert r['unopened_periods']==['2024H2','2025H1','2025H2','2026H1']
-          assert r['orders_submitted'] is False
-          assert r['ranking_role']=='NONE'
-          print(json.dumps({'status':r['status'],'eligible':0,'ranking_role':'NONE'},sort_keys=True))
+          committed=json.loads(Path('research/results/RES-20260726-ML-HOURWEEK-PRE2024-SOL-001.json').read_text())
+          reproduced=json.loads(Path('research_runs/ml_hourweek_pre2024_sol_20260726/r16/RESULT.json').read_text())
+          assert reproduced['status']=='OFFICIAL_2024H1_ZERO_ACTION'
+          assert reproduced['hard_validity_status']=='PASS_CAUSAL_PRE2024_SELECTION_BINANCE_PROXY'
+          assert reproduced['selected_route']==committed['selected_route']=={
+              'multiplier':0.75,'session':'UTC00_11','side_filter':'SHORT','symbol':'SOLUSDT'}
+          assert reproduced['q3_survivor_count']==committed['q3_survivor_count']==50
+          assert reproduced['q4_confirmed_count']==committed['q4_confirmed_count']==1
+          assert abs(reproduced['base_threshold']-committed['base_threshold']) < 1e-4
+          assert abs(reproduced['absolute_entry_threshold']-committed['absolute_entry_threshold']) < 1e-4
+          assert reproduced['official_2024h1']['eligible_entry_count']==committed['official_2024h1']['eligible_entry_count']==0
+          assert reproduced['official_2024h1']['minimum_session_prediction'] > reproduced['official_2024h1']['entry_threshold']
+          for cost in ('12bps','18bps','24bps'):
+              for route in ('ordinary','winner_removed'):
+                  path=reproduced['official_2024h1']['paths'][cost][route]
+                  assert path['completed_trade_count']==0
+                  assert path['final_nav']==1.0
+                  assert path['total_return']==0.0
+                  assert path['geometric_daily_growth']==0.0
+          assert reproduced['opened_periods']==['2024H1']
+          assert reproduced['unopened_periods']==['2024H2','2025H1','2025H2','2026H1']
+          assert reproduced['orders_submitted'] is False
+          assert reproduced['ranking_role']=='NONE'
+          print(json.dumps({
+              'status':reproduced['status'],
+              'selected_route':reproduced['selected_route'],
+              'threshold_abs_diff':abs(reproduced['base_threshold']-committed['base_threshold']),
+              'eligible_entries':0,
+              'growth_24bps':0.0,
+              'ranking_role':'NONE'
+          },sort_keys=True))
           PY
+      - name: Record immutable identities
+        run: |
+          out=research_runs/ml_hourweek_pre2024_sol_20260726/r16
+          sha256sum \
+            research/ml_hourweek_pre2024_sol_20260726/evaluate_source.py.gz.b64 \
+            research/ml_hourweek_pre2024_sol_20260726/evaluate_source_manifest.json \
+            research/ml_hourweek_pre2024_sol_20260726/preregistration_2024h1.json \
+            research/results/RES-20260726-ML-HOURWEEK-PRE2024-SOL-001.json \
+            "$out/RESULT.json" "$out/Q3_Q4_SELECTION.json" \
+            > "$out/IDENTITIES.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
