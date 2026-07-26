@@ -1,0 +1,156 @@
+{
+  "base_project_revision": 11,
+  "claim_id": "CLM-20260726-1047-XVENUE-LEVERAGE-BREADTH-001",
+  "dependency_fingerprint": "2ca5c3f1ff0038bba73a07c5440ce09ff147e67b0fba7307d76d7711681c4a7f",
+  "distinction": {
+    "active_price_cross_venue": "Price/basis arrival order alone cannot trigger; every event requires cross-venue OI state.",
+    "closed_single_venue_oi": "The primary state is cross-venue OI breadth/divergence, not Bybit OI plus same-venue flow.",
+    "multi_asset_positioning": "No completed 5m cross-sectional basket or account-ratio state; execution is same-symbol Bybit only."
+  },
+  "evaluation_contract_sha256": "52dff3f80ea9e6a73cf448c3dfc25afa38054e51020248ed7166cc8dcfa8e716",
+  "execution_contract": {
+    "capacity": "At most 5% of observed top-quote quantity and capped by 0.5% NAV stop risk and 3x notional leverage.",
+    "cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "cost_interpretation": "Observed BBO spread is embedded in entry and exit; cost grid is additional round-trip fee/slippage/impact stress.",
+    "entry": "At decision plus 100ms or 500ms, buy causally current ask or sell causally current bid, with one-second BBO freshness limit.",
+    "exit_latency_ms": 100,
+    "funding": "Actual Bybit historical funding settlements in (entry, exit] with correct side.",
+    "global_slot": "One pending/open BTC/ETH position; same-timestamp re-entry prohibited.",
+    "instrument": "Bybit BTCUSDT or ETHUSDT USDT linear perpetual.",
+    "stop": "Outside the completed Bybit event extreme plus one decision spread and no tighter than two decision spreads; adverse stop rebound.",
+    "target": "Fixed 1R or 2R barrier; no elapsed-time forced exit."
+  },
+  "fatal_gate": {
+    "maximum_top5_positive_share_18bps": 0.5,
+    "maximum_unresolved_share": 0.05,
+    "minimum_development_profit_factor_18bps": 1.15,
+    "minimum_development_trades": 20,
+    "minimum_fit_trades": 20,
+    "minimum_positive_development_dates": 2,
+    "positive_after_removing_largest_10pct_positive_trades_18bps": true,
+    "positive_development_median_trade_18bps": true,
+    "positive_development_return_at_18_and_24bps": true,
+    "positive_fit_return_at_18_and_24bps": true
+  },
+  "feature_contract": {
+    "flow": "Venue-specific signed aggressive quote-notional divided by total quote-notional; flow size is normalized by prior-only rolling median notional.",
+    "oi_change": "Within each venue, relative OI change from the latest update received before window start to the latest update received before the completed decision boundary.",
+    "oi_standardization": "Within-venue prior-only 1,800-second rolling standard deviation shifted one completed observation.",
+    "price_response": "Completed Binance and Bybit trade returns expressed in causally known Bybit BBO spread units.",
+    "threshold_transition": "Each candidate acts only on the first completed window of its own eligibility run.",
+    "venue_relation": "Common families require balanced absolute OI z-scores; lead/trap families require dominant-venue OI share.",
+    "windows_seconds": [
+      1,
+      2,
+      5
+    ]
+  },
+  "frozen_grid": {
+    "candidate_count": 1920,
+    "families": [
+      "common_opening_continuation",
+      "binance_oi_lead_continuation",
+      "bybit_specific_opening_trap",
+      "common_closing_cascade",
+      "common_closing_exhaustion"
+    ],
+    "flow_imbalance": [
+      0.35,
+      0.6
+    ],
+    "flow_size": [
+      1.5,
+      3.0
+    ],
+    "latency_ms": [
+      100,
+      500
+    ],
+    "move_spreads": [
+      1.5,
+      4.0
+    ],
+    "oi_z": [
+      1.5,
+      2.5
+    ],
+    "target_r": [
+      1.0,
+      2.0
+    ],
+    "venue_relation": [
+      0.35,
+      0.65
+    ],
+    "window_seconds": [
+      1,
+      2,
+      5
+    ]
+  },
+  "interpretation_boundary": {
+    "orders_submitted": false,
+    "rank_eligible": false,
+    "survivor_action": "Freeze exact survivors and expand to every remaining pre-2024 first-day sample before any 2024 opening.",
+    "zero_survivor_action": "Retire this exact cross-venue OI-breadth dependency without adjacent threshold, latency, target, stop, risk, leverage or cost retuning."
+  },
+  "mechanisms": {
+    "binance_oi_lead_continuation": "Binance OI and aggressor flow expand before Bybit OI/price fully respond; trade the residual catch-up only when the OI dominance and price gap are both large.",
+    "bybit_specific_opening_trap": "Bybit OI expands without comparable Binance breadth while high Bybit effort produces weak or unconfirmed price response; fade trapped Bybit opening inventory.",
+    "common_closing_cascade": "Both venues show negative standardized OI innovations with aligned aggressive flow and efficient displacement; follow the closing cascade.",
+    "common_closing_exhaustion": "Both venues close leverage together but Bybit shows large range and weak close efficiency; fade the exhausted closure burst.",
+    "common_opening_continuation": "Both venues show positive standardized OI innovations with balanced magnitude, aligned aggressive flow and efficient common price displacement; follow the common flow."
+  },
+  "objective": "Test whether cross-venue breadth and divergence of same-symbol open-interest innovations separate common leverage creation/closure from venue-specific trapped leverage strongly enough to overcome Bybit spread, fees, slippage, impact and one-slot opportunity cost.",
+  "prohibitions": [
+    "No 2024-2026 access in this workflow.",
+    "No parameter, family, cost, risk or leverage change after outcomes.",
+    "No liquidation labels, L2 cancel/refill, options, wallet identity, cross-asset follower or OCO information.",
+    "No credentials, paper, testnet or live orders."
+  ],
+  "registered_at": "2026-07-26T10:47:23+09:00",
+  "result_id": "RES-20260726-XVENUE-LEVERAGE-BREADTH-001",
+  "schema_version": 1,
+  "source_contract": {
+    "availability_clock": "Tardis local_timestamp; all features use completed windows and messages received strictly before the decision boundary.",
+    "data_types": {
+      "binance-futures": [
+        "trades",
+        "derivative_ticker"
+      ],
+      "bybit": [
+        "trades",
+        "quotes",
+        "derivative_ticker"
+      ]
+    },
+    "development_dates": [
+      "2023-07-01",
+      "2023-09-01",
+      "2023-11-01"
+    ],
+    "execution_venue": "bybit",
+    "fit_dates": [
+      "2023-01-01",
+      "2023-03-01",
+      "2023-05-01"
+    ],
+    "gap_rule": "A Bybit decision or order boundary with BBO older than one second is unavailable; accepted positions unresolved at source boundary are valued at the structural stop.",
+    "later_periods": "2024-2026 sealed.",
+    "public_sample_constraint": "First-day monthly public samples only.",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "venues": [
+      "binance-futures",
+      "bybit"
+    ]
+  },
+  "status": "PREREGISTERED_BEFORE_PRE2024_FATAL_SCREEN",
+  "study_id": "BINANCE_BYBIT_CROSS_VENUE_LEVERAGE_BREADTH_V1"
+}
