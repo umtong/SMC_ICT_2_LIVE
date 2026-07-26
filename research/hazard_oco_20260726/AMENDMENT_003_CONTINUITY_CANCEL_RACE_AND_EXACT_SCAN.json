@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "status": "FROZEN_BEFORE_ANY_OBSERVED_FIT_DIAGNOSTIC_DEVELOPMENT_PATH_OR_PNL",
+  "created_at": "2026-07-26T10:12:00+09:00",
+  "reason": "Exact pre-run review found one cancellation-race implementation defect and one overly permissive missing-state rule. The running first integration attempt had not produced a strategy artifact or any observed fit/development outcome when this amendment was frozen; the branch update cancels that attempt.",
+  "corrections": {
+    "opposite_trigger_search": "After the first entry fills, same-side trade retriggers cannot terminate the search for the still-live opposite entry. Search only for the opposite threshold until the modeled cancel-effective boundary; if crossed, flatten with the adverse market fill.",
+    "feature_continuity": "Every accepted decision requires all 600 completed 100ms midpoint states in the preceding 60 seconds to be fresh. A rolling feature never bridges an unavailable quote state.",
+    "fit_label_continuity": "Every 30-second fit hazard label requires complete fresh midpoint coverage after activation. Labels with any unavailable 100ms state are excluded rather than inferred from partial paths.",
+    "exact_scan_optimization": "Initial trigger, opposite trigger, target/stop and two-consecutive-state-exit searches use vectorized first-hit calculations. Target/stop is searched only through an earlier known state-exit boundary. This is an exact algorithmic acceleration and does not alter event ordering or prices."
+  },
+  "adversarial_test_added": "A same-side retrigger before a later opposite trigger must not hide a double-trigger flattening loss under the 300ms cancellation profile.",
+  "scientific_grid_changed": false,
+  "market_or_cost_changed": false,
+  "selection_or_sealed_period_changed": false,
+  "orders_permitted": false
+}
