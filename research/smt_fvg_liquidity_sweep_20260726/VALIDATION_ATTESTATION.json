@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-SMT-FVG-SWEEP-FATAL-001",
+  "claim_id": "CLM-20260726-1539-SMT-FVG-SWEEP-001",
+  "result_id": "RES-20260726-SMT-FVG-SWEEP-FATAL-001",
+  "dependency_fingerprint": "5551ed5bcdd463c79e637bae700f6e9d4f507734a80d0e655a24468cc490180b",
+  "status": "PASS",
+  "validation_scope": "Immutable implementation reconstruction, official Bybit gzip/CSV archive identity, completed one-second availability, right-confirmed five-second pivots and equal pools, post-confirmation first sweep, paired-market non-raid SMT state, confirmation-plus-100ms entry, structural stop/target, adverse stop-first ordering, sparse-boundary full-stop accounting, one global BTC/ETH slot, identical 12/18/24bp replay, concentration metrics, stage seals and independent candidate-ledger reproduction.",
+  "changed_surface": [
+    "New causal SMT external-liquidity sweep/FVG strategy family",
+    "New official Bybit six-day BTC/ETH trade dataset manifest",
+    "Observable result persistence and independent result-ledger audit",
+    "Audit-only correction of a compressed-byte summation typo from 219945454 to the exact 209945454; no strategy or outcome field changed"
+  ],
+  "evidence": [
+    "Exact implementation SHA-256 60b205f8d02b2b6ec0190e0dbf49b6db4b3a7d8d29a342139571cf5b847f9fbd reconstructed from compressed SHA-256 967cb05a46c522777bcc4341c45e0b7b082c3a2f79eced85f27797dbdbfe42bf.",
+    "Twelve official Bybit archives matched recorded gzip/CSV integrity, URLs, row counts, byte sizes and SHA-256 values before use; total 5,646,495 trades and 209,945,454 compressed bytes.",
+    "The run produced 9,040 causal SMT event rows: 6,487 fit and 2,553 independent development.",
+    "All 3,072 frozen candidates completed; development gate count was zero and maximum development trades were 66.",
+    "At 18bp and 24bp zero candidates had positive total return. At 12bp 22 candidates were positive, but zero had at least ten trades and positive total return.",
+    "Independent audit recomputed the gate, positive counts, cost monotonicity, five sample-size tiers, maximum trades and source-manifest totals from candidate_results.csv and matched the registered summary exactly.",
+    "Independent audit found zero cost-monotonicity mismatches and reproduced candidate_results SHA-256 4b0853e1b8554d6a5e339c045a21dad3664d1f987a739c056a0583f4999563dc, result_summary SHA-256 37bf2103da1e0339adf8b4f5a18f601a2c3c574ce5fb1d874ea764c0b702e63c and source_manifest SHA-256 dfa0db2afd5d251bca151897de57eca5b78ce2246c4a197fa91fa6e7532a376c.",
+    "2024, 2025 and 2026 remained unopened; no credential, paper order, testnet order or live order was used."
+  ],
+  "independent_audit": {
+    "status": "PASS",
+    "gate_count": 0,
+    "cost_monotonicity_mismatches": 0,
+    "candidate_results_sha256": "4b0853e1b8554d6a5e339c045a21dad3664d1f987a739c056a0583f4999563dc",
+    "result_summary_sha256": "37bf2103da1e0339adf8b4f5a18f601a2c3c574ce5fb1d874ea764c0b702e63c",
+    "source_manifest_sha256": "dfa0db2afd5d251bca151897de57eca5b78ce2246c4a197fa91fa6e7532a376c"
+  },
+  "code_commit": "fa4e766c7f2b7b47c3016217c684524111b36e8d",
+  "created_at": "2026-07-26T16:24:00+09:00"
+}
