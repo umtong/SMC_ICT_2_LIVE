@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1742-ML-LEVERAGE-CASCADE-001",
+  "result_id": "RES-20260726-ML-LEVERAGE-CASCADE-001",
+  "engine_version": "ML-LEVERAGE-CASCADE-V1",
+  "hypothesis": "A single calibrated nonlinear model can use causally available Binance leveraged-positioning state to distinguish a genuine forced-inventory continuation from a failed completed Bybit internal-structure break, with incremental probability quality and positive realistic-cost account expectancy.",
+  "tradable_symbols": ["BTCUSDT", "ETHUSDT"],
+  "execution_venue": "Bybit USDT linear perpetual",
+  "external_information_venue": "Binance USDT-margined perpetual public historical metrics",
+  "chronology": {
+    "train": ["2021-10-01T00:00:00Z", "2022-04-01T00:00:00Z"],
+    "eth_first_available_training_file": "2021-12-01T00:00:00Z",
+    "calibration": ["2022-04-01T00:00:00Z", "2022-07-01T00:00:00Z"],
+    "untouched_fit_confirmation": ["2022-07-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "conditional_development": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"]
+  },
+  "sealed_years": [2024, 2025, 2026],
+  "event": {
+    "internal_structure_timeframe_minutes": 15,
+    "external_liquidity_timeframe_minutes": 60,
+    "pivot_left_bars": 2,
+    "pivot_right_bars": 2,
+    "trigger": "first completed 15-minute close through an already-confirmed active internal pivot",
+    "target": "nearest still-unreached already-confirmed hourly pivot beyond the reference price in the break direction",
+    "stop": "latest already-confirmed active opposite 15-minute pivot",
+    "entry": "first Bybit minute open at least 60 seconds after both the completed decision bar and the selected Binance metrics timestamp",
+    "waiting_barrier_touch": "candidate invalid",
+    "same_minute_target_and_stop": "stop_first",
+    "adverse_stop_gap": "fill_at_adverse_minute_open",
+    "source_gap": "full_structural_stop",
+    "elapsed_time_exit": false
+  },
+  "model": {
+    "full_family": "HistGradientBoostingClassifier",
+    "structure_baseline_family": "HistGradientBoostingClassifier",
+    "pooling": "BTCUSDT and ETHUSDT with symbol indicator",
+    "hyperparameters": {
+      "loss": "log_loss",
+      "learning_rate": 0.05,
+      "max_iter": 300,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 80,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 20260726
+    },
+    "calibration": "chronological Platt logistic calibration on raw-probability log odds",
+    "model_family_grid": false,
+    "hyperparameter_grid": false,
+    "threshold_grid": false
+  },
+  "structure_features": [
+    "direction",
+    "target_bps_ref",
+    "stop_bps_ref",
+    "reward_risk_ref",
+    "direction-aligned 15m/1h/4h returns",
+    "4h realized volatility",
+    "range/ATR ratio",
+    "direction-aligned body efficiency and wick skew",
+    "24h volume z-score",
+    "UTC hour sine/cosine",
+    "symbol indicator"
+  ],
+  "incremental_positioning_features": [
+    "log open-interest value",
+    "direction-aligned OI changes over 5m/30m/2h/8h",
+    "direction-aligned OI z-scores over 24h/7d",
+    "direction-aligned top-account, top-position, all-account and taker long-short log ratios",
+    "top-position minus top-account and crowd divergence",
+    "30m taker change and 24h taker z-score",
+    "trapped-crowd pressure",
+    "directional deleveraging pressure"
+  ],
+  "frozen_policy": {
+    "cost_basis_bps_round_trip": 18.0,
+    "break_even_probability": "(stop_bps + 18) / (target_bps + stop_bps)",
+    "minimum_probability_edge_over_break_even": 0.04,
+    "minimum_probability_edge_over_structure_baseline": 0.03,
+    "minimum_expected_net_bps": 0.0
+  },
+  "account": {
+    "initial_nav_usdt": 10000.0,
+    "global_pending_or_open_slots": 1,
+    "risk_fraction": 0.005,
+    "notional_cap_multiple_of_nav": 5.0,
+    "prior_completed_60m_quote_volume_participation_cap": 0.001,
+    "round_trip_cost_replays_bps": [12.0, 18.0, 24.0],
+    "holding_charge_bps_per_8h_prorated": 1.0,
+    "daily_boundary": "00:00 UTC",
+    "open_position_nav": "realistic liquidation value including hypothetical exit cost",
+    "top_winner_removal": "remove top 10 percent of completed trades by account PnL and replay the global event ledger so freed slots may take later candidates"
+  },
+  "fit_confirmation_gate": {
+    "full_auc_strictly_above_structure_auc": true,
+    "full_brier_strictly_below_structure_brier": true,
+    "positive_total_return_at_18bps": true,
+    "positive_total_return_at_24bps": true,
+    "minimum_completed_global_slot_trades_at_18bps": 80,
+    "positive_median_trade_at_18bps": true,
+    "profit_factor_above_one_at_18bps": true,
+    "minimum_positive_months_at_18bps": 4,
+    "positive_top10pct_removed_return_at_18bps": true,
+    "no_liquidation": true
+  },
+  "failure_rule": "If any gate fails, calendar 2023 remains sealed and the exact information unit is killed without threshold, side, symbol, feature, risk, leverage or sizing salvage.",
+  "orders_submitted": false
+}
