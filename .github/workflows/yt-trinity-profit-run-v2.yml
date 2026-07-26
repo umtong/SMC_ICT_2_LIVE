@@ -1,0 +1,367 @@
+name: YT Trinity corrected profit-first account
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-profit-run-001
+    paths:
+      - control/yt-trinity-profit-run-v2-trigger.json
+      - .github/workflows/yt-trinity-profit-run-v2.yml
+      - research/yt_trinity_ml/profit_run_payload/**
+      - research/yt_trinity_ml/materialize_profit_run.py
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-profit-run-v2-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CORPUS_RUN_ID: "30221264134"
+  CORPUS_ARTIFACT: "yt-trinity-complete-native-caption-f02fb5008588f42aeee842059acee501a5717f36"
+  CANONICAL_RUN_ID: "30218767426"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pinned research dependencies
+        run: |
+          python -m pip install -q --disable-pip-version-check \
+            "numpy==2.3.5" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.8.0" \
+            "pyarrow==25.0.0" \
+            "requests==2.32.4" \
+            "pytest==8.3.4"
+          python -m pip freeze | LC_ALL=C sort > dependency-freeze.txt
+
+      - name: Materialize reviewed action-value source and exact profit runner
+        run: |
+          set -euo pipefail
+          if ! grep -q "class CausalActionModel" research/yt_trinity_ml/system/model.py; then
+            cat \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.00 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.01 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.02 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.03 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.04 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.05 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.07 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.09 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.11 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.13 \
+              research/yt_trinity_ml/upgrade_chunks/action_value_patch2.15 \
+              > /tmp/action-value.patch.b64
+            base64 --decode /tmp/action-value.patch.b64 > /tmp/action-value.patch.gz
+            echo "d829ba22fdff4e654ba95469e38c35937882af43ac64d6cd3696e2cb61e1ad28  /tmp/action-value.patch.gz" | sha256sum -c -
+            gzip -dc /tmp/action-value.patch.gz > /tmp/action-value.patch
+            git apply --check /tmp/action-value.patch
+            git apply /tmp/action-value.patch
+          fi
+          python research/yt_trinity_ml/materialize_profit_run.py
+          python -m py_compile \
+            research/yt_trinity_ml/system/*.py \
+            research/yt_trinity_ml/run_profit_first.py
+
+      - name: Verify causal action-value execution and account invariants
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          pytest -q \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_public_archive.py \
+            research/yt_trinity_ml/tests/test_regressions.py
+
+      - name: Download immutable complete 196-video caption corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.CORPUS_ARTIFACT }}
+          path: artifact/corpus-download
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CORPUS_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Verify and bind complete transcript corpus
+        run: |
+          cp -a artifact/corpus-download/yt-trinity-complete-native-caption artifact/corpus
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path('artifact/corpus')
+          manifest_path = root / 'manifest.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          assert manifest['inventory_count'] == 196, manifest
+          assert manifest['completed_count'] == 196, manifest
+          assert manifest['caption_classification_complete'] is True, manifest
+          assert manifest['positive_control_passed'] is True, manifest
+          assert manifest['decision'] == 'PASS_COMPLETE', manifest
+          assert manifest['corpus_digest_sha256'] == '975793370055afca2436dfad82745ed70a0ef247073ce8f9c4345d3e7bac3343'
+          assert hashlib.sha256(manifest_path.read_bytes()).hexdigest() == '7a29d8f37bbf502630b06a04a56eb8dea078752a8034539c6ff163446b12fb7e'
+          assert (root / 'rule_ontology_candidates.json').exists()
+          assert (root / 'concept_index.json').exists()
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+
+      - name: Checkout immutable canonical-data implementation
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: agent/r22-canonical-halfyear-market-data-001
+          path: canonical-repo
+
+      - name: Download canonical 2023 BTC shard
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-BTCUSDT
+          path: downloads/2023-BTCUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download canonical 2023 ETH shard
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-ETHUSDT
+          path: downloads/2023-ETHUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Arrange and verify canonical 2023 shards
+        run: |
+          mkdir -p canonical-data/PRE_2024_2023/BTCUSDT canonical-data/PRE_2024_2023/ETHUSDT
+          cp -a downloads/2023-BTCUSDT/. canonical-data/PRE_2024_2023/BTCUSDT/
+          cp -a downloads/2023-ETHUSDT/. canonical-data/PRE_2024_2023/ETHUSDT/
+          python canonical-repo/scripts/market_data/verify_canonical_bybit.py canonical-data/PRE_2024_2023/BTCUSDT | tee artifact/VERIFY_2023_BTC.json
+          python canonical-repo/scripts/market_data/verify_canonical_bybit.py canonical-data/PRE_2024_2023/ETHUSDT | tee artifact/VERIFY_2023_ETH.json
+
+      - name: Snapshot current Bybit quantity rules
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import requests
+          output = {
+              'schema_version': 1,
+              'source': 'Bybit V5 instruments-info',
+              'retrieved_at_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+          }
+          session = requests.Session()
+          try:
+              for symbol in ('BTCUSDT', 'ETHUSDT'):
+                  error = None
+                  for attempt in range(1, 4):
+                      try:
+                          response = session.get(
+                              'https://api.bybit.com/v5/market/instruments-info',
+                              params={'category': 'linear', 'symbol': symbol},
+                              timeout=30,
+                          )
+                          response.raise_for_status()
+                          payload = response.json()
+                          row = payload['result']['list'][0]
+                          lot = row['lotSizeFilter']
+                          output[symbol] = {
+                              'quantity_step': float(lot['qtyStep']),
+                              'minimum_quantity': float(lot['minOrderQty']),
+                              'minimum_notional': float(lot.get('minNotionalValue') or 0),
+                              'maximum_leverage': float(row['leverageFilter']['maxLeverage']),
+                              'funding_interval_minutes': int(row.get('fundingInterval') or 0),
+                              'raw_sha256': hashlib.sha256(json.dumps(row, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+                          }
+                          break
+                      except Exception as exc:
+                          error = exc
+                          if attempt < 3:
+                              time.sleep(attempt * 2)
+                  else:
+                      raise RuntimeError(f'{symbol}: {error}')
+          finally:
+              session.close()
+          path = Path('artifact/INSTRUMENT_RULES.json')
+          path.write_text(json.dumps(output, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(path.read_text())
+          PY
+
+      - name: Run 2023H1 fit and 2023H2 profit-first account selection
+        id: pre2024
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python research/yt_trinity_ml/run_profit_first.py \
+            --stage pre2024 \
+            --repo-root canonical-repo \
+            --data-root canonical-data \
+            --corpus artifact/corpus \
+            --instrument-rules artifact/INSTRUMENT_RULES.json \
+            --output artifact/pre2024 \
+            --segments PRE_2024_2023 \
+            --evaluation-start 2023-07-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-01-01T00:00:00Z \
+            2>&1 | tee artifact/PRE2024_STDOUT.log
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('artifact/pre2024/PRE2024_SUMMARY.json').read_text())
+          print('positive=' + ('true' if payload.get('official_open') else 'false'))
+          print('decision=' + str(payload.get('decision')))
+          PY
+
+      - name: Upload pre-2024 economic decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-pre2024-v2-${{ github.sha }}
+          path: |
+            artifact/pre2024
+            artifact/PRE2024_STDOUT.log
+            artifact/INSTRUMENT_RULES.json
+            artifact/VERIFY_2023_BTC.json
+            artifact/VERIFY_2023_ETH.json
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 90
+
+      - name: Download canonical 2024H1 BTC shard
+        if: steps.pre2024.outputs.positive == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-BTCUSDT
+          path: downloads/2024H1-BTCUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download canonical 2024H1 ETH shard
+        if: steps.pre2024.outputs.positive == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-ETHUSDT
+          path: downloads/2024H1-ETHUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Arrange and verify canonical 2024H1 shards
+        if: steps.pre2024.outputs.positive == 'true'
+        run: |
+          mkdir -p canonical-data/2024_H1/BTCUSDT canonical-data/2024_H1/ETHUSDT
+          cp -a downloads/2024H1-BTCUSDT/. canonical-data/2024_H1/BTCUSDT/
+          cp -a downloads/2024H1-ETHUSDT/. canonical-data/2024_H1/ETHUSDT/
+          python canonical-repo/scripts/market_data/verify_canonical_bybit.py canonical-data/2024_H1/BTCUSDT | tee artifact/VERIFY_2024H1_BTC.json
+          python canonical-repo/scripts/market_data/verify_canonical_bybit.py canonical-data/2024_H1/ETHUSDT | tee artifact/VERIFY_2024H1_ETH.json
+
+      - name: Run unchanged sequential official 2024H1 account
+        if: steps.pre2024.outputs.positive == 'true'
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python research/yt_trinity_ml/run_profit_first.py \
+            --stage official2024h1 \
+            --repo-root canonical-repo \
+            --data-root canonical-data \
+            --corpus artifact/corpus \
+            --instrument-rules artifact/INSTRUMENT_RULES.json \
+            --frozen-system artifact/pre2024/FROZEN_SYSTEM.json \
+            --output artifact/official2024h1 \
+            --segments PRE_2024_2023 2024_H1 \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            2>&1 | tee artifact/OFFICIAL_2024H1_STDOUT.log
+
+      - name: Upload complete profit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-profit-v2-${{ github.sha }}
+          path: |
+            artifact/corpus/manifest.json
+            artifact/corpus/concept_index.json
+            artifact/corpus/rule_ontology_candidates.json
+            artifact/corpus/SHA256SUMS
+            artifact/pre2024
+            artifact/official2024h1
+            artifact/INSTRUMENT_RULES.json
+            artifact/PRE2024_STDOUT.log
+            artifact/OFFICIAL_2024H1_STDOUT.log
+            dependency-freeze.txt
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact decision pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          def load(path):
+              path = Path(path)
+              return json.loads(path.read_text()) if path.exists() else None
+          corpus = load('artifact/corpus/manifest.json')
+          pre = load('artifact/pre2024/PRE2024_SUMMARY.json')
+          official = load('artifact/official2024h1/OFFICIAL_2024H1_RESULT.json')
+          pointer = {
+              'schema_version': 2,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'workflow': 'YT Trinity corrected profit-first account',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-profit-v2-{os.environ['GITHUB_SHA']}",
+              'corpus': None if corpus is None else {
+                  'decision': corpus.get('decision'),
+                  'inventory_count': corpus.get('inventory_count'),
+                  'status_counts': corpus.get('status_counts'),
+                  'corpus_digest_sha256': corpus.get('corpus_digest_sha256'),
+                  'total_caption_segments': corpus.get('total_caption_segments'),
+              },
+              'pre2024': pre,
+              'official_2024h1': official,
+              'ranking_updated': False,
+          }
+          raw = json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
+          pointer['pointer_sha256_before_field'] = hashlib.sha256(raw.encode()).hexdigest()
+          Path('/tmp/PROFIT_RUN_V2_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+          git reset --hard HEAD
+          rm -f research/yt_trinity_ml/run_profit_first.py
+          cp /tmp/PROFIT_RUN_V2_POINTER.json research/yt_trinity_ml/PROFIT_RUN_V2_POINTER.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/PROFIT_RUN_V2_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record corrected YT Trinity profit run ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
