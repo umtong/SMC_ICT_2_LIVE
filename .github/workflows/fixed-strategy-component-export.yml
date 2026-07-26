@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - agent/r8-fixed-strategy-portfolio-001
+      - agent/r8-fixed-strategy-portfolio-v2
+    paths:
+      - "research/fixed_strategy_portfolio_20260726/**"
+      - ".github/workflows/fixed-strategy-component-export.yml"
+  pull_request:
+    branches: [main]
     paths:
       - "research/fixed_strategy_portfolio_20260726/**"
       - ".github/workflows/fixed-strategy-component-export.yml"
@@ -11,6 +17,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: fixed-strategy-component-export-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   export:
@@ -20,7 +30,6 @@ jobs:
       - name: Checkout portfolio branch
         uses: actions/checkout@v4
         with:
-          ref: agent/r8-fixed-strategy-portfolio-001
           path: portfolio
           fetch-depth: 1
       - name: Checkout frozen dynamic component branch
