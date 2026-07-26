@@ -81,6 +81,7 @@ def inspect_source_compat(
 
 
 _ORIGINAL_AGGREGATE = engine.base.aggregate
+_ORIGINAL_CONTINUOUS_FEATURES = engine.base.continuous_features
 _DAY_ARRAY_FIELDS = (
     "symbol",
     "date",
@@ -131,6 +132,40 @@ def aggregate_compat(target: Path, date: str):
     return arrays
 
 
+def continuous_features_compat(leader, follower, horizon: int) -> dict[str, np.ndarray]:
+    """Append only audited historical aliases to the unchanged feature output."""
+    features = _ORIGINAL_CONTINUOUS_FEATURES(leader, follower, horizon)
+    required = {
+        "direction",
+        "btc_return",
+        "beta",
+        "z",
+        "activity",
+        "leader_align",
+        "follower_align",
+        "underreaction",
+        "gap",
+        "start_idx",
+    }
+    missing = sorted(required.difference(features))
+    if missing:
+        raise KeyError(f"shared continuous feature keys missing: {missing}")
+
+    output = dict(features)
+    output["under"] = features["underreaction"]
+    output["expected"] = np.abs(features["beta"] * features["btc_return"])
+    output["leader_mark"] = leader.mark
+
+    if output["under"] is not features["underreaction"]:
+        raise AssertionError("under alias copied the shared array")
+    if output["leader_mark"] is not leader.mark:
+        raise AssertionError("leader_mark alias copied the shared array")
+    for key in ("expected", "under", "leader_mark"):
+        if output[key].shape != (_EXPECTED_BINS,):
+            raise AssertionError(f"feature {key} shape mismatch: {output[key].shape}")
+    return output
+
+
 def utc_start_compat(date: str) -> float:
     """Return the Unix timestamp of 00:00 UTC for an ISO calendar date."""
     return float(pd.Timestamp(date, tz="UTC").timestamp())
@@ -161,6 +196,7 @@ if not hasattr(engine.base, "inspect_source"):
 if not hasattr(engine.base.DayArrays, "__getitem__"):
     engine.base.DayArrays.__getitem__ = _day_arrays_getitem
 engine.base.aggregate = aggregate_compat
+engine.base.continuous_features = continuous_features_compat
 if not hasattr(engine.base, "utc_start"):
     engine.base.utc_start = utc_start_compat
 engine.rolling_realized_volatility = corrected_rolling_realized_volatility
