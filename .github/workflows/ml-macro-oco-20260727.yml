@@ -1,0 +1,81 @@
+name: ML macro pre-positioned OCO 20260727
+
+on:
+  push:
+    branches:
+      - agent/r22-ml-macro-oco-takeover-001
+    paths:
+      - research/ml_macro_oco_20260727/**
+      - tests/test_ml_macro_oco_20260727.py
+      - .github/workflows/ml-macro-oco-20260727.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-macro-oco-20260727-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  causal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/ml_macro_oco_20260727/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r research/ml_macro_oco_20260727/requirements.txt
+      - run: python research/ml_macro_oco_20260727/unpack_source.py
+      - run: python -m pytest -q tests/test_ml_macro_oco_20260727.py
+      - run: python research/ml_macro_oco_20260727/run.py --smoke --output artifacts/ml_macro_oco_20260727-smoke
+
+  causal-research:
+    needs: causal-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: research/ml_macro_oco_20260727/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r research/ml_macro_oco_20260727/requirements.txt
+      - name: Run strict sequential research
+        shell: bash
+        run: |
+          set -o pipefail
+          OUT="$GITHUB_WORKSPACE/artifacts/ml_macro_oco_20260727"
+          CACHE="$RUNNER_TEMP/ml_macro_oco_20260727"
+          mkdir -p "$OUT" "$CACHE"
+          python -m pip freeze > "$OUT/environment.txt"
+          python research/ml_macro_oco_20260727/unpack_source.py
+          sha256sum \
+            research/ml_macro_oco_20260727/run.py \
+            research/ml_macro_oco_20260727/run_impl.py \
+            research/ml_macro_oco_20260727/source_manifest.json \
+            research/ml_macro_oco_20260727/_source/part_*.b64 \
+            research/ml_macro_oco_20260727/events.csv \
+            research/ml_macro_oco_20260727/requirements.txt \
+            > "$OUT/code_fingerprint.sha256"
+          python research/ml_macro_oco_20260727/run.py \
+            --output "$OUT" \
+            --cache "$CACHE" \
+            2>&1 | tee "$OUT/run.log"
+      - name: Upload decision and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-macro-oco-20260727-${{ github.run_id }}
+          path: artifacts/ml_macro_oco_20260727
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 7
