@@ -33,6 +33,8 @@ It is first because it has the highest recorded after-cost geometric daily growt
 
 This candidate is not a final solution. It is a Binance USD-M proxy, historical funding and exact Bybit execution are absent, no 2024 or later sequential interval was opened, the broader Donchian family is strongly dependent on rare winners, and the route is non-ML. Rank records the best current quantitative result; it does not protect the route or satisfy the mandatory ML system requirement.
 
+Rank does not determine research priority.
+
 ## Second place with complete metrics
 
 The same specification's after-loser route is provisional rank 2 and supplies the nearest complete risk record:
