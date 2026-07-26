@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-COINBASE-TARDIS-DATASET-ID-003",
+  "claim_id": "CLM-20260726-1935-ML-COINBASE-SPOT-001",
+  "recorded_at": "2026-07-26T20:22:00+09:00",
+  "trigger": "Official Tardis downloadable-CSV documentation identifies Coinbase Pro's normalized dataset symbol as BTCUSD. BTC-USD is the exchange-native pair representation and is not the frozen CSV dataset ID used by datasets.tardis.dev.",
+  "outcome_state_before_correction": {
+    "coinbase_market_rows_parsed": false,
+    "model_fitted": false,
+    "labels_computed": false,
+    "actions_computed": false,
+    "trades_computed": false,
+    "pnl_computed": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "change": {
+    "supersedes_transport_choice_in": "CORRECTION-20260726-ML-COINBASE-DATASET-SYMBOL-002",
+    "old_csv_dataset_id": "BTC-USD",
+    "new_csv_dataset_id": "BTCUSD",
+    "output_filename_unchanged": "coinbase_BTCUSD_trades.csv.gz",
+    "evidence": "Tardis Coinbase Pro Historical Data Details lists downloadable CSV trades symbol BTCUSD; Tardis Data FAQ distinguishes datasets.symbols[].id from exchange-native availableSymbols[].id."
+  },
+  "unchanged": [
+    "all dates and chronological partitions",
+    "one HGBT model and one isotonic calibrator",
+    "event definition and structural label",
+    "500ms base and 1000ms latency stress",
+    "24bp economic authorization rule",
+    "target, stop, risk, leverage and capacity rules",
+    "winner-removal rerouting",
+    "2024-2026 seals"
+  ],
+  "orders_submitted": false
+}
