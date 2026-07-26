@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "trigger_id": "EXEC-20260727-ML-SWEEP-CROWDING-STATIC-ACTUAL-FUNDING-003",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "source_correction_id": "CORRECTION-20260727-ML-SWEEP-STATIC-MT4-PINNED-FUNDING-003",
+  "purpose": "Execute the unchanged sealed sweep/crowding economic contract exactly once with listing-discovered official Bybit static one-minute prices and immutable pinned actual Bybit funding settlements.",
+  "prior_outcomes_opened": false,
+  "economic_contract_changed": false,
+  "model_changed": false,
+  "features_changed": false,
+  "labels_changed": false,
+  "execution_changed": false,
+  "costs_changed": false,
+  "sizing_changed": false,
+  "periods_changed": false,
+  "credentials_used": false,
+  "orders_submitted": false,
+  "decision_rule": "A source-valid nonpositive calendar-2023 account closes the exact route without adjacent rescue. A positive survivor opens official 2024H1 immediately. Any superior hard-valid official result is inserted into the cumulative ranking immediately."
+}
