@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1130-ALTLAG-DECISIONTREE-001",
+  "correction_id": "COR-20260726-ALTLAG-DOWNLOAD-INTERFACE-001",
+  "status": "FROZEN_BEFORE_MARKET_RESULT",
+  "observed_failure": {
+    "workflow_run": 30185244005,
+    "exception": "ValueError: too many values to unpack (expected 3)",
+    "location": "decision_tree.py acquire_day",
+    "market_result_produced": false,
+    "stage1_result_produced": false,
+    "pnl_produced": false
+  },
+  "root_cause": "The registered base dependency base_probe._download returns downloaded bytes and raises on failure, while the decision-tree adapter incorrectly expected a three-element status/payload/error tuple.",
+  "deterministic_change": {
+    "before": "status,payload,error=base._download(session,url,target); if status!=200: raise RuntimeError(...) ",
+    "after": "payload=base._download(session,url,target)",
+    "strategy_rule_changed": false,
+    "dates_changed": false,
+    "symbols_changed": false,
+    "features_changed": false,
+    "thresholds_changed": false,
+    "costs_changed": false,
+    "latencies_changed": false,
+    "stage_boundaries_changed": false,
+    "economic_gates_changed": false
+  },
+  "sealed_periods": {
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "orders_submitted": false,
+  "created_at": "2026-07-26T12:25:00+09:00"
+}
