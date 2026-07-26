@@ -1,0 +1,107 @@
+{
+  "account": {
+    "displayed_queue_cap_fraction": 0.5,
+    "global_slot_count": 1,
+    "holding_charge_bps_per_day": 1.0,
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 5.0,
+    "non_price_cost_paths_bps": [8, 12, 18],
+    "prior_minute_volume_cap_fraction": 0.005,
+    "risk_fraction": 0.005,
+    "utc_daily_nav": true
+  },
+  "authority": {
+    "credentials": false,
+    "live_permission_change": false,
+    "orders": false,
+    "rank_eligibility": false
+  },
+  "claim_id": "CLM-20260726-1837-ML-SWEEP-FVG-MAKER-001",
+  "engine_version": "ML-SWEEP-FVG-QUEUE-MAKER-V1",
+  "execution": {
+    "acknowledgement_ms": 200,
+    "barrier_trade_same_timestamp": "barrier first",
+    "cancellation_queue_credit": false,
+    "exit_latency_ms": 100,
+    "full_displayed_amount_ahead": true,
+    "partial_fill_rule": "positive partial fill is exposure; cancel remainder at first structural barrier and exit filled quantity at delayed BBO",
+    "post_only_price": "best bid for long, best ask for short",
+    "queue_consumption": "opposite aggressive trades at or through order price only",
+    "source_boundary": "filled exposure pays structural stop",
+    "ttl": false
+  },
+  "fit_gate_all_required": {
+    "at_least_two_of_three_positive_time_blocks_at_12bps": true,
+    "full_model_brier_better_than_structure_only": true,
+    "full_model_log_loss_better_than_structure_only": true,
+    "minimum_confirmation_candidates": 100,
+    "minimum_filled_positions_at_12bps": 20,
+    "no_liquidation": true,
+    "positive_median_filled_trade_at_12bps": true,
+    "positive_median_filled_trade_at_18bps": true,
+    "positive_return_at_12bps": true,
+    "positive_return_at_18bps": true,
+    "profit_factor_above_one_at_12bps": true,
+    "profit_factor_above_one_at_18bps": true,
+    "top_10_percent_winner_removed_positive_at_12bps": true
+  },
+  "information_clock": "Tardis local_timestamp and completed 100ms compact-state decisions",
+  "market": {
+    "contract": "Bybit USDT-linear perpetual",
+    "symbol": "BTCUSDT"
+  },
+  "model": {
+    "baseline": "same regularized multinomial logistic model on structural features only",
+    "classes": ["NO_FILL", "FILL_TARGET_FIRST", "FILL_STOP_FIRST"],
+    "family": "StandardScaler plus fixed L2-regularized multinomial LogisticRegression",
+    "feature_grid": false,
+    "full_features": [
+      "raid_depth_atr",
+      "rejection_efficiency",
+      "displacement_atr",
+      "displacement_body_efficiency",
+      "displacement_flow",
+      "rr",
+      "retrace_wait_seconds",
+      "spread_bps",
+      "aligned_depth_imbalance",
+      "aligned_microprice_skew_bps",
+      "queue_to_opposite_flow",
+      "order_refill_ratio",
+      "opposite_depth_ratio",
+      "state_age_ms",
+      "update_intensity_1s"
+    ],
+    "minimum_expected_net_bps_after_12bp_contract": 5,
+    "model_grid": false,
+    "single_model_only": true,
+    "threshold_grid": false
+  },
+  "scientific_question": "Does one causal Sweep-MSS-FVG 62% post-only route become positive after realistic queue fills when a fixed ML model rejects non-fills and toxic fills?",
+  "source": {
+    "artifact_id": 8626087323,
+    "artifact_sha256": "90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+    "conditional_development_date": "2023-07-01",
+    "fit_confirmation_date": "2022-07-01",
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "structure": {
+    "displacement_atr_minimum": 1.0,
+    "displacement_body_efficiency_minimum": 0.6,
+    "directional_flow_minimum": 0.05,
+    "elapsed_time_exit": false,
+    "entry_retracement": 0.62,
+    "external_pool": "confirmed 60-second pivot, span two completed bars per side",
+    "fvg": "three completed five-second bars",
+    "internal_mss": "confirmed 15-second pivot, span two completed bars per side",
+    "minimum_rr": 1.5,
+    "stop": "one tick beyond actual raid extreme",
+    "target": "nearest opposing frozen active external pool"
+  },
+  "time_partitions": {
+    "conditional_development": "2023-07-01, opened only after every fit gate passes",
+    "fit": "2022-07-01T00:00:00Z through 2022-07-01T11:59:59.999999Z",
+    "fit_confirmation": "2022-07-01T12:00:00Z through 2022-07-01T23:59:59.999999Z",
+    "prohibited": [2024, 2025, 2026]
+  }
+}
