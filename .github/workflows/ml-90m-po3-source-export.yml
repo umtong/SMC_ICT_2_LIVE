@@ -7,13 +7,18 @@ on:
     paths:
       - "research/ml_90m_po3_20260726/**"
       - ".github/workflows/ml-90m-po3-source-export.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ml_90m_po3_20260726/**"
+      - ".github/workflows/ml-90m-po3-source-export.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-90m-po3-source-export-${{ github.ref }}
+  group: ml-90m-po3-source-export-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
