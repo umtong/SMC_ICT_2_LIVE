@@ -1,0 +1,208 @@
+{
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "base_revision": 11,
+  "branch": "agent/r11-krw-relative-lead-001",
+  "claim_id": "CLM-20260726-1616-KRW-RELATIVE-001",
+  "created_at": "2026-07-26T16:16:21+09:00",
+  "data_contract": {
+    "development": [
+      "2023-01-01T00:00:00Z",
+      "2023-12-31T23:59:59.999999999Z"
+    ],
+    "download_warmup_start": "2021-12-20T00:00:00Z",
+    "execution_proxy_markets": [
+      "Binance USD-M XRPUSDT",
+      "Binance USD-M BTCUSDT"
+    ],
+    "fit": [
+      "2022-01-01T00:00:00Z",
+      "2022-12-31T23:59:59.999999999Z"
+    ],
+    "intended_live_execution_market": "Bybit linear XRPUSDT perpetual",
+    "interval": "completed 1-minute candles",
+    "missing_candle_rule": "Because Upbit documents that candles are omitted when no trade occurs, reindex to each UTC minute, causally forward-fill the last observed OHLC price and set missing quote volume to zero. Drop leading minutes before the first observation.",
+    "rank_eligibility": "The initial run is non-rank-eligible because Binance USD-M bars proxy Bybit execution; any survivor requires exact Bybit BBO/depth and official causal evaluation.",
+    "relative_ohlc_rule": "Never combine high/low values from two instruments. Every local/global relative-liquidity pool and sweep/reclaim state is defined only from completed relative closes.",
+    "sealed_start": "2024-01-01T00:00:00Z",
+    "signal_markets": [
+      "Upbit KRW-XRP",
+      "Upbit KRW-BTC"
+    ],
+    "stage_rule": "Download 2023 only after one exact frozen 2022 survivor; code-prohibit every timestamp at or after 2024-01-01."
+  },
+  "economic_mechanism": {
+    "failure_condition": "Retire the exact dependency if the frozen 2022 rule set cannot pass sample breadth, 18/24bp economics, half-year breadth, positive median and winner-removal gates. Do not open 2023 or any 2024+ data after a fit failure.",
+    "research_motivation": "Published Kimchi-premium evidence reports nonlinear threshold behavior and persistent segmentation; newer work reports rapid mean reversion of deviations between Korean BTC and USDT premiums. These papers motivate a falsifiable regional-information hypothesis but are not treated as strategy performance evidence.",
+    "segmentation": "KRW-XRP divided by KRW-BTC cancels the KRW numeraire. Comparing that completed relative close with XRPUSDT divided by BTCUSDT isolates regional XRP-specific demand rather than a raw same-symbol premium.",
+    "smc_ict_translation": [
+      "completed Korean XRP/BTC external-liquidity acceptance while global XRP/BTC refuses to confirm (SMT)",
+      "or a completed Korean close through external liquidity followed by a completed close back inside while global relative liquidity remains intact",
+      "causal global displacement in the expected direction",
+      "next-minute XRPUSDT entry",
+      "structural stop beyond the frozen global XRP swing",
+      "basis closure for continuation or opposing global relative liquidity for reversal"
+    ]
+  },
+  "execution_contract": {
+    "adverse_stop_gap": "fill at bar open when it gaps through the stop",
+    "all_in_roundtrip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "base_risk_fraction": 0.01,
+    "credentials_used": false,
+    "entry_model": "next one-minute open after the completed decision bar",
+    "exit_model": "structural XRP price stop, completed relative-state target, or completed Korean leader invalidation; no elapsed-time liquidation",
+    "funding": "Conservative fixed 1bp loss at each crossed UTC 8-hour boundary, regardless of direction.",
+    "maximum_diagnostic_notional_multiple": 100.0,
+    "orders_submitted": false,
+    "risk_sizing": "NAV risk budget divided by stop distance plus all-in cost plus a fixed 2bp funding-loss buffer.",
+    "same_bar_ambiguity": "structural price stop is evaluated before close-based state exits",
+    "state_exit_fill": "following minute open after a completed target or invalidation close",
+    "terminal_open_position": "mark at final available close and flag; every advancement gate requires zero terminal exits"
+  },
+  "feature_contract": {
+    "global_relative": "log(XRPUSDT close) - log(BTCUSDT close)",
+    "local_participation": "Prior-normalized z-score of log1p(KRW-XRP quote notional) minus log1p(KRW-BTC quote notional), using a 1,440-minute window and 360-minute minimum.",
+    "local_relative": "log(Upbit KRW-XRP close) - log(Upbit KRW-BTC close)",
+    "price_stop": "Prior 30-minute XRPUSDT proxy high/low plus a fixed 0.10 prior 60-minute ATR buffer.",
+    "regional_basis": "local_relative - global_relative",
+    "relative_liquidity_pools": "Prior 60- or 240-minute maxima/minima of completed local/global relative closes.",
+    "volatility": "Prior-only 360-minute standard deviation of one-minute local/global relative returns; 120-minute minimum."
+  },
+  "implementation_sha256": "3dd9c0037adc68459acefe4c1d0a912f5e1832a48ebddf662d2bb80a514aaee1",
+  "information_timing": {
+    "bar_timestamp": "Candle opening timestamp; all signal features become available only after that minute completes.",
+    "decision": "After the signal/confirmation minute is complete.",
+    "entry": "Open of the immediately following one-minute execution-proxy bar.",
+    "future_information_prohibited": [
+      "unclosed candles",
+      "cross-market synthetic intrabar ratios",
+      "future swing confirmation",
+      "future MFE/MAE or exit labels",
+      "2023 before the fit gate",
+      "all 2024-2026 observations"
+    ]
+  },
+  "issue": 101,
+  "non_overlap": [
+    "ordinary same-symbol cross-venue latency",
+    "Coinbase USD institutional aggressor flow",
+    "within-Binance stable-quote fragmentation",
+    "same-venue BTC-to-alt residual lag",
+    "generic completed-bar factor residual",
+    "options, open interest, L2 queue, liquidation and generic chart-pattern research"
+  ],
+  "objective_fingerprint": "82d5c3d64add91167ceed918656e30e979e4d4b229e6353db06c8853ff553a5d",
+  "policy_grid": {
+    "count": 192,
+    "family": [
+      "CONTINUATION",
+      "REVERSAL"
+    ],
+    "fixed_basis_target_closure_fraction": 0.5,
+    "fixed_stop_buffer_atr": 0.1,
+    "fixed_stop_window_minutes": 30,
+    "local_minus_global_momentum_gap_bps": [
+      30.0,
+      60.0
+    ],
+    "local_participation_z_min": [
+      0.0,
+      1.0
+    ],
+    "local_shock_z": [
+      2.0,
+      3.0
+    ],
+    "lookback_minutes": [
+      1,
+      3,
+      5
+    ],
+    "maximum_global_response_fraction": [
+      0.25,
+      0.5
+    ],
+    "relative_pool_minutes": [
+      60,
+      240
+    ]
+  },
+  "ranking": {
+    "current_first_geometric_daily_growth": 0.000573077,
+    "initial_run_rank_eligible": false,
+    "promotion_requirements": "Exact Bybit execution reconstruction, causal 2024-2026 sequential evaluation, realistic fees/funding/slippage/latency, capacity stress and full account-path validation.",
+    "target_geometric_daily_growth": 0.01
+  },
+  "research_question": "Does Korean KRW-spot-specific XRP/BTC relative demand, stripped of the KRW numeraire and broad BTC movement, causally lead a sufficiently large and repeatable Bybit XRPUSDT response after realistic taker costs?",
+  "scope_fingerprint": "c64bd69a45ee6cd4bd54643d858f0f27fe25e7da4eb667b5d3b9e24588244e94",
+  "selection_and_gates": {
+    "development_requirements": "The exact selected policy must independently satisfy the full 18bp base gate and the listed 24bp breadth, median, concentration, terminal and bankruptcy gates on 2023.",
+    "fit_18bp_requirements": [
+      "positive total return",
+      "geometric daily growth >= 0.10% and > current first-place 0.0573077%",
+      "positive H1 and H2",
+      "at least three positive calendar quarters",
+      "positive median trade",
+      "positive return after removing up to the best ceil(10% of all trades) positive winners",
+      "zero terminal exits and no bankruptcy"
+    ],
+    "fit_24bp_requirements": [
+      "positive total return and geometric daily growth > current first place",
+      "positive H1 and H2",
+      "positive median trade",
+      "positive winner-removal return",
+      "zero terminal exits and no bankruptcy"
+    ],
+    "fit_minimum_trades": 100,
+    "post_pass_risk_ladder": [
+      0.01,
+      0.02,
+      0.04,
+      0.08,
+      0.12
+    ],
+    "risk_ladder_role": "Computed at 18bp only after the base 1% development gate passes. It is a feasibility diagnostic, never a selector or rescue mechanism.",
+    "selection": "Among policies satisfying both fit cost gates, lexicographically maximize 18bp full-calendar geometric daily growth, then minimize MDD, then maximize trade count, then policy id. If none passes, preserve only the economically best 18bp candidate for diagnosis and keep 2023 unopened."
+  },
+  "signal_contract": {
+    "continuation": "At the completed decision close, local XRP/BTC accepts beyond its prior close-defined pool, global XRP/BTC remains inside its corresponding pool, local momentum exceeds the frozen prior-volatility threshold, local-minus-global momentum gap exceeds the frozen bps floor, global response has the same sign but is no larger than the frozen fraction, regional basis lies on the correct side of its prior 1,440-minute mean, and local participation passes.",
+    "direction": "Trade only XRPUSDT in the direction implied by Korean acceptance/catch-up or Korean close-sweep rejection.",
+    "global_slot": "At most one open XRPUSDT position; later signals are ignored until the current position exits.",
+    "reversal": "The preceding completed local close crossed beyond the pre-existing close-defined pool by 0.25 prior local-volatility units while global relative close refused to confirm; the current completed local close returns inside, current local and global relative displacement points away from the sweep, the preceding local/global response fraction and momentum gap pass, local participation was present on the sweep close, and opposing global relative liquidity remains ahead."
+  },
+  "sources": [
+    {
+      "role": "Defines the unauthenticated Korean minute-candle endpoint, exclusive `to` pagination, maximum 200 candles per call, and omission of intervals without trades.",
+      "source_id": "SRC-UPBIT-KR-MINUTE-CANDLES-OFFICIAL",
+      "url": "https://docs.upbit.com/kr/reference/list-candles-minutes"
+    },
+    {
+      "role": "Defines the candle-group limit of up to 10 requests per second per IP and Remaining-Req handling.",
+      "source_id": "SRC-UPBIT-KR-RATE-LIMIT-OFFICIAL",
+      "url": "https://docs.upbit.com/kr/kr/reference/rate-limits"
+    },
+    {
+      "role": "Official Upbit documentation states that market data such as candles can be queried without authentication.",
+      "source_id": "SRC-UPBIT-PUBLIC-QUOTATION-OFFICIAL",
+      "url": "https://docs.upbit.com/kr/docs/upbit-agent-skills"
+    },
+    {
+      "role": "Official pre-2024 BTCUSDT/XRPUSDT USD-M one-minute execution proxy.",
+      "source_id": "SRC-BINANCE-VISION-USDM-KLINES-OFFICIAL",
+      "url": "https://data.binance.vision/?prefix=data/futures/um/monthly/klines/"
+    },
+    {
+      "doi": "10.1016/j.econmod.2024.106726",
+      "role": "Motivates threshold-dependent regional segmentation; no strategy result is imported.",
+      "source_id": "SRC-ECONMOD-2024-KIMCHI-NONLINEAR"
+    },
+    {
+      "doi": "10.1016/j.econlet.2025.112704",
+      "role": "Motivates testing short-horizon convergence of segmented relative states; no strategy result is imported.",
+      "source_id": "SRC-ECONLET-2025-STABLECOIN-INTEGRATION"
+    }
+  ]
+}
