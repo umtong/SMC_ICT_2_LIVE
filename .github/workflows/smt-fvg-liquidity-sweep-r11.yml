@@ -1,0 +1,172 @@
+name: SMT-FVG liquidity sweep fatal screen
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r11-smt-fvg-liquidity-sweep-001
+    paths:
+      - "research/smt_fvg_liquidity_sweep_20260726/**"
+      - ".github/workflows/smt-fvg-liquidity-sweep-r11.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "research/smt_fvg_liquidity_sweep_20260726/**"
+      - ".github/workflows/smt-fvg-liquidity-sweep-r11.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smt-fvg-liquidity-sweep-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+  OMP_NUM_THREADS: "2"
+  OPENBLAS_NUM_THREADS: "2"
+  MKL_NUM_THREADS: "2"
+  NUMEXPR_NUM_THREADS: "2"
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen scientific environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==2.1.3 pandas==2.2.3 requests==2.32.4
+
+      - name: Reconstruct immutable implementation
+        run: |
+          python research/smt_fvg_liquidity_sweep_20260726/reconstruct.py
+
+      - name: Compile and run causal self-tests
+        run: |
+          python scripts/validate_project.py
+          python -m py_compile research/smt_fvg_liquidity_sweep_20260726/run_screen.py
+          python research/smt_fvg_liquidity_sweep_20260726/run_screen.py self-test
+          python -m json.tool research/smt_fvg_liquidity_sweep_20260726/preregistration.json >/dev/null
+          python -m json.tool research/smt_fvg_liquidity_sweep_20260726/WORK_CLAIM.json >/dev/null
+
+      - name: Cache immutable public Bybit archives
+        uses: actions/cache@v4
+        with:
+          path: /tmp/bybit-smt-fvg
+          key: bybit-smt-fvg-v1-btceth-20230115-20231119
+
+      - name: Run frozen 3072-candidate fatal screen
+        shell: bash
+        run: |
+          rm -rf artifacts/smt_fvg_liquidity_sweep
+          mkdir -p artifacts/smt_fvg_liquidity_sweep
+          set -o pipefail
+          python research/smt_fvg_liquidity_sweep_20260726/run_screen.py run \
+            --cache /tmp/bybit-smt-fvg \
+            --output artifacts/smt_fvg_liquidity_sweep \
+            2>&1 | tee artifacts/smt_fvg_liquidity_sweep/run.log
+
+      - name: Verify frozen contract and causal boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+
+          root = Path("artifacts/smt_fvg_liquidity_sweep")
+          result = json.loads((root / "result_summary.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          prereg = json.loads(Path("research/smt_fvg_liquidity_sweep_20260726/preregistration.json").read_text())
+          candidates = pd.read_csv(root / "candidate_results.csv")
+          events = pd.read_csv(root / "smt_events.csv.gz")
+          ledgers = pd.read_csv(root / "survivor_ledgers.csv")
+
+          assert result["result_id"] == prereg["provisional_result_id"]
+          assert result["candidate_count"] == prereg["candidate_grid"]["candidate_count"] == 3072
+          assert len(candidates) == 3072
+          assert result["2024_opened"] is False
+          assert result["2025_opened"] is False
+          assert result["2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["paper_or_live_started"] is False
+          assert manifest["archive_count"] == 12
+          assert tuple(manifest["symbols"]) == ("BTCUSDT", "ETHUSDT")
+          assert all(str(row["date"]).startswith("2023-") for row in manifest["archives"])
+          assert all(int(row["compressed_bytes"]) > 0 and int(row["rows"]) > 0 for row in manifest["archives"])
+          assert all(len(str(row["sha256"])) == 64 for row in manifest["archives"])
+          assert set(events["stage"]) <= {"fit", "development"}
+          assert set(events["date"]) <= set(prereg["data_contract"]["fit_dates"] + prereg["data_contract"]["development_dates"])
+          assert (pd.to_numeric(events["decision_time"]) >= pd.to_numeric(events["sweep_sec"]) + pd.to_numeric(events["confirm_seconds"]) - 1e-12).all()
+
+          for stage in ("fit", "development"):
+              t12 = pd.to_numeric(candidates[f"{stage}_12bp_total_return"], errors="coerce")
+              t18 = pd.to_numeric(candidates[f"{stage}_18bp_total_return"], errors="coerce")
+              t24 = pd.to_numeric(candidates[f"{stage}_24bp_total_return"], errors="coerce")
+              finite = np.isfinite(t12) & np.isfinite(t18) & np.isfinite(t24)
+              assert (t12[finite] + 1e-12 >= t18[finite]).all()
+              assert (t18[finite] + 1e-12 >= t24[finite]).all()
+
+          if len(ledgers):
+              assert (pd.to_numeric(ledgers["entry_time"]) + 1e-9 >= pd.to_numeric(ledgers["decision_time"]) + 0.1).all()
+              assert not ledgers.duplicated(["candidate_id", "event_id"]).any()
+
+          print("FROZEN_CONTRACT_PASS")
+          print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+          PY
+
+      - name: Attach exact source and build evidence checksums
+        if: always()
+        run: |
+          cp research/smt_fvg_liquidity_sweep_20260726/run_screen.py artifacts/smt_fvg_liquidity_sweep/RUN_SCREEN.py
+          cp research/smt_fvg_liquidity_sweep_20260726/run_screen.py.gz artifacts/smt_fvg_liquidity_sweep/RUN_SCREEN.py.gz
+          cp research/smt_fvg_liquidity_sweep_20260726/reconstruct.py artifacts/smt_fvg_liquidity_sweep/RECONSTRUCT.py
+          cp research/smt_fvg_liquidity_sweep_20260726/preregistration.json artifacts/smt_fvg_liquidity_sweep/PREREGISTRATION.json
+          cp research/smt_fvg_liquidity_sweep_20260726/WORK_CLAIM.json artifacts/smt_fvg_liquidity_sweep/WORK_CLAIM.json
+          cp research/smt_fvg_liquidity_sweep_20260726/README.md artifacts/smt_fvg_liquidity_sweep/README.md
+          cp research/smt_fvg_liquidity_sweep_20260726/SOURCES.md artifacts/smt_fvg_liquidity_sweep/SOURCES.md
+          cd artifacts/smt_fvg_liquidity_sweep
+          find . -maxdepth 1 -type f ! -name CI_SHA256SUMS.txt -printf '%P\0' | sort -z | xargs -0 sha256sum > CI_SHA256SUMS.txt
+          sha256sum --check CI_SHA256SUMS.txt
+          sha256sum CI_SHA256SUMS.txt
+
+      - name: Upload compact scientific evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-fvg-liquidity-sweep-evidence-${{ github.sha }}
+          path: artifacts/smt_fvg_liquidity_sweep
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Upload raw BTC archives
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-fvg-liquidity-sweep-raw-btc-${{ github.sha }}
+          path: /tmp/bybit-smt-fvg/BTCUSDT
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload raw ETH archives
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-fvg-liquidity-sweep-raw-eth-${{ github.sha }}
+          path: /tmp/bybit-smt-fvg/ETHUSDT
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
