@@ -6,13 +6,17 @@ on:
       - agent/r13-ml-donchian-structural-001
     paths:
       - ".github/workflows/ml-donchian-source-export-r13.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/ml-donchian-source-export-r13.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-donchian-source-export-r13-${{ github.ref }}
+  group: ml-donchian-source-export-r13-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
