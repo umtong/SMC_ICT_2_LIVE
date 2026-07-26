@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-DIRECT-UTILITY-SHA-SCOPED-008",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "created_at": "2026-07-26T21:18:00+09:00",
+  "observed_failure": "Repeated execution-only commits caused queued runs to cancel under branch-scoped cancel-in-progress concurrency before model fitting.",
+  "correction": [
+    "Restore one automatic push and main-targeted pull-request workflow on the authoritative gapfix branch.",
+    "Scope concurrency to the immutable commit SHA and set cancel-in-progress false, so later execution metadata cannot cancel an already-started scientific run.",
+    "Use the standard ubuntu-latest runner without changing Python or package versions."
+  ],
+  "outcome_state_before_correction": {
+    "gap_safe_model_fitted": false,
+    "prediction_metrics_opened": false,
+    "actions_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "risk_search_opened": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false
+  },
+  "scientific_contract_unchanged": true,
+  "orders_submitted": false
+}
