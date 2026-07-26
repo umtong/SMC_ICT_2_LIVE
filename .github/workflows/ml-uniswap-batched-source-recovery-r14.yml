@@ -1,0 +1,124 @@
+name: ML Uniswap batched source recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-uniswap-batched-source-recovery-r14.yml'
+      - 'research/ml_uniswap_hedge_transfer_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-uniswap-batched-source-recovery-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r14-ml-uniswap-hedge-transfer-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+      - name: Reconstruct and test unchanged scientific source gate
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_batched_source_recovery_r14
+          mkdir -p "$out"
+          python -m json.tool "$root/EXECUTION_CORRECTION_007_BATCHED_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" >/dev/null
+          python "$root/reconstruct_batched_transport.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile \
+            "$root/probe_uniswap_swaps.py" \
+            "$root/probe_uniswap_swaps_bounded.py" \
+            "$root/probe_uniswap_swaps_batched.py" \
+            "$root/test_probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps_bounded.py" \
+            "$root/test_probe_uniswap_swaps_batched.py"
+          PYTHONPATH="$root" pytest -q \
+            "$root/test_probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps_bounded.py" \
+            "$root/test_probe_uniswap_swaps_batched.py" \
+            2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/probe_uniswap_swaps_batched.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+      - name: Execute all six frozen source windows with batched timestamps
+        run: |
+          set -u
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_batched_source_recovery_r14
+          set +e
+          PYTHONPATH="$root" python "$root/probe_uniswap_swaps_batched.py" --output "$out" 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
+            echo "unexpected source runner exit $rc" >&2
+            exit "$rc"
+          fi
+      - name: Enforce source-only decision authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('research_runs/ml_uniswap_batched_source_recovery_r14')
+          r=json.loads((out/'PROBE_RESULT.json').read_text())
+          assert r['claim_id']=='CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
+          assert r['market_outcome_opened'] is False
+          assert r['model_fit'] is False
+          assert r['trade_or_pnl_opened'] is False
+          assert r['official_2024_2026_opened'] is False
+          assert r['credentials_used'] is False
+          assert r['orders_submitted'] is False
+          assert len(r['probe_windows'])==6
+          if r.get('source_transport_status')=='SOURCE_AVAILABLE':
+              assert len(r['window_summaries'])==6
+              assert r['scientific_decision'] in {
+                  'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE',
+                  'CLOSE_SOURCE_ROUTE_BELOW_REGISTERED_SOURCE_GATE',
+              }
+              if r['source_gate_pass']:
+                  assert all(r['source_gate_checks'].values())
+                  assert r['totals']['decode_error_count']==0
+          else:
+              assert r['scientific_decision']=='SOURCE_UNAVAILABLE_NO_ECONOMIC_DECISION'
+          print(json.dumps({
+              'source_transport_status':r.get('source_transport_status'),
+              'source_gate_pass':r.get('source_gate_pass'),
+              'scientific_decision':r.get('scientific_decision'),
+              'totals':r.get('totals'),
+              'window_summaries':r.get('window_summaries'),
+          },sort_keys=True))
+          PY
+      - name: Freeze source evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_batched_source_recovery_r14
+          mkdir -p "$out/source"
+          cp "$root"/{EXECUTION_CORRECTION_007_BATCHED_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json,batched_transport_bundle.tar.gz.b64,batched_transport_bundle_manifest.json,reconstruct_batched_transport.py,probe_uniswap_swaps_batched.py,test_probe_uniswap_swaps_batched.py} "$out/source/" 2>/dev/null || true
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-uniswap-batched-source-recovery-${{ github.run_id }}
+          path: research_runs/ml_uniswap_batched_source_recovery_r14
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
