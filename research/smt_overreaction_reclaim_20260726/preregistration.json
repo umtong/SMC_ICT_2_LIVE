@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1530-SMT-OVERREACTION-RECLAIM-001",
+  "strategy_name": "SMT_OVERREACTION_MSS_RECLAIM",
+  "parent_evidence": {
+    "source_claim": "CLM-20260726-1130-ALTLAG-DECISIONTREE-001",
+    "source_artifact": 8628934229,
+    "source_artifact_sha256": "709499df9c8d68baefc8706274260ee62e3985396c6177e050c26dc56f06df70",
+    "authorized_information_unit": "BTC displacement followed by SOL/XRP beta-residual overextension; opportunity-only result, no inherited PnL."
+  },
+  "dates": {
+    "calendar_rule": "Sunday one week after each previously used monthly anchor, fixed before outcome access.",
+    "fatal_development": ["2023-09-24", "2023-10-22", "2023-11-26", "2023-12-31"],
+    "prohibited": "Every 2024, 2025 and 2026 source."
+  },
+  "market": {
+    "venue": "Bybit USDT linear perpetual public trade archive",
+    "signal_symbol": "BTCUSDT",
+    "execution_symbols": ["SOLUSDT", "XRPUSDT"],
+    "global_slot": 1,
+    "raw_availability_clock": "exchange trade timestamp",
+    "state_clock_ms": 100,
+    "entry_latencies_ms": [100, 300],
+    "costs_roundtrip_bps": [12, 18, 24]
+  },
+  "signal": {
+    "horizons_seconds": [1, 2, 5],
+    "btc_shock_z_min": 3.0,
+    "btc_aggressor_alignment_min": 0.5,
+    "btc_activity_ratio_min": 2.0,
+    "prior_follower_to_btc_trade_count_ratio_min": 1.0,
+    "prior_follower_to_btc_realized_volatility_ratio_min": 1.5,
+    "follower_overreaction_ratio_min": 1.25,
+    "follower_aggressor_alignment_min": 0.5,
+    "residual_gap_floors_bps": [12, 18, 24],
+    "beta": "prior-only 30-minute rolling BTC-to-follower beta with minimum observation and nonzero-return gates",
+    "event_rearm": "BTC displacement must decay to 25 percent of its initial shock for ten completed 100 ms states."
+  },
+  "payoff": {
+    "trade_direction": "opposite the BTC/follower displacement",
+    "paths": ["IMMEDIATE_FADE control", "MSS_CONFIRMED_RECLAIM main policy"],
+    "mss_confirmation": "Initial residual contracts to at most 90 percent while one-second follower aggressive flow flips opposite the original displacement for three completed 100 ms states.",
+    "target": "Residual overextension contracts to at most 25 percent for ten completed 100 ms states.",
+    "stop": "Residual expands to at least 150 percent or follower extends another 50 percent of the initial residual gap against the reversal.",
+    "leader_invalidation": "BTC displacement crosses its origin for ten completed 100 ms states.",
+    "time_exit": null,
+    "source_boundary": "Unresolved positions receive the full modeled stop and retain the slot through the source boundary.",
+    "funding_boundary": "Any crossed funding boundary receives full-stop treatment and fails the zero-unavailable gate."
+  },
+  "routing": {
+    "simultaneous_priority": ["largest residual gap", "largest BTC shock z", "SOLUSDT before XRPUSDT", "shorter horizon", "stable event key"],
+    "same_shock_reentry": false,
+    "same_timestamp_reentry": false,
+    "top_trade_removal": "Remove the largest ten percent of positive 12 bp event keys, then reroute the entire global-slot path."
+  },
+  "account": {
+    "planned_risk_fraction": 0.01,
+    "notional_to_nav_cap": 3.0,
+    "daily_boundary": "00:00 UTC",
+    "sample_days_include_zero_trade_days": true
+  },
+  "gate": {
+    "both_latency_paths_required": true,
+    "minimum_trades_each": 20,
+    "positive_mean_and_median_at_24bps": true,
+    "positive_top10_removed_return_at_18bps": true,
+    "minimum_positive_dates_at_24bps": 3,
+    "maximum_top_five_positive_share": 0.4,
+    "zero_unavailable_paths": true,
+    "minimum_top10_removed_sample_day_geometric_growth_at_24bps_and_1pct_risk": 0.01
+  },
+  "implementation": {
+    "base_probe_sha256": "5ecbfddf8443fd37b76514e30ab91028dda68e16a5e51eb63f7f76f0c073ad0f",
+    "scientific_source_sha256": "5621cc6dd7366de3808298a938eaaad3802f0523f00d467344147de7a06a2420",
+    "compressed_source_sha256": "05f0395058fe343acf738a57bd7d5de16359d2f7425c3d5a87e01e51a15b08da",
+    "candidate_count": 6
+  },
+  "authority": {
+    "ranking_eligible": false,
+    "risk_or_leverage_optimization_opened": false,
+    "orders_submitted": false
+  }
+}
