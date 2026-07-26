@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "dataset_id": "DS-BYBIT-LINEAR-1M-4ASSET-2022-UNICORN-R1",
+  "result_id": "RES-20260726-ICT-UNICORN-001",
+  "provider": "Bybit public historical archive",
+  "market": "USDT-linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "interval": "1 minute",
+  "period": ["2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+  "file_count": 48,
+  "normalized_row_count": 2102448,
+  "compressed_bytes": 28738311,
+  "source_manifest_path": "FIT_SOURCE_MANIFEST.json in workflow artifact 8628962842",
+  "source_manifest_sha256": "f732c1dd6c6e15aef57f1494d3f08b5a53534de9546355b577b868216435a837",
+  "integrity": "Each monthly compressed payload is identified by SHA-256 and each parsed member records row count and timestamp bounds. The evaluator restores a complete UTC one-minute grid and preserves missing minutes as unavailable.",
+  "known_limitations": [
+    "Historical MetaTrader-format bars are not exact point-in-time bid/ask or depth.",
+    "The archive is sufficient for a fatal completed-bar mechanism screen only."
+  ],
+  "created_at": "2026-07-26T16:10:00+09:00"
+}
