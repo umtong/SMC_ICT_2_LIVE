@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2139-DONCHIAN-2024H1-001",
+  "correction_id": "EXECUTION_CORRECTION_003_VALIDATE_PROJECT_HOOK_BEFORE_OUTCOME",
+  "status": "PRE_OUTCOME_EXISTING_WORKFLOW_EXECUTION_ROUTE",
+  "timing": "BEFORE_ANY_OFFICIAL_2024H1_MARKET_ROW_OR_STRATEGY_OUTCOME",
+  "observed_failure": "The newly added dedicated workflow was present on main but repository pull-request synchronization continued to expose only the established Validate project harness run.",
+  "change": "On a non-merged trigger branch only, scripts/common.py detects one exact sentinel and invokes a one-time helper from the already-running validation process. The helper installs the frozen dependencies, reconstructs and tests the unchanged evaluator, downloads the unchanged official sources, runs the account replay and prints a compact hash-identified result to the job log.",
+  "persistence": "The hook branch is not intended for merge. After the result is consumed it is closed, so the canonical validator remains unchanged.",
+  "unchanged": [
+    "Donchian strategy and event arbitration",
+    "2024H1 chronology and unopened later periods",
+    "official Bybit bar and funding sources",
+    "costs, funding fallback, risk and notional cap",
+    "structural exits and no elapsed-time liquidation",
+    "winner-removal rerouting",
+    "ranking decision rule",
+    "order authority"
+  ],
+  "market_rows_opened_before_correction": false,
+  "strategy_outcome_observed_before_correction": false,
+  "orders_submitted": false
+}
