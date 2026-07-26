@@ -1,0 +1,99 @@
+name: Rank all-breakout canonical consistency
+
+on:
+  push:
+    branches:
+      - agent/r13-rank-allbreakout-consistency-001
+    paths:
+      - "control/ranking.json"
+      - "control/current-state.md"
+      - "research/rank_contract_reconcile_20260726/validate_canonical_ranking.py"
+      - "research_results/rank_contract_reconcile_20260726/RESULT.json"
+      - "research_results/rank_contract_reconcile_20260726/DECISION.json"
+      - "research_results/rank_contract_reconcile_20260726/CORRECTION_001_ALL_BREAKOUT_CANONICAL_FIRST.json"
+      - ".github/workflows/rank-allbreakout-consistency-r14.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "control/ranking.json"
+      - "control/current-state.md"
+      - "research/rank_contract_reconcile_20260726/validate_canonical_ranking.py"
+      - "research_results/rank_contract_reconcile_20260726/**"
+      - ".github/workflows/rank-allbreakout-consistency-r14.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rank-allbreakout-consistency-r14-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-rank-allbreakout-consistency-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate canonical ranking identity and authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_results/rank_contract_reconcile_20260726
+          python -m py_compile research/rank_contract_reconcile_20260726/validate_canonical_ranking.py
+          python research/rank_contract_reconcile_20260726/validate_canonical_ranking.py
+          python -m json.tool control/ranking.json >/dev/null
+          python -m json.tool "$root/RESULT.json" >/dev/null
+          python -m json.tool "$root/DECISION.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_001_ALL_BREAKOUT_CANONICAL_FIRST.json" >/dev/null
+          python scripts/validate_project.py
+
+      - name: Refresh exact result-directory checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_results/rank_contract_reconcile_20260726
+          (
+            cd "$root"
+            sha256sum \
+              RESULT.json \
+              SOURCE_EVIDENCE.md \
+              DECISION.json \
+              CORRECTION_001_ALL_BREAKOUT_CANONICAL_FIRST.json \
+              > SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
+
+      - name: Commit refreshed checksums
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research_results/rank_contract_reconcile_20260726/SHA256SUMS.txt
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Refresh corrected ranking checksums [skip ci]"
+          git push origin HEAD:agent/r13-rank-allbreakout-consistency-001
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rank-allbreakout-consistency-r14-${{ github.sha }}
+          path: |
+            control/ranking.json
+            control/current-state.md
+            research_results/rank_contract_reconcile_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
