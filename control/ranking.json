@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 15,
+  "revision": 16,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260726-R15",
+  "ranking_id": "STRATEGY-RANKING-20260726-R16",
   "ranking_rule": {
     "eligibility": "hard_valid_or_preliminary_causal_strategy_or_portfolio_compatible_with_current_fixed_project_contract",
     "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
@@ -12,6 +12,15 @@
     "incomplete_normalization": "provisional_rank_with_disclosed_confidence",
     "rank_does_not_determine_work_priority": true
   },
+  "official_sequential_research_contract": {
+    "first_interval": "2024H1",
+    "2024H1_information_cutoff": "2023-12-31T23:59:59Z",
+    "intervals": ["2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+    "continuous_nav": true,
+    "evaluation_policy": "Evaluate a promising version immediately in the next official half-year. Observed results may guide a later version fixed only with information available before that later half-year.",
+    "oos_boundary": "A half-year already used for revision or selection is not relabeled as independent OOS for the revised strategy.",
+    "weak_result_policy": "A result structurally far from the objective triggers an alpha or payoff change rather than preservation of unused official periods or additional defensive pre-gates."
+  },
   "first_place": {
     "rank": 1,
     "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
@@ -20,7 +29,7 @@
     "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/61",
     "qualification_stage": "PRELIMINARY_CAUSAL_BINANCE_PROXY",
     "target_status": "NOT_MET",
-    "selection_reason": "The all-breakout route is the highest recorded current-exit-contract-compatible path. Its independently reproduced account grows 0.0900854% per UTC calendar day at 12bp and 0.0700189% at 24bp. It remains provisional because the execution venue is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, and winner removal destroys the path.",
+    "selection_reason": "The all-breakout route is the highest recorded current-exit-contract-compatible path. Its independently reproduced account grows 0.0900854% per UTC calendar day at 12bp and 0.0700189% at 24bp. It remains provisional because the execution venue is a Binance proxy, funding and exact Bybit BBO/depth are absent, official 2024H1 is not yet reported, and winner removal destroys the path.",
     "comparison_confidence": "VERY_LOW",
     "ml_requirement_status": "NOT_MET_NON_ML_BASELINE",
     "metrics": {
@@ -59,7 +68,17 @@
       "bybit_execution_replayed": false,
       "elapsed_time_liquidation": false
     },
-    "sequential_evidence": {"development_period": "2023", "development_gate_pass_count": 0, "selection_2024_opened": false, "confirmation_2025_opened": false, "2026_opened": false},
+    "sequential_evidence": {
+      "development_period": "2023",
+      "development_gate_pass_count": 0,
+      "official_2024H1_claim": "CLM-20260726-2139-DONCHIAN-2024H1-001",
+      "official_2024H1_opened": false,
+      "official_2024H1_reported": false,
+      "official_2024H2_opened": false,
+      "official_2025H1_opened": false,
+      "official_2025H2_opened": false,
+      "official_2026H1_opened": false
+    },
     "known_weaknesses": [
       "Binance USD-M completed bars are a proxy rather than exact Bybit execution.",
       "Historical funding was omitted.",
@@ -67,14 +86,14 @@
       "The median trade is -50bp and only 20.2% of trades win.",
       "The five largest winners provide about 65% of positive PnL.",
       "Removing the largest positive 10% of event keys changes the 12bp return to -26.29% and the 24bp return to -26.95%.",
-      "No 2024 or later sequential interval was opened.",
+      "The official 2024H1 sequential result is not yet reported.",
       "This is a non-ML benchmark and cannot satisfy the final system requirement.",
-      "Daily growth remains far below the 1% reference."
+      "Daily growth remains approximately 11.10 times below the 1% reference."
     ]
   },
   "ranked_candidates": [
-    {"rank": 1, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian all-breakout 60m/96/48 a70626d9e484285f2cb4", "geometric_daily_growth": 0.0009008544402622221, "geometric_daily_growth_at_24bps": 0.0007001887213879954, "target_gap": 0.009099145559737778, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_FULL_REPRODUCTION_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS_WINNER_CONCENTRATED"},
-    {"rank": 2, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian after-loser 60m/96/48/240 a70626d9e484285f2cb4", "geometric_daily_growth": 0.0008299955525170599, "geometric_daily_growth_at_24bps": 0.0006318446194384375, "target_gap": 0.00917000444748294, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS_WINNER_CONCENTRATED"},
+    {"rank": 1, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian all-breakout 60m/96/48 a70626d9e484285f2cb4", "geometric_daily_growth": 0.0009008544402622221, "geometric_daily_growth_at_24bps": 0.0007001887213879954, "target_gap": 0.009099145559737778, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_FULL_REPRODUCTION_BINANCE_PROXY_NO_FUNDING_OFFICIAL_2024H1_PENDING_WINNER_CONCENTRATED"},
+    {"rank": 2, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian after-loser 60m/96/48/240 a70626d9e484285f2cb4", "geometric_daily_growth": 0.0008299955525170599, "geometric_daily_growth_at_24bps": 0.0006318446194384375, "target_gap": 0.00917000444748294, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BINANCE_PROXY_NO_FUNDING_OFFICIAL_2024H1_UNOPENED_WINNER_CONCENTRATED"},
     {"rank": 3, "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001", "candidate_label": "CME gap competing-risk ML da1b9e2861d6b396b81e", "geometric_daily_growth": 0.00045942506559409766, "geometric_daily_growth_at_24bps": 0.0003348504650920563, "target_gap": 0.009540574934405903, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_YAHOO_CME_BINANCE_EXECUTION_PROXY_2022_ONLY_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"},
     {"rank": 4, "source_result_id": "RES-20260726-LIQUIDITY-MASS-001", "candidate_label": "Bybit liquidity-mass rejection 142f8501fcc7874fd6d2", "geometric_daily_growth": 0.0001185504610022094, "target_gap": 0.00988144953899779, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"},
     {"rank": 5, "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001", "candidate_label": "08:00 option-settlement SMT 951df185862595e1", "geometric_daily_growth": 0.00009955592268640068, "target_gap": 0.0099004440773136, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BINANCE_EXECUTION_PROXY_18BPS_12_TRADES_PRE2024_FIT_ONLY"},
@@ -99,11 +118,12 @@
   ],
   "component_rankings": [{"component": "execution_routing", "rank": 1, "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER", "source_result_id": "RES-20260725-1510-L1-EXEC-001", "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag while remaining unsuitable as a standalone strategy."}],
   "reconciliation_notes": [
-    "First place and all eight ranked candidates remain unchanged because the new ML results produced no superior current-contract-compatible positive account path.",
-    "Recorded the direct-utility model as a hard-valid zero-action negative result: its fixed calibration scale was zero and confirmation error was worse than the constant baseline.",
-    "Recorded path-continuity and OKX consensus as negative or event-scarce, and Aave liquidation as source-unavailable before outcomes.",
-    "Active research moved to materially different stablecoin issuance and Uniswap inventory-transfer sources rather than adjacent tuning.",
+    "First place and all eight ranked candidates remain unchanged because no new superior current-contract-compatible positive account path has been reported.",
+    "The official half-years are sequential research intervals: a promising pre-2024 version opens 2024H1 immediately, and a later version may use only information available before its own half-year.",
+    "An observed half-year used for revision or selection is not relabeled as independent OOS for the revised version; NAV remains continuous across the official sequence.",
+    "CLM-20260726-2139-DONCHIAN-2024H1-001 is the active unchanged-rule official 2024H1 evaluation of the current rank-one benchmark.",
+    "A weak official result triggers alpha or payoff replacement rather than preservation of unused periods or additional pre-gates.",
     "Rank does not imply economic-gate passage, deployment permission, research priority or protection."
   ],
-  "updated_at": "2026-07-26T21:40:00+09:00"
+  "updated_at": "2026-07-26T21:51:00+09:00"
 }
