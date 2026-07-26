@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2237-ML-HOURWEEK-PRE2024-001",
+  "recorded_before_2024h1_result": true,
+  "information_cutoff": "2023-12-31T23:59:59Z",
+  "source": {
+    "artifact_id": 8616632878,
+    "workflow_run": 30147824722,
+    "artifact_digest": "sha256:fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "market": "Binance USD-M perpetual proxy",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "native_timeframe": "completed 5-minute bars",
+    "decision_timeframe": "completed 1-hour bars",
+    "source_period_available": "2023-01-01 through 2025-12-31",
+    "admissible_before_evaluation": "2023 only"
+  },
+  "features": {
+    "continuous": [
+      "log_return_1h", "log_return_3h", "log_return_6h", "log_return_12h", "log_return_24h", "log_return_72h",
+      "realized_volatility_24h", "realized_volatility_72h", "trend_efficiency_24h", "trend_efficiency_72h",
+      "log_quote_volume_zscore_168h", "taker_flow_1h", "taker_flow_6h", "taker_flow_24h",
+      "range_position_24h", "range_position_168h", "cross_section_mean_return_6h", "cross_section_mean_return_24h"
+    ],
+    "categorical": ["symbol", "symbol_x_utc_hour_of_day", "symbol_x_utc_hour_of_week"],
+    "availability": "all features end at the completed hour immediately before the executable next-hour open"
+  },
+  "model": {
+    "family": "one pooled Ridge regression",
+    "ridge_alpha": 10.0,
+    "continuous_scaling": "StandardScaler fit on the training partition only",
+    "categorical_encoding": "one-hot with unknown categories ignored",
+    "target": "arithmetic return from the next-hour open to the close exactly 24 hours later",
+    "model_or_feature_grid": false
+  },
+  "pre2024_selection_already_observed": {
+    "fit": "2023-01-08 through 2023-06-30",
+    "candidate_selection": "2023Q3",
+    "unchanged_confirmation": "2023Q4",
+    "base_threshold": 0.0179551047702047,
+    "base_threshold_definition": "95th percentile of absolute Q3 predictions from the H1-fitted model",
+    "candidate_count": 720,
+    "sessions": ["ALL", "UTC00_07", "UTC08_15", "UTC16_23", "UTC00_05", "UTC06_11", "UTC12_17", "UTC18_23", "UTC00_11", "UTC12_23"],
+    "side_filters": ["BOTH", "LONG", "SHORT"],
+    "symbol_filters": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "threshold_multipliers": [0.75, 1.0, 1.25, 1.5, 2.0, 2.5],
+    "q3_gate": "at least 5 completed trades; positive 24bp return, median and PF; MDD below 35%; positive exact top-10%-winner-removed reroute",
+    "q4_gate": "at least 3 completed trades; same unchanged economic and winner-removal requirements",
+    "dual_partition_survivor_count": 1,
+    "selected_route": {
+      "symbol": "SOLUSDT",
+      "side": "SHORT",
+      "entry_hours_utc": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "threshold_multiplier": 0.75,
+      "absolute_entry_threshold": 0.013466328577653525
+    },
+    "q3_metrics": {
+      "completed_trades": 5,
+      "total_return": 0.05811302197430224,
+      "geometric_daily_growth": 0.0006141793330367573,
+      "median_trade_return": 0.014540030295379758,
+      "profit_factor": 2.4977860795973337,
+      "maximum_drawdown": 0.03999451097918516,
+      "winner_removed_total_return": 0.01586291625670877
+    },
+    "q4_metrics": {
+      "completed_trades": 3,
+      "total_return": 0.09478897867692515,
+      "geometric_daily_growth": 0.0009848502028686479,
+      "median_trade_return": 0.0328575109911633,
+      "profit_factor": "infinity_no_completed_loser",
+      "maximum_drawdown": 0.06311047352261467,
+      "winner_removed_total_return": 0.04823221318748838
+    }
+  },
+  "frozen_2024h1_system": {
+    "model_update": "refit the identical Ridge pipeline on every eligible 2023 row; do not change features, alpha or target",
+    "entry": "at the next SOLUSDT hourly open only during UTC 00:00-11:59 when prediction is at or below -0.013466328577653525",
+    "exit": "at the next hourly open when the signed short expected edge is no longer positive",
+    "elapsed_time_liquidation": false,
+    "global_slot_count": 1,
+    "quantity": "fixed base quantity opened at one-times current NAV notional; no free hourly rebalancing",
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "primary_cost_bps": 24,
+    "funding_proxy": "adverse 1bp of current marked notional at UTC 00:00, 08:00 and 16:00 while held",
+    "same_timestamp_ordering": "mark existing position, charge due funding, apply exit, then permit a new entry",
+    "period_end": "mark to market with estimated exit cost; do not force close",
+    "winner_removal": "remove max(1, ceil(10% of all completed trades)) largest positive-PnL start keys before slot competition and replay from initial NAV",
+    "initial_nav": 1.0,
+    "risk_or_leverage_search": false
+  },
+  "official_evaluation": {
+    "opened": ["2024H1"],
+    "start": "2024-01-01T00:00:00Z",
+    "end_exclusive": "2024-07-01T00:00:00Z",
+    "calendar_days": 182,
+    "unopened": ["2024H2", "2025H1", "2025H2", "2026H1"]
+  },
+  "decision": {
+    "positive_robust_path": "insert immediately into the cumulative ranking with provisional proxy confidence and proceed to unchanged exact-Bybit execution; risk/leverage search may open only after positive winner-removal evidence",
+    "negative_or_winner_dependent_path": "retire this pre-2024-selected route and do not tune adjacent sessions, symbols, sides, thresholds, features or Ridge alpha"
+  },
+  "authority": {"credentials": false, "orders": false, "paper_live": false, "live_permission_change": false}
+}
