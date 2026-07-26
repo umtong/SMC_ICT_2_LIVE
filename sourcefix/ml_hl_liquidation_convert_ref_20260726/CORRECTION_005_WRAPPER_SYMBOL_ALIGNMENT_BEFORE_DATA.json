@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-HL-LIQUIDATION-CONVERT-WRAPPER-005",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "recorded_at": "2026-07-26T22:06:00+09:00",
+  "status": "PRE_OUTCOME_SOURCE_ONLY",
+  "trigger": "Static audit of the queued convert-revision wrapper found three names that do not exist in the frozen source engine: REMOTE_DATASET, REMOTE_PARQUET_PATH and _resolve_repo_revision. No authoritative source-gate job had opened a Hyperliquid event row or any market outcome.",
+  "correction": {
+    "dataset_identifier": "Use the engine's existing REPOSITORY constant gionuibk/hyperliquid-misc-events.",
+    "parquet_path": "Bind the convert-revision sibling to default/train/0000.parquet.",
+    "resolver_hook": "Override the engine's existing resolve_revision and find_parquet_siblings callables before engine.main().",
+    "revision_ref": "refs/convert/parquet"
+  },
+  "unchanged": [
+    "same six dates and six UTC hours per date",
+    "same exact 36 _src identities",
+    "same DuckDB HTTP range reads and predicate pushdown",
+    "same explicit LedgerUpdate liquidation schema and signed position interpretation",
+    "same source-density, duplicate and malformed-record gates",
+    "same prohibition on Bybit price, future return, labels, model, PnL, official 2026 and orders"
+  ],
+  "hyperliquid_event_row_opened_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
