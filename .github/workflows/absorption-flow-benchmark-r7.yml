@@ -68,12 +68,14 @@ jobs:
           assert result['dollar_bar_screen']['candidate_count']==324
           assert result['ranking_candidate']['base']['trades']==184
           assert result['ranking_candidate']['stress_2x']['trades']==183
-          assert result['ranking_decision']['rank']==2
-          assert ranking['first_place']['source_result_id']=='RES-20260725-DYNAMIC-FACTOR-001'
-          assert ranking['ranked_candidates'][1]['source_result_id']=='RES-20260725-ABS-FLOW-001'
+          assert result['ranking_decision']['rank']==2  # historical revision-8 decision remains immutable
+          assert ranking['revision']==13
+          assert ranking['first_place']['source_result_id']=='RES-20260726-DONCHIAN-DEPENDENCE-001'
+          assert ranking['ranked_candidates'][3]['rank']==4
+          assert ranking['ranked_candidates'][3]['source_result_id']=='RES-20260725-ABS-FLOW-001'
           assert validation['status']=='PASS'
           assert not result['orders_submitted'] and not result['paper_or_live_started']
-          print('registered-result and revision-8 ranking checks passed')
+          print('registered result and revision-13 cumulative ranking checks passed')
           PY
       - name: Validate repository contracts
         run: |
