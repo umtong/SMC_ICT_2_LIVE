@@ -1,0 +1,137 @@
+name: Stablecoin Blockscout source gate Windows
+
+on:
+  push:
+    branches: [agent/r20-stablecoin-source-windows-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-windows-r20.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  pull_request:
+    branches: [agent/r13-ml-stablecoin-issuance-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-windows-r20.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-blockscout-windows-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: windows-2025
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      ROOT: research/ml_stablecoin_issuance_20260726
+      OUT: research_runs/ml_stablecoin_issuance_20260726/blockscout_windows_source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed source environment
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+      - name: Validate identical corrected source identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path $env:OUT | Out-Null
+          python -m py_compile "$env:ROOT/source_gate.py" "$env:ROOT/source_gate_authoritative.py" "$env:ROOT/source_gate_blockscout.py" "$env:ROOT/source_gate_blockscout_authoritative.py" "$env:ROOT/test_source_gate.py"
+          $env:PYTHONPATH = $env:ROOT
+          pytest -q "$env:ROOT/test_source_gate.py" 2>&1 | Tee-Object -FilePath "$env:OUT/PYTEST.log"
+          python "$env:ROOT/source_gate_blockscout_authoritative.py" --self-test 2>&1 | Tee-Object -FilePath "$env:OUT/SELF_TEST.log"
+          python -m json.tool "$env:ROOT/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" | Out-Null
+          python -m json.tool "$env:ROOT/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" | Out-Null
+          python -m json.tool "$env:ROOT/EXECUTION_CORRECTION_013_BLOCKSCOUT_RATE_BEFORE_OUTCOME.json" | Out-Null
+          python -m json.tool "$env:ROOT/EXECUTION_CORRECTION_016_PR_VISIBLE_SHA_SCOPED_BEFORE_OUTCOME.json" | Out-Null
+          python -m json.tool "$env:ROOT/EXECUTION_CORRECTION_017_WINDOWS_PARALLEL_SOURCE_BEFORE_OUTCOME.json" | Out-Null
+          python -m json.tool "$env:ROOT/EXECUTION_TRIGGER_015_FINAL_CORRECTED_SOURCE.json" | Out-Null
+      - name: Query complete pre-2024 issuance source only
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $env:PYTHONPATH = $env:ROOT
+          python "$env:ROOT/source_gate_blockscout_authoritative.py" --output $env:OUT 2>&1 | Tee-Object -FilePath "$env:OUT/RUN.log"
+          $rc = $LASTEXITCODE
+          Set-Content -Path "$env:OUT/RUN_EXIT_CODE.txt" -Value $rc
+          if (-not (Test-Path "$env:OUT/SOURCE_GATE_RESULT.json")) {
+            python "$env:ROOT/write_transport_failure.py" --output $env:OUT --transport TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003 --exit-code $rc
+          }
+          exit 0
+      - name: Verify source decision and outcome seal
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python "$env:ROOT/verify_source_result.py" "$env:OUT/SOURCE_GATE_RESULT.json" TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003
+          @'
+          import json
+          import os
+          from pathlib import Path
+          result=json.loads((Path(os.environ['OUT'])/'SOURCE_GATE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          print(json.dumps({
+            'status':result['status'],
+            'event_count':result.get('event_count'),
+            'months_with_events':len(result.get('months_with_events',[])),
+            'distinct_tokens':result.get('distinct_tokens'),
+            'conditional_model_screen_authorized':result.get('conditional_model_screen_authorized',False),
+          },sort_keys=True))
+          '@ | python -
+      - name: Freeze evidence hashes
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path "$env:OUT/source" | Out-Null
+          $inputs = @(
+            'WORK_CLAIM.json',
+            'preregistration.json',
+            'README.md',
+            'SOURCES.md',
+            'source_gate.py',
+            'source_gate_authoritative.py',
+            'source_gate_blockscout.py',
+            'source_gate_blockscout_authoritative.py',
+            'test_source_gate.py',
+            'verify_source_result.py',
+            'write_transport_failure.py',
+            'EXECUTION_CORRECTION_013_BLOCKSCOUT_RATE_BEFORE_OUTCOME.json',
+            'EXECUTION_CORRECTION_016_PR_VISIBLE_SHA_SCOPED_BEFORE_OUTCOME.json',
+            'EXECUTION_CORRECTION_017_WINDOWS_PARALLEL_SOURCE_BEFORE_OUTCOME.json',
+            'EXECUTION_TRIGGER_015_FINAL_CORRECTED_SOURCE.json',
+            'CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json',
+            'CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json'
+          )
+          foreach ($name in $inputs) { Copy-Item "$env:ROOT/$name" "$env:OUT/source/$name" }
+          @'
+          from pathlib import Path
+          import hashlib
+          import os
+          root=Path(os.environ['OUT'])
+          rows=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text('\n'.join(rows)+'\n')
+          '@ | python -
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-blockscout-windows-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_issuance_20260726/blockscout_windows_source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
