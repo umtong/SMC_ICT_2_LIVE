@@ -41,10 +41,24 @@ class FakeClient:
 
 def test_exact_2024_boundary_is_only_an_end_exclusive_lookup() -> None:
     boundary = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
-    client = FakeClient({0: boundary - 24, 1: boundary - 12, 2: boundary})
-    assert first_block_at_or_after(client, boundary, 0, 2, {}) == 2
+    # Block 100 is the first block at the end-exclusive 2024 boundary. The
+    # authoritative eligibility boundary must be 64 blocks earlier so every
+    # retained 2023 event can be observed under both the +12 and +64 block
+    # availability contracts without reading a 2024 block.
+    client = FakeClient(
+        {i: boundary - (100 - i) * 12 for i in range(101)}
+    )
+    assert first_block_at_or_after(client, boundary, 0, 100, {}) == 36
     with pytest.raises(ValueError):
-        first_block_at_or_after(client, boundary + 1, 0, 2, {})
+        first_block_at_or_after(client, boundary + 1, 0, 100, {})
+
+
+def test_ordinary_historical_boundary_is_not_shifted() -> None:
+    boundary = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+    client = FakeClient(
+        {i: boundary - (100 - i) * 12 for i in range(101)}
+    )
+    assert first_block_at_or_after(client, boundary - 120, 0, 100, {}) == 90
 
 
 def test_month_bounds_never_open_2024() -> None:
