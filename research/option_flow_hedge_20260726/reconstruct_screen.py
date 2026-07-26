@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import gzip
 import hashlib
 from pathlib import Path
@@ -10,7 +11,7 @@ SOURCE = ROOT / "screen.py.gz.b64"
 PARTS = tuple(ROOT / f"screen.py.gz.b64.part{i:02d}" for i in range(4))
 TARGET = ROOT / "screen.py"
 EXPECTED = {
-    "base64_sha256": "2f2224ceb7ca760450d9324b1b49957ba5f78fdfb7b95c3dc958394548d9a0ca",
+    "legacy_base64_sha256": "2f2224ceb7ca760450d9324b1b49957ba5f78fdfb7b95c3dc958394548d9a0ca",
     "gzip_sha256": "8f078ffa980d2481db47ddbc601791637587063dad599859725c2c2aaa4af6f7",
     "raw_sha256": "a87613b623f0b228ca9a7eb365e2fe462efffd51dbcfa06d1b948061fe5e742d",
     "raw_bytes": 42628,
@@ -25,36 +26,63 @@ def normalized(path: Path) -> bytes:
     return b"".join(path.read_bytes().split())
 
 
-def main() -> None:
-    single = normalized(SOURCE)
-    if sha256(single) == EXPECTED["base64_sha256"]:
-        encoded = single
-        transport = str(SOURCE.name)
-    else:
-        missing = [str(part.name) for part in PARTS if not part.is_file()]
-        if missing:
-            raise SystemExit(
-                f"base64 transport checksum mismatch and split transport missing: {missing}"
-            )
-        split = b"".join(normalized(part) for part in PARTS)
-        if sha256(split) != EXPECTED["base64_sha256"]:
-            raise SystemExit(
-                "base64 transport checksum mismatch for both single and split transports"
-            )
-        encoded = split
-        transport = "+".join(part.name for part in PARTS)
+def candidate_transports() -> list[tuple[str, bytes]]:
+    candidates: list[tuple[str, bytes]] = []
+    if SOURCE.is_file():
+        candidates.append((SOURCE.name, normalized(SOURCE)))
+    if all(part.is_file() for part in PARTS):
+        candidates.append(("+".join(part.name for part in PARTS), b"".join(normalized(part) for part in PARTS)))
+    return candidates
 
-    compressed = base64.b64decode(encoded, validate=True)
-    if sha256(compressed) != EXPECTED["gzip_sha256"]:
-        raise SystemExit("gzip checksum mismatch")
-    raw = gzip.decompress(compressed)
-    if len(raw) != EXPECTED["raw_bytes"] or sha256(raw) != EXPECTED["raw_sha256"]:
-        raise SystemExit("reconstructed screen checksum mismatch")
+
+def main() -> None:
+    diagnostics: list[str] = []
+    accepted: tuple[str, bytes, bytes, bytes] | None = None
+    for name, encoded in candidate_transports():
+        transport_sha = sha256(encoded)
+        try:
+            compressed = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            diagnostics.append(
+                f"{name}: transport_bytes={len(encoded)} transport_sha256={transport_sha} decode_error={exc}"
+            )
+            continue
+        gzip_sha = sha256(compressed)
+        if gzip_sha != EXPECTED["gzip_sha256"]:
+            diagnostics.append(
+                f"{name}: transport_bytes={len(encoded)} transport_sha256={transport_sha} "
+                f"gzip_bytes={len(compressed)} gzip_sha256={gzip_sha}"
+            )
+            continue
+        try:
+            raw = gzip.decompress(compressed)
+        except OSError as exc:
+            diagnostics.append(
+                f"{name}: transport_sha256={transport_sha} gzip_sha256={gzip_sha} decompress_error={exc}"
+            )
+            continue
+        raw_sha = sha256(raw)
+        diagnostics.append(
+            f"{name}: transport_bytes={len(encoded)} transport_sha256={transport_sha} "
+            f"legacy_transport_match={transport_sha == EXPECTED['legacy_base64_sha256']} "
+            f"gzip_bytes={len(compressed)} gzip_sha256={gzip_sha} raw_bytes={len(raw)} raw_sha256={raw_sha}"
+        )
+        if len(raw) == EXPECTED["raw_bytes"] and raw_sha == EXPECTED["raw_sha256"]:
+            if accepted is not None:
+                raise SystemExit("multiple distinct repository transports matched the frozen executable identity")
+            accepted = (name, encoded, compressed, raw)
+
+    for line in diagnostics:
+        print(f"TRANSPORT_DIAGNOSTIC {line}")
+    if accepted is None:
+        raise SystemExit("no repository transport matched the frozen gzip and raw executable identity")
+
+    name, encoded, compressed, raw = accepted
     compile(raw, str(TARGET), "exec")
     TARGET.write_bytes(raw)
     print(
-        f"RECONSTRUCTED {TARGET} transport={transport} "
-        f"bytes={len(raw)} sha256={sha256(raw)}"
+        f"RECONSTRUCTED {TARGET} transport={name} transport_sha256={sha256(encoded)} "
+        f"gzip_sha256={sha256(compressed)} bytes={len(raw)} raw_sha256={sha256(raw)}"
     )
 
 
