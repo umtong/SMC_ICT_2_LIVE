@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   source-gate:
-    runs-on: ubuntu-slim
+    runs-on: macos-14
     timeout-minutes: 120
     env:
       PYTHONHASHSEED: '0'
@@ -140,20 +140,39 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          root=research/ml_gmx_v1_liquidation_20260726
-          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
-          mkdir -p "$out"
-          sha256sum \
-            "$root/WORK_CLAIM.json" \
-            "$root/PREREGISTRATION.md" \
-            "$root/probe_gmx_v1_liquidations.py" \
-            "$root/test_probe_gmx_v1_liquidations.py" \
-            .github/workflows/ml-gmx-v1-liquidation-source-gate.yml \
-            > "$out/INPUT_SHA256SUMS.txt"
-          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
-            | sort -z \
-            | xargs -0 sha256sum \
-            > "$out/OUTPUT_SHA256SUMS.txt"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          root = Path('research/ml_gmx_v1_liquidation_20260726')
+          out = Path('research_runs/ml_gmx_v1_liquidation_20260726/source-gate')
+          out.mkdir(parents=True, exist_ok=True)
+          inputs = [
+              root / 'WORK_CLAIM.json',
+              root / 'PREREGISTRATION.md',
+              root / 'probe_gmx_v1_liquidations.py',
+              root / 'test_probe_gmx_v1_liquidations.py',
+              Path('.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'),
+          ]
+
+          def digest(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open('rb') as handle:
+                  for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          (out / 'INPUT_SHA256SUMS.txt').write_text(
+              ''.join(f'{digest(path)}  {path.as_posix()}\n' for path in inputs)
+          )
+          outputs = sorted(
+              path for path in out.rglob('*')
+              if path.is_file() and path.name != 'OUTPUT_SHA256SUMS.txt'
+          )
+          (out / 'OUTPUT_SHA256SUMS.txt').write_text(
+              ''.join(f'{digest(path)}  {path.as_posix()}\n' for path in outputs)
+          )
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()
