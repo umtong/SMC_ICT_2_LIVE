@@ -1,6 +1,11 @@
 name: Canonical Bybit public archive inventory
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/market_data/inventory_public_bybit.py
+      - .github/workflows/canonical-bybit-public-inventory.yml
   push:
     branches:
       - agent/r22-canonical-halfyear-market-data-001
