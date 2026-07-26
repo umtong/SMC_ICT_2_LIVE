@@ -1,0 +1,90 @@
+name: ML Aave liquidation fast source gate
+
+on:
+  push:
+    branches: [agent/r11-ml-aave-liquidation-001]
+    paths:
+      - 'research/ml_aave_liquidation_20260726/probe_aave_liquidations_fast.py'
+      - 'research/ml_aave_liquidation_20260726/TRANSPORT_CORRECTION_001_BLOCK_BY_TIME_BEFORE_OUTCOME.json'
+      - '.github/workflows/ml-aave-liquidation-source-fast-r11.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_aave_liquidation_20260726/**'
+      - '.github/workflows/ml-aave-liquidation-source-fast-r11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-aave-liquidation-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-gate:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Export pinned official Aave addresses
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/ml-aave-liquidation-fast"
+          mkdir -p "$out"
+          cd "$GITHUB_WORKSPACE/research/ml_aave_liquidation_20260726"
+          npm init -y >/dev/null
+          npm install --save-exact '@aave-dao/aave-address-book@4.61.0'
+          npm ls --all --json > "$out/NPM_DEPENDENCIES.json"
+          cp package-lock.json "$out/package-lock.json"
+          node export_addresses.cjs > "$out/ADDRESSES.json"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed source-gate environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            'requests==2.32.3' 'eth-abi==5.1.0' 'eth-utils==5.1.0' \
+            'eth-hash[pycryptodome]==0.7.1'
+      - name: Run compressed outcome-sealed source gate
+        run: |
+          set -euo pipefail
+          root=research/ml_aave_liquidation_20260726
+          out="$RUNNER_TEMP/ml-aave-liquidation-fast"
+          python -m json.tool "$root/TRANSPORT_CORRECTION_001_BLOCK_BY_TIME_BEFORE_OUTCOME.json" >/dev/null
+          python -m py_compile "$root/probe_aave_liquidations_fast.py"
+          python "$root/probe_aave_liquidations_fast.py" \
+            --addresses "$out/ADDRESSES.json" \
+            --output "$out" \
+            2>&1 | tee "$out/run.log"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          out=Path(os.environ['RUNNER_TEMP'])/'ml-aave-liquidation-fast'
+          result=json.loads((out/'PROBE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-1952-ML-AAVE-LIQUIDATION-001'
+          assert result['source_gate_pass'] in {True, False}
+          assert result['scientific_decision'] in {'OPEN_FROZEN_PRE2024_HISTORY_STAGE','CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES'}
+          assert 'eth_price_opened' not in result or result['eth_price_opened'] is False
+          print(json.dumps({'source_gate_pass':result['source_gate_pass'],'decision':result['scientific_decision'],'totals':result.get('totals')},sort_keys=True))
+          PY
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_aave_liquidation_20260726
+          out="$RUNNER_TEMP/ml-aave-liquidation-fast"
+          cp "$root/PREREGISTRATION.md" "$root/probe_aave_liquidations_fast.py" \
+             "$root/TRANSPORT_CORRECTION_001_BLOCK_BY_TIME_BEFORE_OUTCOME.json" \
+             "$root/export_addresses.cjs" "$out/" 2>/dev/null || true
+          (cd "$out" && find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 shasum -a 256 > SHA256SUMS.txt) || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-aave-liquidation-fast-${{ github.run_id }}
+          path: ${{ runner.temp }}/ml-aave-liquidation-fast
+          if-no-files-found: error
+          retention-days: 30
