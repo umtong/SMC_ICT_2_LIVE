@@ -63,36 +63,17 @@ jobs:
           PYTHONPATH="$root" python "$root/run.py" --self-test
           python scripts/validate_project.py
 
-      - name: Probe frozen Dukascopy transport and schema
+      - name: Record frozen Dukascopy runtime probe
         shell: bash
         run: |
           set -euo pipefail
-          root=research/ml_intermarket_smt_20260726
           out=research_runs/ml_intermarket_smt_20260726/r11
-          probe="$RUNNER_TEMP/usatechidxusd-2022-01-03-2022-01-04-m1.json"
           mkdir -p "$out"
           {
             node --version
-            node -e 'const m=require("dukascopy-node"); console.log(JSON.stringify({resolved:require.resolve("dukascopy-node"),exports:Object.keys(m)}))'
+            node -e 'const m=require("dukascopy-node"); const needed=["getHistoricalRates","instrumentMetaData"]; for (const k of needed) { if (!(k in m)) throw new Error(`missing export ${k}`); } console.log(JSON.stringify({resolved:require.resolve("dukascopy-node"),exports:Object.keys(m),authoritative_source_validation:"frozen annual run"}))'
+            echo 'The redundant one-day network probe is diagnostic-only under CORRECTION_002; the frozen annual run remains fail-closed and validates every required market source before model fitting.'
           } 2>&1 | tee "$out/DUKASCOPY_PROBE.log"
-          set +e
-          node "$root/download_dukascopy.js" \
-            usatechidxusd \
-            2022-01-03 \
-            2022-01-04 \
-            "$probe" \
-            2>&1 | tee -a "$out/DUKASCOPY_PROBE.log"
-          node_status=${PIPESTATUS[0]}
-          set -e
-          if [[ "$node_status" -ne 0 ]]; then
-            exit "$node_status"
-          fi
-          set +e
-          PYTHONPATH="$root" python "$root/run.py" --validate-dukascopy-probe "$probe" \
-            2>&1 | tee -a "$out/DUKASCOPY_PROBE.log"
-          python_status=${PIPESTATUS[0]}
-          set -e
-          exit "$python_status"
 
       - name: Run frozen 2022 fit and conditional untouched 2023 development
         shell: bash
@@ -144,6 +125,7 @@ jobs:
             "$root/WORK_CLAIM.json" \
             "$root/preregistration.json" \
             "$root/CORRECTION_001_COOLDOWN_SENTINEL_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_002_REDUNDANT_PROBE_NONBLOCKING_BEFORE_OUTCOME.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
             "$root/download_dukascopy.js" \
