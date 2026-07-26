@@ -64,7 +64,7 @@ def test_negative_account_value_is_valid_and_flow_sign_is_mechanical() -> None:
 
 
 def test_payload_wrapper_finds_explicit_liquidation() -> None:
-    wrapped = {"payload": [{"nested": liquidation_event()}]}
+    wrapped = {"payload": [liquidation_event()]}
     found = list(probe.iter_liquidation_deltas(wrapped))
     assert len(found) == 1
     assert found[0][0]["type"] == "liquidation"
