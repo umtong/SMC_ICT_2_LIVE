@@ -76,6 +76,7 @@ jobs:
           python -m json.tool "$root/SOURCE_REUSE_V2.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_004_SPLIT_RUNNER_TRANSPORT_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$root/preregistration_v2.json" >/dev/null
           python scripts/validate_project.py
       - name: Reuse registered completed-state artifact
@@ -143,16 +144,22 @@ jobs:
             "$root/SCHEMA_PROBE_CONTRACT.json" \
             "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" \
             "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" \
+            "$root/CORRECTION_004_SPLIT_RUNNER_TRANSPORT_BEFORE_DATA.json" \
             "$root/preregistration_v2.json" \
             "$root/v2_bundle_manifest.json" \
             "$root/reconstruct_v2.py" \
-            "$root/run_v2.py.gz.b64" \
+            "$root/run_v2.py.gz.b64.part00" \
+            "$root/run_v2.py.gz.b64.part01" \
+            "$root/run_v2.py.gz.b64.part02" \
+            "$root/run_v2.py.gz.b64.part03" \
+            "$root/run_v2.py.gz.b64.part04" \
             "$root/test_run_v2.py.gz.b64" \
             .github/workflows/hazard-oco-v2.yml \
             > research_runs/hazard_oco_v2/input/INPUT_SHA256SUMS.txt
           cp "$root/preregistration_v2.json" research_runs/hazard_oco_v2/input/
           cp "$root/AMENDMENT_002_L2_MINIMALITY_BEFORE_OUTCOME.json" research_runs/hazard_oco_v2/input/
           cp "$root/CORRECTION_003_TEST_IMPORT_BEFORE_DATA.json" research_runs/hazard_oco_v2/input/
+          cp "$root/CORRECTION_004_SPLIT_RUNNER_TRANSPORT_BEFORE_DATA.json" research_runs/hazard_oco_v2/input/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
