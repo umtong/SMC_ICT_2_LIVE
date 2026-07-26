@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "execution_id": "EXEC-20260727-STABLECOIN-STRICT-V3-VISIBLE-001",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "RECORDED_BEFORE_SOURCE_DECISION_OR_MARKET_OUTCOME",
+  "source_commit": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
+  "strict_engine_commit": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "strict_engine": "ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3",
+  "supersedes_execution_engines": [
+    "6cbff14ed8dd5ebba3b6b47bf6854bf090e4db2c",
+    "b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8"
+  ],
+  "reason": "A source event can finalize inside a minute. The authoritative decision state must end at the last bar whose close is already available at that exact finalization second. The next-minute open is execution only and may not determine features, liquidity geometry, eligibility or action.",
+  "frozen_sequence": [
+    "query corrected 2021-2023 USDT Issue/Redeem and USDC zero-address supply events under 12/64-block availability",
+    "open no BTC/ETH market outcome unless the source passes both-token, event-count and month-breadth requirements",
+    "run the strict V3 HGBT engine with last-completed-bar decision state and pre-entry structural geometry",
+    "treat a future entry gap outside the frozen target/stop band as zero-gross cost-only invalidation with no alternative reroute",
+    "NAV-mark unresolved stage-boundary exposure without claiming a strategy exit",
+    "replay one global BTC/ETH slot at 12/18/24bp",
+    "if calendar-2023 24bp return is positive and the account survives, search the prewritten 0.25%-60% risk and 1x-100x notional frontier without a 1% ceiling",
+    "freeze the highest-growth positive no-liquidation path through 2023-12-31 and open official 2024H1 immediately"
+  ],
+  "diagnostics_not_pre2024_vetoes": [
+    "AUC lift",
+    "Brier skill",
+    "median trade",
+    "profit factor",
+    "trade count",
+    "half-year breadth",
+    "winner-removal return"
+  ],
+  "source_decision_observed_before_record": false,
+  "market_archive_opened_before_record": false,
+  "model_fitted_before_record": false,
+  "trade_or_pnl_opened_before_record": false,
+  "official_2024h1_opened_before_record": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
