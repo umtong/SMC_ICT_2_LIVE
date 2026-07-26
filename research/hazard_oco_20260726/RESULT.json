@@ -1,0 +1,80 @@
+{
+  "result_id": "RES-20260726-HAZARD-OCO-V2-001",
+  "claim_id": "CLM-20260726-1730-ML-HAZARD-OCO-001",
+  "engine_version": "HAZARD-OCO-V2",
+  "status": "FIT_BELOW_GATE",
+  "hard_validity": "PASS_FATAL_SCREEN_ONLY",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "candidate_count": 128,
+  "fit_event_rows": 10236,
+  "model_diagnostics": {
+    "positive_prevalence": 0.0004884720593982024,
+    "HGBT": {
+      "roc_auc": 0.8528872321048551,
+      "average_precision": 0.00839918082114736
+    },
+    "LOGISTIC": {
+      "roc_auc": 0.5604510717519255,
+      "average_precision": 0.0018229046792118085
+    }
+  },
+  "trade_count_range": {
+    "minimum": 4,
+    "maximum": 207
+  },
+  "positive_policy_counts": {
+    "12_bps": 0,
+    "18_bps": 0,
+    "24_bps": 0
+  },
+  "fit_gate_survivors": 0,
+  "best_24_bps": {
+    "policy_id": "9aa7f9d717c7af1de2de",
+    "model": "HGBT",
+    "score_quantile": 0.985,
+    "structure": "slow",
+    "entry_barrier_bps": 20.0,
+    "target_bps": 40.0,
+    "stop_bps": 20.0,
+    "pending_ttl_seconds": 30,
+    "trade_count": 96,
+    "total_return": -0.005711593282891619,
+    "geometric_sample_day_growth": -0.005711593282891613,
+    "mean_net_return_bps": -5.945764715278002,
+    "median_net_return_bps": -23.703038032208784,
+    "profit_factor": 0.7723397214372113,
+    "maximum_drawdown": 0.005711593282891619,
+    "top_five_positive_share": 0.5009896048501267,
+    "top_10_percent_winner_removed_return": -0.014182325706626586,
+    "double_trigger_fraction": 0.041666666666666664,
+    "boundary_loss_fraction": 0.0
+  },
+  "development_opened": false,
+  "development_source_economically_read": false,
+  "prohibited_years_opened": [],
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "source": {
+    "parent_artifact_id": 8626087323,
+    "parent_workflow_run": 30182786091,
+    "parent_artifact_digest": "sha256:90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+    "fit_state_sha256": "da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b",
+    "conditional_state_sha256": "8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f"
+  },
+  "workflow": {
+    "run_id": 30198062051,
+    "artifact_id": 8630758968,
+    "artifact_digest": "sha256:d72265a92191ee97eff6f1851bb83db4f920cc8d2fd3ca3aa774aa02d63b9763",
+    "result_sha256": "3af1035dde098d28a20279f8f99fc452742f6027d9c92ec79607aa5be901c0c3",
+    "model_diagnostics_sha256": "f391fbaf5bc325e5870bb722875958dcf08ec1e3c9bbba43681659708f544bc5",
+    "gate_summary_sha256": "7ddffb3077a40e89b35f008ce7fea5c856f816bd75e528f94b22d3cb24c8318f"
+  },
+  "decision": "Retire this exact nonlinear movement-hazard two-sided OCO family. The model separated rare movement hazard, but every one of the 128 frozen policies lost after 12, 18 and 24 bps. Do not tune score quantiles, barrier, target, stop, pending TTL, risk or leverage under the same information unit.",
+  "limitations": [
+    "Movement-hazard labels were extremely rare despite strong HGBT ROC AUC.",
+    "No policy produced positive fit return even at the lowest 12-bp cost profile.",
+    "The best 24-bp path had a negative median trade and failed winner-removal robustness.",
+    "Untouched 2023 and all 2024-2026 periods remained unopened."
+  ]
+}
