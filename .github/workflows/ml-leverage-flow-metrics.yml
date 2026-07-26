@@ -38,17 +38,24 @@ jobs:
       - name: Install pinned builder dependencies
         run: python -m pip install "numpy==2.3.1" "requests==2.32.4"
       - name: Build strict 2023 USD-M metrics snapshot
+        shell: bash
         run: |
+          set -o pipefail
+          mkdir -p artifact
           python research/ml_xasset_spillover_20260727/build_pre2024_metrics.py \
             --start 2023-01-01 \
             --end 2023-12-31 \
-            --workers 24 \
-            --out artifact/pre2024_metrics
-      - name: Upload immutable metrics snapshot
+            --workers 12 \
+            --out artifact/pre2024_metrics \
+            2>&1 | tee artifact/pre2024_metrics_build.log
+      - name: Upload immutable metrics snapshot or exact failure log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ml-leverage-flow-pre2024-metrics
-          path: artifact/pre2024_metrics
+          path: |
+            artifact/pre2024_metrics
+            artifact/pre2024_metrics_build.log
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
