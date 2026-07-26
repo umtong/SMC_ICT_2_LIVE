@@ -123,3 +123,18 @@ def test_actual_and_adverse_funding_sign() -> None:
     short_actual, _, _ = run.replay(short_pred, threshold, bybit, funding, start, end, cost_bps=12.0, adverse_unsigned_funding=False)
     short_adverse, _, _ = run.replay(short_pred, threshold, bybit, funding, start, end, cost_bps=12.0, adverse_unsigned_funding=True)
     assert short_actual.ending_nav > short_adverse.ending_nav
+
+
+def test_binance_header_row_is_source_metadata_not_market_data() -> None:
+    columns = [
+        "open_time_ms", "open", "high", "low", "close", "volume", "close_time_ms",
+        "quote_volume", "trade_count", "taker_buy_volume", "taker_buy_quote", "ignore",
+    ]
+    raw = (
+        b"open_time,open,high,low,close,volume,close_time,quote_volume,trade_count,taker_buy_volume,taker_buy_quote,ignore\n"
+        b"1704067200000,1,2,0.5,1.5,10,1704070799999,15,3,5,7.5,0\n"
+    )
+    frame = run.parse_binance_kline_csv(raw, columns)
+    assert len(frame) == 1
+    assert int(frame.iloc[0]["open_time_ms"]) == 1704067200000
+    assert float(frame.iloc[0]["taker_buy_quote"]) == 7.5
