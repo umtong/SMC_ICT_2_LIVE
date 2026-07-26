@@ -12,7 +12,7 @@ TARGET = ROOT / "run.py"
 DIAGNOSTICS = ROOT / "RECONSTRUCTED_SOURCE.json"
 EXPECTED = {
     "base64_bytes": 16085,
-    "base64_sha256": "a3ea86f2e8dff289a77ddff9b7a8934a5a7352e5bb18984d61f5b2ab107e1a64",
+    "base64_sha256": "72d0026311a47047a14fc12ed53527358bdbeda497582116d85d3d77090ba9d6",
     "gzip_bytes": 12063,
     "gzip_sha256": "c842630e89cbc661f7e6200e7069c7e1fdc1bb17c597e2c92e6342f76fcaad51",
     "raw_bytes": 49951,
@@ -26,10 +26,18 @@ def sha256(payload: bytes) -> str:
 
 def main() -> int:
     encoded = SOURCE.read_bytes()
+    if len(encoded) != EXPECTED["base64_bytes"]:
+        raise RuntimeError(
+            f"base64 transport length mismatch: {len(encoded)} != {EXPECTED['base64_bytes']}"
+        )
     if sha256(encoded) != EXPECTED["base64_sha256"]:
         raise RuntimeError("base64 transport SHA-256 mismatch")
     normalized = b"".join(encoded.split())
     compressed = base64.b64decode(normalized, validate=True)
+    if len(compressed) != EXPECTED["gzip_bytes"]:
+        raise RuntimeError(
+            f"gzip payload length mismatch: {len(compressed)} != {EXPECTED['gzip_bytes']}"
+        )
     if sha256(compressed) != EXPECTED["gzip_sha256"]:
         raise RuntimeError("gzip payload SHA-256 mismatch")
     raw = gzip.decompress(compressed)
