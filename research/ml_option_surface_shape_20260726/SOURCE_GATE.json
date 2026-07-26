@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1914-ML-OPTION-SURFACE-001",
+  "workflow_run_id": 30198025799,
+  "artifact_id": 8630729541,
+  "artifact_digest": "sha256:f9098775b942422a9df29c9222d18f1e2e315195a0fbea2c734226e9af1e3380",
+  "source_file": {
+    "drive_file_id": "1g9p2Kq8op40y4ZFQQ9AJw8a9CaDThOY8",
+    "name": "btc_option_data_toshare.parquet",
+    "bytes": 57453783,
+    "sha256": "6ed2162288d177d3c3a5443456c3fb78ed2c175249f0a0ff1665a5dd9c89800b",
+    "rows": 4498832,
+    "row_groups": 5,
+    "columns": 11,
+    "snapshot_start": "2024-01-13T19:00:14",
+    "snapshot_end": "2024-07-27T20:00:10",
+    "asset_coverage": ["BTC"],
+    "unique_instruments": 14332
+  },
+  "observed_columns": [
+    "snapshot_time",
+    "instrument_name",
+    "mark_price",
+    "bid_price",
+    "ask_price",
+    "underlying_index",
+    "underlying_price",
+    "open_interest",
+    "volume",
+    "estimated_delivery_price",
+    "expiry_date"
+  ],
+  "direct_field_gate": {
+    "pass": false,
+    "present": ["snapshot_time", "instrument_name", "expiry_date", "underlying_price", "open_interest", "bid_price", "ask_price", "mark_price"],
+    "missing": ["strike", "option_type", "delta", "implied_volatility"],
+    "correction_to_raw_probe": "estimated_delivery_price is not an IV field. The raw name matcher found the substring 'iv' only inside the word 'delivery'; that match is rejected here."
+  },
+  "derived_reconstructibility": {
+    "status": "CONDITIONAL_SOURCE_ONLY_PASS",
+    "instrument_name_rule": "BTC-<expiry>-<strike>-<C|P> supplies strike and option type at the recorded snapshot.",
+    "iv_delta_rule": "Observed bid/ask/mark option prices, underlying price, strike, expiry and snapshot time are sufficient to solve a contemporaneous European implied volatility and delta under an explicitly frozen pricing convention.",
+    "limitation": "The file has snapshot_time but no local capture timestamp and covers only BTC in 2024. It therefore cannot establish pre-2024 training coverage or become an official 2024 performance input."
+  },
+  "scientific_decision": {
+    "public_parquet_outcome_access": false,
+    "public_parquet_model_access": false,
+    "official_2024_2026_opened": false,
+    "primary_pre_2024_source": "Tardis Deribit month-start options_chain prefixes with exchange and local timestamps plus directly recorded bid/ask/mark IV and delta.",
+    "next_gate": "Run the single preregistered 2020-2023 sparse first-passage model. Development PnL remains code-closed unless the untouched 2022H2 model beats the structural-distance heuristic on both AUC and Brier score."
+  }
+}
