@@ -28,24 +28,56 @@ PARTS = {
     "run_v1c.py.gz.b64.part02": (4000, "bf908b7fd14de3eed57680ebea249f4e9f25b76d14a496a7dfa8d79731b0e965"),
     "run_v1c.py.gz.b64.part03": (2260, "b6390f5f5905cdd80a99eada02a1fed96fc7a466c3e22df48555d5a8a2efd5b7"),
 }
+BAD_PART00 = {
+    "bytes": 4000,
+    "sha256": "14c9946a4f71e0ab77e8e2131261694e92233039ae33d5f69a23c6c7a0e2ae8f",
+    "offset": 3980,
+    "observed": b"9",
+    "frozen": b"d",
+}
 
 
 def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def apply_bound_transport_repair(path: Path, payload: bytes) -> tuple[bytes, dict[str, object] | None]:
+    if path.name != "run_v1c.py.gz.b64.part00":
+        return payload, None
+    if len(payload) == BAD_PART00["bytes"] and sha256(payload) == BAD_PART00["sha256"]:
+        offset = int(BAD_PART00["offset"])
+        if payload[offset : offset + 1] != BAD_PART00["observed"]:
+            raise SystemExit("bound part00 repair character mismatch")
+        repaired = payload[:offset] + BAD_PART00["frozen"] + payload[offset + 1 :]
+        return repaired, {
+            "part": path.name,
+            "zero_based_offset": offset,
+            "observed_sha256": BAD_PART00["sha256"],
+            "observed_ascii": BAD_PART00["observed"].decode(),
+            "frozen_ascii": BAD_PART00["frozen"].decode(),
+            "repaired_sha256": sha256(repaired),
+        }
+    return payload, None
+
+
 def main() -> int:
     fragments: list[bytes] = []
     observed_parts: list[dict[str, object]] = []
+    repairs: list[dict[str, object]] = []
     for path in SOURCE_PARTS:
         if not path.is_file():
             raise SystemExit(f"missing source transport part: {path}")
-        payload = path.read_bytes().strip()
+        checked_in = path.read_bytes().strip()
+        payload, repair = apply_bound_transport_repair(path, checked_in)
+        if repair is not None:
+            repairs.append(repair)
         expected_bytes, expected_hash = PARTS[path.name]
         observed = {
             "name": path.name,
-            "bytes": len(payload),
-            "sha256": sha256(payload),
+            "checked_in_bytes": len(checked_in),
+            "checked_in_sha256": sha256(checked_in),
+            "reconstructed_bytes": len(payload),
+            "reconstructed_sha256": sha256(payload),
         }
         observed_parts.append(observed)
         if len(payload) != expected_bytes or sha256(payload) != expected_hash:
@@ -68,6 +100,7 @@ def main() -> int:
                 "status": "PASS",
                 "target": str(TARGET),
                 "parts": observed_parts,
+                "bound_transport_repairs": repairs,
                 **EXPECTED,
             },
             sort_keys=True,
