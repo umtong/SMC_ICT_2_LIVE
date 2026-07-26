@@ -1,4 +1,4 @@
-name: Bybit FVG-mitigation SMT fatal screen
+name: FVG-mitigation SMT fatal screen
 
 on:
   push:
@@ -49,15 +49,21 @@ jobs:
           set -euo pipefail
           python scripts/validate_project.py
           python research/fvg_smt_mitigation_20260726/reconstruct.py
-          python -m py_compile research/fvg_smt_mitigation_20260726/run_screen.py
+          python -m py_compile \
+            research/fvg_smt_mitigation_20260726/run_screen.py \
+            research/fvg_smt_mitigation_20260726/proxy_source.py
           python research/fvg_smt_mitigation_20260726/run_screen.py self-test
+          cd research/fvg_smt_mitigation_20260726
+          python proxy_source.py self-test
+          cd ../..
           python -m json.tool research/fvg_smt_mitigation_20260726/preregistration.json >/dev/null
+          python -m json.tool research/fvg_smt_mitigation_20260726/amendment_001_source_proxy_after_geo_block.json >/dev/null
 
-      - name: Cache immutable pre-2024 Bybit responses
+      - name: Cache immutable pre-2024 official archives
         uses: actions/cache@v4
         with:
           path: /tmp/bybit-fvg-smt
-          key: bybit-fvg-smt-v1-${{ hashFiles('research/fvg_smt_mitigation_20260726/preregistration.json') }}
+          key: fvg-smt-binance-proxy-v2-${{ hashFiles('research/fvg_smt_mitigation_20260726/preregistration.json', 'research/fvg_smt_mitigation_20260726/amendment_001_source_proxy_after_geo_block.json') }}
 
       - name: Run frozen fit and development fatal screen
         shell: bash
@@ -66,10 +72,11 @@ jobs:
           rm -rf artifacts/fvg_smt
           mkdir -p artifacts/fvg_smt
           set -o pipefail
-          python research/fvg_smt_mitigation_20260726/run_screen.py run \
+          cd research/fvg_smt_mitigation_20260726
+          python proxy_source.py run \
             --cache /tmp/bybit-fvg-smt \
-            --output artifacts/fvg_smt \
-            2>&1 | tee artifacts/fvg_smt/run.log
+            --output ../../artifacts/fvg_smt \
+            2>&1 | tee ../../artifacts/fvg_smt/run.log
 
       - name: Verify stage, causality and cost boundaries
         run: |
@@ -81,30 +88,39 @@ jobs:
 
           root = Path("artifacts/fvg_smt")
           prereg = json.loads(Path("research/fvg_smt_mitigation_20260726/preregistration.json").read_text())
+          amendment = json.loads(Path("research/fvg_smt_mitigation_20260726/amendment_001_source_proxy_after_geo_block.json").read_text())
           result = json.loads((root / "result_summary.json").read_text())
           candidates = json.loads((root / "candidate_results.json").read_text())
           manifest = json.loads((root / "source_manifest.json").read_text())
 
-          assert result["claim_id"] == prereg["claim_id"]
+          assert result["claim_id"] == prereg["claim_id"] == amendment["claim_id"]
           assert result["result_id"] == prereg["provisional_result_id"]
           assert result["candidate_count"] == len(candidates) == 256
           assert result["qualification"] == "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE"
+          assert result["hard_validity_status"] == "PRELIMINARY_CAUSAL_PASS_BINANCE_USDM_PROXY"
           assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
           assert result["orders_submitted"] is False
           assert result["paper_or_testnet_started"] is False
           assert result["one_global_slot"] is True
+          assert result["bybit_api_data_opened_before_amendment"] is False
           assert manifest["later_periods_opened"] is False
           assert manifest["orders_submitted"] is False
+          assert manifest["bybit_api_data_opened_before_amendment"] is False
+          assert manifest["final_execution_venue_required"] == "Bybit USDT linear perpetual"
           assert len(manifest["records"]) == 8
           assert set(manifest["continuity"]) == {"BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"}
 
           boundary = pd.Timestamp("2024-01-01T00:00:00Z")
           for record in manifest["records"]:
+              assert record["venue"] == "Binance USD-M"
               assert record["row_count"] > 0
               assert len(record["normalized_sha256"]) == 64
               assert pd.Timestamp(record["last_timestamp"]) < boundary
               assert record["page_count"] > 0
               assert all(len(page["sha256"]) == 64 for page in record["pages"])
+              for page in record["pages"]:
+                  if not page.get("not_found", False):
+                      assert page["checksum_verified"] is True
 
           assert len({row["config_id"] for row in candidates}) == 256
           for row in candidates:
@@ -118,7 +134,7 @@ jobs:
                   assert unresolved[0] == unresolved[1] == unresolved[2]
                   assert totals[0] >= totals[1] >= totals[2]
 
-          print("FVG_SMT_FROZEN_CONTRACT_PASS")
+          print("FVG_SMT_FROZEN_PROXY_CONTRACT_PASS")
           print(json.dumps({
               "fit_survivors": result["fit_survivor_count"],
               "development_survivors": result["development_survivor_count"],
