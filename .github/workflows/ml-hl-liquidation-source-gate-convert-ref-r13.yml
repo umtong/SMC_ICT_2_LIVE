@@ -36,7 +36,7 @@ env:
 
 jobs:
   source-gate:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
@@ -63,16 +63,25 @@ jobs:
           python -m json.tool "$FIX/CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$FIX/CORRECTION_005_WRAPPER_SYMBOL_ALIGNMENT_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$FIX/CORRECTION_006_LEDGER_LIQUIDATION_SCHEMA_BEFORE_DATA.json" >/dev/null
-          python -m py_compile "$ROOT/probe_hl_liquidations.py" "$ROOT/test_probe_hl_liquidations.py" "$FIX/run_fixed_source_gate.py"
+          python -m json.tool "$FIX/CORRECTION_007_STRUCTURED_EVENTS_LIST_BEFORE_MARKET.json" >/dev/null
+          python -m py_compile \
+            "$ROOT/probe_hl_liquidations.py" \
+            "$ROOT/test_probe_hl_liquidations.py" \
+            "$FIX/run_fixed_source_gate.py" \
+            "$FIX/run_structured_source_gate.py" \
+            "$FIX/test_fixed_source_gate.py" \
+            "$FIX/test_structured_source_gate.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_probe_hl_liquidations.py"
+          PYTHONPATH="$FIX:$ROOT" pytest -q "$FIX/test_fixed_source_gate.py" "$FIX/test_structured_source_gate.py"
           PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" --self-test
+          PYTHONPATH="$FIX:$ROOT" python "$FIX/run_structured_source_gate.py" --self-test
 
       - name: Run outcome-sealed convert-revision source gate
         run: |
           set -euo pipefail
           rm -rf "$OUT"
           mkdir -p "$OUT"
-          python "$FIX/run_fixed_source_gate.py" --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
+          PYTHONPATH="$FIX:$ROOT" python "$FIX/run_structured_source_gate.py" --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
 
       - name: Enforce source-only authority and frozen decision
         run: |
@@ -117,7 +126,23 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUT/source"
-          cp "$ROOT/WORK_CLAIM.json" "$ROOT/PREREGISTRATION.md" "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" "$ROOT/SOURCES.md" "$ROOT/probe_hl_liquidations.py" "$ROOT/test_probe_hl_liquidations.py" "$FIX/CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json" "$FIX/CORRECTION_005_WRAPPER_SYMBOL_ALIGNMENT_BEFORE_DATA.json" "$FIX/CORRECTION_006_LEDGER_LIQUIDATION_SCHEMA_BEFORE_DATA.json" "$FIX/run_fixed_source_gate.py" "$OUT/source/"
+          cp \
+            "$ROOT/WORK_CLAIM.json" \
+            "$ROOT/PREREGISTRATION.md" \
+            "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" \
+            "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" \
+            "$ROOT/SOURCES.md" \
+            "$ROOT/probe_hl_liquidations.py" \
+            "$ROOT/test_probe_hl_liquidations.py" \
+            "$FIX/CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json" \
+            "$FIX/CORRECTION_005_WRAPPER_SYMBOL_ALIGNMENT_BEFORE_DATA.json" \
+            "$FIX/CORRECTION_006_LEDGER_LIQUIDATION_SCHEMA_BEFORE_DATA.json" \
+            "$FIX/CORRECTION_007_STRUCTURED_EVENTS_LIST_BEFORE_MARKET.json" \
+            "$FIX/run_fixed_source_gate.py" \
+            "$FIX/run_structured_source_gate.py" \
+            "$FIX/test_fixed_source_gate.py" \
+            "$FIX/test_structured_source_gate.py" \
+            "$OUT/source/"
           find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
