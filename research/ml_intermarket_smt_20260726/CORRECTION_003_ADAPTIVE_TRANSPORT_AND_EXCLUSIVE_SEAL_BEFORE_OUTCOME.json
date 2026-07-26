@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "correction_id": "CORRECTION_003_ADAPTIVE_TRANSPORT_AND_EXCLUSIVE_SEAL_BEFORE_OUTCOME",
+  "status": "PRE_OUTCOME_TRANSPORT_OPTIMIZATION",
+  "superseded_in_progress_workflow": 30197397156,
+  "observed_stage": "frozen annual source acquisition remained in progress; no immutable result artifact or model/account output existed",
+  "outcome_access": {
+    "complete_external_source_panel": false,
+    "candidate_event_ledger_written": false,
+    "model_metrics_written": false,
+    "strategy_actions_written": false,
+    "pnl_written": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "changes": [
+    "request 28-day source intervals first instead of serial seven-day intervals",
+    "on bounded primary failure, recursively split only the failed interval down to seven-day leaves",
+    "retain timestamp deduplication, monotonicity and requested-boundary assertions",
+    "permit an exclusive 2024-01-01 end boundary for a 2023 request while still rejecting any interval that can contain a 2024 row",
+    "emit per-interval progress diagnostics without changing returned rows"
+  ],
+  "unchanged": [
+    "Dukascopy provider, pinned library, instruments, bid price type and one-minute timeframe",
+    "requested 2022 fit year and conditional untouched 2023 year",
+    "all source rows ultimately accepted and all source integrity assertions",
+    "event definition, thresholds, cooldown and direction lock",
+    "all twelve features and first-passage label",
+    "single HGBT and single isotonic calibration",
+    "chronological partitions and gates",
+    "structural target and stop",
+    "one global slot, risk, capacity and 12/18/24bp paths",
+    "2024-2026 row prohibition",
+    "no credentials or orders"
+  ],
+  "scientific_effect": "None. The change reduces serial transport overhead and makes source failure local while preserving the exact requested market rows and fail-closed annual source gate.",
+  "authority": {
+    "credentials": false,
+    "orders": false,
+    "live_permission_change": false,
+    "ranking_change": false
+  }
+}
