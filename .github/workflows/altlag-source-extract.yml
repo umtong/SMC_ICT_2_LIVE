@@ -1,0 +1,42 @@
+name: Extract verified altlag base source
+
+on:
+  push:
+    branches:
+      - agent/r11-altlag-attention-regime-001
+    paths:
+      - ".github/workflows/altlag-source-extract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Fetch and reconstruct the successful base probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          mkdir -p extracted
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 > extracted/probe.py.zlib.b64
+          python - <<'PY'
+          import base64, hashlib, pathlib, zlib
+          root=pathlib.Path('extracted')
+          source=zlib.decompress(base64.b64decode((root/'probe.py.zlib.b64').read_text().strip()))
+          (root/'base_probe.py').write_bytes(source)
+          (root/'base_probe.sha256').write_text(hashlib.sha256(source).hexdigest()+'  base_probe.py\n')
+          print('source bytes',len(source),'sha256',hashlib.sha256(source).hexdigest())
+          PY
+          python -m py_compile extracted/base_probe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: altlag-base-source-${{ github.sha }}
+          path: extracted
+          if-no-files-found: error
+          retention-days: 7
