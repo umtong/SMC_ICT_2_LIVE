@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-REGISTERED-MACOS-022",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:58:00+09:00",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "reason": "The repository's already-registered Ranking state reconciliation workflow is observable and contains the complete source-to-economic job, while path-only dedicated workflows and the generic validator carrier remained queued or unregistered. The registered job still pinned a pre-fail-closed source snapshot and used the congested Ubuntu runner pool.",
+  "correction": [
+    "Pin the existing registered source-to-economic job to fail-closed source SHA 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539.",
+    "Keep strict causal engine SHA 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c unchanged.",
+    "Run only the stablecoin source-to-economic job on macos-14 to use an independent runner pool; retain the ordinary ranking verification job unchanged.",
+    "Use the existing portable Python SHA inventory and bash-compatible source/economic commands unchanged."
+  ],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer source semantics",
+    "Blockscout status=0 explicit-empty/range-only fail-closed policy",
+    "complete 2021-2023 source interval and block+12/block+64 availability",
+    "one HGBT, one calibration map, one structural LONG/SHORT/FLAT rule and one global BTC/ETH slot",
+    "12/18/24bp paths and prewritten uncapped risk/notional frontier",
+    "strict pre-entry information boundary and no elapsed-time liquidation",
+    "immediate official 2024H1 for a positive no-liquidation pre-2024 survivor",
+    "no credentials and no orders"
+  ],
+  "source_result_observed_before_correction": false,
+  "market_outcome_observed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
