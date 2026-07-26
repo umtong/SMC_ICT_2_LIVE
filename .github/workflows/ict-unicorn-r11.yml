@@ -1,0 +1,95 @@
+name: ICT Unicorn breaker-FVG causal screen
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ict_unicorn_20260726/**"
+      - ".github/workflows/ict-unicorn-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ict-unicorn-r11-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "requests==2.32.4" \
+            "pytest==8.3.4"
+
+      - name: Verify source and causal self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ict_unicorn_20260726
+          python "$root/reconstruct.py"
+          code="$root/reconstructed"
+          python -m py_compile "$code/run.py"
+          PYTHONPATH="$code" python "$code/run.py" --self-test
+          python scripts/validate_project.py
+
+      - name: Run frozen 2022 fit and conditional 2023 development
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ict_unicorn_20260726
+          code="$root/reconstructed"
+          out=research_runs/ict_unicorn_20260726/v1
+          mkdir -p "$out"
+          PYTHONPATH="$code" python "$code/run.py" \
+            --cache "$RUNNER_TEMP/ict-unicorn-cache" \
+            --output "$out" \
+            2>&1 | tee "$out/run.log"
+
+      - name: Record immutable checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ict_unicorn_20260726
+          out=research_runs/ict_unicorn_20260726/v1
+          mkdir -p "$out"
+          sha256sum \
+            "$root/README.md" \
+            "$root/SOURCES.md" \
+            "$root/WORK_CLAIM.json" \
+            "$root/preregistration.json" \
+            "$root/reconstruct.py" \
+            "$root/source_manifest.json" \
+            "$root/run.py.gz.b64" \
+            "$root/reconstructed/run.py" \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ict-unicorn-r11-${{ github.sha }}
+          path: |
+            research_runs/ict_unicorn_20260726/v1
+            research/ict_unicorn_20260726/reconstructed
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
