@@ -9,13 +9,8 @@ import json
 import pandas as pd
 
 from .coarse import CoarseEventReplay, CoarseExecutionConfig, CoarseLabeler, coarse_closeout_price
-from .core import (
-    EventCandidate,
-    FeatureConfig,
-    RiskConfig,
-    build_causal_features,
-    generate_event_candidates,
-)
+from .core import EventCandidate, FeatureConfig, RiskConfig
+from .corpus_alpha import build_corpus_features, generate_corpus_candidates
 from .metrics import AccountMetrics, select_pre2024_configuration, summarize_account
 from .model import ChronologicalEventModel, ModelConfig, ScoredCandidate, candidate_model_features
 from .policy import GlobalSlotPolicy
@@ -297,9 +292,9 @@ def generate_candidates_by_symbol(
     features: dict[str, pd.DataFrame] = {}
     candidates: list[EventCandidate] = []
     for symbol, frame in sorted(decision_frames.items()):
-        calculated = build_causal_features(frame, feature_config)
+        calculated = build_corpus_features(frame, feature_config)
         features[symbol] = calculated
-        candidates.extend(generate_event_candidates(calculated, symbol, feature_config))
+        candidates.extend(generate_corpus_candidates(calculated, symbol))
     candidates.sort(key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))
     return features, candidates
 
