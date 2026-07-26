@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-STRICT-V4-MACOS-005",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T01:04:00+09:00",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "reason": "The main-installed strict V4 workflow used an ARM runner but the exact trigger produced only the generic repository validator and no source or market outcome. This correction installs a second main-visible macOS authority with byte-identical source, strict V3 base and strict V4 overlay. It changes only the GitHub-hosted runner and portable evidence hashing.",
+  "source_sha": "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+  "strict_v3_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "strict_v4_overlay": "research/execution/stablecoin_strict_v4_20260727/strict_guard_v4.py",
+  "unchanged": [
+    "corrected USDT Issue/Redeem and USDC zero-address source semantics",
+    "ambiguous Blockscout status-zero fail-closed policy",
+    "2021-2023 source chronology and 12/64-block availability",
+    "last-completed-minute information boundary and next-open execution only",
+    "simultaneous finalized-event prior grouping",
+    "planned sizing with actual fill-to-structural-stop liquidation test",
+    "one HGBT, one BTC/ETH global slot and 12/18/24bp account paths",
+    "structural target/stop and marked stage boundaries",
+    "risk/notional search only after robust positive base alpha",
+    "immediate official 2024H1 only for a frozen no-liquidation survivor",
+    "no credentials and no orders"
+  ],
+  "authority_before_correction": {
+    "source_decision_ready": false,
+    "market_outcome_opened": false,
+    "model_metric_opened": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  }
+}
