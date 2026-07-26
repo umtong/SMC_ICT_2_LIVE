@@ -10,6 +10,8 @@ import source_gate_blockscout as base
 
 OriginalBlockscoutClient = base.BlockscoutClient
 AUTHORITATIVE_MIN_REQUEST_INTERVAL_SECONDS = 0.36
+SOURCE_SCHEMA_ID = "STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1"
+SOURCE_CORRECTION_ID = "CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010"
 # Blockscout's default unauthenticated allowance is approximately three requests
 # per second. The authoritative source route stays below that rate.
 base.MIN_REQUEST_INTERVAL_SECONDS = AUTHORITATIVE_MIN_REQUEST_INTERVAL_SECONDS
@@ -54,10 +56,42 @@ class BoundarySafeBlockscoutClient(OriginalBlockscoutClient):
 
 # Resolve these globals at source-gate execution time.
 base.BlockscoutClient = BoundarySafeBlockscoutClient
-
-source_gate = base.source_gate
+_base_source_gate = base.source_gate
 parse_int = base.parse_int
 parse_iso_timestamp = base.parse_iso_timestamp
+
+
+def source_gate(output: Path) -> dict[str, Any]:
+    """Run the corrected gate and bind its token-specific schema to the artifact."""
+    result = _base_source_gate(output)
+    manifest_path = output / "SOURCE_MANIFEST.json"
+    result_path = output / "SOURCE_GATE_RESULT.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    event_semantics = {
+        "USDT_MINT": "Issue(uint256)",
+        "USDT_BURN": "Redeem(uint256)",
+        "USDC_MINT": "Transfer(address,address,uint256) with from zero address",
+        "USDC_BURN": "Transfer(address,address,uint256) with to zero address",
+        "ordinary_usdt_transfer_excluded": True,
+    }
+    binding = {
+        "source_schema_id": SOURCE_SCHEMA_ID,
+        "source_correction_id": SOURCE_CORRECTION_ID,
+        "event_semantics": event_semantics,
+    }
+    manifest.update(binding)
+    result.update(binding)
+
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    result_path.write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return result
 
 
 def self_test() -> None:
@@ -72,6 +106,8 @@ def self_test() -> None:
         raise AssertionError("full 2021-2023 month contract missing")
     if base.MIN_REQUEST_INTERVAL_SECONDS != AUTHORITATIVE_MIN_REQUEST_INTERVAL_SECONDS:
         raise AssertionError("authoritative Blockscout request pace is not frozen")
+    if SOURCE_SCHEMA_ID != "STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1":
+        raise AssertionError("source schema binding changed")
     boundary = base.auth.base.MAX_ALLOWED_TIMESTAMP
     if eligible_boundary_block(18_000_000, boundary, "after") != 17_999_936:
         raise AssertionError("64-block pre-2024 boundary was not applied")
