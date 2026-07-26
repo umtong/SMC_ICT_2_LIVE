@@ -13,12 +13,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-gmx-v1-liquidation-source-gate-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
+  group: ml-gmx-v1-liquidation-source-gate-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source-gate:
-    runs-on: macos-14
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
       PYTHONHASHSEED: '0'
@@ -47,10 +47,15 @@ jobs:
           {
             python -m py_compile \
               "$root/probe_gmx_v1_liquidations.py" \
-              "$root/test_probe_gmx_v1_liquidations.py"
+              "$root/probe_gmx_v1_liquidations_semantic.py" \
+              "$root/test_probe_gmx_v1_liquidations.py" \
+              "$root/test_probe_gmx_v1_liquidations_semantic.py"
             PYTHONPATH="$root" python -m pytest -vv \
-              "$root/test_probe_gmx_v1_liquidations.py"
+              "$root/test_probe_gmx_v1_liquidations.py" \
+              "$root/test_probe_gmx_v1_liquidations_semantic.py"
+            PYTHONPATH="$root" python "$root/probe_gmx_v1_liquidations_semantic.py" --self-test
             python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+            python -m json.tool "$root/CORRECTION_001_POOL_ACCOUNTING_NOT_CLOB_FLOW_BEFORE_OUTCOME.json" >/dev/null
           } 2>&1 | tee "$out/PRECHECK.log"
 
       - name: Run outcome-sealed Arbitrum source gate
@@ -59,7 +64,7 @@ jobs:
           root=research/ml_gmx_v1_liquidation_20260726
           out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
           mkdir -p "$out"
-          PYTHONPATH="$root" python "$root/probe_gmx_v1_liquidations.py" \
+          PYTHONPATH="$root" python "$root/probe_gmx_v1_liquidations_semantic.py" \
             --output "$out" \
             2>&1 | tee "$out/RUN.log"
 
@@ -67,14 +72,12 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
+          import gzip
           import json
           from pathlib import Path
 
-          path = Path(
-              'research_runs/ml_gmx_v1_liquidation_20260726/'
-              'source-gate/SOURCE_GATE_RESULT.json'
-          )
-          result = json.loads(path.read_text())
+          root = Path('research_runs/ml_gmx_v1_liquidation_20260726/source-gate')
+          result = json.loads((root / 'SOURCE_GATE_RESULT.json').read_text())
           assert result['claim_id'] == 'CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001'
           assert result['chain_id'] == 42161
           assert result['vault'].lower() == '0x489ee077994b6658eafa855c308275ead8097c4a'
@@ -96,6 +99,23 @@ jobs:
               assert result['scientific_decision'] == (
                   'CLOSE_SOURCE_ROUTE_BEFORE_MARKET_OUTCOMES'
               )
+
+          rows = []
+          with gzip.open(root / 'RAW_GMX_V1_LIQUIDATIONS.jsonl.gz', 'rt', encoding='utf-8') as handle:
+              for line in handle:
+                  line = line.strip()
+                  if line:
+                      rows.append(json.loads(line))
+          for row in rows:
+              assert row['source_semantic_correction'] == (
+                  'CORRECTION-20260727-ML-GMX-V1-POOL-ACCOUNTING-NOT-CLOB-FLOW-001'
+              )
+              assert row['external_market_order_direction_asserted'] is False
+              assert row['source_censoring'] == 'LIQUIDATION_STATE_1_ONLY'
+              assert 'forced_flow_direction' not in row
+              assert row['removed_trader_exposure'] in {'LONG_REMOVED', 'SHORT_REMOVED'}
+              assert row['mark_price_semantics'].endswith('NOT_EXTERNAL_EXECUTABLE_FILL')
+
           serialized = json.dumps(result, sort_keys=True).lower()
           for forbidden_key in (
               'future_return_value',
@@ -124,17 +144,12 @@ jobs:
           PY
 
       - name: Record current project validation
+        if: always()
+        continue-on-error: true
         run: |
           set -euo pipefail
           out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
-          set +e
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
-          rc=${PIPESTATUS[0]}
-          set -e
-          echo "$rc" > "$out/PROJECT_VALIDATION_EXIT_CODE.txt"
-          if [ "$rc" -ne 0 ]; then
-            echo "Current project-validation drift recorded separately from the source decision."
-          fi
 
       - name: Freeze evidence hashes
         if: always()
@@ -150,8 +165,11 @@ jobs:
           inputs = [
               root / 'WORK_CLAIM.json',
               root / 'PREREGISTRATION.md',
+              root / 'CORRECTION_001_POOL_ACCOUNTING_NOT_CLOB_FLOW_BEFORE_OUTCOME.json',
               root / 'probe_gmx_v1_liquidations.py',
+              root / 'probe_gmx_v1_liquidations_semantic.py',
               root / 'test_probe_gmx_v1_liquidations.py',
+              root / 'test_probe_gmx_v1_liquidations_semantic.py',
               Path('.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'),
           ]
 
