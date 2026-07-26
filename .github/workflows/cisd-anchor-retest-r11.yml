@@ -59,11 +59,21 @@ jobs:
           echo "8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f  reused/bybit_l2_resiliency/output/compact_states/2023-07-01_BTCUSDT_state.parquet" | sha256sum --check
           root=research/cisd_anchor_retest_20260726
           python "$root/reconstruct.py"
-          python -m py_compile "$root/reconstruct.py" "$root/run_screen.py" "$root/test_run_screen.py"
+          python -m py_compile "$root/reconstruct.py" "$root/run_screen.py" "$root/test_run_screen.py" "$root/diagnose_continuity.py"
           python "$root/run_screen.py" self-test
           python -m pytest -q "$root/test_run_screen.py"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
+      - name: Diagnose source continuity and raid opportunity
+        run: |
+          set -euo pipefail
+          root=research/cisd_anchor_retest_20260726
+          mkdir -p research_runs/cisd_anchor_retest
+          python "$root/diagnose_continuity.py" \
+            --fit reused/bybit_l2_resiliency/output/compact_states/2022-07-01_BTCUSDT_state.parquet \
+            --development reused/bybit_l2_resiliency/output/compact_states/2023-07-01_BTCUSDT_state.parquet \
+            --output research_runs/cisd_anchor_retest/CONTINUITY_DIAGNOSTIC.json \
+            2>&1 | tee research_runs/cisd_anchor_retest/continuity.log
       - name: Run frozen objective-first screen
         run: |
           set -euo pipefail
@@ -78,6 +88,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
+          python -m json.tool research_runs/cisd_anchor_retest/CONTINUITY_DIAGNOSTIC.json >/dev/null
           result=research_runs/cisd_anchor_retest/output/RESULT.json
           if test -f "$result"; then
             (cd research_runs/cisd_anchor_retest/output && sha256sum --check SHA256SUMS.txt)
@@ -105,6 +116,7 @@ jobs:
             research/cisd_anchor_retest_20260726/WORK_CLAIM.json \
             research/cisd_anchor_retest_20260726/preregistration.json \
             research/cisd_anchor_retest_20260726/reconstruct.py \
+            research/cisd_anchor_retest_20260726/diagnose_continuity.py \
             research/cisd_anchor_retest_20260726/bundle_manifest.json \
             research/cisd_anchor_retest_20260726/source_bundle.tar.gz.b64 \
             .github/workflows/cisd-anchor-retest-r11.yml \
