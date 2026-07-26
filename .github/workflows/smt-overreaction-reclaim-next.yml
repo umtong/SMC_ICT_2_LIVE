@@ -1,0 +1,49 @@
+name: Route SMT reclaim result to next alpha stage
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-overreaction-reclaim-001
+    paths:
+      - "research_results/r11_smt_overreaction_reclaim_001/result.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  route:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create exact next Work Claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('research_results/r11_smt_overreaction_reclaim_001/result.json').read_text())
+          survivor=r['main_mss_survivor_count']>0
+          if survivor:
+              title='Work Claim: expand SMT MSS reclaim with exact Bybit BBO and funding'
+              body='''## Conditional Work Claim\n\nThe frozen four-date SMT overreaction MSS-reclaim screen produced at least one main-path pair that passed both 100 ms and 300 ms gates.\n\n### Scope\n\n- freeze the exact surviving path, horizon and residual floor;\n- reconstruct every remaining admissible pre-2024 Bybit BTCUSDT/SOLUSDT/XRPUSDT trade and BBO/depth partition;\n- execute at actual post-latency bid/ask with top-of-book capacity, partial-fill and marketable-limit rejection;\n- include actual funding and continuous marked NAV;\n- preserve one global slot, one-percent planned risk and 3x notional cap;\n- replay 12/18/24 bp stress and counterfactual winner exclusion;\n- open official 2024H1 only if the complete pre-2024 gate remains positive.\n\nNo threshold, MSS definition, exit, risk or leverage retuning is permitted.\n'''
+          else:
+              title='Work Claim: ML meta-label BTC-to-alt SMT reclaim states'
+              body='''## Conditional Work Claim\n\nThe hand-specified SMT overreaction MSS-reclaim state machine did not pass the full cost, breadth, concentration and one-percent sample-day-growth gate. Do not tune its adjacent thresholds.\n\n### Structural change\n\nTrain a cost-sensitive, explainable ML meta-labeler only at causally confirmed MSS events. The SMC/ICT narrative remains fixed: BTC displacement, SOL/XRP external-liquidity overrun, SMT divergence, CISD/MSS and equilibrium reclaim. ML decides whether the confirmed reclaim has enough executable edge to trade.\n\n### Frozen research design\n\n- execution: Bybit SOLUSDT/XRPUSDT, one global slot; BTC signal-only;\n- fit: admissible 2022 partitions; sequential development: January-August 2023; the already opened September-December 2023 dates are selection evidence, never final OOS;\n- features available at confirmation only: displacement z and efficiency, beta residual, gap percentile, attention ratios, contraction speed, opposite-flow strength, follower liquidity/activity, cross-follower SMT breadth and time-of-day;\n- labels: equilibrium target before frozen invalidation under 100/300 ms execution and 24 bp cost;\n- model: shallow histogram gradient boosting plus calibrated probability, compared with a sparse logistic control;\n- objective: after-cost account log growth with one-percent risk and 3x cap, not AUC;\n- selection: nested chronological folds, purged by event lifetime;\n- gate: both latencies positive at 24 bp, positive median, top-winner-removal, broad months and at least one-percent pre-2024 geometric growth per calendar day;\n- no 2024-2026 access or orders.\n\nA zero-survivor result retires this entire BTC-to-alt overreaction-reclaim information unit.\n'''
+          Path('/tmp/next_title.txt').write_text(title)
+          Path('/tmp/next_body.md').write_text(body)
+          Path('/tmp/close_comment.md').write_text(
+              f"Decision-ready result `{r['result_id']}` recorded: status `{r['status']}`, main MSS survivors {r['main_mss_survivor_count']}. The exact next Work Claim is routed automatically without adjacent threshold tuning.\n"
+          )
+          PY
+          title=$(cat /tmp/next_title.txt)
+          existing=$(gh issue list --repo umtong/SMC_ICT_2_LIVE --state open --search "$title in:title" --json number,title --jq 'map(select(.title == $title)) | .[0].number' --arg title "$title")
+          if [ -z "$existing" ] || [ "$existing" = "null" ]; then
+            gh issue create --repo umtong/SMC_ICT_2_LIVE --title "$title" --body-file /tmp/next_body.md
+          fi
+          gh issue close 116 --repo umtong/SMC_ICT_2_LIVE --comment "$(cat /tmp/close_comment.md)"
