@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1015-XASSET-ALT-MICROSHOCK-001",
+  "status": "PREREGISTERED_BEFORE_SOURCE_DOWNLOAD_OR_PNL",
+  "created_at": "2026-07-26T10:15:00+09:00",
+  "base_revision": 11,
+  "research_question": "Can completed Bybit BTCUSDT event-time shocks reveal economically large, still-unincorporated SOLUSDT or XRPUSDT responses after explicit latency and 12/18/24bp round-trip costs?",
+  "economic_mechanism": [
+    "BTC is the dominant price-discovery leader; a less liquid follower can incorporate common information with a short delay.",
+    "A trade is considered only when completed BTC price and aggressive flow agree, BTC activity is abnormal, the follower has incorporated less than its prior-only beta-implied response and the residual gap itself is large enough to clear costs.",
+    "SOL and XRP are tested separately and may later compete for the single global account slot; BTC-to-ETH evidence is not reused as a performance prior."
+  ],
+  "markets": {
+    "venue": "Bybit USDT linear perpetual public trades",
+    "leader": "BTCUSDT",
+    "followers": ["SOLUSDT", "XRPUSDT"],
+    "global_new_entry_slots": 1
+  },
+  "official_source": {
+    "url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+    "required_schema": ["timestamp", "symbol", "side", "size", "price"],
+    "integrity": "Every downloaded gzip is hashed before any feature or strategy computation; HTTP, gzip, schema, monotonic-time and UTC-day coverage failures are explicit source failures."
+  },
+  "chronological_stages": {
+    "fit_dates": ["2023-01-15", "2023-03-19"],
+    "development_dates": ["2023-05-21", "2023-07-16"],
+    "frozen_validation_dates": ["2023-09-17", "2023-11-19"],
+    "official_2024_2026_evaluation": "SEALED_UNTIL_FROZEN_VALIDATION_GATE"
+  },
+  "information_contract": {
+    "event_grid_ms": 100,
+    "decision": "Only after a complete BTC and contemporaneous follower 1/2/5-second window.",
+    "feature_mark": "Causal last public-trade price carried for at most 2000ms; no interpolation across a stale state.",
+    "rolling_features": "Beta, volatility and activity baselines end strictly before shock start.",
+    "event_latency_ms": 100,
+    "entry_and_exit": "Any later trading replay must use the first actual follower trade after the applicable decision plus latency."
+  },
+  "feature_formula": {
+    "beta": "OLS cov(BTC_1s,follower_1s)/var(BTC_1s) on 1800 prior seconds; at least 1200 finite pairs and 100 nonzero BTC returns; clip to [0.1,3.0].",
+    "shock_scale": "sqrt(H/900 * sum of squared finite BTC one-second returns over 900 prior seconds); at least 600 finite and 60 nonzero returns.",
+    "activity_baseline": "Median of prior positive H-second BTC quote-notional windows ending at one-second boundaries during the 900 seconds before shock start; at least 300 windows.",
+    "btc_return": "log(BTC decision mark/BTC shock-start mark).",
+    "follower_return": "log(follower decision mark/follower shock-start mark).",
+    "direction": "sign(BTC return).",
+    "btc_flow_alignment": "direction * BTC signed quote notional / BTC total quote notional over the completed window.",
+    "follower_flow_alignment": "direction * follower signed quote notional / follower total quote notional over the completed window.",
+    "remaining_gap": "direction * (beta * BTC return - follower return).",
+    "underreaction_ratio": "direction * follower return / abs(beta * BTC return)."
+  },
+  "frozen_grid": {
+    "leader_horizon_seconds": [1, 2, 5],
+    "leader_shock_z": [3.0, 4.0, 5.0],
+    "minimum_btc_flow_alignment": [0.5, 0.7],
+    "minimum_btc_activity_ratio": [2.0, 4.0],
+    "maximum_underreaction_ratio": [0.25, 0.5, 0.75],
+    "maximum_follower_flow_alignment": [0.25, 0.5],
+    "minimum_remaining_gap_log": [0.0012, 0.0018, 0.0024]
+  },
+  "fatal_event_availability_gate": {
+    "per_follower_parameter_cells": 1296,
+    "minimum_maximum_cell_events_across_two_development_dates": 30,
+    "minimum_events_each_development_date_in_that_cell": 10,
+    "minimum_total_events_with_remaining_gap_at_least_24bp_before_other_grid_filters": 20,
+    "zero_source_or_formula_errors": true,
+    "if_failed": "Stop that follower before strategy PnL and do not open frozen validation."
+  },
+  "later_trade_replay_if_gate_passes": {
+    "catchup_fraction": [0.75, 1.0],
+    "entry": "First actual follower trade at or after decision plus 100ms, provided the catch-up target was not already crossed.",
+    "state_exits": [
+      "Residual catch-up to the frozen beta-implied target.",
+      "BTC impulse decay to 25 percent of decision displacement for ten consecutive valid 100ms states.",
+      "Completed opposite BTC one-second shock with prior-scaled z at least 3 and aligned aggression at least 0.5.",
+      "Adverse structural stop max(10bp, 0.75 times decision residual gap), gap-through uncapped."
+    ],
+    "fixed_elapsed_time_exit": false,
+    "roundtrip_cost_bps": [12, 18, 24],
+    "development_gate": {
+      "minimum_global_slot_trades": 20,
+      "positive_total_return_at_12_18_24bp": true,
+      "positive_median_trade_at_12bp": true,
+      "positive_after_top_10_percent_winner_removal_at_12bp": true,
+      "both_development_dates_positive_at_12bp": true,
+      "maximum_largest_winner_share_of_positive_gross_pnl": 0.5,
+      "zero_unresolved_paths": true
+    }
+  },
+  "promotion_boundaries": {
+    "frozen_validation_opened": false,
+    "2024_2026_opened": false,
+    "exact_funding_opened": false,
+    "bid_ask_or_depth_execution_opened": false,
+    "risk_leverage_optimization_opened": false,
+    "orders_submitted": false,
+    "live_permission": false
+  },
+  "sources": [
+    "paper:doi:10.1007/s10690-026-09589-z",
+    "paper:arxiv:1111.7103",
+    "exchange:bybit:public-trading-archive"
+  ]
+}
