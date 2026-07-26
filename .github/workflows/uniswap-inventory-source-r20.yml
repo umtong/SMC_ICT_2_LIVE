@@ -19,8 +19,8 @@ permissions:
   actions: read
 
 concurrency:
-  group: uniswap-inventory-source-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: uniswap-inventory-source-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source-gate:
@@ -116,10 +116,10 @@ jobs:
           assert result["2024_strategy_outcome_opened"] is False
           assert result["orders_submitted"] is False
           print(json.dumps({
-              "status": result["status"],
-              "uniswap_rows": result["uniswap"]["rows"],
-              "block_files": result["ethereum_blocks"]["file_count"],
-              "bybit_probe_years": [item["year"] for item in result["bybit_probe"]],
+            "status": result["status"],
+            "uniswap_rows": result["uniswap"]["rows"],
+            "block_files": result["ethereum_blocks"]["file_count"],
+            "bybit_probe_years": [item["year"] for item in result["bybit_probe"]],
           }, sort_keys=True))
           PY
           python scripts/validate_project.py || true
