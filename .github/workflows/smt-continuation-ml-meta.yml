@@ -51,15 +51,18 @@ jobs:
           set -euo pipefail
           root=research/smt_continuation_ml_meta_20260726
           python "$root/reconstruct.py"
+          python "$root/apply_termination_fix.py"
           chmod +x "$root/prepare_parent_sources.sh"
           "$root/prepare_parent_sources.sh" "$PWD" "$RUNNER_TEMP/smt-cont-parent"
-          python -m py_compile "$root/extract.py" "$root/train.py"
+          python -m py_compile "$root/extract.py" "$root/train.py" "$root/apply_termination_fix.py"
           PYTHONPATH="$root:$RUNNER_TEMP/smt-cont-parent/acceptance:$RUNNER_TEMP/smt-cont-parent/base" \
             python "$root/extract.py" --self-test
           PYTHONPATH="$root" python "$root/train.py" self-test
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_001_CLEAN_SCORE_CALIBRATION_AND_CONFIRMATION_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_002_ALL_SUNDAYS_SAMPLE_BREADTH_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_003_MISSING_FIT_STAGE_TERMINATION_ONLY.json" >/dev/null
+          test -s "$root/TERMINATION_PATCH_SHA256.txt"
           python scripts/validate_project.py
 
       - uses: actions/cache@v4
@@ -122,14 +125,19 @@ jobs:
           result_path=root/'train_2022'/'RESULT.json'
           result=json.loads(result_path.read_text()) if result_path.exists() else {}
           summaries=[]
-          for p in sorted((root/'matrix_2022').rglob('SUMMARY.json')):
+          for p in sorted((root/'matrix_2022').rglob('summary_*.json')):
               summaries.append(json.loads(p.read_text()))
           compact={
               'claim_id':'CLM-20260726-1906-SMT-CONTINUATION-ML-001',
               'dates_attempted':len(summaries),
+              'source_files_verified':sum(int(x.get('source_count',0)) for x in summaries),
               'rows':sum(int(x.get('row_count',0)) for x in summaries),
+              'fit_rows':result.get('fit_rows'),
+              'score_calibration_rows':result.get('score_calibration_rows'),
+              'fit_confirmation_rows':result.get('fit_confirmation_rows'),
               'confirmation_survivor':freeze.get('confirmation_survivor') is True,
               'result_status':result.get('status'),
+              'development_opened':result.get('development_opened',False),
               'official_2024_2026_opened':False,
               'orders_submitted':False,
           }
