@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "source_gate.py"
 BAD = "\nn        for attempt in range(6):"
 GOOD = "\n        for attempt in range(6):"
+FUTURE_BYBIT_PROBE = '        ("ETHUSDT", 5, 2024, 1, 31),'
+PRE2024_BYBIT_PROBE = '        ("ETHUSDT", 5, 2022, 7, 31),'
 
 
 def sha256_bytes(payload: bytes) -> str:
@@ -18,26 +20,43 @@ def sha256_bytes(payload: bytes) -> str:
 
 def corrected_source_text() -> str:
     text = SOURCE.read_text(encoding="utf-8")
-    count = text.count(BAD)
-    if count == 1:
+
+    typo_count = text.count(BAD)
+    if typo_count == 1:
         corrected = text.replace(BAD, GOOD)
-    elif count == 0:
+    elif typo_count == 0:
         corrected = text
     else:
-        raise RuntimeError(f"expected zero or one frozen typo occurrence, found {count}")
+        raise RuntimeError(f"expected zero or one frozen typo occurrence, found {typo_count}")
+
+    future_count = corrected.count(FUTURE_BYBIT_PROBE)
+    pre2024_count = corrected.count(PRE2024_BYBIT_PROBE)
+    if future_count == 1 and pre2024_count == 0:
+        corrected = corrected.replace(FUTURE_BYBIT_PROBE, PRE2024_BYBIT_PROBE)
+    elif future_count == 0 and pre2024_count == 1:
+        pass
+    else:
+        raise RuntimeError(
+            "expected exactly one future probe to replace or one already-corrected "
+            f"pre-2024 probe; future={future_count}, pre2024={pre2024_count}"
+        )
+
     compile(corrected, str(SOURCE), "exec")
     return corrected
 
 
 def verify_only() -> int:
-    original = SOURCE.read_bytes()
+    original_text = SOURCE.read_text(encoding="utf-8")
+    original = original_text.encode("utf-8")
     corrected = corrected_source_text().encode("utf-8")
     print(
         {
             "status": "SOURCE_RUNTIME_VERIFIED",
             "original_sha256": sha256_bytes(original),
             "corrected_sha256": sha256_bytes(corrected),
-            "replacement_count": SOURCE.read_text(encoding="utf-8").count(BAD),
+            "typo_replacement_count": original_text.count(BAD),
+            "future_probe_replacement_count": original_text.count(FUTURE_BYBIT_PROBE),
+            "pre2024_probe_count_after_correction": corrected.decode("utf-8").count(PRE2024_BYBIT_PROBE),
         }
     )
     return 0
