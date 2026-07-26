@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-OPTION-HEDGE-001",
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "status": "PASS_NEGATIVE_RESULT_REPRODUCIBILITY",
+  "scientific_identity": {
+    "reconstructed_source_sha256": "cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a",
+    "executed_sample_amended_source_sha256": "80d94063c427074b5c10896e659f06cf22a77acb94b9961c08587cd9f3b6905e",
+    "sample_amendment": "AMEND-20260726-ML-OPTION-SAMPLE-COVERAGE-002",
+    "original_300_100_fit_guard_retained": true,
+    "relaxed_guard_executed": false,
+    "one_model_family": true,
+    "hyperparameter_grid": false,
+    "one_economic_decision_rule": true
+  },
+  "checks": {
+    "source_part_base64_gzip_raw_sha256": "PASS",
+    "python_compile": "PASS",
+    "ten_causal_and_account_tests": "PASS",
+    "built_in_self_test": "PASS",
+    "project_harness": "PASS",
+    "chronological_training_calibration_confirmation": "PASS",
+    "same_100ms_bucket_dual_touch_stop_first": "PASS",
+    "source_gap_not_bridged": "PASS",
+    "source_boundary_full_structural_stop": "PASS",
+    "one_global_slot": "PASS",
+    "cost_monotonicity": "PASS",
+    "counterfactual_winner_removal_reroutes_slot": "PASS",
+    "2023_unopened_after_fit_gate_failure": "PASS",
+    "2024_2025_2026_sealed": "PASS",
+    "orders_submitted": false
+  },
+  "independent_result_rechecks": {
+    "event_label_counts": {"source_gap": 482, "lower_first": 163, "upper_first": 180},
+    "resolved_rows": 343,
+    "model_auc": 0.9204839809134288,
+    "distance_auc": 0.9423653715064758,
+    "model_brier": 0.1120873283318112,
+    "distance_brier": 0.10509462912786315,
+    "accepted_trades": 41,
+    "winners": 6,
+    "losers": 35,
+    "conservative_boundary_stops": 30,
+    "gross_mean_bps_on_notional": -39.19598971683826,
+    "net_mean_bps_at_18bps": -57.32795140612185,
+    "fit_gate_passed": false
+  },
+  "authoritative_workflow": {
+    "run_id": 30196256036,
+    "job_id": 89778227247,
+    "conclusion": "success",
+    "artifact_id": 8630210182,
+    "artifact_digest": "sha256:036b7a728eefad45e154d39a295ec142388d5c8ebf72ebeb79276ac2f75d76ba",
+    "workflow_head_sha": "e453b1209e7267aaf934900d94d5beb7749bd815"
+  },
+  "cross_run_reproduction": {
+    "prior_artifact_id": 8630152355,
+    "prior_artifact_digest": "sha256:082481eb2e804628ecf17f1f45d7824721cdd8af1fe6f8fef276173921471d90",
+    "identical_files": [
+      "RESULT.json",
+      "FIT_EVENTS.csv",
+      "FIT_TRADES_12BPS.csv",
+      "FIT_TRADES_18BPS.csv",
+      "FIT_TRADES_24BPS.csv",
+      "MODEL_CONTRACT.json",
+      "ENVIRONMENT.json",
+      "SOURCE_MANIFEST.json",
+      "RUN.log",
+      "PYTEST.log",
+      "SELF_TEST.log"
+    ],
+    "different_files_only_due_to_input_and_output_manifests": true
+  },
+  "artifact_hashes": {
+    "RESULT.json": "466616b235b0dae9701b349e6aa6babae279a8b12641e04c062c2f27a49bcde6",
+    "FIT_EVENTS.csv": "ad4e828213d1b93a8fd8a50426aa6e8cb727332d2199489e56691ad3914b193b",
+    "FIT_TRADES_12BPS.csv": "9c3feaa1a44016f60d0b986e0e8cb3f8fd41ae5151e5028dc90771216602f51b",
+    "FIT_TRADES_18BPS.csv": "a636928d556851c325cb9ec6554094da16ab5d4bafaa5f8616a95785e9f13eb1",
+    "FIT_TRADES_24BPS.csv": "1daff63e86a97f3cad3881e82187c62e144f1a9eba22d4485f911a9601575b69",
+    "MODEL_CONTRACT.json": "e5118322306b443e99ad404d1f008be6ed90f31fe372d5c1fa5680ec85260cae",
+    "SOURCE_MANIFEST.json": "75df95a655acea0e78f99afbd9bb1b7e1690160a3a755a402ba4577fd199bb42"
+  },
+  "authority": "This attestation validates a hard-valid negative fatal screen. It provides no ranking, later-period access, deployment or live-order authority.",
+  "created_at": "2026-07-26T18:24:00+09:00"
+}
