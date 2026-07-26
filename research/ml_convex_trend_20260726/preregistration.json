@@ -4,32 +4,15 @@
   "objective": "Test whether one dense, causally completed balance-to-displacement ML state plus anti-martingale same-position additions can convert rare crypto trends into broad, after-cost NAV growth materially above the current first place without adding to losers.",
   "market_scope": {
     "execution_proxy": "Binance USD-M perpetual 5-minute OHLCV and taker-buy quote volume; a survivor requires later Bybit-native replay",
-    "symbols": [
-      "BTCUSDT",
-      "ETHUSDT",
-      "SOLUSDT",
-      "XRPUSDT"
-    ],
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
     "global_pending_or_open_positions": 1,
     "same_direction_additions_are_one_position": true
   },
   "chronology": {
-    "fit": [
-      "2023-01-01T00:00:00Z",
-      "2023-07-01T00:00:00Z"
-    ],
-    "calibration": [
-      "2023-07-01T00:00:00Z",
-      "2023-10-01T00:00:00Z"
-    ],
-    "untouched_confirmation": [
-      "2023-10-01T00:00:00Z",
-      "2024-01-01T00:00:00Z"
-    ],
-    "conditional_official_first_interval": [
-      "2024-01-01T00:00:00Z",
-      "2024-07-01T00:00:00Z"
-    ],
+    "fit": ["2023-01-01T00:00:00Z", "2023-07-01T00:00:00Z"],
+    "calibration": ["2023-07-01T00:00:00Z", "2023-10-01T00:00:00Z"],
+    "untouched_confirmation": ["2023-10-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "conditional_official_first_interval": ["2024-01-01T00:00:00Z", "2024-07-01T00:00:00Z"],
     "label_must_resolve_before_partition_end": true,
     "2024_open_condition": "every confirmation gate passes",
     "2025_2026_initially_prohibited": true
@@ -95,11 +78,7 @@
     "exit": "all units exit only at the shared structural stop; no elapsed-time liquidation",
     "baseline": "same ML-selected entries and stop ratchet but only unit 1"
   },
-  "costs_bps_round_trip_per_unit": [
-    12,
-    18,
-    24
-  ],
+  "costs_bps_round_trip_per_unit": [12, 18, 24],
   "winner_removal": "remove the largest positive 10% of accepted confirmation event keys, then rerun global-slot arbitration and both payoff paths",
   "confirmation_gates": {
     "resolved_labels_min": 150,
