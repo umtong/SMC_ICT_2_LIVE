@@ -1,0 +1,68 @@
+{
+  "claim_id": "CLM-20260727-0328-ML-LEVERAGE-FLOW-001",
+  "contract_frozen_at": "2026-07-27T03:38:00+09:00",
+  "data_opened_when_frozen": {
+    "2023_metrics_schema_only": true,
+    "2023_metrics_outcomes": false,
+    "2024_or_later_market_outcomes": false
+  },
+  "source": {
+    "one_minute_dataset_id": "BINANCE_USDM_4ASSET_1M_2023_XASSET_SPILLOVER_R1",
+    "metrics_dataset_id": "BINANCE_USDM_4ASSET_5M_METRICS_2023_R1",
+    "metrics_archive": "official Binance Vision USD-M daily metrics",
+    "metrics_delay_ms": 300000,
+    "entry_rule": "first completed one-minute bar at delayed availability; fixed 500 ms latency; entry at decision_idx+2 open"
+  },
+  "split": {
+    "fit": "2023-01-01/2023-06-01",
+    "calibration": "2023-06-01/2023-07-01",
+    "development": "2023-07-01/2023-10-01",
+    "confirmation": "2023-10-01/2024-01-01",
+    "boundary_embargo_days": 7
+  },
+  "event": {
+    "minimum_abs_price_z5": 1.5,
+    "minimum_abs_oi_z5": 1.25,
+    "minimum_move_signed_flow5": 0.08,
+    "minimum_price_volume_z": 0.5,
+    "local_max_lookback_metrics": 2,
+    "oi_normalization_window_metrics": 2016,
+    "actions_per_physical_event": ["continuation", "reversal"]
+  },
+  "model": {
+    "family": "one shared LightGBM binary action classifier plus one Platt calibrator",
+    "n_estimators": 400,
+    "learning_rate": 0.025,
+    "num_leaves": 31,
+    "max_depth": 6,
+    "min_child_samples": 150,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha": 2.0,
+    "reg_lambda": 8.0,
+    "random_state": 271828,
+    "selection": "calibrated probability >= exact direction-specific 24-bps break-even probability",
+    "probability_margin": 0.0
+  },
+  "account": {
+    "round_trip_cost": 0.0024,
+    "risk_per_trade": 0.01,
+    "stop": "clip(2*sqrt(5)*prior_one_minute_sigma,0.0035,0.0090)",
+    "target_multiple": 2.5,
+    "global_pending_or_open_slots": 1,
+    "elapsed_time_forced_exit": false,
+    "gap_stop": "adverse next observable open",
+    "favorable_target_gap": "capped at target",
+    "same_bar_ambiguity": "stop first"
+  },
+  "open_2024H1_gate": {
+    "both_development_and_confirmation_positive_after_cost": true,
+    "minimum_trades_each": 20,
+    "minimum_weaker_interval_geometric_daily_growth": 0.0015
+  },
+  "frozen_local_artifact_hashes": {
+    "evaluate_leverage_flow.py": "7d6e58fe12b38f24e2a4ddcdf76c999c3fc6f797d0f90b3cc6bdc688073bfcbc",
+    "xasset_base.py": "367468c72c59014e68875882188edf7aa48da30859ed8b1c6631d25f4f36e300",
+    "test_leverage_flow.py": "6ffae4e2a819bc54f05460dcce34ccba7d78ca722cd8329f0efbfb719c677e7f"
+  }
+}
