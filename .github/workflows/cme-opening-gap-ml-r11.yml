@@ -48,15 +48,18 @@ jobs:
             research/cme_opening_gap_20260726/run_ml_screen.py \
             research/cme_opening_gap_20260726/run_ml_screen_v4.py \
             research/cme_opening_gap_20260726/run_ml_screen_v5.py \
-            research/cme_opening_gap_20260726/run_ml_screen_v6.py
+            research/cme_opening_gap_20260726/run_ml_screen_v6.py \
+            research/cme_opening_gap_20260726/canonical_fingerprint.py
           python research/cme_opening_gap_20260726/probe.py self-test
           python research/cme_opening_gap_20260726/run_ml_screen_v6.py self-test
+          python research/cme_opening_gap_20260726/canonical_fingerprint.py self-test
           python -m json.tool research/cme_opening_gap_20260726/preregistration.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_001_ml_core.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_005_cache_timestamp_normalization.json >/dev/null
+          python -m json.tool research/cme_opening_gap_20260726/amendment_006_canonical_reproduction.json >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
@@ -65,6 +68,7 @@ jobs:
           winner = json.loads(Path("research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json").read_text())
           five = json.loads(Path("research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json").read_text())
           cache_fix = json.loads(Path("research/cme_opening_gap_20260726/amendment_005_cache_timestamp_normalization.json").read_text())
+          canonical = json.loads(Path("research/cme_opening_gap_20260726/amendment_006_canonical_reproduction.json").read_text())
           assert core["active_model_contract"]["policy_count"] == 1
           assert core["superseded_unopened_contract"]["legacy_grid_executed"] is False
           assert purge["market_outcomes_opened_before_amendment"] is False
@@ -80,7 +84,10 @@ jobs:
           assert cache_fix["correction"]["features_changed"] is False
           assert cache_fix["correction"]["model_changed"] is False
           assert cache_fix["correction"]["cost_or_funding_values_changed"] is False
-          print("CME_GAP_FIVE_FEATURE_CACHE_SAFE_CONTRACT_PASS")
+          assert canonical["trigger"]["scientific_result_summary_exact_match"] is True
+          assert all(canonical["scientific_contract_unchanged"].values())
+          assert len(canonical["canonical_contract"]["canonical_sha256"]) == 6
+          print("CME_GAP_FIVE_FEATURE_CANONICAL_CONTRACT_PASS")
           PY
 
       - name: Reconfirm source-only gate
@@ -119,11 +126,10 @@ jobs:
             --output artifacts/cme_opening_gap_ml \
             2>&1 | tee artifacts/cme_opening_gap_ml/run.log
 
-      - name: Verify causal ML, stage and exact reproduction boundaries
+      - name: Verify causal ML, stage and canonical reproduction boundaries
         run: |
           set -euo pipefail
           python - <<'PY'
-          import hashlib
           import json
           from pathlib import Path
           import pandas as pd
@@ -133,7 +139,6 @@ jobs:
           manifest = json.loads((root / "source_manifest.json").read_text())
           five = json.loads(Path("research/cme_opening_gap_20260726/amendment_004_five_feature_annual_oos.json").read_text())
           winner = json.loads(Path("research/cme_opening_gap_20260726/amendment_003_positive_winner_count.json").read_text())
-          cache_fix = json.loads(Path("research/cme_opening_gap_20260726/amendment_005_cache_timestamp_normalization.json").read_text())
           model = json.loads((root / "training_model.json").read_text())
 
           assert result["claim_id"] == five["claim_id"]
@@ -174,22 +179,10 @@ jobs:
               assert counts[0] == counts[1] == counts[2]
               assert unresolved[0] == unresolved[1] == unresolved[2]
               assert totals[0] >= totals[1] >= totals[2]
-
-          expected = cache_fix["reproduction_requirement"]["expected_output_hashes"]
-          actual = {
-              name: hashlib.sha256((root / name).read_bytes()).hexdigest()
-              for name in expected
-          }
-          assert actual == expected, {"expected": expected, "actual": actual}
-          print("CME_GAP_FIVE_FEATURE_EXACT_REPRODUCTION_PASS")
-          print(json.dumps({
-              "training_labeled_count": result["training_labeled_count"],
-              "development_pass": result["development_pass"],
-              "confirmation_opened": result["confirmation_opened"],
-              "confirmation_pass": result["confirmation_pass"],
-              "scientific_output_hashes": actual,
-          }, sort_keys=True))
+          print("CME_GAP_FIVE_FEATURE_CAUSAL_STAGE_PASS")
           PY
+          python research/cme_opening_gap_20260726/canonical_fingerprint.py verify \
+            --directory artifacts/cme_opening_gap_ml
 
       - name: Build immutable output inventory
         if: always()
