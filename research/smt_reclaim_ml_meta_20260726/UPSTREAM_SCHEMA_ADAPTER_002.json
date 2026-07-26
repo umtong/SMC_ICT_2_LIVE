@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "UPSTREAM_SCHEMA_ADAPTER_002",
+  "timing": "after the parent hand-specified rule result, before any ML matrix download, model fit, score, action or PnL",
+  "problem": "The conditional workflow expected compatibility keys that were absent from the parent artifact-only result schema, although the parent hard-valid result had zero survivors.",
+  "correction": "Persist a checksum-linked compatibility projection at research_results/r11_smt_overreaction_reclaim_001/result.json on the parent result-owning branch. The workflow reads that durable record without changing any parent or ML scientific quantity.",
+  "parent_result": {
+    "result_id": "RES-20260726-SMT-OVERREACTION-RECLAIM-FATAL-001",
+    "source_result_sha256": "a6dc6626476841d4f2952667a127ab4de1355837e33b0b49ddbc63c6675bf7d9",
+    "main_mss_survivor_count": 0,
+    "official_2024_opened": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "all frozen 2022 fit and calibration dates",
+    "all conditional 2023 dates",
+    "event and MSS definitions",
+    "features, models and fixed score quantiles",
+    "100ms and 300ms execution",
+    "24bp cost, target, invalidation and full-stop source boundary",
+    "risk, notional cap, global slot and winner-removal logic",
+    "all economic gates and the 2024-2026 seal"
+  ],
+  "ml_outcome_observed_before_correction": false,
+  "orders_submitted": false
+}
