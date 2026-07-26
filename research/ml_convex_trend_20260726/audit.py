@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import gzip
 import hashlib
 import json
 import math
@@ -21,11 +23,19 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def decoded_runner_sha256() -> str:
+    payload = (ROOT / "run_source.py.gz.b64").read_text(encoding="utf-8").strip()
+    source = gzip.decompress(base64.b64decode(payload))
+    return hashlib.sha256(source).hexdigest()
+
+
 def main() -> None:
     result = json.loads((OUT / "RESULT.json").read_text())
     prereg_sha = sha256(ROOT / "preregistration.json")
     expected = json.loads((ROOT / "FINGERPRINTS.json").read_text())["preregistration_sha256"]
+    source_sha = decoded_runner_sha256()
     assert prereg_sha == expected == result["preregistration_sha256"]
+    assert source_sha == result["runner_source_sha256"]
     assert result["official_2024_opened"] is False
     assert result["status"] == "CONFIRMATION_BELOW_GATE"
     assert result["decision"] == "KILL_EXACT_CONVEX_TREND_ROUTE_NO_ADJACENT_TUNING"
@@ -93,13 +103,16 @@ def main() -> None:
         "status": "PASS",
         "preregistration_sha256": prereg_sha,
         "result_sha256": sha256(OUT / "RESULT.json"),
-        "code_sha256": sha256(ROOT / "run.py"),
+        "code_sha256": source_sha,
+        "decoded_runner_sha256": source_sha,
+        "loader_sha256": sha256(ROOT / "run.py"),
         "confirmation_rows": len(conf),
         "confirmation_auc_recomputed": auc,
         "confirmation_brier_skill_recomputed": skill,
         "official_2024_opened": False,
         "checks": [
             "preregistration hash preserved",
+            "decoded scientific runner hash matches recorded result",
             "confirmation labels and all exits precede 2024",
             "model metrics independently recomputed",
             "account returns compound to reported totals at 12/18/24bp",
