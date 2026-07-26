@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-COINBASE-DATASET-SYMBOL-002",
+  "claim_id": "CLM-20260726-1935-ML-COINBASE-SPOT-001",
+  "recorded_at": "2026-07-26T19:50:00+09:00",
+  "trigger": "The first GitHub Actions attempt stopped in the source-download step because the Tardis Coinbase dataset URL used BTCUSD, while the provider dataset symbol is BTC-USD.",
+  "outcome_state_before_correction": {
+    "coinbase_market_rows_parsed": false,
+    "model_fitted": false,
+    "labels_computed": false,
+    "actions_computed": false,
+    "trades_computed": false,
+    "pnl_computed": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "change": {
+    "old_dataset_url_symbol": "BTCUSD",
+    "new_dataset_url_symbol": "BTC-USD",
+    "output_filename_unchanged": "coinbase_BTCUSD_trades.csv.gz"
+  },
+  "unchanged": [
+    "all dates and chronological partitions",
+    "one HGBT model and one isotonic calibrator",
+    "event definition and structural label",
+    "500ms base and 1000ms latency stress",
+    "24bp economic authorization rule",
+    "target, stop, risk, leverage and capacity rules",
+    "winner-removal rerouting",
+    "2024-2026 seals"
+  ]
+}
