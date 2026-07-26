@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-MARK-ACCEPTANCE-001",
+  "claim_id": "CLM-20260726-1940-ML-MARK-ACCEPTANCE-001",
+  "worker_id": "gpt-5.6-pro-20260726-1940",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_NOT_RANK_ELIGIBLE_PRE2024_SCREEN",
+  "strategy_explanation": [
+    "The prior completed five minutes of executable Bybit midpoint froze external buy-side and sell-side liquidity.",
+    "A completed one-second BBO bar raided exactly one boundary and one additional response second completed before decision.",
+    "One HGBT plus one frozen isotonic calibrator estimated which of the continuation or rejection structural objectives would be reached first.",
+    "One exact 18bp expected-value rule chose continuation, rejection or flat; the selected objective was target and the opposite objective was stop, with no elapsed-time liquidation."
+  ],
+  "prediction": {
+    "resolved_confirmation_events": 1918,
+    "model_auc": 0.6176935392524179,
+    "distance_baseline_auc": 0.6524647120327611,
+    "mark_baseline_auc": 0.5884099721181494,
+    "best_baseline_auc": 0.6524647120327611,
+    "auc_lift_over_best_baseline": -0.03477117278034325,
+    "model_brier": 0.2558419758476107,
+    "distance_brier": 0.23181681784674493,
+    "brier_skill_over_distance": -0.10363854626263103,
+    "authorized_actions": 1
+  },
+  "account_paths": {
+    "12bps": {
+      "trades": 1,
+      "total_return": 0.0038244701164789063,
+      "geometric_sample_day_growth": 0.0019104102246263466,
+      "median_trade_return": 0.0038244701164788387,
+      "maximum_drawdown": 0.0,
+      "positive_dates": 1,
+      "winner_removed_total_return": 0.0
+    },
+    "18bps": {
+      "trades": 1,
+      "total_return": 0.0034161442089406524,
+      "geometric_sample_day_growth": 0.001706615835665115,
+      "median_trade_return": 0.003416144208940602,
+      "maximum_drawdown": 0.0,
+      "positive_dates": 1
+    },
+    "24bps": {
+      "trades": 1,
+      "total_return": 0.0030078183014023985,
+      "geometric_sample_day_growth": 0.0015027799768716488,
+      "median_trade_return": 0.003007818301402366,
+      "maximum_drawdown": 0.0,
+      "positive_dates": 1
+    }
+  },
+  "fit_gate_checks": {
+    "model_auc": true,
+    "auc_lift": false,
+    "positive_brier_skill": false,
+    "resolved_confirmation_events": true,
+    "confirmation_trades": false,
+    "positive_18bp_return": true,
+    "positive_12bp_median": true,
+    "positive_12bp_winner_removed": false,
+    "both_confirmation_dates_positive": false,
+    "no_liquidation": true
+  },
+  "sample": {
+    "train_dates": ["2022-01-01", "2022-03-01", "2022-05-01"],
+    "calibration_dates": ["2022-07-01"],
+    "confirmation_dates": ["2022-09-01", "2022-11-01"],
+    "event_counts_by_date": {
+      "2022-01-01": 518,
+      "2022-03-01": 991,
+      "2022-05-01": 661,
+      "2022-07-01": 934,
+      "2022-09-01": 1010,
+      "2022-11-01": 908
+    },
+    "development_2023_opened": false,
+    "official_2024_opened": false,
+    "official_2025_opened": false,
+    "official_2026_opened": false
+  },
+  "decision": "Retire the exact Bybit executable-range raid plus mark/index acceptance/rejection information unit. The model ranked outcomes worse than causal structural distance, worsened probability quality, authorized only one confirmation trade and lost all return after counterfactual winner removal. Risk, leverage and capacity search are not opened because robust base alpha is absent.",
+  "result_handling": {
+    "scientific_run_succeeded": true,
+    "terminal_workflow_failure": "RUN.log changed after the runner generated its self-referential SHA256SUMS while shell tee was still open.",
+    "correction_commit": "9d70e711e85afd4a3866bfa9edb5ef5f76d663be",
+    "scientific_changes": false
+  },
+  "reproducibility": {
+    "result_generating_head": "d27222a8457c4630ea25aa1af56b7d6ca35ac1dd",
+    "pull_request": 168,
+    "workflow_run": 30199914721,
+    "artifact_id": 8631380906,
+    "artifact_digest": "sha256:baa372d8fbb5e115ea24dea5f4abe54e610f02075ea6001570a12306ecb57b25",
+    "artifact_result_sha256": "7bb7ba5d71cff841a0ff3e29aa2633980c97df6dc5bd9c3ac3716c9d190c48d5",
+    "source_manifest_sha256": "81f4e4268dffa7d7992fe275cf81375883924da906a9376bdafc2c93aa938793",
+    "evaluation_contract_sha256": "e065414333a89cb6279010b8a6278b3b8c8e4a6bdf917c9e3818b415f22285c4",
+    "scientific_source_sha256": "03684c32b09aadc75e7d939e6111ea1ed269b0dca4efe19e48071c16947d02d7"
+  },
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "ranking_changed": false
+}
