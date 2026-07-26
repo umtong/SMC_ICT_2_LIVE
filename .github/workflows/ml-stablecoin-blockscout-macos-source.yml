@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   source:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     timeout-minutes: 240
     env:
       PYTHONHASHSEED: '0'
@@ -104,7 +104,15 @@ jobs:
           out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
           mkdir -p "$out/source"
           cp "$root"/{WORK_CLAIM.json,preregistration.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,source_gate_blockscout.py,source_gate_blockscout_authoritative.py,test_source_gate.py,verify_source_result.py,write_transport_failure.py,EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_012_UBUNTU_SOURCE_RUNNER_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_013_BLOCKSCOUT_RATE_BEFORE_OUTCOME.json,CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json,CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json} "$out/source/"
-          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          out=Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source')
+          rows=[]
+          for path in sorted(p for p in out.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+          (out/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
