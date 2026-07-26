@@ -1,0 +1,89 @@
+{
+  "base_event_formula": {
+    "activity": "BTC H-second quote notional divided by median positive H-second quote notional over prior 900 completed second endpoints; require >=300 positive windows.",
+    "beta": "Prior 1800-second covariance(BTC,follower)/variance(BTC), requiring >=1200 finite pairs and >=100 nonzero BTC returns; clip [0.2,2.0].",
+    "btc_activity_ratio_min": 2.0,
+    "btc_direction_aligned_aggressive_imbalance_min": 0.5,
+    "btc_scale": "For H, sqrt(H/900 * sum squared BTC 1s returns over prior 900 seconds), requiring >=600 finite and >=60 nonzero.",
+    "btc_shock_z_min": 3.0,
+    "direction_aligned_beta_residual_gap_log_return_floors": [
+      0.0012,
+      0.0018,
+      0.0024
+    ],
+    "follower_direction_aligned_aggressive_imbalance_max": 0.5,
+    "follower_underreaction_ratio_max": 0.75,
+    "horizon_seconds": [
+      1,
+      2,
+      5
+    ]
+  },
+  "base_revision": 11,
+  "claim_id": "CLM-20260726-1106-ALTLAG-REGIME-001",
+  "created_at": "2026-07-26T11:06:00+09:00",
+  "discovery_evidence": {
+    "discovery_dates_not_reused": [
+      "2023-05-21",
+      "2023-07-16"
+    ],
+    "source_result_id": "RES-20260726-ALTLAG-OPPORTUNITY-001",
+    "used_only_to_form_hypothesis": "All 32 residual-gap events >=12bp occurred on 2023-07-16; 2023-05-21 had zero. July follower trade counts were high relative to BTC."
+  },
+  "fixed_attention_regime": {
+    "economic_mechanism": "The follower must be the current attention/liquidity locus rather than a dormant market; a BTC information shock can then leave a tradable residual gap while the follower is moving more and printing at least as many trades as BTC.",
+    "follower_to_btc_realized_volatility_ratio_min": 1.5,
+    "follower_to_btc_trade_count_ratio_min": 1.0,
+    "prior_realized_volatility_window_seconds": 900,
+    "prior_trade_count_window_seconds": 1800,
+    "realized_volatility": "Square root of the sum of squared valid 1s log returns within the prior window; require >=600 finite returns and >=60 nonzero for each asset."
+  },
+  "information_contract": {
+    "decision": "Only after the full 1/2/5 second BTC and contemporaneous follower windows are complete.",
+    "event_grid_ms": 100,
+    "mark": "Last actual trade price may be carried causally for at most 2000ms; stale state is unavailable.",
+    "no_imputation": true,
+    "rolling_features": "Every beta, BTC scale, activity baseline and attention-regime observation ends at or before the shock-start boundary. The current shock is excluded."
+  },
+  "promotion_boundary": {
+    "2024_2026_opened": false,
+    "entry_exit_strategy_frozen": false,
+    "funding_opened": false,
+    "if_gate_fails": "Retire this regime-conditioned information unit; do not tune thresholds on these dates.",
+    "if_gate_passes": "Freeze a separate causal entry/exit/cost/account contract before opening any additional date or computing PnL.",
+    "live_permission": false,
+    "orders_submitted": false,
+    "pnl_computed": false
+  },
+  "purpose": "Independent pre-PnL replication of a fixed follower-attention regime. No entry, exit, PnL, funding, risk, leverage, 2024+ evaluation or orders are permitted.",
+  "question": "Does a fixed ex-ante high follower-attention and high relative-volatility regime make cost-sized BTCUSDT-to-SOLUSDT/XRPUSDT residual gaps repeat on unseen pre-2024 dates?",
+  "replication_gate": {
+    "maximum_single_date_share_of_12bp_events": 0.7,
+    "minimum_dates_with_at_least_3_12bp_events": 2,
+    "minimum_follower_date_cells_with_at_least_3_12bp_events": 2,
+    "minimum_unique_12bp_events_total": 15,
+    "minimum_unique_24bp_events_total": 5
+  },
+  "schema_version": 1,
+  "sources": {
+    "dates": [
+      "2023-09-17",
+      "2023-10-15",
+      "2023-11-19"
+    ],
+    "integrity": "Record observed SHA-256, byte size, gzip validity, schema, row count and timestamp monotonicity for every requested file.",
+    "symbols": [
+      "BTCUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "unavailable_source_rule": "If any requested archive is unavailable, stop and record source failure. Do not substitute a date after reading any available archive content.",
+    "url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+    "venue": "Bybit USDT linear perpetual public trades"
+  },
+  "status": "PREREGISTERED_BEFORE_ANY_NEW_DATE_ARCHIVE_BYTES_OR_CONTENT",
+  "unique_event_rule": {
+    "rearm": "After an accepted event, no new event in that follower/horizon family until BTC signed displacement from the event shock start is <=25% of the detected shock for ten consecutive 100ms states.",
+    "same_timestamp": "Different horizons remain separate diagnostic families; no trading slot or PnL is simulated."
+  }
+}
