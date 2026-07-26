@@ -15,7 +15,7 @@ on:
       - .github/workflows/yt-trinity-transcript-harvest.yml
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -30,6 +30,9 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -111,6 +114,62 @@ jobs:
           if-no-files-found: error
           compression-level: 6
           retention-days: 90
+
+      - name: Write machine-readable corpus run pointer
+        if: always()
+        env:
+          POINTER_PATH: research/yt_trinity_ml/CORPUS_RUN_POINTER.json
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path('artifact/yt-trinity-corpus/manifest.json')
+          manifest = None
+          manifest_sha256 = None
+          if manifest_path.exists():
+              raw = manifest_path.read_bytes()
+              manifest_sha256 = hashlib.sha256(raw).hexdigest()
+              manifest = json.loads(raw)
+          payload = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity public transcript corpus',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'manifest_sha256': manifest_sha256,
+              'manifest': manifest,
+          }
+          path = Path(os.environ['POINTER_PATH'])
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(path)
+          PY
+
+      - name: Persist corpus run pointer without retriggering harvest
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/CORPUS_RUN_POINTER.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record YT Trinity corpus run ${GITHUB_RUN_ID}"
+          TARGET_BRANCH="${GITHUB_REF_NAME}"
+          for attempt in 1 2 3; do
+            git pull --rebase origin "${TARGET_BRANCH}"
+            if git push origin "HEAD:${TARGET_BRANCH}"; then
+              break
+            fi
+            if [[ "${attempt}" == "3" ]]; then
+              exit 1
+            fi
+            sleep $((attempt * 2))
+          done
 
       - name: Enforce complete inventory and resolved caption attempts
         if: always()
