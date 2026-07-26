@@ -1,0 +1,109 @@
+{
+  "claim_id": "CLM-20260726-ML-HOURWEEK-XRP-V2-001",
+  "development_parity": {
+    "cost_bps": 24.0,
+    "ending_nav_multiple": 3.967036266140347,
+    "funding": "adverse 1bp per 8h pro rata",
+    "geometric_daily_growth": 0.0018868932457136722,
+    "half_year_returns": {
+      "2024H1": 0.10615198168585782,
+      "2024H2": 0.7281904107037696,
+      "2025H1": 0.7952798630138036,
+      "2025H2": 0.15591957512362242
+    },
+    "long_trades": 28,
+    "maximum_drawdown": 0.09458750000000005,
+    "mean_duration_hours": 59.5,
+    "median_trade_return": 0.03584219847144529,
+    "profit_factor": 6.392903332003452,
+    "short_trades": 2,
+    "trade_count": 30,
+    "winner_removed": {
+      "blocked_entries": 3,
+      "ending_nav_multiple": 2.8910081826397582,
+      "geometric_daily_growth": 0.0014533194699264396,
+      "trade_count": 29
+    }
+  },
+  "development_source": {
+    "artifact_id": 8616632878,
+    "artifact_zip_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "period": [
+      "2024-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "selection_status": "SELECTED_DEVELOPMENT_NOT_OOS"
+  },
+  "historical_parent": "RES-20260726-ML-HOURWEEK-XRP-001",
+  "model": {
+    "family": "pooled StandardScaler plus Ridge",
+    "feature_count": 55,
+    "refit": "expanding before each UTC half-year; labels resolved 25 hours before cutoff",
+    "ridge_alpha": 10.0,
+    "target": "log(next open plus 24h / next open)",
+    "threshold": "prior 183-day q95 absolute prediction"
+  },
+  "official": {
+    "continuous_period": [
+      "2024-01-01T00:00:00Z",
+      "2026-07-01T00:00:00Z"
+    ],
+    "cost_paths_bps": [
+      24,
+      72,
+      96
+    ],
+    "execution_source": "official Bybit XRPUSDT MT4 hourly archive",
+    "forward_period": [
+      "2026-01-01T00:00:00Z",
+      "2026-07-01T00:00:00Z"
+    ],
+    "funding": "actual if at least 90% complete, else adverse pro-rata fallback",
+    "information_cutoff": "2025-12-31T23:59:59Z",
+    "open_once": true,
+    "signal_source": "official Binance USD-M hourly archives"
+  },
+  "orders_submitted": false,
+  "parent_parity_status": "NOT_CLAIMED_BOUNDED_RECONSTRUCTION_DID_NOT_MATCH_58_TRADE_LEDGER",
+  "policy": {
+    "cost_floor_multiplier": 0.75,
+    "decision_hours_utc": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "elapsed_time_liquidation": false,
+    "entry": "next hourly open",
+    "exit": "next hourly open when signed expected edge is nonpositive",
+    "global_slot": 1,
+    "reversal": "only eligible opposite edge",
+    "side_filter": "BOTH",
+    "symbol": "XRPUSDT",
+    "threshold_multiplier": 1.25,
+    "unit_notional": 1.0
+  },
+  "post_open_prohibitions": [
+    "model",
+    "feature",
+    "session",
+    "side",
+    "threshold",
+    "target",
+    "exit",
+    "cost",
+    "risk",
+    "leverage",
+    "capacity"
+  ],
+  "ranking": {
+    "V1_reproducibility_failure": "demote or remove unreproduced V1",
+    "V2_development": "selected-development rank only",
+    "official_2026": "insert immediately without protection or 1% cap"
+  },
+  "schema_version": 1
+}
