@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1955-FIXED-PORTFOLIO-TAKEOVER-001",
+  "worker_id": "gpt-5.6-pro-20260726-1955",
+  "objective_fingerprint": "5d4f76d96df4d752d23dcce108fbad9c886bbfb45db051d564ab4dba55cd55a6",
+  "scope_fingerprint": "77631a2d83cb2557409ecd530d63c640dd3d39faa469eb563e7de89a6057a929",
+  "base_revision": 11,
+  "base_main_sha": "056878ea9f95cd6290dd08ec2fd5c96fd1700d0a",
+  "status": "RUNNING",
+  "started_at": "2026-07-26T19:55:00+09:00",
+  "lease_until": "2026-07-27T03:55:00+09:00",
+  "branch": "agent/r11-fixed-portfolio-takeover-001",
+  "supersedes": "CLM-20260726-0100-FIXED-PORTFOLIO-001 after its lease expired at 2026-07-26T09:00:00+09:00 with no result ID and no 2024 component or portfolio outcome",
+  "scientific_preregistration": "research/fixed_strategy_portfolio_20260726/preregistration.json from PR #50, SHA-256 b1351e751000a04a866bca134deaae37763998500fe2a453127311040c8c6c49",
+  "scope": "Reconstruct the exact frozen dynamic state-exit 021fbab613517a31ad98 and absorption aligned-continuation 33034b092ffd271a sources, reproduce their registered pre-2024 metrics before opening 2024, regenerate raw eligible signals before component position suppression, and replay DYNAMIC_ONLY, ABSORPTION_ONLY and FIXED_ONE_SLOT_PORTFOLIO on identical official 2024 Binance USD-M BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT data with actual funding, one global slot and 18/24/30bp costs.",
+  "unchanged_contract": [
+    "no component feature, signal, entry, exit, target, stop, lifetime or parameter change",
+    "no portfolio weight, priority or threshold fitting from 2024",
+    "dynamic priority for simultaneous intended entries",
+    "0.5% NAV planned loss, 3x notional cap and 0.1% prior quote-volume participation",
+    "actual funding in entry-exit interval",
+    "stop-first same-bar ambiguity and adverse gap-open stops",
+    "all UTC calendar days in 2024",
+    "2025 and 2026 prohibited",
+    "no credentials or orders"
+  ],
+  "reused_evidence": [
+    "GitHub Actions artifact 8621396535 fixed-strategy-component-sources, digest sha256:492286857a92b36d52d584a80c92fc9f9d99a902228f4c171170e5343b6c9886",
+    "RES-20260725-DYNAMIC-FACTOR-001 and its actual-funding attestation",
+    "RES-20260725-ABS-FLOW-001 and its exact source references",
+    "expired PR #50 preregistration and source-export request"
+  ],
+  "orders_permitted": false
+}
