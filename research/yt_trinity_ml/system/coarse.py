@@ -76,7 +76,7 @@ class CoarseLabeler:
         self.data = validate_execution_bars(bars)
         self.times = pd.DatetimeIndex(self.data["bar_start"])
         self.available_times = pd.DatetimeIndex(self.data.index)
-        self.time_ns = self.times.asi8
+        self.time_ns = self.times.as_unit("ns").asi8
         self.open = self.data["open"].to_numpy(dtype=float)
         self.high = self.data["high"].to_numpy(dtype=float)
         self.low = self.data["low"].to_numpy(dtype=float)

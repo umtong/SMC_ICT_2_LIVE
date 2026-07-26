@@ -38,7 +38,7 @@ class EventTapeGlobalReplay:
         self.config = config
         self.engine = ExecutionEngine(config)
         self.tapes = {symbol: validate_tape(frame) for symbol, frame in tape_by_symbol.items()}
-        self.time_ns = {symbol: frame.index.asi8 for symbol, frame in self.tapes.items()}
+        self.time_ns = {symbol: frame.index.as_unit("ns").asi8 for symbol, frame in self.tapes.items()}
         self.cursors = {symbol: 0 for symbol in self.tapes}
 
     def _rows_until(self, symbol: str, end_inclusive: pd.Timestamp):
