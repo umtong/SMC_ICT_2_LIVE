@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-HTTP-BUDGET-BINARY-SINGLES-010",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "status": "PRE_MARKET_OUTCOME_TRANSPORT_ONLY",
+  "recorded_at": "2026-07-26T23:44:00+09:00",
+  "observed_problem": "The batch-timestamp wrapper charged the 3000-call transport budget once for every logical block inside a 40-block JSON-RPC batch and used those 40-block batches for each midpoint of the timestamp-to-block binary search. Twelve frozen window boundaries alone could exhaust the budget even though the provider saw only a small number of HTTP requests.",
+  "change": [
+    "Count the bounded call budget per actual HTTP JSON-RPC request, including retries, rather than per block inside a batch.",
+    "Use exact cached single-block lookups for binary-search boundaries.",
+    "Use paced 40-block batches only for exact timestamps of observed Swap-log blocks.",
+    "If a provider rejects or partially fails a batch, discard the partial batch result and fail closed to exact paced single-block requests for that chunk.",
+    "Extend the deterministic self-test to prove boundary search does not invoke block batches."
+  ],
+  "unchanged": [
+    "Ethereum chain and canonical Uniswap factory token and pool identities",
+    "six frozen pre-2024 probe windows",
+    "Swap ABI and signed amount0 amount1 decoding",
+    "source density and duplicate gates",
+    "all model feature label cost target stop risk and leverage definitions",
+    "immediate sequential 2024H1 rule",
+    "no credentials or orders"
+  ],
+  "source_gate_result_observed_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
