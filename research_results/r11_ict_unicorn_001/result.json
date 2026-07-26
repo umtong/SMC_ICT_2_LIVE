@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ICT-UNICORN-001",
+  "claim_id": "CLM-20260726-1539-UNICORN-001",
+  "worker_id": "gpt-5.6-pro-20260726-1539",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL_BYBIT_BAR_PROXY",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE",
+  "target_met": false,
+  "rank_eligible": false,
+  "engine_version": "ICT_UNICORN_V1",
+  "evaluation_contract_sha256": "0fc4afcf261e08a0ce20df4d6d87678d06830b489353103cf3561329c3ff1b63",
+  "dependency_fingerprint": "512c750b983902462139cfb35683728b6e8f168244d004b755b2371a46bc68f2",
+  "implementation_sha256": "5119e93bf56b4cb8a7cfcd0ea206fd98d77a5d76c1f39f6617af1272a516fec5",
+  "source_manifest_sha256": "f732c1dd6c6e15aef57f1494d3f08b5a53534de9546355b577b868216435a837",
+  "artifact": {
+    "workflow_run_id": 30192218575,
+    "artifact_id": 8628962842,
+    "artifact_sha256": "b02daa12594fa04b97cbd73be472f2db54bf40824aa8d4f64b74014dfb5f6a20",
+    "fit_grid_sha256": "f7fc5d86518958b152aa9f7fb1e3a1a6882e2169e0bf4c5453b6608d679e2737",
+    "sequential_result_sha256": "e0a037403105f64c83927cc3e7213d1d256fb7d7dc29915ced36e78e0c8ef643"
+  },
+  "strategy_explanation": "Confirmed external liquidity raid, completed short-term structure shift, true order-block failure into a breaker, exact breaker/FVG overlap, first accepted retracement, next-minute-open entry, structural stop beyond the raid and target at already-confirmed opposing external liquidity.",
+  "data_and_stage": {
+    "venue": "Bybit",
+    "market": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "fit_period": "2022",
+    "fit_source_file_count": 48,
+    "candidate_count": 128,
+    "fit_gate_pass_count": 0,
+    "2023_opened": false,
+    "2024_2025_2026_opened": false,
+    "orders_submitted": false
+  },
+  "screen": {
+    "positive_candidate_count_12bps": 0,
+    "positive_candidate_count_18bps": 0,
+    "positive_candidate_count_24bps": 0,
+    "minimum_trade_count": 59,
+    "maximum_trade_count": 283,
+    "median_total_return_12bps": -0.20751424087453718,
+    "median_geometric_daily_growth_12bps": -0.0006370045839468018
+  },
+  "best_candidate": {
+    "candidate_id": "a36a0d4ae11f7cb5cca6",
+    "config": {
+      "external_pivot_right": 3,
+      "displacement_atr": 1.2,
+      "mss_window": 5,
+      "order_block_mode": "body",
+      "minimum_fvg_atr": 0.1,
+      "entry_mode": "consequent_encroachment_reclaim",
+      "minimum_rr": 2.0
+    },
+    "trade_count": 61,
+    "return_12bps": -0.0859199391596982,
+    "geometric_daily_growth_12bps": -0.0002460988016164121,
+    "return_18bps": -0.11376591180398266,
+    "geometric_daily_growth_18bps": -0.0003308333594961681,
+    "return_24bps": -0.13786150244066787,
+    "profit_factor_12bps": 0.4763211937021153,
+    "profit_factor_18bps": 0.3467374611365481,
+    "median_trade_bps_12bps": -34.03406017000732,
+    "maximum_drawdown_12bps": 0.10098229175063778,
+    "top_five_positive_pnl_share_12bps": 0.9180926719661979,
+    "return_h1_12bps": -0.05354496954257226,
+    "return_h2_12bps": -0.03420655876431744
+  },
+  "decision": {
+    "ranking_changed": false,
+    "reason": "Every candidate lost at 12, 18 and 24 bps in the 2022 fit period. The least-negative candidate had a negative median trade, profit factor below one, both half-years negative and extreme winner concentration. No candidate could justify opening 2023, exact historical funding, BBO/depth reconstruction, risk/leverage tuning or 2024 data.",
+    "dependency_retired": "The exact bar-based liquidity-raid, breaker conversion, breaker/FVG overlap and first-retest directional payoff is closed under this fingerprint. Reopen only with a materially different payoff or information unit, not adjacent pivots, displacement thresholds, FVG sizes, retracement definitions, RR, costs, risk or leverage."
+  },
+  "known_limitations": [
+    "One-minute Bybit bar execution proxy rather than exact historical BBO/depth.",
+    "Adverse one-basis-point reserve per crossed eight-hour funding boundary rather than exact historical funding.",
+    "The source manifest records archive hashes and row spans but not a separate explicit post-deduplication gap-count field; the engine nevertheless reindexes to an exact UTC minute grid and fails closed on gaps.",
+    "2023 and all 2024-2026 periods remained unopened."
+  ],
+  "summary": "A native Bybit 2022 fit screen evaluated 128 causal ICT Unicorn policies. Zero was profitable at 12, 18 or 24 bps and zero passed the fit gate. Candidate paths contained 59 to 283 trades. The least-negative rule lost 8.59% at 12 bps and 11.38% at 18 bps, with negative median trade and both half-years negative. The result closes this exact directional breaker-FVG first-retest dependency and leaves the project first place unchanged."
+}
