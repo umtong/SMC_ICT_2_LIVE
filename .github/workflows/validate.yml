@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +21,9 @@ jobs:
           cache: pip
       - name: Install test dependency
         run: python -m pip install "pytest>=8"
+      - name: Validate execution-only macOS correction
+        if: hashFiles('research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION_MACOS_QUEUE_004.json') != ''
+        run: python -m json.tool research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION_MACOS_QUEUE_004.json >/dev/null
       - name: Validate project structure
         run: python scripts/validate_project.py
       - name: Run tests
