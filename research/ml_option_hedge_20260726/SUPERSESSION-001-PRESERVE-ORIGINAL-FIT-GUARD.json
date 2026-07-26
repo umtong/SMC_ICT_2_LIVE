@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "supersession_id": "SUPERSEDE-20260726-ML-OPTION-FIT-GUARD-001",
+  "status": "AUTHORITATIVE_BEFORE_SAMPLE_AMENDMENT_RUN",
+  "supersedes_for_scientific_use": "COR-20260726-ML-OPTION-PREMODEL-FEASIBILITY-001",
+  "reason": "The concurrent correction would lower the frozen implementation's resolved training minimum from 300 to 200 after observing 205 resolved rows. That is too close to the observed boundary for a model with min_samples_leaf=80 and is unnecessary because unopened 2022 first-day samples can restore the original feasibility threshold without changing model complexity.",
+  "authoritative_choice": {
+    "minimum_resolved_training_rows": 300,
+    "minimum_resolved_calibration_rows": 100,
+    "source_amendment": "AMEND-20260726-ML-OPTION-SAMPLE-COVERAGE-002",
+    "add_training_dates": ["2022-02-01", "2022-04-01", "2022-06-01"],
+    "add_calibration_dates": ["2022-08-01"]
+  },
+  "unchanged": {
+    "model": true,
+    "features": true,
+    "labels": true,
+    "calibration_method": true,
+    "economic_decision_rule": true,
+    "confirmation_and_development_dates": true,
+    "gates": true,
+    "costs_account_capacity_and_global_slot": true,
+    "sealed_2024_2025_2026": true
+  },
+  "authority_rule": "Any automated output produced with patched source SHA 122c2f8e1d49d77a8aa9fa3fe9b074232b6c6af04b66efe6f9f83bf94f85c4d6 is diagnostic and not eligible for strategy selection, registration or ranking. The authoritative run must use sample-amended source SHA 80d94063c427074b5c10896e659f06cf22a77acb94b9961c08587cd9f3b6905e with the original 300/100 guard.",
+  "orders_submitted": false,
+  "prohibited_years_opened": false
+}
