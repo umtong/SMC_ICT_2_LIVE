@@ -79,26 +79,27 @@ jobs:
           print(json.dumps(record,indent=2,sort_keys=True))
           PY
           python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
-          python "$root/apply_correction.py" 2>&1 | tee "$out/PREMODEL_CORRECTION.log"
+          python "$root/apply_sample_amendment.py" 2>&1 | tee "$out/SAMPLE_COVERAGE_AMENDMENT.log"
           python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
           PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
           PYTHONPATH="$root" python "$root/run.py" self-test 2>&1 | tee "$out/SELF_TEST.log"
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
-          python -m json.tool "$root/PREMODEL_FEASIBILITY_CORRECTION_001.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT-002-SAMPLE-COVERAGE.json" >/dev/null
+          python -m json.tool "$root/SUPERSESSION-001-PRESERVE-ORIGINAL-FIT-GUARD.json" >/dev/null
       - uses: actions/cache@v4
         with:
           path: /tmp/ml-option-hedge-r12
-          key: ml-option-hedge-r12-${{ hashFiles('research/ml_option_hedge_20260726/preregistration.json', 'research/ml_option_hedge_20260726/PREMODEL_FEASIBILITY_CORRECTION_001.json') }}
-      - name: Run frozen 2022 and conditional 2023 screen
+          key: ml-option-hedge-r12-${{ hashFiles('research/ml_option_hedge_20260726/preregistration.json', 'research/ml_option_hedge_20260726/AMENDMENT-002-SAMPLE-COVERAGE.json') }}
+      - name: Run sample-amended 2022 and conditional untouched 2023 screen
         shell: bash
         run: |
           set -euo pipefail
           root=research/ml_option_hedge_20260726
           out=research_runs/ml_option_hedge_20260726/r12
           cache=/tmp/ml-option-hedge-r12
-          find "$out" -mindepth 1 -maxdepth 1 -type f ! -name 'TRANSPORT_DIAGNOSTIC.json' ! -name 'RECONSTRUCT.log' ! -name 'PREMODEL_CORRECTION.log' ! -name 'COMPILE.log' ! -name 'PYTEST.log' ! -name 'SELF_TEST.log' ! -name 'PROJECT_VALIDATION.log' -delete
+          find "$out" -mindepth 1 -maxdepth 1 -type f ! -name 'TRANSPORT_DIAGNOSTIC.json' ! -name 'RECONSTRUCT.log' ! -name 'SAMPLE_COVERAGE_AMENDMENT.log' ! -name 'COMPILE.log' ! -name 'PYTEST.log' ! -name 'SELF_TEST.log' ! -name 'PROJECT_VALIDATION.log' -delete
           ROOT="$root" OUT="$out" CACHE="$cache" PYTHONPATH="$root" python - <<'PY' 2>&1 | tee "$out/RUN.log"
           import inspect, json, os
           from pathlib import Path
@@ -112,11 +113,11 @@ jobs:
               'schema_version':1,
               'claim_id':'CLM-20260726-1732-ML-OPTION-HEDGE-001',
               'reconstructed_source_sha256':'cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a',
-              'executed_source_sha256':'122c2f8e1d49d77a8aa9fa3fe9b074232b6c6af04b66efe6f9f83bf94f85c4d6',
-              'premodel_correction_id':'COR-20260726-ML-OPTION-PREMODEL-FEASIBILITY-001',
+              'executed_source_sha256':'80d94063c427074b5c10896e659f06cf22a77acb94b9961c08587cd9f3b6905e',
+              'sample_amendment_id':'AMEND-20260726-ML-OPTION-SAMPLE-COVERAGE-002',
               'fit_model_source':inspect.getsource(original),
-              'model_or_economic_gate_changed':False,
-              'premodel_feasibility_changed':True,
+              'model_or_gate_changed':False,
+              'source_sample_changed':True,
               'orders_submitted':False,
               'prohibited_years_opened':[],
           }
@@ -130,7 +131,7 @@ jobs:
                       unique=series.nunique(dropna=False)
                   except Exception:
                       continue
-                  if unique <= 12:
+                  if unique <= 16:
                       counts=series.astype(str).value_counts(dropna=False).to_dict()
                       small[name]={str(k):int(v) for k,v in counts.items()}
               record['small_cardinality_counts']=small
@@ -153,7 +154,7 @@ jobs:
           try:
               run.run(out,cache)
           except RuntimeError as exc:
-              if not str(exc).startswith('insufficient resolved rows for one-model fit:'):
+              if str(exc)!='insufficient resolved rows for one-model fit':
                   raise
               audit.setdefault('exception_type',type(exc).__name__)
               audit.setdefault('exception_message',str(exc))
@@ -190,8 +191,8 @@ jobs:
           else:
               audit=json.loads((root/'MODEL_FIT_INPUT_AUDIT.json').read_text())
               assert audit['status']=='SOURCE_SAMPLE_INSUFFICIENT_BEFORE_MODEL_FIT'
-              assert audit['model_or_economic_gate_changed'] is False
-              assert audit['premodel_feasibility_changed'] is True
+              assert audit['model_or_gate_changed'] is False
+              assert audit['source_sample_changed'] is True
               assert audit['orders_submitted'] is False
               assert audit['prohibited_years_opened']==[]
               assert audit['development_source_file_count']==0
@@ -207,10 +208,11 @@ jobs:
             "$root/preregistration.json" \
             "$root/WORK_CLAIM.json" \
             "$root/AUDIT_TRANSPORT_001.json" \
-            "$root/PREMODEL_FEASIBILITY_CORRECTION_001.json" \
+            "$root/AMENDMENT-002-SAMPLE-COVERAGE.json" \
+            "$root/SUPERSESSION-001-PRESERVE-ORIGINAL-FIT-GUARD.json" \
             "$root/source_manifest.json" \
             "$root/reconstruct.py" \
-            "$root/apply_correction.py" \
+            "$root/apply_sample_amendment.py" \
             "$root/test_run.py" \
             "$root/run.py" \
             > "$out/INPUT_SHA256SUMS.txt" || true
