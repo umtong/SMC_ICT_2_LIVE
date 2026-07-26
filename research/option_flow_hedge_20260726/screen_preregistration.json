@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1037-OPTION-FLOW-001",
+  "screen_id": "DERIBIT-OPTION-FLOW-HEDGE-PRESSURE-FATAL-20260726-V1",
+  "provisional_result_id": "RES-20260726-OPTION-FLOW-FATAL-001",
+  "base_revision": 11,
+  "branch": "agent/r11-option-flow-hedge-001",
+  "research_stage": "pre_2024_frozen_fatal_alpha_screen",
+  "rank_eligibility": false,
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "objective": "Test whether completed Deribit option aggressor transactions imply repeatable delta-hedging or gamma-rebalancing pressure in Bybit BTCUSDT/ETHUSDT after conservative cross-provider delay and executable BBO costs.",
+  "source_probe_evidence": {
+    "workflow_run": 30183447762,
+    "artifact_id": 8626301740,
+    "artifact_digest": "sha256:b796888bfad819b38291733fd4288c5ef31ba38063b645c57b55a0309f9c947c",
+    "probe_pass": true,
+    "opened_date": "2023-01-01",
+    "strategy_pnl_opened_by_probe": false,
+    "candidate_grid_opened_by_probe": false
+  },
+  "chronological_stages": {
+    "fit_dates": [
+      "2022-01-01",
+      "2022-04-01",
+      "2022-07-01",
+      "2022-10-01"
+    ],
+    "development_dates": [
+      "2023-01-01",
+      "2023-04-01",
+      "2023-07-01",
+      "2023-10-01"
+    ],
+    "development_note": "2023-01-01 was opened previously for schema and bounded source inspection only; no strategy labels, thresholds, PnL or candidate outcomes were computed before this contract was frozen.",
+    "official_2024_opened": false,
+    "official_2025_opened": false,
+    "official_2026_opened": false
+  },
+  "data_contract": {
+    "provider": "Tardis normalized first-day monthly keyless datasets",
+    "signal_files_per_date": [
+      ["deribit", "trades", "OPTIONS"],
+      ["deribit", "quotes", "BTC-PERPETUAL"],
+      ["deribit", "quotes", "ETH-PERPETUAL"]
+    ],
+    "execution_files_per_date": [
+      ["bybit", "quotes", "BTCUSDT"],
+      ["bybit", "quotes", "ETHUSDT"]
+    ],
+    "integrity": "full gzip CRC read, byte count and SHA-256 for every source",
+    "deribit_signal_clock": "local_timestamp and row order within the common Deribit collection region",
+    "cross_provider_execution_clock": "maximum included Deribit exchange timestamp plus 2 seconds, then first Bybit exchange-timestamped BBO",
+    "cross_region_microsecond_latency_claimed": false,
+    "entry_quote_max_delay_seconds": 1,
+    "exit_quote_gap_penalty_bps_if_delay_over_one_second": 50
+  },
+  "greek_reconstruction": {
+    "instrument_scope": "BTC and ETH European options with remaining life from 1 hour through 14 days",
+    "underlying_proxy": "last valid same-underlier Deribit perpetual BBO midpoint available before each option trade in local capture order, maximum age 2 seconds",
+    "premium_units": "Deribit base-asset option premium",
+    "pricing_formula": "Black-Scholes forward option value in base-asset units with zero discounting",
+    "implied_volatility_solver": "fixed bisection over 1% to 500%, rejecting prices outside no-arbitrage bounds",
+    "accepted_implied_volatility": "5% through 300%",
+    "fixture": "greek_formula_fixture.csv",
+    "fixture_tolerance": {
+      "delta_absolute": 0.00006,
+      "gamma_absolute": 0.000006
+    }
+  },
+  "flow_features": {
+    "completed_windows_seconds": [5, 15, 60],
+    "minimum_option_trades_per_window": 2,
+    "signed_delta_demand_usd": "aggressor sign times option amount times reconstructed delta times underlying",
+    "dealer_gamma_1pct_usd": "negative aggressor sign times option amount times gamma times underlying squared times 0.01",
+    "premium_notional_usd": "option amount times premium in base units times underlying",
+    "underlying_response": "Deribit perpetual midpoint log return over the identical completed local-time window",
+    "decision_delay_seconds": 2
+  },
+  "families": [
+    {
+      "name": "signed_delta_flow_continuation",
+      "direction": "sign of completed signed delta demand",
+      "mechanism": "option taker delta demand not fully reflected in the underlying creates subsequent hedge-pressure continuation"
+    },
+    {
+      "name": "short_gamma_momentum_amplification",
+      "direction": "sign of completed signed delta demand",
+      "mechanism": "dealer-short-gamma inventory can require same-direction rebalancing after an underlying move"
+    },
+    {
+      "name": "long_gamma_excursion_reversal",
+      "direction": "opposite completed underlying response",
+      "mechanism": "dealer-long-gamma inventory can require opposing rebalancing after a price excursion"
+    },
+    {
+      "name": "failed_delta_pressure_reversal",
+      "direction": "opposite signed delta demand",
+      "mechanism": "large option delta demand with flat or opposite underlying response indicates absorbed or informationally weak pressure"
+    },
+    {
+      "name": "btc_eth_relative_option_flow_divergence",
+      "direction": "signed delta direction of the underlier with the stronger prior-normalized option-flow innovation",
+      "mechanism": "opposite BTC and ETH option-flow pressure identifies a relative information state rather than common crypto beta"
+    }
+  ],
+  "frozen_candidate_grid": {
+    "families": 5,
+    "windows_seconds": [5, 15, 60],
+    "signal_quantiles": [0.90, 0.97],
+    "premium_quantiles": [0.50, 0.90],
+    "response_modes": ["latent_or_any_excursion", "confirmed_or_flow_aligned"],
+    "markout_horizons_seconds": [10, 30, 120, 300],
+    "candidate_count": 480,
+    "threshold_learning": "asset-and-window thresholds estimated only from the four fit dates"
+  },
+  "execution_and_cost_contract": {
+    "execution_venue": "Bybit USDT linear perpetual",
+    "execution_symbols": ["BTCUSDT", "ETHUSDT"],
+    "entry": "long at first eligible ask or short at first eligible bid after the 2-second boundary",
+    "exit": "opposing executable BBO at the fixed diagnostic horizon",
+    "one_global_pending_or_open_slot": true,
+    "all_in_additional_round_trip_cost_bps": [12, 18, 24],
+    "same_gross_path_replay": true,
+    "funding": "not separately material over 10 to 300 seconds; exact funding required before any longer-horizon or rank-eligible result",
+    "orders_submitted": false
+  },
+  "development_gate": {
+    "minimum_trades_at_18bp": 80,
+    "mean_net_markout_at_18bp": "> 0",
+    "median_net_markout_at_12bp": "> 0",
+    "total_return_at_24bp": "> 0",
+    "true_counterfactual_top_10_percent_removed_return_at_18bp": "> 0",
+    "positive_asset_date_fraction_at_18bp": ">= 2/3",
+    "top_five_positive_trade_share_at_18bp": "<= 50%",
+    "first_and_second_development_half_return_at_18bp": "> 0 in both"
+  },
+  "conditional_next_stage": {
+    "if_zero_survivors": "record reusable negative evidence, keep 2024-2026 sealed and retire this exact transaction-flow dependency",
+    "if_survivors": "freeze one low-dimensional family before opening any 2024 data; broaden pre-2024 monthly samples and independently verify Greek reconstruction first"
+  },
+  "prohibitions": [
+    "no 2024, 2025 or 2026 access in this workflow",
+    "no option execution",
+    "no same-message, same-window or pre-delay Bybit entry",
+    "no local_timestamp comparison across Deribit and Bybit collection regions",
+    "no parameter change after development opens",
+    "no live credentials or orders",
+    "no cumulative ranking insertion from this fatal screen"
+  ]
+}
