@@ -1,0 +1,93 @@
+{
+  "account": {
+    "base_leverage_cap": 5.0,
+    "base_risk_fraction": 0.005,
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "global_slot_count": 1,
+    "initial_nav_usdt": 10000,
+    "risk_search_after_pre2024_pass": {
+      "leverage_caps": [5, 10, 20, 40, 100],
+      "risk_fractions": [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6],
+      "selection": "maximum 24bp geometric daily growth among no-liquidation paths with positive top-10%-winner-removed return and positive H1 and H2; tie-break by lower drawdown"
+    },
+    "utc_daily_nav": true
+  },
+  "authority": {
+    "credentials": false,
+    "live_permission_change": false,
+    "orders": false
+  },
+  "claim_id": "CLM-20260726-2110-ML-DONCHIAN-STRUCTURAL-001",
+  "data": {
+    "exchange_and_contract": "Bybit USDT-linear perpetual",
+    "initial_symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "source": "official Bybit public MT4 hourly archives plus actual Bybit funding when available; incomplete funding uses adverse reserve",
+    "source_gap_rule": "retain expected hourly grid, reset all rolling state at a gap, prohibit labels across gaps, and charge an open account position its causal structural stop plus exit cost at the boundary"
+  },
+  "engine_version": "ML-DONCHIAN-STRUCTURAL-V1",
+  "evaluation": {
+    "calibration": "2022-04-01 through 2022-06-30",
+    "conditional_development": "calendar 2023, opened only after every 2022H2 confirmation gate passes",
+    "official_sequential_replay": "2024-01-01 through 2026-06-30 continuous NAV with the frozen pre-2024 model and risk configuration, opened only after every 2023 gate passes",
+    "prohibited_without_gate": [2024, 2025, 2026],
+    "training": "2021-10-01 through 2022-03-31; event labels must resolve before 2022-04-01",
+    "untouched_fit_confirmation": "2022-07-01 through 2022-12-31"
+  },
+  "features": [
+    "signed breakout distance divided by ATR20",
+    "entry-channel width divided by ATR20",
+    "exit-channel width divided by ATR20",
+    "ATR20 divided by price",
+    "signed 1h, 6h, 24h and 168h log returns",
+    "signed 24h and 168h trend efficiency",
+    "volume z-score over 168 completed hours",
+    "signed distance from opposite 96h channel in ATR units",
+    "four-asset 6h and 24h market return",
+    "symbol residual 6h and 24h return",
+    "four-asset 24h breadth",
+    "last available funding rate and 30-day funding z-score",
+    "symbol code and side"
+  ],
+  "gates": {
+    "2022H2_confirmation_all_required": [
+      "at least 80 resolved events and 30 completed filtered account trades",
+      "prediction Spearman above 0.05 and positive RMSE skill versus the train-mean baseline",
+      "24bp filtered total return and geometric daily growth positive",
+      "24bp filtered geometric daily growth strictly above the matched all-breakout baseline",
+      "24bp median completed trade positive and profit factor above 1",
+      "24bp top-10%-winner-removed return positive",
+      "both 2022Q3 and 2022Q4 positive",
+      "no liquidation or unresolved position"
+    ],
+    "2023_development_all_required": [
+      "base 24bp path positive with positive median, PF above 1 and positive winner-removal replay",
+      "base 24bp daily growth above the fixed 0.07001887213879954% current-rank benchmark",
+      "both 2023 half-years positive",
+      "no liquidation or unresolved position"
+    ]
+  },
+  "model": {
+    "calibration": "one non-negative scalar fit only on the calibration partition",
+    "decision_rule": "take the structural breakout only when calibrated predicted 24bp net notional return is strictly positive; otherwise flat",
+    "family": "one pooled HistGradientBoostingRegressor",
+    "feature_grid": false,
+    "hyperparameter_grid": false,
+    "target": "realized structural-trade notional return after the fixed 24bp round-trip cost and causal funding treatment",
+    "threshold_grid": false
+  },
+  "ranking_benchmark": {
+    "current_first_12bp_daily_growth": 0.0009008544402622221,
+    "current_first_24bp_daily_growth": 0.0007001887213879954,
+    "source_result": "RES-20260726-DONCHIAN-DEPENDENCE-001"
+  },
+  "schema_version": 1,
+  "structure": {
+    "entry": "first hourly open after a completed close outside the prior completed 96-hour Donchian channel",
+    "entry_channel_hours": 96,
+    "exit": "first hourly open after a completed close through the opposite prior completed 48-hour Donchian exit channel",
+    "exit_channel_hours": 48,
+    "maximum_holding_time": null,
+    "stop": "2.0 times completed ATR20 from the entry; adverse opening gaps fill at the opening price",
+    "timeframe": "60 minutes"
+  }
+}
