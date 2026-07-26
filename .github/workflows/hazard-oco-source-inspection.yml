@@ -1,0 +1,54 @@
+name: Inspect hazard OCO boundary accounting
+
+on:
+  push:
+    branches:
+      - agent/r11-hazard-oco-001
+    paths:
+      - .github/workflows/hazard-oco-source-inspection.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct immutable source and extract boundary contexts
+        run: |
+          python research/hazard_oco_20260726/reconstruct.py
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('research/hazard_oco_20260726/reconstructed/run.py')
+          lines = source.read_text(encoding='utf-8').splitlines()
+          keys = ('terminal', 'boundary', 'unresolved', 'source gap', 'nav = 0', 'nav=0', 'account_loss')
+          selected = set()
+          for i, line in enumerate(lines):
+              low = line.lower()
+              if any(key in low for key in keys):
+                  selected.update(range(max(0, i - 8), min(len(lines), i + 10)))
+          out = []
+          previous = None
+          for i in sorted(selected):
+              if previous is not None and i > previous + 1:
+                  out.append('---')
+              out.append(f'{i + 1:05d}: {lines[i]}')
+              previous = i
+          Path('boundary_context.txt').write_text('\n'.join(out) + '\n', encoding='utf-8')
+          print('\n'.join(out))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hazard-oco-source-inspection-${{ github.sha }}
+          path: |
+            research/hazard_oco_20260726/reconstructed/run.py
+            research/hazard_oco_20260726/reconstructed/test_run.py
+            research/hazard_oco_20260726/reconstructed/reconstruction.json
+            boundary_context.txt
+          if-no-files-found: error
