@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-XVENUE-L2-SWEEP-001",
+  "claim_id": "CLM-20260726-1849-ML-XVENUE-L2-SWEEP-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_FATAL_SCREEN_ONLY",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NOT_RANK_ELIGIBLE_PRE2024_FATAL_SCREEN",
+  "symbol": "BTCUSDT",
+  "dataset_id": "DS-TARDIS-BINANCE-BYBIT-L2-SWEEP-2022-R1",
+  "model": {
+    "type": "HistGradientBoostingClassifier",
+    "calibration": "single isotonic calibrator",
+    "feature_count": 10,
+    "model_count": 1,
+    "accepted_action_rule": "choose continuation or reversal only when calibrated structural expected value clears 24bp plus a fixed 5bp margin"
+  },
+  "stages": {
+    "train_dates": ["2022-01-01", "2022-03-01", "2022-05-01"],
+    "calibration_dates": ["2022-07-01"],
+    "confirmation_dates": ["2022-09-01", "2022-11-01"],
+    "development_dates": [],
+    "development_opened": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "event_counts": {
+    "2022-01-01": 171,
+    "2022-03-01": 194,
+    "2022-05-01": 163,
+    "2022-07-01": 204,
+    "2022-09-01": 210,
+    "2022-11-01": 170
+  },
+  "classification": {
+    "confirmation_rows": 380,
+    "positive_fraction": 0.7421052631578947,
+    "model_auc": 0.5060247503256622,
+    "baseline_auc": 0.5596323635837314,
+    "auc_lift": -0.053607613258069176,
+    "model_brier": 0.20249553946125265,
+    "baseline_brier": 0.2833151129796333,
+    "brier_skill": 0.2852638980970653,
+    "accepted_actions": 2
+  },
+  "account_paths": {
+    "12bp": {
+      "trades": 2,
+      "mean_trade_return_bps": -23.99562361856766,
+      "median_trade_return_bps": -23.99562361856766,
+      "total_return": -0.011103406818663841,
+      "geometric_per_sample_day": -0.005567200268748129,
+      "maximum_drawdown": 0.011103406818663826,
+      "profit_factor": 0.0,
+      "positive_date_count": 0,
+      "top5_positive_share": 1.0
+    },
+    "18bp": {
+      "trades": 2,
+      "mean_trade_return_bps": -29.99562361856766,
+      "median_trade_return_bps": -29.99562361856766,
+      "total_return": -0.013889704935063807,
+      "geometric_per_sample_day": -0.006969136902112094,
+      "maximum_drawdown": 0.013889704935063855,
+      "profit_factor": 0.0,
+      "positive_date_count": 0,
+      "top5_positive_share": 1.0
+    },
+    "24bp": {
+      "trades": 2,
+      "mean_trade_return_bps": -35.995623618567656,
+      "median_trade_return_bps": -35.995623618567656,
+      "total_return": -0.01667600305146366,
+      "geometric_per_sample_day": -0.00837305555539869,
+      "maximum_drawdown": 0.016676003051463703,
+      "profit_factor": 0.0,
+      "positive_date_count": 0,
+      "top5_positive_share": 1.0
+    }
+  },
+  "gate": {
+    "pass": false,
+    "passed": ["positive_brier_skill", "resolved_events_at_least_200", "unresolved_at_most_0_10"],
+    "failed": [
+      "auc_lift_at_least_0_01",
+      "accepted_24bp_trades_at_least_80",
+      "positive_24bp_mean",
+      "positive_24bp_median",
+      "positive_24bp_profit_factor",
+      "positive_24bp_total_return",
+      "positive_18bp_winner_removed_return",
+      "at_least_two_positive_dates",
+      "top5_share_at_most_0_40",
+      "winner_removed_growth_at_least_1pct"
+    ]
+  },
+  "evidence": {
+    "workflow_run_id": 30197813475,
+    "workflow_artifact_id": 8630674842,
+    "workflow_artifact_sha256": "d74dd3576d265b0061e0341a5be3e97317099a0d30a7681e22c15b36b03ddd21",
+    "workflow_head_sha": "dd5f5b9b5a49be41d94cb64be265601816234547",
+    "source_manifest_sha256": "8327a20cbe7e9ec6d36f66284d87942521e13c48f6390fbc0510fb335373eee3",
+    "source_file_count": 24,
+    "source_row_count": 47491039,
+    "event_row_count": 1112,
+    "unresolved_event_count": 1
+  },
+  "orders_submitted": false,
+  "decision": "Retire the exact Binance displayed-top-five-L2 to Bybit sweep-routing dependency without adjacent feature, model, probability, event or threshold tuning. The model had worse AUC than the structural-distance baseline and generated only two losing actions.",
+  "created_at": "2026-07-26T19:15:00+09:00"
+}
