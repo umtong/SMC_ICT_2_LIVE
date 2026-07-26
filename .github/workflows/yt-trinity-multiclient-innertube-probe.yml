@@ -1,0 +1,136 @@
+name: YT Trinity multiclient InnerTube probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - research/yt_trinity_ml/probe_multiclient_innertube.py
+      - .github/workflows/yt-trinity-multiclient-innertube-probe.yml
+      - control/yt-trinity-multiclient-innertube-trigger.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-multiclient-innertube-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install bounded probe dependency
+        run: |
+          python -m pip install -q --upgrade pip requests
+          python -m pip freeze | sort > dependency-freeze.txt
+      - name: Compile and self-test transport parser
+        run: |
+          python -m py_compile research/yt_trinity_ml/probe_multiclient_innertube.py
+          python research/yt_trinity_ml/probe_multiclient_innertube.py --self-test
+      - name: Probe coherent public player clients
+        shell: bash
+        run: |
+          mkdir -p artifact
+          python research/yt_trinity_ml/probe_multiclient_innertube.py \
+            --output artifact/probe-${{ runner.os }}.json \
+            --timeout-seconds 35 \
+            --between-clients-seconds 1 \
+            --between-videos-seconds 3 \
+            2>&1 | tee artifact/stdout-${{ runner.os }}.log
+          cp dependency-freeze.txt artifact/dependency-freeze-${{ runner.os }}.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-multiclient-innertube-${{ runner.os }}-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  aggregate:
+    if: always()
+    needs: probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-multiclient-innertube-*-${{ github.sha }}
+          path: downloaded
+          merge-multiple: false
+      - name: Build compact immutable pointer
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          rows = []
+          for path in sorted(Path('downloaded').rglob('probe-*.json')):
+              payload = json.loads(path.read_text(encoding='utf-8'))
+              rows.append({
+                  'path': str(path),
+                  'platform': (payload.get('runner') or {}).get('platform'),
+                  'payload_sha256': payload.get('payload_sha256'),
+                  'recovered_video_count': payload.get('recovered_video_count'),
+                  'total_segment_count': payload.get('total_segment_count'),
+                  'videos': [
+                      {
+                          'channel_slug': row.get('channel_slug'),
+                          'video_id': row.get('video_id'),
+                          'recovered': row.get('recovered'),
+                          'winning_client': row.get('winning_client'),
+                          'segment_count': row.get('segment_count'),
+                      }
+                      for row in payload.get('videos', [])
+                  ],
+              })
+          canonical = json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
+          pointer = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'decision': 'RECOVERED' if any((row.get('recovered_video_count') or 0) > 0 for row in rows) else 'NO_RECOVERY',
+              'runner_results': rows,
+              'aggregate_sha256': hashlib.sha256(canonical).hexdigest(),
+          }
+          destination = Path('research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_MULTICLIENT.json')
+          destination.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(destination.read_text(encoding='utf-8'))
+          PY
+      - name: Persist probe pointer without recursive execution
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_MULTICLIENT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record multiclient InnerTube caption probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
