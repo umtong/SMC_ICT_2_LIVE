@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1925-ML-FAIR-VALUE-RAID-001",
+  "provisional_result_id": "RES-20260726-ML-FAIR-VALUE-RAID-001",
+  "study_id": "EVENT_TIME_FAIR_VALUE_RAID_ROUTER_V1",
+  "base_revision": 11,
+  "branch": "agent/r11-ml-fair-value-raid-001",
+  "research_stage": "pre_2024_causal_ml_fatal_screen",
+  "rank_eligibility": false,
+  "objective": "Test whether a minimal event-time ML router can distinguish rejected Bybit fair-value raids from accepted displacements with enough gross distance and accuracy to exceed 24bp costs and 1% sample-day NAV growth without winner concentration.",
+  "trader_rule": [
+    "Freeze the completed one-second mark-index midpoint as external fair value.",
+    "Treat an extreme completed last-price displacement beyond that pool as a liquidity raid.",
+    "Enter no earlier than the next completed one-second state.",
+    "Use one calibrated HGBT to choose fair-value rejection, displacement acceptance or flat.",
+    "For rejection, target frozen fair value and stop at 150% further extension.",
+    "For acceptance, target 150% extension and stop at frozen fair value.",
+    "Never exit because elapsed time reached a fixed limit. An unresolved sample boundary is charged the full adverse structural stop."
+  ],
+  "data_contract": {
+    "source": "Tardis normalized Bybit derivative_ticker CSV reconstructed from public real-time feeds",
+    "availability_clock": "local_timestamp",
+    "state_interval_seconds": 1,
+    "entry_delay_seconds": 1,
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "required_symbols": ["BTCUSDT", "ETHUSDT"],
+    "fit_dates": ["2022-01-01", "2022-02-01", "2022-03-01", "2022-04-01", "2022-05-01", "2022-06-01"],
+    "calibration_dates": ["2022-07-01", "2022-08-01", "2022-09-01"],
+    "confirmation_dates": ["2022-10-01", "2022-11-01", "2022-12-01"],
+    "conditional_development_dates": ["2023-01-01", "2023-02-01", "2023-03-01", "2023-04-01", "2023-05-01", "2023-06-01"],
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "event_contract": {
+    "threshold": "per-symbol 99.5th percentile of absolute completed fair-value gap or last-mark gap learned from fit dates only",
+    "minimum_entry_raid_distance_bps": 6.0,
+    "non_overlap": "within-symbol next event starts only after prior structural resolution plus five seconds",
+    "competing_barriers": ["frozen fair value", "150% extension from entry"],
+    "boundary_treatment": "full adverse structural stop"
+  },
+  "model_contract": {
+    "primary_model": "HistGradientBoostingClassifier",
+    "primary_model_count": 1,
+    "calibration": "one isotonic map fitted only on 2022-07 through 2022-09",
+    "structure_comparator": "one fixed five-feature logistic baseline used only for lift measurement",
+    "authority": "model may choose rejection fade, acceptance continuation or flat only",
+    "forbidden_searches": ["model family", "feature subset", "event quantile", "probability threshold", "target", "stop", "cost", "risk", "leverage"]
+  },
+  "execution_contract": {
+    "one_global_slot": true,
+    "costs_bps_round_trip": [12, 18, 24],
+    "authorization_cost_bps": 24,
+    "authorization_ev_margin_bps": 2,
+    "planned_stop_risk_fraction": 0.01,
+    "notional_to_nav_cap": 3.0,
+    "funding_cashflow": "not separately replayed in this short structural fatal screen; 24bp primary reserve is deliberately larger than ordinary taker round-trip fees and the screen cannot become rank eligible without exact funding and BBO reconstruction",
+    "orders_submitted": false
+  },
+  "confirmation_gate": {
+    "minimum_fit_resolved_events": 200,
+    "minimum_calibration_resolved_events": 80,
+    "minimum_confirmation_resolved_events": 80,
+    "minimum_auc": 0.56,
+    "minimum_auc_lift_over_structure_baseline": 0.02,
+    "require_positive_brier_skill": true,
+    "minimum_24bp_trades": 20,
+    "require_positive_mean_and_median_24bp": true,
+    "minimum_profit_factor_24bp": 1.1,
+    "minimum_sample_day_geometric_growth_24bp": 0.01,
+    "minimum_positive_date_fraction": 0.6666666667,
+    "maximum_top_five_positive_pnl_share": 0.5,
+    "maximum_boundary_loss_fraction": 0.1,
+    "require_positive_winner_removed_return": true,
+    "minimum_winner_removed_sample_day_growth": 0.01
+  },
+  "promotion_boundary": "A survivor remains pre-2024 and non-rank-eligible. It must retain the unchanged event, model and order logic across all remaining pre-2024 evidence, then add exact Bybit BBO, spread, slippage, latency, funding, marked NAV and official sequential 2024-2026 replay."
+}
