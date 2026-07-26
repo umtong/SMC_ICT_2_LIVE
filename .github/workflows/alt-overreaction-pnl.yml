@@ -1,0 +1,145 @@
+name: Bybit alt overreaction residual-reclaim PnL
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/bybit_alt_overreaction_pnl_20260726/**"
+      - ".github/workflows/alt-overreaction-pnl.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alt-overreaction-pnl-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Reconstruct registered feature dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          mkdir -p runtime research_runs/bybit_alt_overreaction_pnl_20260726
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64,hashlib,pathlib,zlib
+          root=pathlib.Path('runtime')
+          source=zlib.decompress(base64.b64decode((root/'base_probe.py.zlib.b64').read_text().strip()))
+          (root/'base_probe.py').write_bytes(source)
+          print('base source sha256',hashlib.sha256(source).hexdigest())
+          PY
+          cp research/bybit_altlag_decision_tree_20260726/decision_tree.py runtime/decision_tree.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('runtime/decision_tree.py')
+          text=p.read_text()
+          replacements=[
+              ("                    'z':float(f['z'][i]),'gap':gap,'expected':float(f['expected'][i]),\n",
+               "                    'z':float(f['z'][i]),'gap':gap,\n"),
+              ("                    'follower_return':float(f['follower_return'][i]),'under':float(f['under'][i]),\n",
+               "                    'under':float(f['under'][i]),\n"),
+              ("        status,payload,error=base._download(session,url,target)\n",
+               "        base._download(session,url,target)\n"),
+              ("        if status!=200: raise RuntimeError(f'source unavailable {url}: {status} {error}')\n",
+               ""),
+              ("        rec=base.inspect_source(target,symbol,date,url,payload)\n",
+               "        day,rec=base.aggregate(target,symbol,date)\n"),
+              ("        arrays[symbol]=base.aggregate(target,date); records.append(rec)\n",
+               "        arrays[symbol]=day; records.append(rec)\n"),
+              ("leader['mark']","leader.mark"),
+              ("leader['trade_count']","leader.trade_count"),
+              ("follower['mark']","follower.mark"),
+              ("follower['trade_count']","follower.trade_count"),
+              ("base.utc_start(date)","datetime.strptime(date,'%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()"),
+              ("            f=base.continuous_features(leader,follower,h); tr,vr=attention(leader,follower,h)\n",
+               "            f=base.continuous_features(leader,follower,h); f['under']=f['underreaction']; f['leader_mark']=leader.mark; tr,vr=attention(leader,follower,h)\n"),
+          ]
+          for old,new in replacements:
+              if old not in text:
+                  raise SystemExit(f'expected adapter token not found: {old!r}')
+              text=text.replace(old,new)
+          forbidden=('inspect_source(',"f['expected']","f['follower_return']","leader['mark']","follower['mark']","base.utc_start(date)")
+          if any(token in text for token in forbidden):
+              raise SystemExit(f'interface adapter left forbidden token: {[x for x in forbidden if x in text]}')
+          p.write_text(text)
+          PY
+          python research/bybit_alt_overreaction_pnl_20260726/reconstruct.py
+          python -m py_compile runtime/base_probe.py runtime/decision_tree.py research/bybit_alt_overreaction_pnl_20260726/reconstructed/run.py
+          PYTHONPATH=runtime python research/bybit_alt_overreaction_pnl_20260726/reconstructed/run.py --self-test
+          python scripts/validate_project.py
+          sha256sum \
+            runtime/base_probe.py \
+            runtime/decision_tree.py \
+            research/bybit_alt_overreaction_pnl_20260726/reconstruct.py \
+            research/bybit_alt_overreaction_pnl_20260726/run.py.zlib.b64.part01 \
+            research/bybit_alt_overreaction_pnl_20260726/run.py.zlib.b64.part02 \
+            research/bybit_alt_overreaction_pnl_20260726/run.py.zlib.b64.part03 \
+            research/bybit_alt_overreaction_pnl_20260726/run.py.zlib.b64.part04 \
+            research/bybit_alt_overreaction_pnl_20260726/reconstructed/run.py \
+            research/bybit_alt_overreaction_pnl_20260726/preregistration.json \
+            .github/workflows/alt-overreaction-pnl.yml \
+            > research_runs/bybit_alt_overreaction_pnl_20260726/INPUT_SHA256SUMS.txt
+
+      - name: Run frozen untouched-date PnL contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=runtime python research/bybit_alt_overreaction_pnl_20260726/reconstructed/run.py \
+            --output research_runs/bybit_alt_overreaction_pnl_20260726/result \
+            --cache "$RUNNER_TEMP/bybit-alt-overreaction-cache" \
+            2>&1 | tee research_runs/bybit_alt_overreaction_pnl_20260726/run.log
+
+      - name: Enforce causal and promotion boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('research_runs/bybit_alt_overreaction_pnl_20260726/result/result.json').read_text())
+          assert result['claim_id']=='CLM-20260726-1612-ALT-OVERREACTION-PNL-001'
+          assert result['dates']==['2023-12-25','2023-12-27','2023-12-29','2023-12-31']
+          assert len(result['source_records'])==12
+          assert result['2024_2026_opened'] is False
+          assert result['risk_or_leverage_optimised'] is False
+          assert result['orders_submitted'] is False
+          assert result['funding_approximated'] is False
+          assert len(result['candidate_results'])==4
+          print(json.dumps({k:result[k] for k in ('status','gate_passed','selected_candidate_id','unique_decision_events')},sort_keys=True))
+          PY
+
+      - name: Record immutable output checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/bybit_alt_overreaction_pnl_20260726
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bybit-alt-overreaction-pnl-${{ github.sha }}
+          path: research_runs/bybit_alt_overreaction_pnl_20260726
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
