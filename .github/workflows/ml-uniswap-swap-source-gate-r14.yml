@@ -1,0 +1,132 @@
+name: ML Uniswap WETH-stable inventory source gate
+
+on:
+  push:
+    branches:
+      - agent/r14-ml-uniswap-hedge-transfer-001
+    paths:
+      - 'research/ml_uniswap_hedge_transfer_20260726/**'
+      - '.github/workflows/ml-uniswap-swap-source-gate-r14.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_uniswap_hedge_transfer_20260726/**'
+      - '.github/workflows/ml-uniswap-swap-source-gate-r14.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-uniswap-source-gate-r14-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install fixed source-gate environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'requests==2.32.4' \
+            'pytest==8.3.5'
+
+      - name: Compile and run adversarial source tests
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          python -m py_compile "$root/probe_uniswap_swaps.py" "$root/test_probe_uniswap_swaps.py"
+          PYTHONPATH="$root" python -m pytest -q "$root/test_probe_uniswap_swaps.py"
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+
+      - name: Run outcome-sealed Ethereum source gate
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/probe_uniswap_swaps.py" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Enforce source-only decision contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate')
+          result = json.loads((root / 'PROBE_RESULT.json').read_text())
+          assert result['claim_id'] == 'CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
+          assert result['factory'].lower() == '0x1f98431c8ad98523631ae4a59f267346ea31f984'
+          assert result['swap_topic'].lower() == '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67'
+          assert isinstance(result['source_gate_pass'], bool)
+          assert all(int(item['date'][:4]) <= 2023 for item in result['probe_windows'])
+          assert result['forbidden_outcome_fields'] == [
+              'future_return', 'label', 'action', 'trade', 'pnl',
+              'model_metric', 'official_2024_2026'
+          ]
+          if result['source_gate_pass']:
+              assert result['scientific_decision'] == 'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
+              assert all(result['source_gate_checks'].values())
+          else:
+              assert result['scientific_decision'] == 'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES'
+          serialized = json.dumps(result, sort_keys=True).lower()
+          for forbidden_key in (
+              'future_return_value', 'first_passage_label_value', 'trade_return',
+              'account_nav', 'model_auc', 'official_2024_opened', 'orders_submitted'
+          ):
+              assert forbidden_key not in serialized
+          print(json.dumps({
+              'source_gate_pass': result['source_gate_pass'],
+              'decision': result['scientific_decision'],
+              'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
+              'decode_errors': result.get('totals', {}).get('decode_error_count', 0),
+          }, sort_keys=True))
+          PY
+
+      - name: Validate current project contracts
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+
+      - name: Freeze source evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
+          mkdir -p "$out"
+          sha256sum \
+            "$root/WORK_CLAIM.json" \
+            "$root/PREREGISTRATION.md" \
+            "$root/probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps.py" \
+            .github/workflows/ml-uniswap-swap-source-gate-r14.yml \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-uniswap-source-gate-r14-${{ github.run_id }}
+          path: research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
