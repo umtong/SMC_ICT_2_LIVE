@@ -54,6 +54,8 @@ The fixed 2024 portfolio takeover that combined the now-ineligible dynamic state
 
 ## Current objective
 
+Rank does not determine research priority.
+
 Do not protect the new first place. It remains only a provisional benchmark and is still roughly 15.83 times short of the 1% daily-growth objective.
 
 Continue the retained high-information ML paths that have strategy-defined exits:
