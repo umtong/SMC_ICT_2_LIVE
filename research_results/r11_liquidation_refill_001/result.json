@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-LIQUIDATION-REFILL-001",
+  "claim_id": "CLM-20260726-0500-LIQUIDATION-REFILL-001",
+  "worker_id": "gpt-5.6-pro-20260726-0500",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE",
+  "summary": "Hard-valid sparse public liquidation-event fatal screen. Across 576 preregistered cascade-continuation and exhaustion-reversal candidates, zero passed the development gate. The best raw 2023 development reversal candidate had 19 trades, +1.3164% total return and 0.0035832% full-calendar geometric daily growth at 18 bp, but its 2021-2022 fit path lost 7.3546%, the 18-bp top-10%-winner-removal return was -0.00784%, and the 24-bp development return was only +0.2477%. Validation and all 2024-2026 official periods remained unopened. The exact threshold family is retired; a materially different complete Bybit-native liquidation/depth state would be a new dependency.",
+  "metrics": {
+    "candidate_count": 576,
+    "development_gate_pass_count": 0,
+    "best_raw_candidate_id": "0c0b773a5be4eab4",
+    "best_raw_family": "reversal",
+    "best_raw_parameters": {
+      "liquidation_quantile": 0.98,
+      "dominance_min": 0.6,
+      "deceleration_max": 0.25,
+      "recovery_min": 0.55,
+      "event_move_min_bps": 8.0,
+      "target_r": 2.0,
+      "min_stop_bps": 15.0,
+      "structural_stop_buffer_bps": 2.0
+    },
+    "fit_18bps": {
+      "trade_count": 50,
+      "total_return": -0.0735461089,
+      "geometric_daily_growth_calendar": -0.000157,
+      "profit_factor": 0.538677,
+      "median_trade_return": -0.005,
+      "maximum_drawdown": 0.086595,
+      "top10_removed_return": -0.105350
+    },
+    "development_18bps": {
+      "trade_count": 19,
+      "active_sample_days": 8,
+      "total_return": 0.0131641871,
+      "geometric_daily_growth_calendar": 0.0000358316,
+      "geometric_daily_growth_observed_days": 0.0010904518,
+      "profit_factor": 1.323938,
+      "median_trade_return": 0.003092,
+      "maximum_drawdown": 0.014925,
+      "top10_removed_return": -0.0000783646,
+      "maximum_single_asset_trade_share": 0.421053
+    },
+    "development_24bps_total_return": 0.0024768377,
+    "official_target_met": false,
+    "bybit_replication_complete": false,
+    "validation_opened": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "known_source_limitation": "Binance forceOrder became a maximum one-order-per-second snapshot stream on 2021-04-27; observed liquidation flow is a lower bound and was never reconstructed as complete forced flow.",
+  "source_ids": [
+    "tardis:binance-futures-normalized-liquidations:first-day-monthly-pre2024",
+    "binance-vision:usdm-one-minute-prices"
+  ],
+  "dataset_ids": [
+    "DS-TARDIS-BINANCE-LIQUIDATION-FIRSTDAY-202109-202312-R1",
+    "DS-BINANCE-USDM-4ASSET-1M-LIQUIDATION-REFILL-R1"
+  ],
+  "code_commit": "88bf61dc7889a6d3f7076b7f05ae8a1b250c0d94",
+  "evaluation_contract_sha256": "0a59eb0f994bf4aa15d05a46f1024827d61d0dfd1566e4563fe76a634e694681",
+  "source_manifest_sha256": "1d1018019b1e06f1a14c53a06dc4e2fe1674dc1c2a37b07cdbbca474897c0d06",
+  "artifact_fingerprint": "4b0c7a1f611acabb099c2ac00545c6c8e232ee8994e10718595428f1bba887c4",
+  "dependency_fingerprint": "4395183e97f6586f6538df6b55840edbc270b1d164e3c70ba214d2d4b1c63fff",
+  "artifacts": [
+    {
+      "path": "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30174181300/artifacts/8623791368",
+      "sha256": "4b0c7a1f611acabb099c2ac00545c6c8e232ee8994e10718595428f1bba887c4"
+    },
+    {
+      "path": "artifact://summary.json",
+      "sha256": "324d1d5b44e0766e13f6b8fd5bcd2c920fb2c87ddf880a42e85145baa19882af"
+    },
+    {
+      "path": "artifact://candidate_results.csv",
+      "sha256": "e7ebcca4598877e97bb71fbf80d59e7dbbe596f83055730195719cc3976e7789"
+    }
+  ],
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/58",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30174181300"
+  ],
+  "orders_submitted": false,
+  "paper_or_live_enabled": false,
+  "created_at": "2026-07-26T10:02:00+09:00"
+}
