@@ -1,0 +1,132 @@
+name: ML hazard OCO compact-state schema probe
+
+on:
+  push:
+    branches:
+      - agent/r11-hazard-oco-v2
+    paths:
+      - research/hazard_oco_20260726/WORK_CLAIM_V2.json
+      - research/hazard_oco_20260726/SOURCE_REUSE_V2.json
+      - research/hazard_oco_20260726/SCHEMA_PROBE_CONTRACT.json
+      - .github/workflows/hazard-oco-schema-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deterministic schema dependencies
+        run: pip install --disable-pip-version-check numpy==2.1.3 pandas==2.2.3 pyarrow==18.1.0
+      - name: Validate project contracts
+        run: python scripts/validate_project.py
+      - name: Reuse the exact registered compact-state artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bybit_l2 schema_probe
+          gh run download 30183063220 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216 \
+            --dir /tmp/bybit_l2
+          find /tmp/bybit_l2 -maxdepth 4 -type f -printf '%P\n' | sort > schema_probe/ARTIFACT_FILES.txt
+      - name: Emit schema, row-group statistics and bounded samples only
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import json
+          from pathlib import Path
+          import pandas as pd
+          import pyarrow.parquet as pq
+
+          root = Path('/tmp/bybit_l2')
+          out = Path('schema_probe')
+          files = sorted(root.rglob('*_state.parquet'))
+          if len(files) != 2:
+              raise AssertionError(f'expected exactly two state parquets, found {files}')
+
+          report = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260726-1734-HAZARD-OCO-ML-001',
+              'stage': 'SOURCE_SCHEMA_ONLY_NO_MODEL_NO_PNL',
+              'files': [],
+          }
+          samples = []
+          for path in files:
+              pf = pq.ParquetFile(path)
+              meta = pf.metadata
+              schema = pf.schema_arrow
+              file_record = {
+                  'relative_path': str(path.relative_to(root)),
+                  'bytes': path.stat().st_size,
+                  'rows': meta.num_rows,
+                  'row_groups': meta.num_row_groups,
+                  'created_by': meta.created_by,
+                  'columns': [],
+              }
+              for ci, field in enumerate(schema):
+                  first_col = meta.row_group(0).column(ci)
+                  last_col = meta.row_group(meta.num_row_groups - 1).column(ci)
+                  def stats(column):
+                      s = column.statistics
+                      if s is None:
+                          return None
+                      return {
+                          'null_count': s.null_count,
+                          'min': None if not s.has_min_max else str(s.min),
+                          'max': None if not s.has_min_max else str(s.max),
+                      }
+                  file_record['columns'].append({
+                      'name': field.name,
+                      'arrow_type': str(field.type),
+                      'nullable': field.nullable,
+                      'first_row_group_stats': stats(first_col),
+                      'last_row_group_stats': stats(last_col),
+                  })
+              first = pf.read_row_group(0).slice(0, 5).to_pandas()
+              last_table = pf.read_row_group(meta.num_row_groups - 1)
+              last = last_table.slice(max(0, len(last_table) - 5), 5).to_pandas()
+              label = path.stem
+              first.insert(0, '__sample__', 'HEAD')
+              last.insert(0, '__sample__', 'TAIL')
+              first.insert(0, '__file__', label)
+              last.insert(0, '__file__', label)
+              samples.extend([first, last])
+              report['files'].append(file_record)
+
+          out.joinpath('SCHEMA.json').write_text(
+              json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          pd.concat(samples, ignore_index=True).to_csv(out / 'HEAD_TAIL.csv', index=False)
+          manifests = list(root.rglob('SOURCE_MANIFEST.json'))
+          if manifests:
+              out.joinpath('REUSED_SOURCE_MANIFEST.json').write_bytes(manifests[0].read_bytes())
+          print('SCHEMA_PROBE_JSON=' + json.dumps({
+              'files': [
+                  {
+                      'path': f['relative_path'],
+                      'rows': f['rows'],
+                      'row_groups': f['row_groups'],
+                      'columns': [c['name'] for c in f['columns']],
+                  }
+                  for f in report['files']
+              ]
+          }, sort_keys=True, separators=(',', ':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hazard-oco-schema-probe-20260726
+          path: schema_probe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
