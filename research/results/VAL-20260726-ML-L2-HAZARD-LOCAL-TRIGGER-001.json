@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-ML-L2-HAZARD-LOCAL-TRIGGER-001",
+  "result_id": "RES-20260726-ML-L2-HAZARD-LOCAL-TRIGGER-001",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "dependency_fingerprint": "83fb37a6d586f1ded78d290828d42db3e4770fbe15372fecb8f10ea572aca2f4",
+  "status": "PASS_NEGATIVE_FATAL_SCREEN_REPRODUCIBILITY",
+  "validation_scope": "Exact compressed-source reconstruction; deterministic decision_us-derived 100ms stride; future label-column exclusion; completed-state feature timing; one fixed HGBT and chronological train/calibration/account partitions; local monitoring followed by first exact raw-trade crossing; zero resting and at most one exchange entry order; same-timestamp two-sided rejection; 100/300ms trigger-to-fill paths; adverse executable target/stop fills; one global slot; identical 12/18/24bp replay; winner-removal rerouting; conditional 2023 access and 2024-2026 seals.",
+  "changed_surface": "Before any valid single-order scientific outcome, the hard-invalid two-live-entry-order representation was replaced with local monitoring plus one marketable order after the first exact trade crossing. A second pre-outcome correction derives decision stride from decision_us because the runtime state schema does not store bin. Model, features, label, threshold, entry offset, payoff cells, costs, risk and dates remained frozen.",
+  "checks": {
+    "source_transport_sha256": "PASS",
+    "corrected_runner_sha256": "46b3ba0f1875ba66c827d3e48c044dabf3108890446fba9e3f0542e4ada3bb0d",
+    "python_compile": "PASS",
+    "executor_self_test": "PASS",
+    "adversarial_tests": "PASS",
+    "project_harness": "PASS",
+    "future_label_columns_prohibited": "PASS",
+    "maximum_exchange_entry_orders": 1,
+    "resting_exchange_entry_orders": 0,
+    "one_global_slot": "PASS",
+    "same_timestamp_two_sided_cross_rejected": "PASS",
+    "cost_paths_monotone": "PASS",
+    "development_unopened": "PASS",
+    "2024_2025_2026_sealed": "PASS",
+    "orders_submitted": false
+  },
+  "numeric_rechecks": {
+    "training_rows": 8550,
+    "positive_training_labels": 339,
+    "calibration_rows": 3430,
+    "calibration_auc": 0.7507988290218889,
+    "volatility_baseline_auc": 0.8117585718659115,
+    "auc_lift": -0.06095974284402261,
+    "fit_gate_pass_count": 0,
+    "T40_S20_100ms_18bp_return": -0.007508625716733497,
+    "T60_S25_100ms_18bp_return": -0.007230508172019645,
+    "T80_S30_100ms_18bp_return": -0.004857520550159977,
+    "all_18bp_profit_factors_zero": true,
+    "all_24bp_paths_negative": true
+  },
+  "workflow": {
+    "run_id": 30197559374,
+    "artifact_id": 8630589328,
+    "artifact_digest": "sha256:8b260029bb824e8fd879dafbeaf7b28c99d97bf3ce31fe9b2768e1ec5ebc8ff3",
+    "workflow_conclusion": "success"
+  },
+  "artifact_hashes": {
+    "RESULT.json": "065dc1ae23324b6f6cf9bd30e2c545a0a7d5238554ab645dba43878987a179cf",
+    "FIT_PATHS.json": "37b7e26ed0e5cf0cefefaffb14e8283a2bda4585f2abfaa39935de5c0096a8d6",
+    "evaluation_contract": "48deb555f8d6d46244c73955a25206186704ea74cecb571967f61f4795712c38"
+  },
+  "authority": "This attestation validates the hard-valid negative single-day fatal-screen conclusion. It does not authorize ranking, later-period access, deployment or live orders.",
+  "created_at": "2026-07-26T19:09:51+09:00"
+}
