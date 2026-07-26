@@ -1,0 +1,615 @@
+name: Explainable SMT reclaim ML meta-label
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-reclaim-ml-meta-001
+    paths:
+      - "research/smt_reclaim_ml_meta_20260726/**"
+      - ".github/workflows/smt-reclaim-ml-meta.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/smt_reclaim_ml_meta_20260726/**"
+      - ".github/workflows/smt-reclaim-ml-meta.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: smt-reclaim-ml-meta-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+  TZ: UTC
+
+jobs:
+  upstream-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      mode: ${{ steps.decision.outputs.mode }}
+      upstream_status: ${{ steps.decision.outputs.upstream_status }}
+      main_survivors: ${{ steps.decision.outputs.main_survivors }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Wait for and recover decision-ready upstream rule result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/upstream
+          found=0
+          for attempt in $(seq 1 45); do
+            rm -f /tmp/upstream/result.json
+            if git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001 >/dev/null 2>&1; then
+              if git show FETCH_HEAD:research_results/r11_smt_overreaction_reclaim_001/result.json \
+                > /tmp/upstream/result.json 2>/dev/null; then
+                found=1
+                break
+              fi
+            fi
+            run_id=$(gh run list --repo umtong/SMC_ICT_2_LIVE \
+              --branch agent/r11-smt-overreaction-reclaim-001 --limit 30 \
+              --json databaseId,name,status,conclusion \
+              --jq '[.[] | select((.name == "Persist SMT overreaction MSS reclaim result" or .name == "SMT overreaction MSS reclaim fatal screen") and .conclusion == "success")][0].databaseId' || true)
+            if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
+              rm -rf /tmp/upstream/download
+              mkdir -p /tmp/upstream/download
+              if gh run download "$run_id" --repo umtong/SMC_ICT_2_LIVE --dir /tmp/upstream/download; then
+                candidate=$(find /tmp/upstream/download -type f \( -name result.json -o -name RESULT.json \) | head -n 1 || true)
+                if [ -n "$candidate" ]; then
+                  cp "$candidate" /tmp/upstream/result.json
+                  found=1
+                  break
+                fi
+              fi
+            fi
+            echo "upstream result not yet available: attempt $attempt" >&2
+            sleep 60
+          done
+          test "$found" = 1
+          python -m json.tool /tmp/upstream/result.json >/dev/null
+
+      - id: decision
+        name: Enforce conditional branch authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          r=json.load(open('/tmp/upstream/result.json'))
+          assert r['hard_validity']=='PASS'
+          assert r['official_2024_opened'] is False
+          assert r['orders_submitted'] is False
+          count=int(r['main_mss_survivor_count'])
+          mode='exact_bbo' if count>0 else 'ml'
+          print(f'mode={mode}')
+          print(f"upstream_status={r['status']}")
+          print(f'main_survivors={count}')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upstream-smt-rule-result-${{ github.sha }}
+          path: /tmp/upstream/result.json
+          if-no-files-found: error
+          retention-days: 30
+
+  route-exact-bbo:
+    needs: upstream-gate
+    if: needs.upstream-gate.outputs.mode == 'exact_bbo'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Record that ML is prohibited by the surviving rule
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/comment.md <<'EOF'
+          ## Conditional ML correctly skipped
+
+          The frozen hand-specified SMT overreaction MSS-reclaim study produced at least one main-path survivor. This ML branch therefore has no authority to fit or inspect later matrices.
+
+          The exact next action is complete pre-2024 reconstruction of the unchanged survivor with Bybit BBO/depth, actual funding, capacity, partial fills and continuously marked NAV. No ML or adjacent threshold tuning was opened.
+          EOF
+          pr=$(gh pr list --repo umtong/SMC_ICT_2_LIVE --head agent/r11-smt-reclaim-ml-meta-001 --state open --json number --jq '.[0].number')
+          if [ -n "$pr" ] && [ "$pr" != "null" ]; then
+            gh pr comment "$pr" --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/comment.md
+          fi
+
+  base-matrix:
+    needs: upstream-gate
+    if: needs.upstream-gate.outputs.mode == 'ml'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        date:
+          - "2022-01-09"
+          - "2022-02-13"
+          - "2022-03-13"
+          - "2022-04-10"
+          - "2022-05-08"
+          - "2022-06-12"
+          - "2022-07-10"
+          - "2022-08-14"
+          - "2022-09-11"
+          - "2022-10-09"
+          - "2022-11-13"
+          - "2022-12-11"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed extraction environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Reconstruct frozen event and rule engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 \
+            > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64,pathlib,zlib
+          root=pathlib.Path('runtime')
+          source=zlib.decompress(base64.b64decode((root/'base_probe.py.zlib.b64').read_text().strip()))
+          (root/'base_probe.py').write_bytes(source)
+          PY
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research/smt_overreaction_reclaim_20260726/run.py > runtime/rule_engine.py
+          cp research/smt_reclaim_ml_meta_20260726/extract.py runtime/extract.py
+          cp research/smt_reclaim_ml_meta_20260726/extract_entry.py runtime/extract_entry.py
+          python -m py_compile runtime/base_probe.py runtime/rule_engine.py runtime/extract.py runtime/extract_entry.py
+          PYTHONPATH=runtime python runtime/extract_entry.py --self-test
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/smt-reclaim-ml-cache
+          key: smt-reclaim-ml-${{ runner.os }}-${{ matrix.date }}
+
+      - name: Extract confirmation-time matrix and frozen outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "matrix/${{ matrix.date }}"
+          PYTHONPATH=runtime python runtime/extract_entry.py \
+            --date "${{ matrix.date }}" \
+            --cache /tmp/smt-reclaim-ml-cache \
+            --output "matrix/${{ matrix.date }}" \
+            2>&1 | tee "matrix/${{ matrix.date }}/run.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-ml-base-${{ matrix.date }}-${{ github.sha }}
+          path: matrix/${{ matrix.date }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  calibrate:
+    needs: [upstream-gate, base-matrix]
+    if: needs.upstream-gate.outputs.mode == 'ml'
+    runs-on: ubuntu-24.04
+    outputs:
+      survivor: ${{ steps.gate.outputs.survivor }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed model environment
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smt-ml-base-*-${{ github.sha }}
+          path: matrices
+          merge-multiple: true
+
+      - name: Fit on 2022 fit and select only in disjoint 2022 calibration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime calibration
+          cp research/smt_reclaim_ml_meta_20260726/train.py runtime/train.py
+          cp research/smt_reclaim_ml_meta_20260726/train_entry.py runtime/train_entry.py
+          python -m py_compile runtime/train.py runtime/train_entry.py
+          PYTHONPATH=runtime python runtime/train_entry.py self-test
+          PYTHONPATH=runtime python runtime/train_entry.py calibrate \
+            --input matrices \
+            --output calibration \
+            2>&1 | tee calibration/run.log
+
+      - id: gate
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          r=json.load(open('calibration/CALIBRATION_RESULT.json'))
+          print('survivor=' + ('true' if r['pair_survivor_count']>0 else 'false'))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-ml-calibration-${{ github.sha }}
+          path: calibration
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  development-matrix:
+    needs: [upstream-gate, calibrate]
+    if: needs.upstream-gate.outputs.mode == 'ml' && needs.calibrate.outputs.survivor == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        date:
+          - "2023-01-08"
+          - "2023-02-12"
+          - "2023-03-12"
+          - "2023-04-09"
+          - "2023-05-14"
+          - "2023-06-11"
+          - "2023-07-09"
+          - "2023-08-13"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+      - name: Reconstruct frozen engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64,pathlib,zlib
+          root=pathlib.Path('runtime')
+          (root/'base_probe.py').write_bytes(zlib.decompress(base64.b64decode((root/'base_probe.py.zlib.b64').read_text().strip())))
+          PY
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research/smt_overreaction_reclaim_20260726/run.py > runtime/rule_engine.py
+          cp research/smt_reclaim_ml_meta_20260726/extract.py runtime/extract.py
+          cp research/smt_reclaim_ml_meta_20260726/extract_entry.py runtime/extract_entry.py
+          python -m py_compile runtime/*.py
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/smt-reclaim-ml-cache
+          key: smt-reclaim-ml-${{ runner.os }}-${{ matrix.date }}
+      - name: Extract untouched development date
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "matrix/${{ matrix.date }}"
+          PYTHONPATH=runtime python runtime/extract_entry.py \
+            --date "${{ matrix.date }}" --cache /tmp/smt-reclaim-ml-cache \
+            --output "matrix/${{ matrix.date }}" 2>&1 | tee "matrix/${{ matrix.date }}/run.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-ml-development-${{ matrix.date }}-${{ github.sha }}
+          path: matrix/${{ matrix.date }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  evaluate-development:
+    needs: [calibrate, development-matrix]
+    if: needs.calibrate.outputs.survivor == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      survivor: ${{ steps.gate.outputs.survivor }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smt-ml-development-*-${{ github.sha }}
+          path: matrices
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: smt-ml-calibration-${{ github.sha }}
+          path: calibration
+      - name: Evaluate frozen model and thresholds in sequential development
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime development
+          cp research/smt_reclaim_ml_meta_20260726/train.py runtime/train.py
+          cp research/smt_reclaim_ml_meta_20260726/train_entry.py runtime/train_entry.py
+          PYTHONPATH=runtime python runtime/train_entry.py evaluate \
+            --input matrices \
+            --model-bundle calibration/MODEL_BUNDLE.joblib \
+            --freeze calibration/FREEZE.json \
+            --stage DEVELOPMENT \
+            --output development \
+            2>&1 | tee development/run.log
+      - id: gate
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          r=json.load(open('development/DEVELOPMENT_RESULT.json'))
+          print('survivor=' + ('true' if r['stage_gate_passed'] else 'false'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-ml-development-result-${{ github.sha }}
+          path: development
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  selection-matrix:
+    needs: [evaluate-development]
+    if: needs.evaluate-development.outputs.survivor == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        date:
+          - "2023-09-24"
+          - "2023-10-22"
+          - "2023-11-26"
+          - "2023-12-31"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+      - name: Reconstruct frozen engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64,pathlib,zlib
+          root=pathlib.Path('runtime')
+          (root/'base_probe.py').write_bytes(zlib.decompress(base64.b64decode((root/'base_probe.py.zlib.b64').read_text().strip())))
+          PY
+          git fetch --depth=1 origin agent/r11-smt-overreaction-reclaim-001
+          git show FETCH_HEAD:research/smt_overreaction_reclaim_20260726/run.py > runtime/rule_engine.py
+          cp research/smt_reclaim_ml_meta_20260726/extract.py runtime/extract.py
+          cp research/smt_reclaim_ml_meta_20260726/extract_entry.py runtime/extract_entry.py
+          python -m py_compile runtime/*.py
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/smt-reclaim-ml-cache
+          key: smt-reclaim-ml-${{ runner.os }}-${{ matrix.date }}
+      - name: Extract fixed post-selection evidence date
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "matrix/${{ matrix.date }}"
+          PYTHONPATH=runtime python runtime/extract_entry.py \
+            --date "${{ matrix.date }}" --cache /tmp/smt-reclaim-ml-cache \
+            --output "matrix/${{ matrix.date }}" 2>&1 | tee "matrix/${{ matrix.date }}/run.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-ml-selection-${{ matrix.date }}-${{ github.sha }}
+          path: matrix/${{ matrix.date }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  evaluate-selection:
+    needs: [calibrate, evaluate-development, selection-matrix]
+    if: needs.evaluate-development.outputs.survivor == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      survivor: ${{ steps.gate.outputs.survivor }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smt-ml-selection-*-${{ github.sha }}
+          path: matrices
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: smt-ml-calibration-${{ github.sha }}
+          path: calibration
+      - name: Evaluate unchanged model on fixed post-selection evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime selection
+          cp research/smt_reclaim_ml_meta_20260726/train.py runtime/train.py
+          cp research/smt_reclaim_ml_meta_20260726/train_entry.py runtime/train_entry.py
+          PYTHONPATH=runtime python runtime/train_entry.py evaluate \
+            --input matrices \
+            --model-bundle calibration/MODEL_BUNDLE.joblib \
+            --freeze calibration/FREEZE.json \
+            --stage SELECTION_EVIDENCE \
+            --output selection \
+            2>&1 | tee selection/run.log
+      - id: gate
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          r=json.load(open('selection/SELECTION_EVIDENCE_RESULT.json'))
+          print('survivor=' + ('true' if r['stage_gate_passed'] else 'false'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-ml-selection-result-${{ github.sha }}
+          path: selection
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  finalize:
+    needs: [upstream-gate, calibrate, evaluate-development, evaluate-selection]
+    if: always() && needs.upstream-gate.outputs.mode == 'ml' && needs.calibrate.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+      - uses: actions/download-artifact@v4
+        with:
+          name: smt-ml-calibration-${{ github.sha }}
+          path: calibration
+      - uses: actions/download-artifact@v4
+        if: needs.calibrate.outputs.survivor == 'true'
+        with:
+          name: smt-ml-development-result-${{ github.sha }}
+          path: development
+      - uses: actions/download-artifact@v4
+        if: needs.evaluate-development.outputs.survivor == 'true'
+        with:
+          name: smt-ml-selection-result-${{ github.sha }}
+          path: selection
+      - name: Build final hard-valid result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime final
+          cp research/smt_reclaim_ml_meta_20260726/train.py runtime/train.py
+          cp research/smt_reclaim_ml_meta_20260726/train_entry.py runtime/train_entry.py
+          args=(finalize --calibration calibration/CALIBRATION_RESULT.json --output final)
+          if [ -f development/DEVELOPMENT_RESULT.json ]; then
+            args+=(--development development/DEVELOPMENT_RESULT.json)
+          fi
+          if [ -f selection/SELECTION_EVIDENCE_RESULT.json ]; then
+            args+=(--selection selection/SELECTION_EVIDENCE_RESULT.json)
+          fi
+          PYTHONPATH=runtime python runtime/train_entry.py "${args[@]}" 2>&1 | tee final/run.log
+          python - <<'PY'
+          import json
+          r=json.load(open('final/result.json'))
+          assert r['hard_validity']=='PASS'
+          assert r['official_2024_opened'] is False
+          assert r['official_2025_opened'] is False
+          assert r['official_2026_opened'] is False
+          assert r['orders_submitted'] is False
+          PY
+
+      - name: Commit compact result to the claim branch
+        env:
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=research_results/r11_smt_reclaim_ml_meta_001
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp final/result.json "$target/result.json"
+          cp final/SUMMARY.md "$target/SUMMARY.md"
+          cp calibration/CALIBRATION_RESULT.json "$target/CALIBRATION_RESULT.json"
+          cp calibration/FREEZE.json "$target/FREEZE.json"
+          if [ -f development/DEVELOPMENT_RESULT.json ]; then cp development/DEVELOPMENT_RESULT.json "$target/DEVELOPMENT_RESULT.json"; fi
+          if [ -f selection/SELECTION_EVIDENCE_RESULT.json ]; then cp selection/SELECTION_EVIDENCE_RESULT.json "$target/SELECTION_EVIDENCE_RESULT.json"; fi
+          sha256sum "$target"/* > "$target/SHA256SUMS.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "Record explainable SMT reclaim ML result [skip ci]"
+          git push origin "HEAD:${TARGET_BRANCH}"
+
+      - name: Report decision and ensure Work Claim issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.load(open('final/result.json'))
+          c=r['calibration']
+          d=r.get('development')
+          s=r.get('selection_evidence')
+          lines=[
+            '## Decision-ready explainable SMT reclaim ML result','',
+            f"- result: `{r['result_id']}`",
+            f"- status: `{r['status']}`",
+            f"- hard validity: `{r['hard_validity']}`",
+            f"- calibration pair survivors: **{c['pair_survivor_count']}**",
+            f"- development opened: **{d is not None}**",
+            f"- development survived: **{bool(d and d['stage_gate_passed'])}**",
+            f"- fixed post-selection evidence opened: **{s is not None}**",
+            f"- pre-2024 survivor: **{r['pre2024_survivor']}**",'',
+            'Trader interpretation: BTC displacement and SOL/XRP SMT overrun define the setup; opposite-flow MSS defines confirmation; ML only separates genuine exhaustion from continuation before the unchanged equilibrium-reclaim trade.','',
+            r['next_action'], '',
+            'No official 2024-2026 source or order path was opened.'
+          ]
+          Path('/tmp/comment.md').write_text('\n'.join(lines)+'\n')
+          PY
+          title='Work Claim: ML meta-label BTC-to-alt SMT reclaim states'
+          issue=$(gh issue list --repo umtong/SMC_ICT_2_LIVE --state all --search "$title in:title" --json number,title --jq 'map(select(.title == $title)) | .[0].number' --arg title "$title")
+          if [ -z "$issue" ] || [ "$issue" = "null" ]; then
+            issue=$(gh issue create --repo umtong/SMC_ICT_2_LIVE --title "$title" --body 'Conditional explainable ML continuation of CLM-20260726-1530-SMT-OVERREACTION-RECLAIM-001. Direction, MSS, target, invalidation, cost, risk and leverage remain frozen; only genuine exhaustion versus continuation is meta-labeled at confirmation.' --json number --jq .number)
+          fi
+          gh issue comment "$issue" --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/comment.md
+          pr=$(gh pr list --repo umtong/SMC_ICT_2_LIVE --head agent/r11-smt-reclaim-ml-meta-001 --state open --json number --jq '.[0].number')
+          if [ -n "$pr" ] && [ "$pr" != "null" ]; then gh pr comment "$pr" --repo umtong/SMC_ICT_2_LIVE --body-file /tmp/comment.md; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-reclaim-ml-final-${{ github.sha }}
+          path: final
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
