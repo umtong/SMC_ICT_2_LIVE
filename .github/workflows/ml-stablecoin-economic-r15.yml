@@ -54,6 +54,7 @@ jobs:
           PYTHONPATH="$root" python "$root/run.py" self-test
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/BUNDLE_MANIFEST.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py
       - id: source
         name: Consume first decision-ready parent source result
@@ -67,7 +68,7 @@ jobs:
             mapfile -t runs < <(gh run list --repo "$GITHUB_REPOSITORY" \
               --branch agent/r13-ml-stablecoin-issuance-001 --limit 100 \
               --json databaseId,name,status,conclusion,createdAt \
-              --jq '.[] | select((.name == "ML stablecoin issuance source gate" or .name == "Stablecoin Blockscout source gate") and .status == "completed" and .conclusion == "success") | .databaseId')
+              --jq '.[] | select((.name == "ML stablecoin issuance source gate" or .name == "Stablecoin Blockscout source gate" or .name == "Stablecoin Blockscout source gate macOS") and .status == "completed" and .conclusion == "success") | .databaseId')
             for run_id in "${runs[@]:-}"; do
               [ -n "$run_id" ] || continue
               rm -rf /tmp/source-download/*
@@ -162,7 +163,7 @@ jobs:
           root=research/ml_stablecoin_issuance_economic_20260726
           out=research_runs/ml_stablecoin_issuance_economic_20260726
           mkdir -p "$out/inputs"
-          cp "$root"/{WORK_CLAIM.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,run.py.gz.b64.part02,run.py.gz.b64.part03,test_run.py.gz.b64.part00} "$out/inputs/"
+          cp "$root"/{WORK_CLAIM.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,run.py.gz.b64.part02,run.py.gz.b64.part03,test_run.py.gz.b64.part00,EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json} "$out/inputs/"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         if: always()
