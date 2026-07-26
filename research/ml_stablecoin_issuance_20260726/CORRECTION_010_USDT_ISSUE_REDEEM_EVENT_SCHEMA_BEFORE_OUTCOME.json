@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-26T22:38:00+09:00",
+  "trigger": "Pre-outcome source audit established that canonical Ethereum USDT issue(uint256) and redeem(uint256) emit Issue(uint256) and Redeem(uint256), not zero-address ERC20 Transfer logs. The prior decoder could falsely report zero USDT supply events and fail the two-token source gate.",
+  "outcome_state_before_correction": {
+    "valid_usdt_event_set_observed": false,
+    "btc_or_eth_market_rows_opened": false,
+    "model_fitted": false,
+    "labels_or_actions_computed": false,
+    "trades_or_pnl_computed": false,
+    "official_2024h1_opened": false,
+    "orders_submitted": false
+  },
+  "change": {
+    "USDT_MINT": {
+      "event": "Issue(uint256)",
+      "topic0": "0xcb8241adb0c3fdb35b70c24ce35c5eb0c17af7431c99f827d44a445ca624176a",
+      "amount_location": "data"
+    },
+    "USDT_BURN": {
+      "event": "Redeem(uint256)",
+      "topic0": "0x702d5967f45f6513a38ffc42d6ba9bf230bd40e8f53b16363c7eb4fd2deb9a44",
+      "amount_location": "data"
+    },
+    "USDC": "Retain canonical zero-address ERC20 Transfer mint/burn semantics from Circle FiatToken implementation.",
+    "identity": "contract plus transaction hash plus log index",
+    "availability": "unchanged event block plus 12 blocks primary and plus 64 blocks stress"
+  },
+  "unchanged": [
+    "all 36 pre-2024 months",
+    "source-density thresholds",
+    "one HGBT and one calibration map",
+    "features labels target stop and decision equation",
+    "12 18 24bp costs",
+    "one global slot",
+    "risk and notional search domain",
+    "sequential 2024H1 contract",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ],
+  "authority": "Source-identity repair only. It is neither positive nor negative alpha evidence and cannot change any economic threshold after outcomes."
+}
