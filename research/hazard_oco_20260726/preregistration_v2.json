@@ -1,0 +1,152 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "engine_version": "BYBIT-L2-HAZARD-OCO-MINIMAL-V2",
+  "frozen_before_strategy_outcomes": true,
+  "frozen_at": "2026-07-26T17:43:00+09:00",
+  "scientific_question": "Does one nonlinear model of completed top-five Bybit L2 and aggressive-flow state identify an imminent balance-to-imbalance transition strongly enough for a direction-neutral two-sided conditional-entry payoff to survive realistic BBO execution and 12/18/24bp costs?",
+  "smc_ict_translation": [
+    "The model does not predict bullish or bearish direction; it predicts whether balance is likely to deliver into displacement.",
+    "A high hazard score arms equal buy-stop and sell-stop entries outside the current executable spread, analogous to waiting on both sides of internal liquidity for actual delivery to reveal direction.",
+    "The first triggered side becomes the position; the opposite order remains live until its modeled cancel-effective time, so a liquidity sweep of both sides produces an explicit double-trigger loss.",
+    "Target and stop are fixed structural displacement distances. There is no second pattern and no elapsed-time liquidation."
+  ],
+  "data": {
+    "market": "Bybit BTCUSDT USDT-linear perpetual",
+    "availability_clock": "Tardis local_timestamp used in the source-state construction and raw trade trigger stream",
+    "completed_state_grid_ms": 100,
+    "fit_source": "2022-07-01 completed 100ms state plus exact SHA-identified raw trades",
+    "conditional_development_source": "2023-07-01 completed 100ms state plus exact SHA-identified raw trades",
+    "source_identity": "research/hazard_oco_20260726/SOURCE_REUSE_V2.json",
+    "prohibited_years": [2024, 2025, 2026],
+    "third_party_boundary": "A positive result is discovery evidence only until independently reconstructed from official Bybit data or another independent source."
+  },
+  "chronology": {
+    "fit_train": "2022-07-01T00:01:00Z through 2022-07-01T11:59:29.900Z",
+    "fit_score_calibration": "2022-07-01T12:00:00Z through 2022-07-01T17:59:29.900Z",
+    "fit_account_test": "2022-07-01T18:00:00Z through 2022-07-01T23:59:29.900Z",
+    "development": "untouched 2023-07-01, opened by the runner only if one frozen fit-account survivor exists",
+    "decision_stride_seconds": 1,
+    "decision_rule": "A decision at timestamp t uses only completed state and raw trades with local_timestamp strictly before t. Labels and order paths cannot cross a source segment or UTC sample-day boundary."
+  },
+  "features": [
+    {"name": "spread_bps", "source": "spread_bps"},
+    {"name": "abs_microprice_skew_bps", "source": "abs(microprice_skew_bps)"},
+    {"name": "abs_depth_imbalance_5", "source": "abs(depth_imbalance_5)"},
+    {"name": "total_cancel_ratio", "source": "bid_cancel_ratio + ask_cancel_ratio"},
+    {"name": "total_refill_ratio", "source": "bid_refill_ratio + ask_refill_ratio"},
+    {"name": "abs_ret_1s_bps", "source": "abs(ret_1s_bps)"},
+    {"name": "abs_ret_3s_bps", "source": "abs(ret_3s_bps)"},
+    {"name": "volatility_30s_bps", "source": "volatility_30s_bps"},
+    {"name": "log_trade_notional_1s", "source": "log1p(sum(price*amount) over raw trades in [t-1s,t))"},
+    {"name": "abs_signed_notional_ratio_1s", "source": "abs((buy_notional-sell_notional)/max(total_notional,epsilon)) over [t-1s,t)"},
+    {"name": "log_trade_notional_3s", "source": "log1p(sum(price*amount) over raw trades in [t-3s,t))"},
+    {"name": "abs_signed_notional_ratio_3s", "source": "abs((buy_notional-sell_notional)/max(total_notional,epsilon)) over [t-3s,t)"}
+  ],
+  "feature_rules": {
+    "fresh_bbo_age_us_at_most": 200000,
+    "state_valid_required": true,
+    "same_segment_history_required": true,
+    "minimum_state_history_seconds": 30,
+    "future_columns_prohibited": ["label_5s_bps", "label_15s_bps", "label_30s_bps"],
+    "normalization": "No future or full-day normalization. HGBT receives the raw fixed transforms; missing decision features make the row unavailable."
+  },
+  "hazard_label": {
+    "fit_only": true,
+    "reference": "fresh executable midpoint at decision t",
+    "activation_delay_ms": 100,
+    "horizon_seconds": 30,
+    "absolute_first_passage_bp": 40,
+    "positive": "The maximum absolute log midpoint move in [t+100ms,t+30s] reaches at least 40bp.",
+    "unavailable": "Any stale/invalid state, source-segment change or sample-day boundary before the full horizon makes the label unavailable.",
+    "overlap": "Overlapping fit labels are allowed for model estimation but are never counted as independent account trades."
+  },
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "single_model_only": true,
+    "parameters": {
+      "loss": "log_loss",
+      "learning_rate": 0.05,
+      "max_iter": 120,
+      "max_depth": 2,
+      "min_samples_leaf": 200,
+      "l2_regularization": 2.0,
+      "early_stopping": false,
+      "random_state": 20260726
+    },
+    "sample_weight": "Inverse class-frequency weights fitted on fit_train only.",
+    "score_threshold": "The 99th percentile of model scores on fit_score_calibration, frozen before fit-account paths.",
+    "diagnostic_baseline": "One-variable volatility_30s_bps score; the HGBT must improve calibration AUC by at least 0.02."
+  },
+  "entry_pair": {
+    "semantics": "Two independent equal-quantity contract-price stop-market-style orders; no exchange-atomic OCO is assumed.",
+    "upper_trigger": "decision ask multiplied by 1.0004",
+    "lower_trigger": "decision bid multiplied by 0.9996",
+    "acknowledgment_latency_ms": 100,
+    "first_trigger_eligible_interval": "raw trades with local_timestamp at least decision time plus 100ms",
+    "trigger": "first 100ms bin whose observed raw trade maximum reaches the upper trigger or minimum reaches the lower trigger",
+    "trigger_to_fill_latency_ms": 100,
+    "fill": "first fresh completed-state ask for a buy or bid for a sell at or after trigger plus latency",
+    "pending_ttl_seconds": 5,
+    "cancel_latency_ms": {"base": 100, "mandatory_stress": 300},
+    "double_trigger": "The opposite order remains active until first-fill time plus cancel latency. A trigger strictly before cancel effectiveness creates an equal opposite market fill and immediate flattening. Same-bin two-sided triggers are a double-trigger round trip.",
+    "global_slot": "One pending pair or one open position across the account."
+  },
+  "payoff_cells": [
+    {"cell_id": "T40_S20", "target_bp": 40, "stop_bp": 20},
+    {"cell_id": "T60_S25", "target_bp": 60, "stop_bp": 25},
+    {"cell_id": "T80_S30", "target_bp": 80, "stop_bp": 30}
+  ],
+  "exit": {
+    "target_stop_reference": "actual first entry fill",
+    "trigger_stream": "raw trades after the reduce-only orders become active 100ms after first fill",
+    "same_100ms_target_stop": "stop first",
+    "trigger_to_fill_latency_ms": 100,
+    "fill": "first fresh adverse executable BBO at or after trigger plus latency; a favorable rebound cannot improve the fill",
+    "elapsed_time_exit": false,
+    "source_gap_or_day_boundary": "An unresolved accepted position receives its full planned structural stop loss plus the registered cost; it is never deleted."
+  },
+  "account": {
+    "initial_nav_usdt": 10000,
+    "planned_loss_fraction": 0.01,
+    "notional_cap_multiple": 3.0,
+    "participation_cap": "0.1% of raw traded quote notional observed in [decision-3s,decision)",
+    "minimum_notional_usdt": 5,
+    "cost_profiles_round_trip_bp_beyond_observed_bbo": [12, 18, 24],
+    "sizing": "min(3x NAV, participation capacity, NAV*1%/(stop_fraction+cost_fraction)); no risk or leverage search",
+    "same_event_paths": "Signals, triggers, fills and exits are identical across cost paths; only sizing and explicit cost cashflow differ.",
+    "counterfactual_winner_removal": "For any preliminary survivor, remove the largest positive 10% of 12bp event keys before global-slot arbitration and replay from initial NAV."
+  },
+  "fit_gate_all_required": {
+    "train_positive_labels": ">=100",
+    "calibration_auc": ">=0.60",
+    "auc_lift_over_volatility_baseline": ">=0.02",
+    "one_payoff_trade_count_at_18bp": ">=30",
+    "one_payoff_total_return_at_18bp": ">0",
+    "one_payoff_total_return_at_24bp": ">0",
+    "median_trade_at_18bp": ">0",
+    "profit_factor_at_18bp": ">=1.10",
+    "top10pct_winner_removed_return_at_18bp": ">0",
+    "top5_positive_pnl_share_at_18bp": "<=0.40",
+    "double_trigger_fraction_100ms": "<=0.15",
+    "total_return_18bp_under_300ms_cancel": ">0",
+    "winner_removed_observed_sample_day_growth_18bp": ">=0.01"
+  },
+  "freeze_and_development": {
+    "freeze": "If multiple payoff cells pass every fit gate, freeze the one with highest 300ms-cancel 18bp winner-removed return; ties use lower drawdown then cell_id.",
+    "development_open_rule": "The 2023 state and raw trade files may be parsed only after the frozen fit survivor and fit result hashes are written.",
+    "development_gate": "At least 50 trades; positive total return at 18/24bp; positive 18bp median, PF>=1.10 and winner-removed return; top-five share<=0.40; 300ms cancel 18bp positive; double-trigger fraction<=0.15; winner-removed 18bp observed-sample-day growth>=1%.",
+    "next_stage": "A development survivor requires a new unchanged-rule multi-day pre-2024 claim and independent source reconstruction before any 2024 data, ranking or practical-use decision."
+  },
+  "hard_invalidations": [
+    "Any future label column from the reused state Parquet is used.",
+    "Any feature includes raw trade or state information at or after the decision timestamp.",
+    "The opposite entry is canceled before the registered cancel-effective time.",
+    "Same-bin entry or target/stop ambiguity is resolved favorably.",
+    "A trigger without a timely fresh fill quote is charged as an accepted position rather than a rejected no-fill order.",
+    "An unresolved accepted position is deleted instead of receiving the conservative structural-stop loss.",
+    "The 2023 source is parsed without a frozen fit survivor.",
+    "Any 2024-2026 source is acquired or opened."
+  ],
+  "orders_permitted": false
+}
