@@ -1,0 +1,37 @@
+name: YT Trinity source snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-source-snapshot.yml
+      - control/yt-trinity-source-snapshot-trigger.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-source-snapshot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record source identity
+        run: |
+          mkdir -p artifact
+          printf '%s\n' "${GITHUB_SHA}" > artifact/HEAD_SHA.txt
+          git status --short > artifact/GIT_STATUS.txt
+          cp -R research/yt_trinity_ml artifact/yt_trinity_ml
+          cp scripts/market_data/load_canonical_bybit.py artifact/load_canonical_bybit.py
+          find artifact -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-source-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 3
