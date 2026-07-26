@@ -1,0 +1,162 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "created_at": "2026-07-26T02:02:00Z",
+  "stage": "PRE_2026_FATAL_IDENTITY_FLOW_SCREEN",
+  "purpose": "Test whether point-in-time wallet identity adds enough forward price information to justify the much more expensive Bybit execution replay. This is a causal same-venue markout screen, not a strategy backtest, not an official rank candidate and not permission to trade.",
+  "economic_mechanism": "Historically adverse-selected taker wallets and historically anti-skilled taker wallets are treated as opposite information-bearing cohorts. A current consensus burst from the skilled cohort, net of the adverse cohort's direction, may reveal latent informed inventory demand before the remaining market move is incorporated. Wallet identity must add information beyond anonymous aggregate order flow.",
+  "null_risk": "Past wallet performance may not persist. Therefore naive top-PnL copying is prohibited; the screen uses prior-only shrinkage, activity requirements, two development partitions, untouched validation, winner-removal concentration tests and an activity-matched random-cohort placebo.",
+  "source_contract": {
+    "selection_file": "source_selection_v2.json",
+    "repository_revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "expected_file_count": 44,
+    "expected_total_bytes": 2045945803,
+    "expected_canonical_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "allowed_pre_2026_dates": [
+      "2025-07-27", "2025-07-28", "2025-07-29", "2025-07-30",
+      "2025-07-31", "2025-08-01", "2025-08-02", "2025-08-03",
+      "2025-08-04", "2025-08-05", "2025-08-06"
+    ],
+    "allowed_hours_utc": [12, 13, 14, 15],
+    "download_rule": "Resolve only the frozen revision and exact selected paths. Before any parquet row is read, verify each downloaded byte size and LFS SHA-256 and verify the canonical aggregate manifest hash.",
+    "prohibited": [
+      "substitute a missing file",
+      "read any other Hyperliquid file",
+      "read any 2026 row before both pre-2026 gates pass",
+      "read any official 2024 or 2025 Bybit evaluation outcome",
+      "submit any order"
+    ]
+  },
+  "universe": ["BTC", "ETH", "SOL", "XRP"],
+  "common_schema_only": true,
+  "event_parser": {
+    "row_schema": ["block_time", "events"],
+    "event_shape": "Each event is expected to be [wallet, fill_object].",
+    "required_fill_fields": ["coin", "px", "sz", "side", "time", "tid", "oid", "crossed"],
+    "wallet": "Lowercase hexadecimal string from the event's first element.",
+    "side_map": {"B": 1, "A": -1},
+    "keep_only": [
+      "coin in BTC, ETH, SOL, XRP",
+      "crossed is true",
+      "finite positive price and size",
+      "recognized side",
+      "valid integer millisecond timestamp"
+    ],
+    "exclude": [
+      "liquidation fills when liquidation information is present",
+      "zero or negative notional",
+      "unrecognized event shape or side"
+    ],
+    "deduplicate_key": ["wallet", "coin", "time", "tid", "oid", "px", "sz", "side"],
+    "market_price_series": "For each coin and tid use the median taker-fill price and earliest timestamp; sort by timestamp then tid. No future quote or book field is used."
+  },
+  "causal_wallet_skill": {
+    "episode_bucket_seconds": 5,
+    "episode_rule": "Within wallet and coin, aggregate retained taker fills in the same 5-second UTC bucket. Signed notional is side_sign*price*size. Ignore a zero-net episode. Episode direction is the sign of signed notional and episode price is absolute-notional weighted VWAP.",
+    "forward_price_rule": "Use the first market-series trade at or after episode_bucket_end + skill_horizon, provided it arrives no more than 5 seconds after that target and remains inside the same selected source window. Otherwise the episode is unresolved and excluded.",
+    "raw_markout_bp": "episode_direction * 10000 * log(forward_price / episode_price)",
+    "winsorization_bp": [-200, 200],
+    "score_update_time": "At each UTC date boundary, use only resolved episodes from strictly earlier selected dates.",
+    "score_formula": "sum(winsorized_markout_bp) / (episode_count + shrinkage_n0)",
+    "rank_scope": "wallet-coin",
+    "skill_horizon_seconds": [60, 300],
+    "minimum_prior_episodes": [20, 50],
+    "shrinkage_n0": [50, 200],
+    "cohort_tail_fraction": [0.02, 0.05],
+    "cohort_rule": "For each coin and date, rank eligible wallet-coin scores. Skilled cohort is the upper tail; adverse cohort is the lower tail. Each side must contain at least 10 wallets or that candidate-date-coin is inactive. Cohorts are fixed before current-date fills are read by the signal generator."
+  },
+  "identity_flow_signal": {
+    "base_bin_seconds": 5,
+    "flow_window_seconds": [5, 15, 60],
+    "skilled_flow": "sum(side_sign * notional) from current skilled-cohort taker fills",
+    "adverse_flow": "sum(side_sign * notional) from current adverse-cohort taker fills",
+    "identity_flow": "skilled_flow - adverse_flow",
+    "gross_cohort_notional": "sum(abs(notional)) from both cohorts",
+    "imbalance": "identity_flow / gross_cohort_notional",
+    "unique_wallets": "distinct participating wallets from both cohorts",
+    "largest_wallet_share": "largest participating wallet absolute notional divided by gross cohort notional",
+    "fit_threshold": "For each candidate and coin, calculate the absolute-identity-flow quantile from fit dates only, using cohorts that were causal on those dates.",
+    "absolute_flow_quantile": [0.99, 0.995],
+    "minimum_absolute_imbalance": [0.4, 0.6],
+    "minimum_unique_wallets": [2, 4],
+    "maximum_largest_wallet_share": 0.6,
+    "event_direction": "sign(identity_flow)",
+    "event_score": "abs(identity_flow) / fitted absolute-flow threshold",
+    "decision_window_utc": ["12:10:00", "15:50:00"],
+    "availability_delay_ms": 2000,
+    "entry_proxy": "First market-series taker trade at or after signal window end plus 2000ms, rejected if later than 5000ms after availability.",
+    "diagnostic_horizon_seconds": [30, 120, 600],
+    "exit_proxy": "First market-series taker trade at or after entry time plus the diagnostic horizon, rejected if later than 5000ms after the target.",
+    "global_slot": "For each candidate, accept at most one event across BTC, ETH, SOL and XRP until its diagnostic horizon resolves. Simultaneous eligible events are ordered by higher event_score, then BTC, ETH, SOL, XRP, then earlier timestamp.",
+    "overlap_policy": "All lower-priority or overlapping events are discarded before outcomes are calculated."
+  },
+  "candidate_grid": {
+    "skill_horizon_seconds": [60, 300],
+    "minimum_prior_episodes": [20, 50],
+    "shrinkage_n0": [50, 200],
+    "cohort_tail_fraction": [0.02, 0.05],
+    "flow_window_seconds": [5, 15, 60],
+    "absolute_flow_quantile": [0.99, 0.995],
+    "minimum_absolute_imbalance": [0.4, 0.6],
+    "minimum_unique_wallets": [2, 4],
+    "diagnostic_horizon_seconds": [30, 120, 600],
+    "expected_candidate_count": 1152,
+    "no_adaptive_extension": true
+  },
+  "cost_diagnostics": {
+    "gross_return_bp": "event_direction * 10000 * log(exit_proxy_price / entry_proxy_price)",
+    "round_trip_all_in_bp": [12, 18, 24],
+    "net_return_bp": "gross_return_bp - round_trip_all_in_bp",
+    "interpretation": "Trade-price proxies are optimistic. A candidate must remain positive at 24bp before any Bybit quote/execution upgrade is allowed."
+  },
+  "partitions": {
+    "warmup": ["2025-07-27"],
+    "fit": ["2025-07-28", "2025-07-29", "2025-07-30"],
+    "development_a": ["2025-07-31", "2025-08-01", "2025-08-02"],
+    "development_b": ["2025-08-03", "2025-08-04"],
+    "validation": ["2025-08-05", "2025-08-06"],
+    "conditional_2026_oos": ["2026-05-04", "2026-05-05", "2026-05-06", "2026-05-07", "2026-05-08"]
+  },
+  "development_gate": {
+    "minimum_total_events": 40,
+    "minimum_events_development_a": 12,
+    "minimum_events_development_b": 12,
+    "mean_net_18bp_positive": true,
+    "median_net_18bp_positive": true,
+    "mean_net_24bp_positive": true,
+    "both_partition_mean_net_18bp_positive": true,
+    "top_10_percent_positive_event_removal_mean_net_18bp_positive": true,
+    "selection_order": [
+      "higher minimum of development_a and development_b mean net 18bp",
+      "higher combined mean net 24bp",
+      "higher top-10%-removed mean net 18bp",
+      "more events",
+      "lexicographically smaller candidate id"
+    ],
+    "placebo": "For the selected development winner only, run 200 fixed-seed activity-matched random cohort assignments. The true winner's combined mean gross return must exceed the 95th percentile of placebo means. Otherwise development fails.",
+    "validation_opening": "Open validation only when every development condition and placebo condition pass."
+  },
+  "validation_gate": {
+    "minimum_total_events": 20,
+    "minimum_events_each_date": 5,
+    "mean_net_18bp_positive": true,
+    "median_net_18bp_positive": true,
+    "mean_net_24bp_positive": true,
+    "top_10_percent_positive_event_removal_mean_net_18bp_positive": true,
+    "conditional_2026_opening": "Open the five Kaggle fills files only if every validation condition passes without changing the candidate, wallet-score rule, cohorts, thresholds, delay, cost or tie-break rule."
+  },
+  "conditional_2026_rule": {
+    "schema_translation": "Kaggle role=taker maps to crossed=true; wallet, coin, side, price, size, timestamp_ms and is_liquidation map to the common schema.",
+    "wallet_scores": "Freeze wallet-coin scores and selected cohorts using all allowed 2025 rows only. No 2026 online update is allowed in this screen.",
+    "thresholds": "Use the already selected candidate and its pre-2026 fitted thresholds without recalibration.",
+    "status": "SEALED"
+  },
+  "hard_boundaries": {
+    "strategy_pnl_computed": false,
+    "bybit_execution_opened": false,
+    "official_2024_2026_rank_eligible": false,
+    "risk_or_leverage_search_opened": false,
+    "live_order_permission": false,
+    "next_stage_if_survivor": "A new preregistration must define causal state-based exits, exact Bybit bid/ask or marketable-limit execution, funding, one-slot account replay and the full evaluation contract. Fixed diagnostic horizons from this screen may not be promoted as final forced exits."
+  }
+}
