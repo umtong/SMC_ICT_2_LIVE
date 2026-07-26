@@ -22,19 +22,57 @@
     "availability_clock": "local_timestamp",
     "state_interval_seconds": 1,
     "entry_delay_seconds": 1,
-    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
-    "required_symbols": ["BTCUSDT", "ETHUSDT"],
-    "fit_dates": ["2022-01-01", "2022-02-01", "2022-03-01", "2022-04-01", "2022-05-01", "2022-06-01"],
-    "calibration_dates": ["2022-07-01", "2022-08-01", "2022-09-01"],
-    "confirmation_dates": ["2022-10-01", "2022-11-01", "2022-12-01"],
-    "conditional_development_dates": ["2023-01-01", "2023-02-01", "2023-03-01", "2023-04-01", "2023-05-01", "2023-06-01"],
-    "prohibited_years": [2024, 2025, 2026]
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "required_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "fit_dates": [
+      "2022-01-01",
+      "2022-02-01",
+      "2022-03-01",
+      "2022-04-01",
+      "2022-05-01",
+      "2022-06-01"
+    ],
+    "calibration_dates": [
+      "2022-07-01",
+      "2022-08-01",
+      "2022-09-01"
+    ],
+    "confirmation_dates": [
+      "2022-10-01",
+      "2022-11-01",
+      "2022-12-01"
+    ],
+    "conditional_development_dates": [
+      "2023-01-01",
+      "2023-02-01",
+      "2023-03-01",
+      "2023-04-01",
+      "2023-05-01",
+      "2023-06-01"
+    ],
+    "prohibited_years": [
+      2024,
+      2025,
+      2026
+    ],
+    "field_freshness": "Decision requires last_price, mark_price and index_price to have each changed within three completed seconds; entry requires last_price to have changed within three completed seconds."
   },
   "event_contract": {
     "threshold": "per-symbol 99.5th percentile of absolute completed fair-value gap or last-mark gap learned from fit dates only",
     "minimum_entry_raid_distance_bps": 6.0,
     "non_overlap": "within-symbol next event starts only after prior structural resolution plus five seconds",
-    "competing_barriers": ["frozen fair value", "150% extension from entry"],
+    "competing_barriers": [
+      "frozen fair value",
+      "150% extension from entry"
+    ],
     "boundary_treatment": "full adverse structural stop"
   },
   "model_contract": {
@@ -42,12 +80,26 @@
     "primary_model_count": 1,
     "calibration": "one isotonic map fitted only on 2022-07 through 2022-09",
     "structure_comparator": "one fixed five-feature logistic baseline used only for lift measurement",
-    "authority": "model may choose rejection fade, acceptance continuation or flat only",
-    "forbidden_searches": ["model family", "feature subset", "event quantile", "probability threshold", "target", "stop", "cost", "risk", "leverage"]
+    "authority": "model may choose rejection fade, displacement acceptance or flat only",
+    "forbidden_searches": [
+      "model family",
+      "feature subset",
+      "event quantile",
+      "probability threshold",
+      "target",
+      "stop",
+      "cost",
+      "risk",
+      "leverage"
+    ]
   },
   "execution_contract": {
     "one_global_slot": true,
-    "costs_bps_round_trip": [12, 18, 24],
+    "costs_bps_round_trip": [
+      12,
+      18,
+      24
+    ],
     "authorization_cost_bps": 24,
     "authorization_ev_margin_bps": 2,
     "planned_stop_risk_fraction": 0.01,
