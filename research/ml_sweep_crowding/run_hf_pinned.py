@@ -1,4 +1,4 @@
-"""Execute the sealed economic route with pinned immutable Bybit mirrors only."""
+"""Execute the sealed economic route with pinned immutable source files only."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,7 +8,7 @@ import pandas as pd
 
 from . import run as sealed_run
 from .common import CachedDownloader, MarketData
-from .source_hf_pinned_v2 import load_markets_hf_pinned_listing_aware
+from .source_hf_pinned_v3 import load_markets_hf_pinned_v3
 
 _MARKETS: dict[str, MarketData] = {}
 
@@ -35,7 +35,7 @@ def load_market_pinned(
 ) -> MarketData:
     if not _MARKETS:
         _MARKETS.update(
-            load_markets_hf_pinned_listing_aware(
+            load_markets_hf_pinned_v3(
                 downloader,
                 list(contract["symbols"]),
                 start,
