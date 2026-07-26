@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-XASSET-CROSSIMPACT-FATAL-001",
+  "result_id": "RES-20260726-XASSET-CROSSIMPACT-FATAL-001",
+  "dependency_fingerprint": "2f1bc64b25c3347e69dc79b7419ef0f387c4ec1eaf3e31c3de0a470ff1bbf6c1",
+  "status": "PASS",
+  "validation_scope": "Immutable source reconstruction; official Bybit archive integrity; completed 250ms/1s/5s leader buckets; fit-only shock thresholds and zero-intercept betas; first target trade at least 100ms after decision; one global SOL/XRP slot per policy; identical 12/18/24bp path replay; concentration and symbol-date metrics; sealed 2024-2026; independent candidate-ledger metric reproduction; no orders.",
+  "changed_surface": [
+    "new same-venue BTC-to-SOL/XRP sub-second cross-impact fatal screen",
+    "mandatory pre-outcome empty-route ledger schema correction",
+    "split SHA-verified source transport without scientific-content change"
+  ],
+  "mandatory_pre_outcome_corrections": [
+    "A zero-trade policy originally produced an empty DataFrame without the gross_bps schema. Before any candidate output or market result was written, route_candidate was changed to return typed empty ledger columns and a zero-trade regression self-test was added.",
+    "The connector could not preserve a single large base64 transport byte-for-byte. The exact same source archive was split into five SHA-verified parts; all member, encoded-transport and decoded-archive hashes are verified before execution. No rule, date, threshold, cost or outcome changed."
+  ],
+  "evidence": [
+    "GitHub Actions run 30182858677 and project harness completed successfully.",
+    "The executable source reconstructed from five individually SHA-verified transport parts and matched implementation SHA-256 43002e7aad3701e55181b6b80d0fcbe8a88b4957dc198cf3bfaf9df5d5683ec8.",
+    "All 18 official Bybit public-trade archives passed gzip/CSV integrity and SHA-256 inventory; they contain 5,374,585 trades and 201,569,672 compressed bytes.",
+    "Fit-only contracts were estimated on 2023-02-05, 2023-04-09 and 2023-06-11. Development used only 2023-08-13, 2023-10-15 and 2023-12-10. No 2024-2026 archive was opened.",
+    "All 237 development event rows entered at the first target trade no earlier than decision time plus 100ms. Target symbols were restricted to SOLUSDT and XRPUSDT.",
+    "All 576 frozen candidates completed. Cost monotonicity held for every finite ledger and the same gross paths were replayed at 12/18/24bp.",
+    "Zero candidate passed the development gate. Maximum trade count was 30; no candidate reached the required 60 trades. Twenty, twelve and ten candidates were nominally positive at 12/18/24bp respectively, but all positive paths had fewer than ten trades and zero candidate remained positive after top-10-percent winner removal.",
+    "Independent local analysis reproduced candidate count, positive counts, trade-count strata and all registered primary metrics from candidate_results.csv exactly.",
+    "Artifact 8626109546 has SHA-256 6d8bb5adc8d0dd61b184d9f3fccdf1274a3236f2a4461b7a4f7db02f6cd33e7f and scientific fingerprint 0d828f4c8e3d0f21e79af15fd2f623fee0be1aa4bdd5b7869d8effb94a136f22.",
+    "No credential, paper order, testnet order or live order was used."
+  ],
+  "scientific_code_commit": "3a30b36894ab6fe7283894784236d5f42e57563b",
+  "created_at": "2026-07-26T10:27:00+09:00"
+}
