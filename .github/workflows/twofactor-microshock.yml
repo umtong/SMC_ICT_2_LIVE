@@ -1,0 +1,119 @@
+name: Bybit BTC ETH two-factor microshock screen
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "research/bybit_twofactor_microshock_20260726/**"
+      - ".github/workflows/twofactor-microshock.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: twofactor-microshock-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Validate frozen implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/bybit_twofactor_microshock_20260726
+          mkdir -p research_runs/bybit_twofactor_microshock_20260726
+          python -m py_compile "$root/screen.py"
+          python scripts/validate_project.py
+          sha256sum "$root/preregistration.json" "$root/screen.py" > research_runs/bybit_twofactor_microshock_20260726/INPUT_SHA256SUMS.txt
+
+      - name: Download official Bybit archives and execute decision tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/bybit_twofactor_microshock_20260726
+          PYTHONPATH="$root" python "$root/screen.py" \
+            --output research_runs/bybit_twofactor_microshock_20260726/result \
+            --cache "$RUNNER_TEMP/bybit-twofactor-cache" \
+            2>&1 | tee research_runs/bybit_twofactor_microshock_20260726/run.log
+
+      - name: Enforce stage and no-PnL boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/bybit_twofactor_microshock_20260726/result')
+          screen=json.loads((root/'stage1_screen/result.json').read_text())
+          decision=json.loads((root/'decision.json').read_text())
+          assert len(screen['sources']) == 12
+          assert screen['pnl_computed'] is False
+          assert screen['funding_opened'] is False
+          assert screen['entry_exit_strategy_frozen'] is False
+          assert screen['2024_2026_opened'] is False
+          assert screen['orders_submitted'] is False
+          assert decision['pnl_computed'] is False
+          assert decision['2024_2026_opened'] is False
+          assert decision['orders_submitted'] is False
+          if decision['confirmation_opened']:
+              confirm=json.loads((root/'stage2_confirmation/result.json').read_text())
+              assert len(confirm['sources']) == 12
+              assert confirm['selected_family'] == decision['selected_family']
+              assert confirm['pnl_computed'] is False
+              assert confirm['2024_2026_opened'] is False
+              assert confirm['orders_submitted'] is False
+          print(json.dumps(decision,sort_keys=True))
+          PY
+
+      - name: Record immutable output checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/bybit_twofactor_microshock_20260726
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bybit-twofactor-microshock-${{ github.sha }}
+          path: research_runs/bybit_twofactor_microshock_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Commit decision-ready output to claim branch
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=research/bybit_twofactor_microshock_20260726/observed
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp -R research_runs/bybit_twofactor_microshock_20260726/result "$target/result"
+          cp research_runs/bybit_twofactor_microshock_20260726/INPUT_SHA256SUMS.txt "$target/INPUT_SHA256SUMS.txt"
+          cp research_runs/bybit_twofactor_microshock_20260726/OUTPUT_SHA256SUMS.txt "$target/OUTPUT_SHA256SUMS.txt"
+          tail -n 300 research_runs/bybit_twofactor_microshock_20260726/run.log > "$target/RUN_TAIL.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "Record two-factor microshock result"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
