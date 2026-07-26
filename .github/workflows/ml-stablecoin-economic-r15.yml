@@ -59,23 +59,50 @@ jobs:
           python -m json.tool "$root/EXECUTION_CORRECTION_002_NONBLOCKING_PROJECT_VALIDATOR_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_003_ACCEPT_LINUX_SOURCE_ARTIFACT_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_004_REQUIRE_CORRECTED_SOURCE_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_005_REQUIRE_CURRENT_PARENT_HEAD_BEFORE_OUTCOME.json" >/dev/null
           set +e
           python scripts/validate_project.py 2>&1 | tee "$RUNNER_TEMP/stablecoin-validation/PROJECT_VALIDATION.log"
           echo ${PIPESTATUS[0]} > "$RUNNER_TEMP/stablecoin-validation/PROJECT_VALIDATION_EXIT_CODE.txt"
           set -e
       - id: source
-        name: Consume schema-bound decision-ready parent source result
+        name: Consume current-head corrected decision-ready parent source result
         shell: bash
         run: |
           set -euo pipefail
           out=research_runs/ml_stablecoin_issuance_economic_20260726
           mkdir -p "$out/source" /tmp/source-download
+          parent_branch=agent/r13-ml-stablecoin-issuance-001
+          parent_head=$(git ls-remote origin "refs/heads/$parent_branch" | awk 'NR==1 {print $1}')
+          test -n "$parent_head"
+          printf '%s\n' "$parent_head" > "$out/source/EXPECTED_PARENT_HEAD_SHA.txt"
           selected=0
           for attempt in $(seq 1 90); do
-            mapfile -t runs < <(gh run list --repo "$GITHUB_REPOSITORY" \
-              --branch agent/r13-ml-stablecoin-issuance-001 --limit 100 \
-              --json databaseId,name,status,conclusion,createdAt \
-              --jq '.[] | select((.name == "ML stablecoin issuance source gate" or .name == "Stablecoin Blockscout source gate" or .name == "Stablecoin Blockscout source gate macOS" or .name == "Stablecoin Blockscout source gate Linux") and .status == "completed" and .conclusion == "success") | .databaseId')
+            gh run list --repo "$GITHUB_REPOSITORY" \
+              --branch "$parent_branch" --limit 100 \
+              --json databaseId,name,status,conclusion,createdAt,headSha \
+              > /tmp/source-runs.json
+            mapfile -t runs < <(python - "$parent_head" <<'PY'
+          import json
+          import sys
+
+          expected = sys.argv[1]
+          allowed = {
+              "ML stablecoin issuance source gate",
+              "Stablecoin Blockscout source gate",
+              "Stablecoin Blockscout source gate macOS",
+              "Stablecoin Blockscout source gate Linux",
+          }
+          rows = json.load(open('/tmp/source-runs.json'))
+          for row in rows:
+              if (
+                  row.get('name') in allowed
+                  and row.get('status') == 'completed'
+                  and row.get('conclusion') == 'success'
+                  and row.get('headSha') == expected
+              ):
+                  print(row['databaseId'])
+          PY
+          )
             for run_id in "${runs[@]:-}"; do
               [ -n "$run_id" ] || continue
               rm -rf /tmp/source-download/*
@@ -95,27 +122,40 @@ jobs:
           result = json.loads(result_path.read_text())
           manifest_path = result_path.with_name("SOURCE_MANIFEST.json")
           events_path = result_path.with_name("EVENTS.jsonl")
+          download_root = Path('/tmp/source-download')
           if not manifest_path.is_file() or not events_path.is_file():
               raise SystemExit(1)
           manifest = json.loads(manifest_path.read_text())
+          rows = [json.loads(line) for line in events_path.read_text().splitlines() if line.strip()]
+          tokens = {str(row.get('token')) for row in rows}
+          directions = {str(row.get('direction')) for row in rows}
+          pass_checks = result.get('pass_checks', {})
           checks = [
               result.get("status") == "PASS",
+              isinstance(pass_checks, dict) and bool(pass_checks) and all(value is True for value in pass_checks.values()),
               result.get("source_schema_id") == expected_schema,
               result.get("source_correction_id") == expected_correction,
               manifest.get("source_schema_id") == expected_schema,
               manifest.get("source_correction_id") == expected_correction,
               result.get("event_semantics", {}).get("ordinary_usdt_transfer_excluded") is True,
               manifest.get("event_semantics", {}).get("ordinary_usdt_transfer_excluded") is True,
+              int(result.get("event_count", 0)) >= 120,
+              len(result.get("months_with_events", [])) >= 24,
               int(result.get("token_counts", {}).get("USDT", 0)) > 0,
               int(result.get("token_counts", {}).get("USDC", 0)) > 0,
               sorted(result.get("distinct_tokens", [])) == ["USDC", "USDT"],
+              tokens == {"USDC", "USDT"},
+              directions.issubset({"MINT", "BURN"}) and bool(directions),
               hashlib.sha256(events_path.read_bytes()).hexdigest() == manifest.get("events_sha256"),
+              any(download_root.rglob("CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json")),
+              any(download_root.rglob("CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json")),
           ]
           if not all(checks):
               raise SystemExit(1)
           print(json.dumps({
-              "status": "PASS_CORRECTED_SCHEMA_BOUND_SOURCE",
+              "status": "PASS_CURRENT_HEAD_CORRECTED_SCHEMA_BOUND_SOURCE",
               "event_count": result.get("event_count"),
+              "months_with_events": len(result.get("months_with_events", [])),
               "token_counts": result.get("token_counts"),
               "source_schema_id": expected_schema,
           }, sort_keys=True))
@@ -123,6 +163,7 @@ jobs:
                 then
                   cp -a "$(dirname "$result")/." "$out/source/"
                   echo "$run_id" > "$out/source/PARENT_RUN_ID.txt"
+                  echo "$parent_head" > "$out/source/PARENT_HEAD_SHA.txt"
                   selected=1
                   break 2
                 fi
@@ -131,18 +172,20 @@ jobs:
               done < <(find /tmp/source-download -type f -name SOURCE_GATE_RESULT.json | sort)
             done
             if [ "$selected" = 1 ]; then break; fi
-            echo "corrected schema-bound source PASS not yet available: attempt $attempt" >&2
+            echo "current-head corrected schema-bound source PASS not yet available: attempt $attempt" >&2
             sleep 60
           done
           if [ "$selected" != 1 ]; then
-            python - <<'PY'
+            python - "$parent_head" <<'PY'
           import json
+          import sys
           from pathlib import Path
           out=Path('research_runs/ml_stablecoin_issuance_economic_20260726')
           payload={
             'schema_version':1,
             'claim_id':'CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001',
-            'status':'NO_CORRECTED_SCHEMA_BOUND_PASS_SOURCE_ARTIFACT',
+            'status':'NO_CURRENT_HEAD_CORRECTED_SCHEMA_BOUND_PASS_SOURCE_ARTIFACT',
+            'expected_parent_head_sha':sys.argv[1],
             'market_outcome_opened':False,
             'model_fit':False,
             'official_2024h1_opened':False,
@@ -207,7 +250,7 @@ jobs:
           root=research/ml_stablecoin_issuance_economic_20260726
           out=research_runs/ml_stablecoin_issuance_economic_20260726
           mkdir -p "$out/inputs"
-          cp "$root"/{WORK_CLAIM.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,run.py.gz.b64.part02,run.py.gz.b64.part03,test_run.py.gz.b64.part00,EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_002_NONBLOCKING_PROJECT_VALIDATOR_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_003_ACCEPT_LINUX_SOURCE_ARTIFACT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_004_REQUIRE_CORRECTED_SOURCE_SCHEMA_BEFORE_OUTCOME.json} "$out/inputs/"
+          cp "$root"/{WORK_CLAIM.json,README.md,BUNDLE_MANIFEST.json,reconstruct.py,run.py.gz.b64.part00,run.py.gz.b64.part01,run.py.gz.b64.part02,run.py.gz.b64.part03,test_run.py.gz.b64.part00,EXECUTION_CORRECTION_001_ACCEPT_MACOS_SOURCE_ARTIFACT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_002_NONBLOCKING_PROJECT_VALIDATOR_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_003_ACCEPT_LINUX_SOURCE_ARTIFACT_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_004_REQUIRE_CORRECTED_SOURCE_SCHEMA_BEFORE_OUTCOME.json,EXECUTION_CORRECTION_005_REQUIRE_CURRENT_PARENT_HEAD_BEFORE_OUTCOME.json} "$out/inputs/"
           cp "$RUNNER_TEMP/stablecoin-validation"/* "$out/inputs/" 2>/dev/null || true
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
