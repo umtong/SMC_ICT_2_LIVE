@@ -1,0 +1,29 @@
+{
+  "base_revision": 13,
+  "claim_id": "CLM-20260726-2122-ML-DONCHIAN-TAIL-001",
+  "github_branch": "agent/r13-ml-donchian-tail-select-001",
+  "lease_until": "2026-07-27T05:22:00+09:00",
+  "objective_fingerprint": "34d0e8353ce3016fb6639dfba1519062122f389ea93300a159742db1adc0e4b7",
+  "permissions": {
+    "credentials": false,
+    "live_orders": false,
+    "paper_orders": false,
+    "testnet_orders": false
+  },
+  "scope": {
+    "action": "Accept the simultaneous event with highest positive calibrated expected R, otherwise flat",
+    "chronology": "2021-2022H1 train; 2022H2 scalar calibration; historical 2023 confirmation; conditional 2024H1 validation",
+    "model": "One fixed pooled HistGradientBoostingRegressor predicting fixed-trade after-24bp R",
+    "non_overlap": [
+      "Not a Donchian channel/stop/mode parameter search; all structural rules are fixed.",
+      "Not the direct hourly utility model: this model only values already-formed structural breakout trades through their full strategy-defined exits.",
+      "Not path-continuity first-passage classification: the target is realized after-cost structural trade R."
+    ],
+    "risk": "Base 0.5%/5x; wide 0.5%-60% and 1x-100x search only after confirmation alpha gate",
+    "structural_event": "Completed 60m Donchian breakout, entry lookback 96, exit channel 48, 2ATR stop"
+  },
+  "scope_fingerprint": "527fd025e7737e6e72c7197fe9c43e573dde5cbb99650959951e7629a03c4647",
+  "started_at": "2026-07-26T21:22:00+09:00",
+  "status": "RUNNING",
+  "worker_id": "gpt-5.6-pro-20260726-2122"
+}
