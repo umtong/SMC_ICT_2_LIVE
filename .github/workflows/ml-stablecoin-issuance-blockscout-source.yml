@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-blockscout-source-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: stablecoin-blockscout-source-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source:
@@ -40,6 +40,7 @@ jobs:
           PYTHONPATH="$r" pytest -q "$r/test_source_gate.py" | tee "$o/PYTEST.log"
           PYTHONPATH="$r" python "$r/source_gate_blockscout_authoritative.py" --self-test | tee "$o/SELF_TEST.log"
           python -m json.tool "$r/EXECUTION_CORRECTION_006_SLIM_RUNNERS_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$r/EXECUTION_CORRECTION_007_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py | tee "$o/PROJECT_VALIDATION.log"
       - name: Query pre-2024 issuance source only
         run: |
