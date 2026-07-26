@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-STABLECOIN-ECONOMIC-CURRENT-PARENT-HEAD-005",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "PRE_MARKET_OUTCOME_EXECUTION_ONLY",
+  "recorded_at": "2026-07-26T23:31:00+09:00",
+  "trigger": "Schema binding rejects the known pre-correction source artifacts, but it still permits an older artifact from the corrected schema after the parent branch has received a later source-only repair. The economic stage must consume the current corrected source implementation, not merely any historical artifact carrying the schema identifier.",
+  "change": [
+    "Resolve the current commit SHA of agent/r13-ml-stablecoin-issuance-001 at execution time.",
+    "Enumerate successful source runs with headSha and accept only runs whose headSha equals that current parent SHA.",
+    "Record both the selected parent run ID and exact parent head SHA beside the consumed source artifact."
+  ],
+  "unchanged": [
+    "corrected USDT Issue/Redeem and USDC zero-address Transfer semantics",
+    "source density and coverage gates",
+    "economic model features labels costs and account rules",
+    "immediate sequential 2024H1 handoff",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ],
+  "source_artifact_selected_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
