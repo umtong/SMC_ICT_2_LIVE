@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "study_id": "BYBIT_EXECUTABLE_IFVG_FATAL_V1",
+  "claim_id": "CLM-20260726-1545-IFVG-EXEC-001",
+  "rank_eligible": false,
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "market": {
+    "execution_venue": "Bybit",
+    "instrument": "BTCUSDT USDT linear perpetual",
+    "source_clock": "Tardis local_timestamp",
+    "source_state_frequency_ms": 500,
+    "fit_date": "2022-07-01",
+    "development_date": "2023-07-01",
+    "later_dates_prohibited": true
+  },
+  "state_machine": {
+    "formation": "exact complete 1/3/5-second three-bar FVG with middle-bar displacement and aligned aggressive flow",
+    "polarity_flip": "a later completed close through the FVG far edge",
+    "entry_confirmation": "first later lower-edge or consequent-encroachment retest that closes back in the inversion direction",
+    "entry": "next exact complete bar's first executable Bybit ask for long or bid for short",
+    "stop": "beyond the inverted zone or retest extreme plus fixed buffer",
+    "target": "opposing pre-formation 120-second external liquidity that remains unswept through entry",
+    "ordinary_exit": "protective stop, target, or completed IFVG invalidation",
+    "sample_boundary": "mark remaining position to terminal executable BBO without treating it as a strategy close"
+  },
+  "candidate_grid": {
+    "bar_seconds": [1, 3, 5],
+    "middle_bar_displacement_bps": [2, 5, 8],
+    "minimum_fvg_width_bps": [0.5, 1.5, 3],
+    "retest_fraction_from_near_edge": [0, 0.5],
+    "minimum_24bp_structural_reward_to_planned_loss": [1.5, 3],
+    "stop_buffer_bps": [1, 3],
+    "candidate_count": 216
+  },
+  "execution_and_account": {
+    "global_pending_or_open_slots": 1,
+    "same_bar_stop_target_order": "stop_first",
+    "round_trip_cost_bps": [12, 18, 24],
+    "planned_risk_fractions": [0.005, 0.01, 0.02, 0.04, 0.08],
+    "risk_search_selects_candidate": false,
+    "top_winner_counterfactual": "remove the largest 10 percent of positive 12bp event keys before rerouting the entire global-slot path"
+  },
+  "fit_gate": {
+    "minimum_accepted_events": 20,
+    "24bp_mean_net_bps": ">0",
+    "24bp_median_net_bps": ">0",
+    "24bp_profit_factor": ">1",
+    "one_percent_risk_sample_day_growth": ">=1%",
+    "winner_removed_rerouted_one_percent_risk_sample_day_growth": ">=1%",
+    "unresolved_without_terminal_quote": 0
+  },
+  "development_rule": "Freeze no more than one fit survivor per bar duration before reading the development parquet. Use identical rules and gates.",
+  "prohibitions": [
+    "no 2024, 2025 or 2026 state file",
+    "no same-bar or pre-confirmation entry",
+    "no favorable fill inside an unobserved interval",
+    "no elapsed-time forced exit",
+    "no risk or leverage rescue of a negative underlying trade path",
+    "no credentials or orders"
+  ]
+}
