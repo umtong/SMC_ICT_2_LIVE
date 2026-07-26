@@ -1,0 +1,77 @@
+name: Donchian official 2024H1 macOS parallel replay
+
+on:
+  push:
+    branches:
+      - agent/r15-donchian-validator-hook-001
+    paths:
+      - '.github/workflows/donchian-2024h1-macos-parallel.yml'
+      - 'research/donchian_2024h1_20260726/EXECUTION_CORRECTION_004_MACOS_PARALLEL_BEFORE_OUTCOME.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: donchian-2024h1-macos-parallel-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  official-2024h1:
+    runs-on: macos-14
+    timeout-minutes: 330
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      VECLIB_MAXIMUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r15-donchian-validator-hook-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate execution-only correction
+        run: |
+          set -euo pipefail
+          python -m json.tool research/donchian_2024h1_20260726/EXECUTION_CORRECTION_004_MACOS_PARALLEL_BEFORE_OUTCOME.json >/dev/null
+          python -m pip install --disable-pip-version-check pytest==8.3.5
+      - name: Run unchanged official 2024H1 evaluator
+        run: |
+          set -euo pipefail
+          python scripts/donchian_2024h1_validation_hook.py 2>&1 | tee "$RUNNER_TEMP/DONCHIAN_2024H1_HOOK.log"
+          test -f "$RUNNER_TEMP/donchian_2024h1_validation_hook_summary.json"
+          python -m json.tool "$RUNNER_TEMP/donchian_2024h1_validation_hook_summary.json" >/dev/null
+      - name: Verify official-period authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])
+          r=json.loads((root/'donchian_2024h1_validation_hook_summary.json').read_text())
+          assert r['claim_id']=='CLM-20260726-2139-DONCHIAN-2024H1-001'
+          assert r['opened_periods']==['2024H1']
+          assert r['unopened_periods']==['2024H2','2025H1','2025H2','2026H1']
+          assert r['evaluation']['elapsed_time_liquidation'] is False
+          assert r['evaluation']['forced_boundary_close'] is False
+          assert r['orders_submitted'] is False
+          assert r['paper_live_started'] is False
+          print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: donchian-official-2024h1-macos-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/DONCHIAN_2024H1_HOOK.log
+            ${{ runner.temp }}/donchian_2024h1_validation_hook_summary.json
+            ${{ runner.temp }}/donchian_2024h1_validator_result
+            ${{ runner.temp }}/donchian_2024h1_validator_data
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
