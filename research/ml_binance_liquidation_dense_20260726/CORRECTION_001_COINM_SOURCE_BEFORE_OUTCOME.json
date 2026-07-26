@@ -1,0 +1,44 @@
+{
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "corrected_source": {
+    "availability": "provider timestamp, completed one-minute bucket, plus five seconds",
+    "bybit_signal_map": {
+      "BTCUSD_PERP": "BTCUSDT",
+      "ETHUSD_PERP": "ETHUSDT"
+    },
+    "layout": "data/futures/cm/daily/liquidationSnapshot/<SYMBOL>/",
+    "market": "Binance COIN-M perpetual futures",
+    "period": [
+      "2021-01-01",
+      "2023-12-31"
+    ],
+    "symbols": [
+      "BTCUSD_PERP",
+      "ETHUSD_PERP"
+    ]
+  },
+  "correction_id": "CORRECTION-20260726-ML-BINANCE-LIQ-COINM-SOURCE-001",
+  "observed_before_correction": {
+    "future_label_opened": false,
+    "market_price_opened": false,
+    "model_fitted": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false,
+    "source_gate_status": "QUEUED_NOT_STARTED",
+    "strategy_pnl_opened": false
+  },
+  "reason": "Official Binance public-data documentation and archive taxonomy identify liquidationSnapshot as a COIN-M archive family; the preregistered USD-M BTCUSDT/ETHUSDT/SOLUSDT/XRPUSDT path was therefore not a reliable source identity.",
+  "recorded_before_source_or_market_outcome": true,
+  "schema_version": 1,
+  "scientific_boundary": "COIN-M liquidation records are signal-only. Final performance is always measured on Bybit USDT-linear BTCUSDT/ETHUSDT with realistic execution and funding.",
+  "unchanged": [
+    "outcome seal",
+    "one pooled HGBT and one calibration rule",
+    "structural target and stop",
+    "one global Bybit slot",
+    "12/18/24bp replay",
+    "no elapsed-time liquidation",
+    "2023-12-31 freeze followed by immediate official 2024H1",
+    "risk and notional search only after positive base edge"
+  ]
+}
