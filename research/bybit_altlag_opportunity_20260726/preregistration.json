@@ -1,0 +1,70 @@
+{
+  "base_revision": 11,
+  "claim_id": "CLM-20260726-1052-ALTLAG-OPPORTUNITY-001",
+  "created_at": "2026-07-26T10:52:00+09:00",
+  "event_grid": {
+    "btc_activity_ratio_min": 2.0,
+    "btc_direction_aligned_aggressive_imbalance_min": 0.5,
+    "btc_shock_z_min": 3.0,
+    "direction_aligned_beta_residual_gap_log_return_floors": [
+      0.0012,
+      0.0018,
+      0.0024
+    ],
+    "follower_direction_aligned_aggressive_imbalance_max": 0.5,
+    "follower_underreaction_ratio_max": 0.75,
+    "horizon_seconds": [
+      1,
+      2,
+      5
+    ]
+  },
+  "information_contract": {
+    "decision": "Only after the entire 1/2/5 second leader and contemporaneous follower window is complete.",
+    "event_grid_ms": 100,
+    "mark": "Last actual trade price carried causally for at most 2000ms; stale state is unavailable.",
+    "no_imputation": true,
+    "rolling_features": "All scale, activity and beta inputs end at or before the shock-start boundary; current-shock observations are excluded."
+  },
+  "opportunity_gate": {
+    "minimum_follower_date_cells_with_at_least_3_12bp_events": 2,
+    "minimum_unique_12bp_events_all_followers_dates": 20,
+    "minimum_unique_12bp_events_each_date": 5,
+    "minimum_unique_24bp_events_all_followers_dates": 5
+  },
+  "prior_features": {
+    "activity_baseline": "Median positive BTC H-second quote notional across the prior 900 completed one-second endpoints, requiring >=300 positive windows.",
+    "beta": "Prior 1800-second covariance(BTC,follower)/variance(BTC), requiring >=1200 finite pairs and >=100 nonzero BTC returns, clipped to [0.2,2.0].",
+    "btc_scale": "For horizon H, sqrt(H/900 * sum of squared BTC 1s returns over the prior 900 seconds), requiring >=600 finite and >=60 nonzero returns."
+  },
+  "promotion_boundary": {
+    "2024_2026_opened": false,
+    "if_gate_fails": "Report the information unit as economically insufficient and do not run PnL or open later dates.",
+    "if_gate_passes": "Freeze a separate causal entry/exit/cost/account contract before reading any additional date or computing PnL.",
+    "live_permission": false,
+    "orders_submitted": false
+  },
+  "purpose": "Fatal economic-opportunity count only. No trade PnL, exit, risk, leverage, funding or 2024+ evaluation is permitted in this claim.",
+  "question": "Do completed Bybit BTCUSDT sub-minute price-and-aggressive-flow shocks leave a sufficiently large causal response gap in SOLUSDT or XRPUSDT to justify a full after-cost strategy test?",
+  "schema_version": 1,
+  "sources": {
+    "dates": [
+      "2023-05-21",
+      "2023-07-16"
+    ],
+    "integrity": "Record observed SHA-256, byte size, gzip validity, schema, row count and timestamp monotonicity for every requested file.",
+    "symbols": [
+      "BTCUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "url_template": "https://public.bybit.com/trading/{symbol}/{symbol}{date}.csv.gz",
+    "venue": "Bybit USDT linear perpetual public trades"
+  },
+  "status": "PREREGISTERED_BEFORE_SOL_OR_XRP_ARCHIVE_BYTES_OR_CONTENT",
+  "unique_event_rule": {
+    "rearm": "No new event until BTC signed displacement from the event shock-start is <=25% of the detected shock for ten consecutive 100ms states.",
+    "same_timestamp_tie": "If multiple horizons qualify at the same time they remain separate diagnostic families; no trading slot is simulated.",
+    "selection": "For each follower, date, horizon and gap floor, take the first eligible 100ms decision."
+  }
+}
