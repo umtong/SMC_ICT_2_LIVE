@@ -1,0 +1,30 @@
+{
+  "claim_id": "CLM-20260726-1914-ML-OPTION-SURFACE-001",
+  "worker_id": "gpt-5.6-pro-20260726-1914",
+  "base_revision": 11,
+  "status": "RUNNING",
+  "started_at": "2026-07-26T19:14:10+09:00",
+  "lease_until": "2026-07-27T03:14:10+09:00",
+  "objective_fingerprint": "0af3a73048864abf7f1e74026e67fa7e2f9dc16335c3b59bc86d314cce14a3b9",
+  "scope_fingerprint": "0718cc2af0f104322f12a8f643f2f44360c66f6fb38b1d5859dbd744d867c909",
+  "supersedes": "CLM-20260726-0107-OPTION-SURFACE-001",
+  "supersession_reason": "The prior lease expired after a successful source/schema probe but before any model, candidate outcome, trade, PnL, Result Registry entry or rank decision.",
+  "github_branch": "agent/r11-ml-option-surface-shape-001",
+  "scope": {
+    "information_unit": "Completed Deribit BTC/ETH option-surface shape only: 25-delta risk reversal, 25-delta butterfly, ATM and RR term slopes, open-interest concentration when point-in-time, and prior-only changes.",
+    "model": "Exactly one fixed explainable regularized logistic first-passage model, with one frozen calibration map if calibration sample size permits.",
+    "decision": "Exactly one cost-adjusted LONG/SHORT/FLAT expected-value rule; no feature, model, threshold, risk or leverage grid.",
+    "execution": "At most one BTCUSDT or ETHUSDT USDT-linear perpetual pending/open slot. Options are signal-only.",
+    "non_overlap": [
+      "RES-20260726-DVOL-XSEC-001 used ATM/DVOL level and IV-minus-realized-volatility, not surface shape.",
+      "RES-20260726-ML-OPTION-HEDGE-001 used signed option transaction flow and inferred dealer gamma pressure, not completed cross-strike surface shape."
+    ],
+    "data_treatment": "The public 2024 parquet is pilot-only and non-rank-eligible unless timestamp and point-in-time semantics pass. Pre-2024 Tardis month-start option-chain samples are a separate sparse falsification set. Official 2024-2026 project OOS remains sealed until a pre-2024 gate passes."
+  },
+  "permissions": {
+    "credentials": false,
+    "paper_orders": false,
+    "testnet_orders": false,
+    "live_orders": false
+  }
+}
