@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-HL-PARENT-ORDER-ML-001",
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "experiment_id": "HL-PARENT-ORDER-DELIVERY-ML-V1",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_PRE_2026_SAME_VENUE_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_NON_BYBIT_FATAL_SCREEN",
+  "decision": "RETIRE_PARENT_ORDER_PRICE_DEPENDENCY_WITHOUT_ADJACENT_TUNING",
+  "mechanism": "Three same-wallet, same-coin, same-side taker child orders spaced 20 to 40 seconds apart identify an active parent schedule. One direction-locked HGBT plus isotonic calibration predicts whether the previous completed 15-minute external-liquidity pool is reached before the first-three-child origin stop.",
+  "source": {
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "canonical_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "prevalidation_file_count": 36,
+    "validation_file_count_read": 0
+  },
+  "sample": {
+    "train_event_count": 1614,
+    "train_resolved_count": 1595,
+    "calibration_event_count": 1387,
+    "calibration_resolved_count": 1376,
+    "confirmation_event_count": 1040,
+    "confirmation_resolved_count": 1031,
+    "confirmation_positive_labels": 228,
+    "confirmation_target_rate": 0.22114451988360815,
+    "confirmation_unresolved_count": 9
+  },
+  "prediction": {
+    "model_auc": 0.7645943937759516,
+    "distance_only_baseline_auc": 0.8068973803760739,
+    "auc_lift": -0.04230298660012233,
+    "model_brier": 0.1484698737267664,
+    "distance_only_baseline_brier": 0.13237615048365442,
+    "brier_skill": -0.12157570018507213
+  },
+  "economic_path": {
+    "authorized_action_count": 0,
+    "maximum_predicted_expected_value_at_18bp": 1.7113414251269976,
+    "minimum_authorization_expected_value": 2.0,
+    "confirmation_mean_gross_bp_all_resolved": -1.0849440131877408,
+    "confirmation_median_gross_bp_all_resolved": -2.853067043281809,
+    "paths": {
+      "12bp": {"trade_count": 0, "total_return": 0.0},
+      "18bp": {"trade_count": 0, "total_return": 0.0},
+      "24bp": {"trade_count": 0, "total_return": 0.0}
+    }
+  },
+  "interpretation": "The cadence effect predicts another child order but not same-direction price delivery to the previous 15-minute external-liquidity pool. Structural distance alone predicted first passage better than all nine parent-order and market-state features. No event had positive enough estimated value to clear the frozen 18bp cost plus 2bp edge threshold.",
+  "retirement_boundary": "Do not tune the 15-minute pool, origin stop, feature set, HGBT parameters, calibration, EV threshold, risk or leverage. A later parent-order study must change the payoff to the directly observed next-child impact and preserve 2025-08-05 and 2025-08-06 as untouched validation.",
+  "reproducibility": {
+    "workflow_run": 30198047916,
+    "artifact_id": 8630747943,
+    "artifact_digest": "sha256:40aee73651c78a756c94492073e547dd8778ce8df5df75c2b151d5e58fd422b6",
+    "result_json_sha256": "2c9ac3faa4ac3d73f3dc7e65935c41cd2a2cbb9b8b4b281ffb8aae45fa3ba9b5",
+    "confirmation_event_ledger_sha256": "210bd457797ee6faec97eea8ee08ae0c08863796b6a407cfc7290b31835e2dd1",
+    "model_contract_sha256": "af722fa28831bd3dc55a7cfd8ce810a7a9e31f38d74ae014aa56c731e69a28d6"
+  },
+  "bybit_execution_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
