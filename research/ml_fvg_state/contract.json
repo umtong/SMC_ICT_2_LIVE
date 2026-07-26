@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260727-0420-ML-FVG-STATE-001",
+  "project_revision_at_open": 22,
+  "canonical_dependency": {
+    "claim_id": "CLM-20260727-CANONICAL-HALFYEAR-DATA-001",
+    "dataset_family_id": "DSF-BYBIT-LINEAR-4ASSET-CANONICAL-HALFYEAR-V1",
+    "workflow_run_id": 0,
+    "source_branch_head": "7fc4c7abf0dd75c9ad65370abf112e17932d0313",
+    "segments": ["PRE_2024_2021", "PRE_2024_2022", "PRE_2024_2023", "2024_H1"],
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"]
+  },
+  "signal": {
+    "fvg_timeframe": "15m",
+    "retest_timeframe": "5m",
+    "atr_bars": 48,
+    "displacement_body_atr_min": 1.25,
+    "close_outer_fraction": 0.25,
+    "stop_buffer_atr": 0.10,
+    "pivot_left_bars": 2,
+    "pivot_right_bars": 2,
+    "target_timeframes": ["1h", "4h"],
+    "minimum_reward_to_risk_after_cost": 1.50,
+    "no_time_exit": true
+  },
+  "features": [
+    "candidate_direction", "is_continuation", "fvg_direction", "asset_flag",
+    "displacement_body_atr", "displacement_range_atr", "displacement_upper_wick_atr",
+    "displacement_lower_wick_atr", "displacement_close_location", "displacement_volume_z",
+    "fvg_width_atr", "retest_penetration", "retest_range_atr", "retest_body_atr",
+    "retest_upper_wick_atr", "retest_lower_wick_atr", "retest_close_location",
+    "retest_volume_z", "bars_to_retest", "return_1h_atr", "return_4h_atr",
+    "realized_vol_1h", "realized_vol_4h", "trend_1h_atr", "trend_4h_atr",
+    "target_reward_to_risk", "target_distance_atr", "target_timeframe_flag",
+    "mark_trade_basis", "index_trade_basis", "premium_index_level",
+    "open_interest_log", "open_interest_change_15m", "open_interest_change_1h",
+    "open_interest_z_24h", "account_long_short_ratio", "account_ratio_change_1h",
+    "account_ratio_z_24h", "crowding_x_direction", "oi_x_direction",
+    "rejection_x_direction", "fvg_x_displacement"
+  ],
+  "model": {
+    "class": "sklearn.ensemble.HistGradientBoostingClassifier",
+    "random_state": 20260727,
+    "learning_rate": 0.05,
+    "max_iter": 320,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 50,
+    "l2_regularization": 1.5,
+    "early_stopping": false,
+    "base_train_start": "2021-01-01T00:00:00Z",
+    "base_train_end_exclusive": "2023-01-01T00:00:00Z",
+    "selection_start": "2023-01-01T00:00:00Z",
+    "selection_end_exclusive": "2024-01-01T00:00:00Z",
+    "official_start": "2024-01-01T00:00:00Z",
+    "official_end_exclusive": "2024-07-01T00:00:00Z",
+    "semiannual_activation_delay_minutes": 30
+  },
+  "execution": {
+    "latency_ms": 500,
+    "base_round_trip_bps": 24,
+    "stress_round_trip_bps": [18, 30],
+    "same_minute_ambiguity": "stop_first",
+    "stop_gap_fill": "adverse_observed_open",
+    "target_gap_fill": "target_level_not_better",
+    "funding": "actual canonical Bybit funding events on signed notional",
+    "stage_boundary": "NAV mark; no forced strategy exit"
+  },
+  "sizing": {
+    "start_nav_usdt": 10000.0,
+    "probability_thresholds": [0.50, 0.54, 0.58, 0.62, 0.66, 0.70, 0.74, 0.78, 0.82],
+    "risk_fractions": [0.005, 0.01, 0.02, 0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.48, 0.64],
+    "leverages": [2, 3, 5, 8, 12, 20, 30, 50, 75, 100],
+    "maintenance_margin_fraction_proxy": 0.005,
+    "liquidation_distance_buffer_fraction": 1.0
+  },
+  "selection": {
+    "objective": "maximum 24bp after-cost UTC geometric daily NAV growth on calendar 2023",
+    "eligibility": ["finite positive NAV", "no forced liquidation"],
+    "official_open_condition": "selected calendar-2023 final NAV > 10000 USDT",
+    "adjacent_rescue_after_failure": false,
+    "current_first_place_geometric_daily_growth": 0.000387317
+  },
+  "orders_submitted": false,
+  "paper_live_started": false
+}
