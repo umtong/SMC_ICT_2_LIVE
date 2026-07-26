@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-SHA-NOCANCEL-014",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_ANY_DECISION_READY_SOURCE_PASS_OR_FAILURE",
+  "observed_failure": "Complete pre-2024 Blockscout queries repeatedly reached the source-only query step and were cancelled when later branch metadata commits entered the same branch-scoped cancel-in-progress concurrency group.",
+  "correction": [
+    "scope the Linux source-gate concurrency group to the immutable github.sha",
+    "set cancel-in-progress false so later commits cannot terminate an already-started source decision"
+  ],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer event identities",
+    "complete 2021-2023 month set",
+    "12-block primary and 64-block stress availability",
+    "source density and token breadth gates",
+    "outcome seal over market prices, labels, models, trades, PnL and official periods",
+    "conditional model, account, cost, risk and structural-exit contract"
+  ],
+  "decision_ready_source_result_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "orders_submitted": false
+}
