@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-OI-FLOW-DECOMP-001",
+  "claim_id": "CLM-20260726-0958-OI-FLOW-DECOMP-001",
+  "worker_id": "gpt-5.6-pro-20260726-0958",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NOT_RANK_ELIGIBLE_SPARSE_PRE2024_FATAL_SCREEN",
+  "study": "Bybit sub-second open-interest delta and aggressive-flow decomposition",
+  "dependency_fingerprint": "4ea0742e206d44297433f129ec5c02b7755604acf9822d5c0f180785e8d3fde5",
+  "evaluation_contract_sha256": "4df9543d3c1cd7f4fb57ac3f2caa6db82417489eadb75786a812950bead8883d",
+  "implementation_sha256": "ed9be20707cb25836077f7a2e72cfa8d6339c2ffffbb79d97d11fbed5574316b",
+  "source_manifest_sha256": "ab1a332c59c99a496d5f07f25bc5a3125520f4fd51af52911311a7167b5a0f63",
+  "producing_commit": "4b98b3896c66f2f1068600553b1f3357c42b1c1b",
+  "workflow_run_id": 30183086670,
+  "workflow_artifact_id": 8626193456,
+  "workflow_artifact_digest": "sha256:cbcd8e6882e939c9aa190d5c132a254a8ddef64e83d994dd31b42d5b50d37b32",
+  "drive_evidence_id": "1Gboji_D0shH91j32HSMhJVFp2E_Z4XAe",
+  "data_contract": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "source": "Tardis public first-day normalized trades, quotes and derivative_ticker",
+    "fit_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "development_dates": ["2023-07-01", "2023-09-01", "2023-11-01"],
+    "source_file_count": 36,
+    "availability_clock": "local_timestamp",
+    "later_periods": "2024-2026 sealed"
+  },
+  "screen": {
+    "candidate_count": 1152,
+    "raw_event_counts": {"1s": 1860, "2s": 2007, "5s": 1865},
+    "gate_pass_count": 0,
+    "positive_candidate_count_12bps_development": 0,
+    "positive_candidate_count_18bps_development": 0,
+    "positive_candidate_count_24bps_development": 0
+  },
+  "best_candidate": {
+    "candidate_id": "34f49374f49d730d1006",
+    "family": "opening_trap_reversal",
+    "window_seconds": 1,
+    "oi_z": 4.0,
+    "flow_imbalance": 0.65,
+    "flow_size": 4.0,
+    "move_spreads": 5.0,
+    "latency_ms": 500,
+    "target_r": 2.0,
+    "selected_events": 26,
+    "accepted_trades": 26,
+    "fit": {
+      "trades": 17,
+      "total_return_12bps": -0.008651622372342516,
+      "total_return_18bps": -0.012702241233059741,
+      "total_return_24bps": -0.014567016684559175,
+      "median_account_return_bps_18bps": -0.7172160465251931,
+      "positive_sample_days_18bps": 0,
+      "profit_factor_18bps": 0.0
+    },
+    "development": {
+      "trades": 9,
+      "total_return_12bps": -0.0028873531323999613,
+      "total_return_18bps": -0.004441568698600129,
+      "total_return_24bps": -0.005919673505324519,
+      "geometric_growth_per_sample_day_18bps": -0.0014827202723727284,
+      "median_account_return_bps_18bps": -1.0344782960280963,
+      "positive_sample_days_18bps": 0,
+      "profit_factor_18bps": 0.0,
+      "return_after_top10_positive_removal_18bps": -0.004441568698600129,
+      "maximum_drawdown_18bps": 0.004441568698600129,
+      "unresolved_share": 0.0
+    }
+  },
+  "causal_and_execution_checks": {
+    "compiled": true,
+    "deterministic_tests_passed": 9,
+    "candidate_specific_threshold_transitions": true,
+    "historical_funding_applied": true,
+    "one_global_slot": true,
+    "same_timestamp_reentry_prohibited": true,
+    "bbo_freshness_limit_seconds": 1,
+    "adverse_stop_rebound": true,
+    "observed_spread_plus_cost_stress_bps": [12, 18, 24],
+    "orders_submitted": false
+  },
+  "ranking_decision": {
+    "ranking_changed": false,
+    "reason": "All 1152 candidates were negative in development at 12, 18 and 24 bps. The sparse pre-2024 screen is not rank eligible and cannot improve the project-wide first place."
+  },
+  "retirement_boundary": "Close adjacent Bybit tick-level OI-change, aggressive-flow, 1/2/5-second window, 100/500ms latency, 1R/2R target and threshold tuning under this dependency fingerprint. Reopen only with a materially different information source or payoff.",
+  "summary": "A hard-valid initial screen aligned tick-level Bybit open-interest updates with same-symbol aggressor flow and executable BBO state across 1152 frozen policies. Zero candidate was positive in development at any 12/18/24-bps cost level. The strongest raw policy lost in both fit and development, had no positive sample day and a zero profit factor. 2024-2026 remained sealed, no order path was opened, the strategy ranking did not change, and this exact dependency is retired."
+}
