@@ -1,0 +1,165 @@
+name: ML GMX V1 liquidation source gate
+
+on:
+  push:
+    branches:
+      - agent/r20-ml-gmx-v1-liquidation-001
+    paths:
+      - 'research/ml_gmx_v1_liquidation_20260726/**'
+      - '.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-gmx-v1-liquidation-source-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install fixed source-gate environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'requests==2.32.4' \
+            'pytest==8.3.5'
+
+      - name: Compile and run adversarial source tests
+        run: |
+          set -euo pipefail
+          root=research/ml_gmx_v1_liquidation_20260726
+          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
+          mkdir -p "$out"
+          {
+            python -m py_compile \
+              "$root/probe_gmx_v1_liquidations.py" \
+              "$root/test_probe_gmx_v1_liquidations.py"
+            PYTHONPATH="$root" python -m pytest -vv \
+              "$root/test_probe_gmx_v1_liquidations.py"
+            python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          } 2>&1 | tee "$out/PRECHECK.log"
+
+      - name: Run outcome-sealed Arbitrum source gate
+        run: |
+          set -euo pipefail
+          root=research/ml_gmx_v1_liquidation_20260726
+          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/probe_gmx_v1_liquidations.py" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Enforce source-only decision contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path(
+              'research_runs/ml_gmx_v1_liquidation_20260726/'
+              'source-gate/SOURCE_GATE_RESULT.json'
+          )
+          result = json.loads(path.read_text())
+          assert result['claim_id'] == 'CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001'
+          assert result['chain_id'] == 42161
+          assert result['vault'].lower() == '0x489ee077994b6658eafa855c308275ead8097c4a'
+          assert result['event_topic0'].lower() == (
+              '0x2e1f85a64a2f22cf2f0c42584e7c919ed4abe8d53675cff0f62bf1e95a1c676f'
+          )
+          assert all(
+              int(item['end_exclusive_utc'][:4]) <= 2023
+              for item in result['probe_windows']
+          )
+          assert result['information_delay_seconds'] == 120
+          assert isinstance(result['source_gate_pass'], bool)
+          if result['source_gate_pass']:
+              assert result['scientific_decision'] == (
+                  'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
+              )
+              assert all(result['source_gate_checks'].values())
+          else:
+              assert result['scientific_decision'] == (
+                  'CLOSE_SOURCE_ROUTE_BEFORE_MARKET_OUTCOMES'
+              )
+          serialized = json.dumps(result, sort_keys=True).lower()
+          for forbidden_key in (
+              'future_return_value',
+              'first_passage_label_value',
+              'model_auc',
+              'trade_return',
+              'account_nav_value',
+              'official_2024_opened',
+              'orders_submitted',
+          ):
+              assert forbidden_key not in serialized
+          print(json.dumps({
+              'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
+              'source_gate_pass': result['source_gate_pass'],
+              'decision': result['scientific_decision'],
+              'btc_eth_liquidations': result.get('totals', {}).get(
+                  'btc_eth_liquidations', 0
+              ),
+              'assets': result.get('totals', {}).get('assets', {}),
+              'sides_btc_eth': result.get('totals', {}).get('sides_btc_eth', {}),
+              'decode_errors': result.get('totals', {}).get(
+                  'decode_error_count', 0
+              ),
+              'fatal_error': result.get('fatal_error'),
+          }, sort_keys=True))
+          PY
+
+      - name: Record current project validation
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
+          set +e
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/PROJECT_VALIDATION_EXIT_CODE.txt"
+          if [ "$rc" -ne 0 ]; then
+            echo "Current project-validation drift recorded separately from the source decision."
+          fi
+
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_gmx_v1_liquidation_20260726
+          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
+          mkdir -p "$out"
+          sha256sum \
+            "$root/WORK_CLAIM.json" \
+            "$root/PREREGISTRATION.md" \
+            "$root/probe_gmx_v1_liquidations.py" \
+            "$root/test_probe_gmx_v1_liquidations.py" \
+            .github/workflows/ml-gmx-v1-liquidation-source-gate.yml \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-gmx-v1-liquidation-source-gate-${{ github.run_id }}
+          path: research_runs/ml_gmx_v1_liquidation_20260726/source-gate
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
