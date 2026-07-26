@@ -40,7 +40,7 @@ def main() -> None:
         raw = response.content
         decoded, layers = unwrap_gzip(raw)
         text = decoded.decode("utf-8", errors="strict")
-        lines = text.splitlines()[:5]
+        all_lines = text.splitlines()
         records.append({
             "name": name,
             "url": url,
@@ -48,6 +48,7 @@ def main() -> None:
             "http_headers": {
                 "content_type": response.headers.get("Content-Type"),
                 "content_encoding": response.headers.get("Content-Encoding"),
+                "content_length": response.headers.get("Content-Length"),
                 "etag": response.headers.get("ETag"),
                 "last_modified": response.headers.get("Last-Modified"),
             },
@@ -55,12 +56,14 @@ def main() -> None:
             "raw_sha256": hashlib.sha256(raw).hexdigest(),
             "gzip_layers": layers,
             "decoded_bytes": len(decoded),
-            "first_lines": lines,
+            "line_count": len(all_lines),
+            "first_lines": all_lines[:5],
+            "last_lines": all_lines[-5:],
         })
 
     result = {
         "schema_version": 1,
-        "probe_id": "PROBE-BYBIT-PUBLIC-ARCHIVE-FORMATS-20260727-R1",
+        "probe_id": "PROBE-BYBIT-PUBLIC-ARCHIVE-FORMATS-20260727-R2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "records": records,
     }
