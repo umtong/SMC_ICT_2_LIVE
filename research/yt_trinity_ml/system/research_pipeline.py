@@ -6,20 +6,18 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 import json
 
-import numpy as np
 import pandas as pd
 
 from .coarse import CoarseEventReplay, CoarseExecutionConfig, CoarseLabeler
 from .core import (
     EventCandidate,
-    EventFamily,
     FeatureConfig,
     RiskConfig,
     build_causal_features,
     generate_event_candidates,
 )
 from .metrics import AccountMetrics, select_pre2024_configuration, summarize_account
-from .model import ChronologicalEventModel, ModelConfig, ScoredCandidate
+from .model import ChronologicalEventModel, ModelConfig, ScoredCandidate, candidate_model_features
 from .policy import GlobalSlotPolicy
 
 
@@ -117,26 +115,7 @@ def _event_identity(candidate: EventCandidate) -> tuple[Any, ...]:
 
 
 def encode_event_features(candidate: EventCandidate) -> dict[str, float]:
-    row = {
-        key: float(value)
-        for key, value in candidate.feature_row.items()
-        if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(value)
-    }
-    row.update(
-        {
-            "side": float(candidate.side),
-            "stop_distance_fraction": candidate.stop_distance / max(candidate.entry_reference, 1e-12),
-            "target_distance_fraction": candidate.target_distance / max(candidate.entry_reference, 1e-12),
-            "raw_reward_risk": candidate.target_distance / max(candidate.stop_distance, 1e-12),
-            "family_liquidity_sweep": float(candidate.family == EventFamily.LIQUIDITY_SWEEP_REVERSAL),
-            "family_displacement_retest": float(candidate.family == EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION),
-            "symbol_btc": float(candidate.symbol == "BTCUSDT"),
-            "symbol_eth": float(candidate.symbol == "ETHUSDT"),
-            "symbol_sol": float(candidate.symbol == "SOLUSDT"),
-            "symbol_xrp": float(candidate.symbol == "XRPUSDT"),
-        }
-    )
-    return row
+    return candidate_model_features(candidate)
 
 
 def label_event_dataset(
@@ -303,7 +282,11 @@ def evaluate_configuration(
     selected_symbols = set(configuration.symbols)
     selected_candidates = [candidate for candidate in candidates if candidate.symbol in selected_symbols]
     selected_labels = label_rows[label_rows["symbol"].isin(selected_symbols)].copy() if not label_rows.empty else label_rows.copy()
-    selected_bars = {symbol: frame for symbol, frame in execution_bars_by_symbol.items() if symbol in selected_symbols}
+    selected_bars = {
+        symbol: frame.loc[pd.to_datetime(frame["bar_start"], utc=True) < evaluation_end_exclusive].copy()
+        for symbol, frame in execution_bars_by_symbol.items()
+        if symbol in selected_symbols
+    }
     scored, updates = score_candidates_walk_forward(
         selected_candidates,
         selected_labels,
