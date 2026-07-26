@@ -20,9 +20,27 @@ jobs:
           cache: pip
       - name: Install test dependency
         run: python -m pip install "pytest>=8"
+      - name: Run one-time official Donchian 2024H1 evaluator
+        if: hashFiles('research/donchian_2024h1_20260726/RUN_VIA_VALIDATE_PROJECT_20260726T2218KST.txt') != ''
+        run: |
+          set -euo pipefail
+          python -m json.tool research/donchian_2024h1_20260726/EXECUTION_CORRECTION_004_EXPLICIT_VALIDATOR_STEP_BEFORE_OUTCOME.json >/dev/null
+          python scripts/donchian_2024h1_validation_hook.py 2>&1 | tee "$RUNNER_TEMP/donchian_2024h1_hook.log"
       - name: Validate project structure
         run: python scripts/validate_project.py
       - name: Run tests
         run: python -m pytest
       - name: Build hot context bundle
         run: python scripts/build_context_bundle.py
+      - name: Upload one-time official Donchian evidence
+        if: always() && hashFiles('research/donchian_2024h1_20260726/RUN_VIA_VALIDATE_PROJECT_20260726T2218KST.txt') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: donchian-2024h1-validator-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/donchian_2024h1_hook.log
+            ${{ runner.temp }}/donchian_2024h1_validation_hook_summary.json
+            ${{ runner.temp }}/donchian_2024h1_validator_result
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
