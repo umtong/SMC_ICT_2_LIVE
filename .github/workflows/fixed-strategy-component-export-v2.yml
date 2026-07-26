@@ -1,0 +1,102 @@
+name: Fixed strategy complete component source export
+
+on:
+  push:
+    branches:
+      - agent/r8-fixed-strategy-portfolio-v2
+    paths:
+      - "research/fixed_strategy_portfolio_20260726/**"
+      - ".github/workflows/fixed-strategy-component-export-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout portfolio branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/r8-fixed-strategy-portfolio-v2
+          path: portfolio
+          fetch-depth: 1
+
+      - name: Checkout frozen dynamic source
+        uses: actions/checkout@v4
+        with:
+          ref: 4a36ca54115517e77955d2d6ce1e4cb58c1fe691
+          path: dynamic
+          fetch-depth: 1
+
+      - name: Checkout frozen absorption result source
+        uses: actions/checkout@v4
+        with:
+          ref: dccf6dbd47c1beac54f4bc514f8a129c334c3813
+          path: absorption
+          fetch-depth: 1
+
+      - name: Checkout frozen absorption base engine
+        uses: actions/checkout@v4
+        with:
+          ref: agent/absorption-flow-benchmark-20260725
+          path: absorption-base
+          fetch-depth: 1
+
+      - name: Reconstruct and verify every scientific source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, io, json, pathlib, shutil, tarfile
+          root=pathlib.Path('dynamic/research/dynamic_factor_residual_20260725')
+          manifest=json.loads((root/'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          chunks=[]
+          for item in manifest['parts']:
+              raw=(root/item['path']).read_bytes()
+              assert len(raw)==item['bytes']
+              assert hashlib.sha256(raw).hexdigest()==item['sha256']
+              chunks.append(raw)
+          combined=b''.join(chunks)
+          assert hashlib.sha256(combined).hexdigest()==manifest['combined_base64_sha256']
+          archive=base64.b64decode(combined,validate=True)
+          assert len(archive)==manifest['decoded_tar_gz_bytes']
+          assert hashlib.sha256(archive).hexdigest()==manifest['decoded_tar_gz_sha256']
+          out=pathlib.Path('dynamic-verified')
+          shutil.rmtree(out,ignore_errors=True); out.mkdir()
+          with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tf:
+              tf.extractall(out,filter='data')
+          assert hashlib.sha256((out/'MANIFEST.json').read_bytes()).hexdigest()==manifest['content_manifest_sha256']
+          inner=json.loads((out/'MANIFEST.json').read_text())
+          for item in inner['files']:
+              raw=(out/item['path']).read_bytes()
+              assert len(raw)==item['bytes']
+              assert hashlib.sha256(raw).hexdigest()==item['sha256']
+          shutil.copy2(root/'dynamic_factor_residual.py',out/'dynamic_factor_residual.py')
+          shutil.copy2(root/'preregistration.json',out/'dynamic_preregistration.json')
+          shutil.copy2(root/'result_summary.json',out/'dynamic_result_summary.json')
+          PY
+
+          python absorption/research/absorption_flow_benchmark_r7/reconstruct.py
+          python absorption-base/research/absorption_flow_benchmark_v1/reconstruct.py
+          test "$(sha256sum absorption-base/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py | cut -d' ' -f1)" = "e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8"
+
+          mkdir -p complete/dynamic complete/absorption complete/portfolio
+          cp -a dynamic-verified/. complete/dynamic/
+          cp -a absorption/research/absorption_flow_benchmark_r7/reconstructed/. complete/absorption/
+          cp absorption-base/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py complete/absorption/research/
+          cp absorption/research/absorption_flow_benchmark_r7/{RESULT.json,EVALUATION_CONTRACT.json,SOURCE_HASHES.json,BUNDLE_MANIFEST.json} complete/absorption/
+          cp portfolio/research/fixed_strategy_portfolio_20260726/preregistration.json complete/portfolio/
+
+          python -m py_compile complete/dynamic/*.py complete/absorption/research/*.py complete/absorption/tests/*.py
+          (cd complete && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fixed-strategy-complete-component-sources-${{ github.sha }}
+          path: complete
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
