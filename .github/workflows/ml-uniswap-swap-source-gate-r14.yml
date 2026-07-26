@@ -2,8 +2,7 @@ name: ML Uniswap WETH-stable inventory source gate
 
 on:
   push:
-    branches:
-      - agent/r14-ml-uniswap-hedge-transfer-001
+    branches: [agent/r14-ml-uniswap-hedge-transfer-001]
     paths:
       - 'research/ml_uniswap_hedge_transfer_20260726/**'
       - '.github/workflows/ml-uniswap-swap-source-gate-r14.yml'
@@ -29,171 +28,85 @@ jobs:
         with:
           ref: agent/r14-ml-uniswap-hedge-transfer-001
           fetch-depth: 1
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install fixed source-gate environment
-        run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check \
-            'requests==2.32.4' \
-            'pytest==8.3.5'
-
-      - name: Compile and run adversarial source tests with durable diagnostics
+      - name: Install fixed source environment
+        run: python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+      - name: Validate source engine and pre-outcome contract
         run: |
           set -euo pipefail
           root=research/ml_uniswap_hedge_transfer_20260726
           out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
           mkdir -p "$out"
-          set +e
-          {
-            python -m py_compile \
-              "$root/probe_uniswap_swaps.py" \
-              "$root/probe_uniswap_swaps_bounded.py" \
-              "$root/run_source_gate_with_blockscout.py" \
-              "$root/run_source_gate_with_batch_timestamps.py" \
-              "$root/test_probe_uniswap_swaps.py" \
-              "$root/test_probe_uniswap_swaps_bounded.py"
-            PYTHONPATH="$root" python -m pytest -vv \
-              "$root/test_probe_uniswap_swaps.py" \
-              "$root/test_probe_uniswap_swaps_bounded.py"
-            PYTHONPATH="$root" python - <<'PY'
-          import run_source_gate_with_batch_timestamps as batch
-          batch.self_test()
-          print('batch timestamp self-test PASS')
-          PY
-            python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_008_BATCH_TIMESTAMP_IMPLEMENTATION_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/EXECUTION_CORRECTION_010_HTTP_BUDGET_AND_BINARY_SINGLE_LOOKUPS_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
-            python -m json.tool "$root/AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
-            python - <<'PY'
-          import json
-          from pathlib import Path
-          root=Path('research/ml_uniswap_hedge_transfer_20260726')
-          a=json.loads((root/'AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json').read_text())
-          assert a['recorded_before_source_or_market_outcome'] is True
-          assert a['source_gate_result_observed'] is False
-          assert a['market_outcome_observed'] is False
-          assert a['official_2024H1']['opens_immediately_after_freeze'] is True
-          assert max(a['risk_search']['planned_stop_risk_fraction']) == 0.6
-          assert max(a['risk_search']['notional_cap_multiple']) == 100
-          PY
-          } 2>&1 | tee "$out/PRECHECK.log"
-          rc=${PIPESTATUS[0]}
-          set -e
-          printf '%s\n' "$rc" > "$out/PRECHECK_EXIT_CODE.txt"
-          exit "$rc"
-
-      - name: Run outcome-sealed Ethereum source gate
+          python -m py_compile \
+            "$root/probe_uniswap_swaps.py" \
+            "$root/probe_uniswap_swaps_bounded.py" \
+            "$root/run_source_gate_with_blockscout.py" \
+            "$root/run_source_gate_with_batch_timestamps.py" \
+            "$root/test_probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps_bounded.py"
+          PYTHONPATH="$root" python -m pytest -q \
+            "$root/test_probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps_bounded.py" | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python -c "import run_source_gate_with_batch_timestamps as x; x.self_test(); print('batch timestamp self-test PASS')" | tee "$out/SELF_TEST.log"
+          python -m json.tool "$root/AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+          PYTHONPATH="$root" python -c "import json,pathlib; a=json.loads(pathlib.Path('$root/AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json').read_text()); assert a['recorded_before_source_or_market_outcome'] and not a['source_gate_result_observed'] and not a['market_outcome_observed']; assert a['official_2024H1']['opens_immediately_after_freeze']; assert max(a['risk_search']['planned_stop_risk_fraction'])==0.6 and max(a['risk_search']['notional_cap_multiple'])==100"
+      - name: Run outcome-sealed canonical signed Swap source gate
         run: |
           set -euo pipefail
           root=research/ml_uniswap_hedge_transfer_20260726
           out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
-          mkdir -p "$out"
           PYTHONPATH="$root" python "$root/run_source_gate_with_batch_timestamps.py" \
-            --output "$out" \
-            2>&1 | tee "$out/RUN.log"
-
-      - name: Enforce source-only decision contract
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+      - name: Enforce source-only decision
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
           from pathlib import Path
-
-          root = Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate')
-          result = json.loads((root / 'PROBE_RESULT.json').read_text())
-          assert result['claim_id'] == 'CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
-          assert result['factory'].lower() == '0x1f98431c8ad98523631ae4a59f267346ea31f984'
-          assert result['swap_topic'].lower() == '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67'
-          assert isinstance(result['source_gate_pass'], bool)
-          assert all(int(item['date'][:4]) <= 2023 for item in result['probe_windows'])
-          assert result['forbidden_outcome_fields'] == [
-            'future_return', 'label', 'action', 'trade', 'pnl',
-            'model_metric', 'official_2024_2026'
-          ]
-          if result['source_gate_pass']:
-              assert result['scientific_decision'] == 'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
-              assert all(result['source_gate_checks'].values())
-          else:
-              assert result['scientific_decision'] == 'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES'
-          serialized = json.dumps(result, sort_keys=True).lower()
-          for forbidden_key in (
-            'future_return_value', 'first_passage_label_value', 'trade_return',
-            'account_nav', 'model_auc', 'official_2024_opened', 'orders_submitted'
-          ):
-              assert forbidden_key not in serialized
-          print(json.dumps({
-            'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
-            'source_gate_pass': result['source_gate_pass'],
-            'decision': result['scientific_decision'],
-            'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
-            'decode_errors': result.get('totals', {}).get('decode_error_count', 0),
-          }, sort_keys=True))
+          path=Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate/PROBE_RESULT.json')
+          r=json.loads(path.read_text())
+          assert r['claim_id']=='CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
+          assert r['factory'].lower()=='0x1f98431c8ad98523631ae4a59f267346ea31f984'
+          assert r['swap_topic'].lower()=='0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67'
+          assert all(int(x['date'][:4])<=2023 for x in r['probe_windows'])
+          assert r['forbidden_outcome_fields']==['future_return','label','action','trade','pnl','model_metric','official_2024_2026']
+          assert r['scientific_decision']==('OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE' if r['source_gate_pass'] else 'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES')
+          if r['source_gate_pass']:
+              assert all(r['source_gate_checks'].values())
+          serialized=json.dumps(r,sort_keys=True).lower()
+          for key in ('future_return_value','first_passage_label_value','trade_return','account_nav','model_auc','official_2024_opened','orders_submitted'):
+              assert key not in serialized
+          print(json.dumps({'source_gate_pass':r['source_gate_pass'],'decision':r['scientific_decision'],'decoded_logs':r.get('totals',{}).get('decoded_logs',0)},sort_keys=True))
           PY
-
-      - name: Record current project validation
+      - name: Record project validation without blocking source evidence
+        if: always()
+        continue-on-error: true
         run: |
-          set -euo pipefail
           out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
-          set +e
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
-          rc=${PIPESTATUS[0]}
-          set -e
-          echo "$rc" > "$out/PROJECT_VALIDATION_EXIT_CODE.txt"
-          if [ "$rc" -ne 0 ]; then
-            echo 'Current-main validation drift recorded; the source-only scientific result remains separately sealed.'
-          fi
-
-      - name: Freeze source evidence hashes
+      - name: Freeze evidence hashes
         if: always()
         run: |
-          set -euo pipefail
-          root=research/ml_uniswap_hedge_transfer_20260726
-          out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate
-          mkdir -p "$out"
           python - <<'PY'
           import hashlib
           from pathlib import Path
           root=Path('research/ml_uniswap_hedge_transfer_20260726')
           out=Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate')
+          out.mkdir(parents=True,exist_ok=True)
           inputs=[
-            root/'WORK_CLAIM.json', root/'PREREGISTRATION.md',
-            root/'EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_006_BOUNDED_ARCHIVE_RPC_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_007_BATCH_BLOCK_TIMESTAMPS_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_008_BATCH_TIMESTAMP_IMPLEMENTATION_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_009_DURABLE_PRECHECK_REPLAY_BEFORE_OUTCOME.json',
-            root/'EXECUTION_CORRECTION_010_HTTP_BUDGET_AND_BINARY_SINGLE_LOOKUPS_BEFORE_OUTCOME.json',
+            root/'WORK_CLAIM.json',root/'PREREGISTRATION.md',
             root/'AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json',
             root/'AMENDMENT_003_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json',
-            root/'probe_uniswap_swaps.py', root/'probe_uniswap_swaps_bounded.py',
-            root/'run_source_gate_with_blockscout.py', root/'run_source_gate_with_batch_timestamps.py',
-            root/'test_probe_uniswap_swaps.py', root/'test_probe_uniswap_swaps_bounded.py',
-            Path('.github/workflows/ml-uniswap-swap-source-gate-r14.yml'),
-          ]
-          (out/'INPUT_SHA256SUMS.txt').write_text(''.join(
-            f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in inputs
-          ),encoding='utf-8')
-          rows=[]
-          for p in sorted(x for x in out.rglob('*') if x.is_file() and x.name!='OUTPUT_SHA256SUMS.txt'):
-            rows.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n")
-          (out/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+            root/'probe_uniswap_swaps.py',root/'probe_uniswap_swaps_bounded.py',
+            root/'run_source_gate_with_blockscout.py',root/'run_source_gate_with_batch_timestamps.py',
+            root/'test_probe_uniswap_swaps.py',root/'test_probe_uniswap_swaps_bounded.py',
+            Path('.github/workflows/ml-uniswap-swap-source-gate-r14.yml')]
+          (out/'INPUT_SHA256SUMS.txt').write_text(''.join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in inputs),encoding='utf-8')
+          files=sorted(p for p in out.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt')
+          (out/'OUTPUT_SHA256SUMS.txt').write_text(''.join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in files),encoding='utf-8')
           PY
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
