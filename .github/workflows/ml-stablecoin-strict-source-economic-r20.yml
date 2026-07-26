@@ -8,24 +8,18 @@ on:
       - '.github/workflows/ml-stablecoin-strict-source-economic-r20.yml'
       - 'research/ml_stablecoin_issuance_economic_20260726/**'
       - 'sourcefix/ml_stablecoin_causal_guard_20260726/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/ml-stablecoin-strict-source-economic-r20.yml'
-      - 'research/ml_stablecoin_issuance_economic_20260726/**'
-      - 'sourcefix/ml_stablecoin_causal_guard_20260726/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-strict-source-economic-${{ github.sha }}
-  cancel-in-progress: false
+  group: stablecoin-strict-source-economic-sole
+  cancel-in-progress: true
 
 jobs:
   decision:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     env:
       PYTHONHASHSEED: '0'
@@ -77,6 +71,7 @@ jobs:
           python -m json.tool "$FIX_ROOT/CORRECTION_001_ENTRY_BAR_LOOKAHEAD_AND_UNRESOLVED_PATH_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$FIX_ROOT/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$FIX_ROOT/EXECUTION_CORRECTION_003_FAILCLOSED_SOURCE_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$FIX_ROOT/EXECUTION_CORRECTION_004_SINGLE_ARM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
           python -m py_compile \
             "$SOURCE_ROOT"/source_gate*.py \
             "$SOURCE_ROOT/run_pinned_snapshot_source.py" \
@@ -294,6 +289,7 @@ jobs:
           cp "$SOURCE_ROOT/run_pinned_snapshot_source.py" "$OUT_ROOT/inputs/"
           cp "$FIX_ROOT/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
           cp "$FIX_ROOT/EXECUTION_CORRECTION_003_FAILCLOSED_SOURCE_AUTHORITY_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
+          cp "$FIX_ROOT/EXECUTION_CORRECTION_004_SINGLE_ARM_RUNNER_BEFORE_OUTCOME.json" "$OUT_ROOT/inputs/"
           cp "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/test_causal_guard.py" "$OUT_ROOT/inputs/"
           printf '%s\n' "$SOURCE_SHA" > "$OUT_ROOT/inputs/SOURCE_SHA.txt"
           find "$OUT_ROOT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
