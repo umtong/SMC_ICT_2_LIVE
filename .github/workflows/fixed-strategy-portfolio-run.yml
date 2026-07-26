@@ -2,21 +2,19 @@ name: Fixed two-strategy one-slot 2024 portfolio
 
 on:
   push:
-    branches:
-      - agent/r8-fixed-strategy-portfolio-v2
+    branches: [agent/r8-fixed-strategy-portfolio-v2]
     paths:
       - "research/fixed_strategy_portfolio_20260726/**"
       - ".github/workflows/fixed-strategy-portfolio-run.yml"
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "research/fixed_strategy_portfolio_20260726/**"
       - ".github/workflows/fixed-strategy-portfolio-run.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -55,14 +53,10 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade "pip==25.1.1"
           python -m pip install \
-            "numpy==2.1.3" \
-            "pandas==2.2.3" \
-            "pyarrow==18.1.0" \
-            "numba==0.61.2" \
-            "requests==2.32.4" \
-            "pytest==8.3.4"
+            "numpy==2.1.3" "pandas==2.2.3" "pyarrow==18.1.0" \
+            "numba==0.61.2" "requests==2.32.4" "pytest==8.3.4"
 
-      - name: Checkout exact frozen component sources
+      - name: Checkout exact frozen dynamic source
         uses: actions/checkout@v4
         with:
           repository: umtong/SMC_ICT_2_LIVE
@@ -84,14 +78,11 @@ jobs:
           set -euo pipefail
           rm -rf "$COMPONENT_ROOT" "$OUT"
           mkdir -p "$COMPONENT_ROOT/dynamic" "$OUT"
-
           python "$ROOT/reconstruct_portfolio.py"
-          python -m py_compile \
-            "$ROOT/reconstruct_portfolio.py" \
+          python -m py_compile "$ROOT/reconstruct_portfolio.py" \
             "$ROOT/reconstructed_portfolio/prepare_data.py" \
             "$ROOT/reconstructed_portfolio/portfolio.py"
           python "$ROOT/reconstructed_portfolio/portfolio.py" --self-test
-
           python - <<'PY'
           import base64, hashlib, io, json, os, pathlib, shutil, tarfile
           root=pathlib.Path('dependency/dynamic/research/dynamic_factor_residual_20260725')
@@ -120,12 +111,10 @@ jobs:
           shutil.copy2(root/'preregistration.json',out/'dynamic_preregistration.json')
           shutil.copy2(root/'result_summary.json',out/'dynamic_result_summary.json')
           PY
-
           python dependency/absorption/research/absorption_flow_benchmark_v1/reconstruct.py
           absorption=dependency/absorption/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
           echo "e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  $absorption" | sha256sum -c -
           python -m py_compile "$COMPONENT_ROOT"/dynamic/*.py "$absorption"
-
           echo "b1351e751000a04a866bca134deaae37763998500fe2a453127311040c8c6c49  $ROOT/preregistration.json" | sha256sum -c -
           python scripts/validate_project.py
 
@@ -135,10 +124,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p source
-          gh run download 30147824722 \
-            --repo umtong/SMC_ICT_2_LIVE \
-            --name cross-asset-leadlag-baseline-20260725 \
-            --dir source
+          gh run download 30147824722 --repo umtong/SMC_ICT_2_LIVE \
+            --name cross-asset-leadlag-baseline-20260725 --dir source
           test -f source/snapshot/BTCUSDT_5m.npz
           test -f source/snapshot/DATASET_MANIFEST.json
           sha256sum source/snapshot/* > "$OUT/DYNAMIC_SNAPSHOT_SHA256SUMS.txt"
@@ -153,10 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           python "$ROOT/reconstructed_portfolio/prepare_data.py" \
-            --root "$DATA_ROOT" \
-            --start 2022-03 \
-            --end 2024-12 \
-            --workers 12 \
+            --root "$DATA_ROOT" --start 2022-03 --end 2024-12 --workers 12 \
             2>&1 | tee "$OUT/PREPARE_DATA.log"
           cp "$DATA_ROOT/DATASET_MANIFEST.json" "$OUT/DATASET_MANIFEST.json"
           cp "$DATA_ROOT/DATASET_SUMMARY.json" "$OUT/DATASET_SUMMARY.json"
@@ -168,9 +152,7 @@ jobs:
           python "$ROOT/reconstructed_portfolio/portfolio.py" \
             --dynamic-root "$COMPONENT_ROOT/dynamic" \
             --absorption-root dependency/absorption/research/absorption_flow_benchmark_v1 \
-            --snapshot source/snapshot \
-            --data-root "$DATA_ROOT" \
-            --output "$OUT" \
+            --snapshot source/snapshot --data-root "$DATA_ROOT" --output "$OUT" \
             2>&1 | tee "$OUT/RUN.log"
 
       - name: Verify authority, seals and decision-ready result
@@ -184,8 +166,7 @@ jobs:
           out=Path(os.environ['OUT'])
           result=json.loads((out/'RESULT.json').read_text())
           assert result['orders_submitted'] is False
-          assert result['2025_opened'] is False
-          assert result['2026_opened'] is False
+          assert result['2025_opened'] is False and result['2026_opened'] is False
           passed=bool(result['component_equivalence']['passed'])
           if passed:
               assert result['official_2024_opened'] is True
@@ -197,22 +178,75 @@ jobs:
               assert result['hard_validity']=='FAIL_CLOSED'
           print('VERIFIED_RESULT='+json.dumps(result,sort_keys=True,separators=(',',':')))
           PY
-
-          sha256sum \
-            "$ROOT/preregistration.json" \
-            "$ROOT/source_manifest.json" \
-            "$ROOT/reconstruct_portfolio.py" \
-            "$ROOT"/source_bundle.tar.gz.b64.part* \
+          sha256sum "$ROOT/preregistration.json" "$ROOT/source_manifest.json" \
+            "$ROOT/reconstruct_portfolio.py" "$ROOT"/source_bundle.tar.gz.b64.part* \
             "$ROOT/reconstructed_portfolio/prepare_data.py" \
             "$ROOT/reconstructed_portfolio/portfolio.py" \
             dependency/absorption/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py \
             "$COMPONENT_ROOT"/dynamic/dynamic_factor_residual.py \
             "$COMPONENT_ROOT"/dynamic/rank_rotation.py \
-            "$COMPONENT_ROOT"/dynamic/state_exit.py \
-            > "$OUT/INPUT_SHA256SUMS.txt"
-
+            "$COMPONENT_ROOT"/dynamic/state_exit.py > "$OUT/INPUT_SHA256SUMS.txt"
           find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
             | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - name: Publish decision-ready small result to claim branch
+        if: always() && github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest=research_results/fixed_strategy_portfolio_20260726
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          if test -s "$OUT/RESULT.json"; then
+            for name in RESULT.json COMPONENT_EQUIVALENCE.json METRICS.json WINNER_REMOVAL.json \
+              DATASET_SUMMARY.json DATASET_MANIFEST.json INPUT_SHA256SUMS.txt OUTPUT_SHA256SUMS.txt; do
+              test ! -f "$OUT/$name" || cp "$OUT/$name" "$dest/$name"
+            done
+            python - <<'PY'
+          import json, os
+          from pathlib import Path
+          dest=Path('research_results/fixed_strategy_portfolio_20260726')
+          result=json.loads((dest/'RESULT.json').read_text())
+          attestation={
+              'schema_version':1,
+              'active_claim_id':'CLM-20260726-1955-FIXED-PORTFOLIO-TAKEOVER-001',
+              'scientific_claim_id':'CLM-20260726-0100-FIXED-PORTFOLIO-001',
+              'workflow_run_id':os.environ['GITHUB_RUN_ID'],
+              'workflow_sha':os.environ['GITHUB_SHA'],
+              'status':result['status'],
+              'hard_validity':result['hard_validity'],
+              'official_2024_opened':result['official_2024_opened'],
+              'orders_submitted':False,
+          }
+          (dest/'CI_ATTESTATION.json').write_text(json.dumps(attestation,indent=2,sort_keys=True)+'\n')
+          PY
+          else
+            python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload={
+              'schema_version':1,
+              'active_claim_id':'CLM-20260726-1955-FIXED-PORTFOLIO-TAKEOVER-001',
+              'status':'INCOMPLETE_MECHANICAL_NO_RESULT',
+              'workflow_run_id':os.environ['GITHUB_RUN_ID'],
+              'workflow_sha':os.environ['GITHUB_SHA'],
+              'official_2024_opened':False,
+              'orders_submitted':False,
+          }
+          Path('research_results/fixed_strategy_portfolio_20260726/CI_ATTESTATION.json').write_text(
+              json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+            test ! -f "$OUT/PREPARE_DATA.log" || cp "$OUT/PREPARE_DATA.log" "$dest/PREPARE_DATA.log"
+            test ! -f "$OUT/RUN.log" || cp "$OUT/RUN.log" "$dest/RUN.log"
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add "$dest"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record fixed portfolio 2024 decision-ready result"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - uses: actions/upload-artifact@v4
         if: always()
