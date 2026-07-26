@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'research/triggers/stablecoin_strict_v4_macos/**'
+      - 'research/triggers/stablecoin_strict_v4_orchestrator/**'
   workflow_dispatch:
 
 permissions:
@@ -104,7 +104,6 @@ jobs:
 
           source_path=first('SOURCE_GATE_RESULT.json')
           economic_path=first('RESULT.json')
-          full_path=first('FULL_RESULT.json')
           source=json.loads(source_path.read_text()) if source_path else None
           economic=json.loads(economic_path.read_text()) if economic_path else None
 
