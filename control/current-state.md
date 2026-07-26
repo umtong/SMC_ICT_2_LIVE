@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 21
+- revision: 22
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-ML-DONCHIAN-HGBT-2024H1-24BPS`
 - first-place stage: `OFFICIAL_2024H1_SEQUENTIAL_BINANCE_PROXY_RETIRED_WINNER_CONCENTRATED`
@@ -51,29 +51,28 @@ The entire hourweek/session/asset/side/threshold family is retired. 2024H2 throu
 
 All remain structurally far below 1%. None has deployment authority. Rank creates no incumbency protection.
 
-## Newly closed source dependency
+## Newly closed source dependencies
 
-`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the cumulative Hugging Face USDC/WETH source before market outcomes. Its `USDC` and `WETH` columns are cumulative unsigned volumes, not pool balances or signed `amount0/amount1` Swap flow, so WETH purchase versus sale direction cannot be reconstructed causally. No price, label, model, PnL or official period opened. The route may reopen only with canonical signed V3 Swap events or an equivalent immutable source.
+`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the cumulative Hugging Face USDC/WETH source before market outcomes. Its columns are cumulative unsigned volumes, not signed `amount0/amount1` Swap flow. No price, label, model, PnL or official period opened. This is not negative alpha evidence against canonical signed Uniswap inventory transfer.
 
-This is a source-semantics result, not negative alpha evidence against signed Uniswap inventory transfer.
+`RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001` closes the continuous 2021-2023 COIN-M `liquidationSnapshot` dependency before market outcomes. Official archives begin on `2023-06-25`; BTC and ETH cover only `187/1095` and `186/1095` requested dates, approximately 17%, below the frozen 80% requirement. No market price, label, model, PnL, risk search or official interval opened. This is a source-coverage result, not negative alpha evidence against genuine dense forced liquidation flow.
 
 ## Active high-information ML work
 
-Only two primary information units remain active:
+Only one primary information unit remains active:
 
-1. corrected Ethereum USDT `Issue/Redeem` plus USDC zero-address `Transfer` supply shocks, followed by one frozen BTC/ETH HGBT and immediate 2024H1 evaluation for a pre-2024 survivor;
-2. checksum-verified Binance COIN-M `BTCUSD_PERP` and `ETHUSD_PERP` forced-liquidation records, signal-mapped to Bybit BTCUSDT/ETHUSDT, followed by one pooled HGBT and the same immediate sequential rule.
+1. corrected Ethereum USDT `Issue/Redeem` plus USDC zero-address `Transfer` supply shocks, followed by one fixed BTC/ETH HGBT and one global-slot account rule. PR #268 is the sole SHA-scoped source-to-economic authority and uses strict causal V3: every feature ends at the last bar completed before source finalization, the future next-minute open is execution-only, entry gaps are cost-only invalidations and unresolved stage-boundary exposure is NAV-marked rather than strategy-closed.
 
-Broad-universe completed-bar diffusion, extra UTC filters, unsigned cumulative Uniswap volumes, duplicate source transports and polling-only economic workflows are paused or closed before outcomes.
+Broad-universe completed-bar diffusion, extra UTC filters, unsigned cumulative Uniswap volumes, insufficient-history COIN-M liquidation, duplicate source transports and polling-only economic workflows are paused or closed before market outcomes.
 
 ## Current objective and next exact action
 
-Do not tune Donchian or UTC time filters. Consume the two source gates immediately.
+Do not tune Donchian, UTC filters or the closed source dependencies. Consume the strict stablecoin source-to-economic decision immediately.
 
-- A source PASS opens its already-frozen pre-2024 ML/account stage in the same information unit.
+- A source PASS opens the already-frozen strict V3 pre-2024 ML/account stage in the same workflow.
 - A positive cost-surviving system is frozen using information through 2023-12-31 and opens official 2024H1 immediately.
 - A source or economic failure closes the exact route without adjacent feature, threshold, target, stop, risk or leverage rescue.
 - Any superior hard-valid account path is inserted into the cumulative ranking immediately.
 - Growth above 1% is retained at full strength; 1% is never treated as a ceiling.
 
-Updated: 2026-07-27 00:10 KST
+Updated: 2026-07-27 execution reconciliation
