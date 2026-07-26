@@ -94,6 +94,18 @@ def test_canonical_asof_join_normalizes_nullable_integer_keys() -> None:
     joined = causal_asof_join(base, auxiliary)
     assert joined["available_at_ms"].dtype == "int64"
     assert joined["open_interest"].tolist() == [1.0, 2.0]
+    assert "source_timestamp" not in joined.columns
+
+    second_auxiliary = pd.DataFrame(
+        {
+            "available_at_ms": np.asarray([1672531200000, 1672531290000], dtype="int64"),
+            "funding_rate": [0.0001, 0.0002],
+        },
+        index=pd.to_datetime(["2023-01-01T00:00:00Z", "2023-01-01T00:01:30Z"]),
+    )
+    joined_twice = causal_asof_join(joined, second_auxiliary)
+    assert joined_twice["funding_rate"].tolist() == [0.0001, 0.0002]
+    assert "source_timestamp" not in joined_twice.columns
 
 
 def test_coarse_replay_cannot_use_barrier_after_evaluation_cutoff() -> None:
