@@ -55,6 +55,8 @@ The Donchian after-loser path `a70626d9e484285f2cb4|after_loser` is provisional 
 
 Economic-gate failure and ranking are separate, but a strategy that violates the fixed exit contract cannot rank. A higher incomplete path is not suppressed merely because a lower path has a fuller report.
 
+Rank does not determine research priority.
+
 ## Work stopped
 
 The fixed 2024 portfolio takeover that combined the ineligible dynamic state-exit with aligned continuation remains stopped before any 2024 strategy outcome is opened.
