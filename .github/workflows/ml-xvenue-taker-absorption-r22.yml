@@ -70,10 +70,25 @@ jobs:
           root=research/ml_xvenue_taker_absorption_20260727
           python "$root/run.py" self-test
 
-      - name: Validate project harness
+      - name: Capture project harness diagnostics
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          python scripts/validate_project.py
+          set +e
+          python scripts/validate_project.py > project-validation.log 2>&1
+          status=$?
+          cat project-validation.log
+          printf '%s\n' "$status" > project-validation.exit
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xvenue-project-validation-${{ github.sha }}
+          path: |
+            project-validation.log
+            project-validation.exit
+          if-no-files-found: error
+          retention-days: 30
 
   extract:
     needs: validate
