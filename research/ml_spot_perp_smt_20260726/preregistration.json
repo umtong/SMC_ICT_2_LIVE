@@ -1,0 +1,93 @@
+{
+  "account": {
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "global_slot_count": 1,
+    "holding_charge_bps_per_day": 1.0,
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 5.0,
+    "prior_completed_minute_participation_cap": 0.001,
+    "risk_fraction": 0.005,
+    "utc_daily_nav": true
+  },
+  "authority": {
+    "credentials": false,
+    "live_permission_change": false,
+    "orders": false,
+    "rank_eligibility": false
+  },
+  "claim_id": "CLM-20260726-1908-ML-SPOT-PERP-SMT-001",
+  "engine_version": "ML-SPOT-PERP-SMT-FIRST-PASSAGE-V1",
+  "execution": {
+    "entry": "first valid Bybit BBO state at least 500 ms after completed spot event; ask for long, bid for short",
+    "exit_latency_ms": 100,
+    "same_state_ambiguity": "stop first",
+    "source_boundary": "full structural stop",
+    "time_exit": false
+  },
+  "fit_gate_all_required": {
+    "at_least_three_of_four_positive_blocks_at_18bps": true,
+    "auc_lift_over_baseline": ">=0.02",
+    "minimum_confirmation_events": 200,
+    "minimum_completed_trades_at_18bps": 80,
+    "no_liquidation": true,
+    "positive_brier_skill": true,
+    "positive_median_trade_at_18bps": true,
+    "positive_median_trade_at_24bps": true,
+    "positive_return_at_18bps": true,
+    "positive_return_at_24bps": true,
+    "profit_factor_above_one_at_18bps": true,
+    "profit_factor_above_one_at_24bps": true,
+    "top_10_percent_winner_removed_positive_at_18bps": true
+  },
+  "market": {
+    "execution_contract": "Bybit BTCUSDT USDT-linear perpetual",
+    "information_market": "Binance spot BTCUSDT"
+  },
+  "model": {
+    "baseline_features": [
+      "spot_move_bps",
+      "lag_ratio",
+      "target_distance_bps",
+      "stop_distance_bps",
+      "rr"
+    ],
+    "calibration": "one chronological isotonic map",
+    "direction": "completed spot displacement direction only",
+    "family": "HistGradientBoostingClassifier",
+    "feature_grid": false,
+    "full_feature_count": 21,
+    "hyperparameter_grid": false,
+    "minimum_expected_net_bps_after_18bp_contract": 5,
+    "model_grid": false,
+    "risk_grid": false,
+    "single_model_only": true,
+    "threshold_grid": false
+  },
+  "scientific_question": "Does arrival-time Binance spot external-liquidity acceptance predict same-direction Bybit perpetual structural delivery strongly enough to overcome realistic execution cost?",
+  "source": {
+    "binance_spot": "Tardis quotes and trades on 2022-07-01 and conditional 2023-07-01",
+    "bybit_artifact_id": 8626087323,
+    "bybit_artifact_sha256": "90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+    "information_clock": "Tardis local_timestamp",
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "structure": {
+    "bybit_stop": "nearest active confirmed opposite 15-second pivot",
+    "bybit_target": "nearest active confirmed same-direction 60-second external pivot",
+    "dual_side_one_second_traversal": "reject",
+    "event": "first completed one-second spot close accepting through a still-active confirmed 15-second pivot",
+    "lag": "signed Bybit five-second move divided by signed spot five-second move below 0.50",
+    "minimum_spot_body_efficiency": 0.5,
+    "minimum_spot_flow_imbalance": 0.05,
+    "minimum_spot_move_bps": 2.0,
+    "minimum_spot_range_atr": 0.12,
+    "one_event_per_spot_pool": true
+  },
+  "time_partitions": {
+    "calibration": "2022-07-01T10:00:00Z through 2022-07-01T13:59:59.999999Z; labels resolve before 14:00",
+    "conditional_development": "2023-07-01, opened only after every confirmation gate passes",
+    "fit_confirmation": "2022-07-01T14:00:00Z through 2022-07-01T23:59:59.999999Z",
+    "prohibited": [2024, 2025, 2026],
+    "training": "2022-07-01T00:00:00Z through 2022-07-01T09:59:59.999999Z; labels resolve before 10:00"
+  }
+}
