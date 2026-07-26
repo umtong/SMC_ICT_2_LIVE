@@ -1,0 +1,180 @@
+name: YT Trinity full native-caption corpus
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/yt_trinity_ml/probe_alt_caption_frontends.py
+      - research/yt_trinity_ml/harvest_alt_caption_frontends.py
+      - research/yt_trinity_ml/build_concept_index.py
+      - research/yt_trinity_ml/extract_rule_ontology.py
+      - research/yt_trinity_ml/materialize_verified_inventory.py
+      - research/yt_trinity_ml/inventory_payload/**
+      - .github/workflows/yt-trinity-alt-caption-full-corpus.yml
+      - control/yt-trinity-alt-caption-full-trigger.json
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - research/yt_trinity_ml/probe_alt_caption_frontends.py
+      - research/yt_trinity_ml/harvest_alt_caption_frontends.py
+      - research/yt_trinity_ml/build_concept_index.py
+      - research/yt_trinity_ml/extract_rule_ontology.py
+      - research/yt_trinity_ml/materialize_verified_inventory.py
+      - research/yt_trinity_ml/inventory_payload/**
+      - .github/workflows/yt-trinity-alt-caption-full-corpus.yml
+      - control/yt-trinity-alt-caption-full-trigger.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-alt-caption-full-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  harvest:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install declared transport dependency
+        run: python -m pip install --disable-pip-version-check "requests==2.32.4"
+      - name: Compile and self-test native-caption lane
+        run: |
+          python -m py_compile \
+            research/yt_trinity_ml/probe_alt_caption_frontends.py \
+            research/yt_trinity_ml/harvest_alt_caption_frontends.py \
+            research/yt_trinity_ml/build_concept_index.py \
+            research/yt_trinity_ml/extract_rule_ontology.py
+          python research/yt_trinity_ml/probe_alt_caption_frontends.py --self-test
+          python research/yt_trinity_ml/harvest_alt_caption_frontends.py --self-test
+          python research/yt_trinity_ml/build_concept_index.py --self-test
+          python research/yt_trinity_ml/extract_rule_ontology.py --self-test
+      - name: Materialize and verify exact 186-video inventory
+        run: |
+          python research/yt_trinity_ml/materialize_verified_inventory.py | tee inventory-materialization.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          path = Path("research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_30218664372.jsonl")
+          rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+          counts = dict(sorted(Counter(row["channel_slug"] for row in rows).items()))
+          expected = {"chartbro": 62, "indicator_sensei": 98, "swipalnam": 26}
+          digest = hashlib.sha256(path.read_bytes()).hexdigest()
+          if len(rows) != 186 or counts != expected:
+              raise SystemExit(f"inventory mismatch rows={len(rows)} counts={counts}")
+          if digest != "4524e2ec92cf05e7fc5dbc61b68c906b30dd4d4fedafa4b0bc861bcdbab604f2":
+              raise SystemExit(f"inventory digest mismatch: {digest}")
+          print(json.dumps({"rows": len(rows), "counts": counts, "sha256": digest}, sort_keys=True))
+          PY
+      - name: Harvest all public native captions sequentially
+        run: |
+          mkdir -p artifact/yt-trinity-native-corpus
+          python research/yt_trinity_ml/harvest_alt_caption_frontends.py \
+            --inventory research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_30218664372.jsonl \
+            --output artifact/yt-trinity-native-corpus \
+            --timeout-seconds 35 \
+            --pace-seconds 1.25 \
+            --max-piped-instances 15 \
+            --max-invidious-instances 15 \
+            --desired-instances-per-provider 2 \
+            2>&1 | tee artifact/HARVEST_STDOUT.log
+      - name: Build channel-attributed concept and rule evidence
+        run: |
+          python research/yt_trinity_ml/build_concept_index.py \
+            --corpus artifact/yt-trinity-native-corpus \
+            | tee artifact/CONCEPT_INDEX_STDOUT.json
+          python research/yt_trinity_ml/extract_rule_ontology.py \
+            --corpus artifact/yt-trinity-native-corpus \
+            | tee artifact/RULE_ONTOLOGY_STDOUT.json
+      - name: Hash immutable corpus evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          root = Path("artifact/yt-trinity-native-corpus")
+          if not root.exists():
+              raise SystemExit("native corpus output missing")
+          rows = []
+          for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file() and candidate.name != "SHA256SUMS"):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}")
+          (root / "SHA256SUMS").write_text("\n".join(rows) + "\n", encoding="utf-8")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-full-native-caption-corpus-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist recoverable native-corpus pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path("artifact/yt-trinity-native-corpus/manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else None
+          raw = manifest_path.read_bytes() if manifest_path.exists() else b""
+          pointer = {
+              "schema_version": 1,
+              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+              "workflow": "YT Trinity full native-caption corpus",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"yt-trinity-full-native-caption-corpus-{os.environ['GITHUB_SHA']}",
+              "manifest_sha256": hashlib.sha256(raw).hexdigest() if raw else None,
+              "manifest": manifest,
+          }
+          Path("research/yt_trinity_ml/NATIVE_CAPTION_CORPUS_POINTER.json").write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/NATIVE_CAPTION_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record full native-caption corpus ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${TARGET_BRANCH}"
+            if git push origin "HEAD:${TARGET_BRANCH}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - name: Enforce conclusive native-caption classification
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifact/yt-trinity-native-corpus/manifest.json")
+          if not path.exists():
+              raise SystemExit("native-caption manifest missing")
+          manifest = json.loads(path.read_text(encoding="utf-8"))
+          if not manifest.get("caption_classification_complete"):
+              raise SystemExit(f"native-caption classification unresolved: {manifest}")
+          PY
