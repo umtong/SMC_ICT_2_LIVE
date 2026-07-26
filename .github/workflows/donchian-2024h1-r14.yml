@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   official-2024h1:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       ROOT: research/donchian_2024h1_20260726
@@ -57,6 +57,7 @@ jobs:
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_CORRECTION_001_SLIM_SHA_SCOPED_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_002_STANDARD_RUNNER_BEFORE_OUTCOME.json" >/dev/null
           python "$ROOT/reconstruct.py"
           python -m py_compile "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/download_bars.py" "$ROOT/download_funding.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_run.py"
@@ -105,6 +106,7 @@ jobs:
           sha256sum \
             "$ROOT/WORK_CLAIM.json" "$ROOT/preregistration.json" "$ROOT/README.md" "$ROOT/SOURCES.md" \
             "$ROOT/EXECUTION_CORRECTION_001_SLIM_SHA_SCOPED_BEFORE_OUTCOME.json" \
+            "$ROOT/EXECUTION_CORRECTION_002_STANDARD_RUNNER_BEFORE_OUTCOME.json" \
             "$ROOT/bundle_manifest.json" "$ROOT/reconstruct.py" "$ROOT"/source_bundle.tar.gz.b64.part* \
             "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/download_bars.py" "$ROOT/download_funding.py" \
             .github/workflows/donchian-2024h1-r14.yml \
