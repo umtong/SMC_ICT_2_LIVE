@@ -15,7 +15,11 @@ except ImportError:  # direct script execution
 
 
 class SourceError(RuntimeError):
-    """Official source, pagination or coverage failure."""
+    """Permanent official-source, request-contract, pagination or coverage failure."""
+
+
+class RetryableSourceError(RuntimeError):
+    """Transient network, rate-limit or server failure."""
 
 
 @dataclass(frozen=True)
@@ -59,17 +63,26 @@ class BybitPublicClient:
             try:
                 response = self.session.get(url, params=params, timeout=self.timeout_s)
                 self._last_request_at = time.monotonic()
-                if response.status_code == 403:
-                    raise SourceError("Bybit HTTP 403 rate limit or access block")
-                response.raise_for_status()
+                status = response.status_code
+                if status == 403:
+                    raise SourceError("Bybit HTTP 403 access block; changing retry timing cannot repair it")
+                if status == 429 or status >= 500:
+                    raise RetryableSourceError(f"Bybit transient HTTP {status}")
+                if status >= 400:
+                    raise SourceError(f"Bybit permanent HTTP {status}: {response.text[:240]}")
                 raw = response.content
-                payload = response.json()
+                try:
+                    payload = response.json()
+                except ValueError as exc:
+                    raise RetryableSourceError("Bybit returned a non-JSON success response") from exc
                 if int(payload.get("retCode", -1)) != 0:
                     raise SourceError(
                         f"Bybit retCode={payload.get('retCode')} retMsg={payload.get('retMsg')}"
                     )
                 return payload, raw
-            except (requests.RequestException, ValueError, SourceError) as exc:
+            except SourceError:
+                raise
+            except (requests.RequestException, RetryableSourceError) as exc:
                 last_error = exc
                 if attempt >= self.max_attempts:
                     break
