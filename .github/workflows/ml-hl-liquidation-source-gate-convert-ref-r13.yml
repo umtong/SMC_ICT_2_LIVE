@@ -1,4 +1,4 @@
-name: ML Hyperliquid liquidation source gate convert revision
+name: ML Hyperliquid liquidation source gate authoritative
 
 on:
   push:
@@ -6,18 +6,22 @@ on:
       - agent/r13-ml-hl-liquidation-001
     paths:
       - '.github/workflows/ml-hl-liquidation-source-gate-convert-ref-r13.yml'
+      - 'research/ml_hl_liquidation_20260726/**'
+      - 'sourcefix/ml_hl_liquidation_convert_ref_20260726/**'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/ml-hl-liquidation-source-gate-convert-ref-r13.yml'
+      - 'research/ml_hl_liquidation_20260726/**'
+      - 'sourcefix/ml_hl_liquidation_convert_ref_20260726/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-hl-liquidation-source-convert-ref-r13-${{ github.sha }}
-  cancel-in-progress: false
+  group: ml-hl-liquidation-source-authoritative
+  cancel-in-progress: true
 
 env:
   PYTHONHASHSEED: '0'
@@ -33,6 +37,9 @@ jobs:
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-hl-liquidation-001
+          fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
@@ -42,21 +49,17 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check \
-            requests==2.32.4 \
-            duckdb==1.4.3 \
-            pytest==8.3.5
+            requests==2.32.4 duckdb==1.4.3 pytest==8.3.5
 
-      - name: Validate parser and pre-outcome correction before network access
+      - name: Validate parser and pre-outcome corrections before network access
         run: |
           set -euo pipefail
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$FIX/CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json" >/dev/null
-          python -m py_compile \
-            "$ROOT/probe_hl_liquidations.py" \
-            "$ROOT/test_probe_hl_liquidations.py" \
-            "$FIX/run_fixed_source_gate.py"
+          python -m json.tool "$FIX/CORRECTION_005_WRAPPER_SYMBOL_ALIGNMENT_BEFORE_DATA.json" >/dev/null
+          python -m py_compile "$ROOT/probe_hl_liquidations.py" "$ROOT/test_probe_hl_liquidations.py" "$FIX/run_fixed_source_gate.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_probe_hl_liquidations.py"
           PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" --self-test
           python scripts/validate_project.py
@@ -86,6 +89,7 @@ jobs:
           manifest=json.loads((out/'SOURCE_MANIFEST.json').read_text())
           assert manifest['resolved_revision']==result['resolved_revision']
           assert len(manifest['frozen_paths'])==36
+          assert all('2026' not in path for path in manifest['frozen_paths'])
           print(json.dumps({
               'source_gate_pass':result['source_gate_pass'],
               'decision':result['scientific_decision'],
@@ -102,23 +106,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUT/source"
-          cp \
-            "$ROOT/WORK_CLAIM.json" \
-            "$ROOT/PREREGISTRATION.md" \
-            "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" \
-            "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" \
-            "$ROOT/SOURCES.md" \
-            "$ROOT/probe_hl_liquidations.py" \
-            "$ROOT/test_probe_hl_liquidations.py" \
-            "$FIX/CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json" \
-            "$FIX/run_fixed_source_gate.py" \
-            "$OUT/source/"
+          cp "$ROOT/WORK_CLAIM.json" "$ROOT/PREREGISTRATION.md" "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" "$ROOT/SOURCES.md" "$ROOT/probe_hl_liquidations.py" "$ROOT/test_probe_hl_liquidations.py" "$FIX/CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json" "$FIX/CORRECTION_005_WRAPPER_SYMBOL_ALIGNMENT_BEFORE_DATA.json" "$FIX/run_fixed_source_gate.py" "$OUT/source/"
           find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-hl-liquidation-source-convert-ref-${{ github.run_id }}
+          name: ml-hl-liquidation-source-authoritative-${{ github.run_id }}
           path: research_runs/ml_hl_liquidation_20260726/source-gate-convert-ref
           if-no-files-found: error
           retention-days: 30
