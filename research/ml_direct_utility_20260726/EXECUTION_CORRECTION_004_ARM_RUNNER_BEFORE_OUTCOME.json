@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-DIRECT-UTILITY-ARM-004",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "timing": "BEFORE_ANY_MODEL_FIT_OR_MARKET_RESULT",
+  "observed_problem": "The corrected workflow remained queued on the default x86 runner after earlier source-transport failures. No model, metric, trade, PnL or later-period result existed.",
+  "change": "Use ubuntu-24.04-arm for the identical frozen workflow to obtain an available runner.",
+  "unchanged": [
+    "source bytes and hashes",
+    "model family and hyperparameters",
+    "features and labels",
+    "chronology and stage gates",
+    "KEEP_SWITCH_FLAT policy",
+    "cost, funding, stop and winner-removal rules",
+    "risk and leverage search gate",
+    "2024-2026 seals",
+    "order permission"
+  ],
+  "scientific_outcome_opened_before_change": false,
+  "orders_submitted": false
+}
