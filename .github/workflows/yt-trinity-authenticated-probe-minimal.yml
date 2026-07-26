@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   probe:
-    runs-on: macos-14
+    runs-on: windows-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Register free key and verify caption transport
+        shell: bash
         run: |
           python - <<'PY'
           import json
