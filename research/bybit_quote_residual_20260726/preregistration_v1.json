@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1031-QUOTE-RESIDUAL-001",
+  "status": "PREREGISTERED_BEFORE_ANY_QUOTE_SOURCE_DOWNLOAD_OR_PNL",
+  "created_at": "2026-07-26T10:31:00+09:00",
+  "base_revision": 11,
+  "research_question": "Can a completed joint BTCUSDT and ETHUSDT Bybit top-of-book shock reveal a repeatable SOLUSDT or XRPUSDT residual gap that remains executable from the actual follower bid or ask after explicit latency and 12/18/24bp cost hurdles?",
+  "why_this_is_distinct": [
+    "The rejected predecessors synchronized asynchronous public trades and inferred a lag from stale last-trade states.",
+    "This study uses L2-derived best bid/ask quotes ordered by Tardis local arrival timestamps, actual follower entry-side prices and a conservative target-side spread deduction.",
+    "It changes the observable execution state rather than relaxing a rejected trade-print threshold."
+  ],
+  "markets": {
+    "venue": "Bybit USDT linear perpetuals",
+    "data_exchange_id": "bybit",
+    "leaders": ["BTCUSDT", "ETHUSDT"],
+    "followers": ["SOLUSDT", "XRPUSDT"],
+    "global_new_entry_slots_if_pnl_opens": 1
+  },
+  "source_contract": {
+    "provider": "Tardis downloadable normalized CSV samples",
+    "data_type": "quotes",
+    "url_template": "https://datasets.tardis.dev/v1/bybit/quotes/{YYYY}/{MM}/{DD}/{SYMBOL}.csv.gz",
+    "free_sample_rule": "Only first-day monthly datasets available without an API key are requested.",
+    "required_columns": ["exchange", "symbol", "timestamp", "local_timestamp", "ask_amount", "ask_price", "bid_price", "bid_amount"],
+    "ordering_clock": "local_timestamp; row order breaks exact timestamp ties",
+    "integrity": "Every gzip is SHA-256 hashed, parsed, checked for monotonic local_timestamp, positive crossed-free BBO and local-UTC-day coverage before any feature computation.",
+    "known_limit": "Downloadable CSV exports omit disconnect events. Stale quote states are invalidated and cannot be interpolated across a gap."
+  },
+  "chronological_stages": {
+    "fit_dates": ["2023-01-01", "2023-03-01"],
+    "development_dates": ["2023-05-01", "2023-07-01"],
+    "frozen_validation_dates": ["2023-09-01", "2023-11-01"],
+    "official_2024_2026_evaluation": "SEALED_UNTIL_FROZEN_VALIDATION_AND_FULL_BYBIT_REPLAY_GATE"
+  },
+  "quote_state": {
+    "grid_ms": 100,
+    "decision_quote_staleness_max_ms": 500,
+    "prior_model_quote_staleness_max_ms": 1000,
+    "mid": "(bid_price + ask_price) / 2",
+    "microprice": "(ask_price * bid_amount + bid_price * ask_amount) / (bid_amount + ask_amount)",
+    "log_spread": "log(ask_price / bid_price)",
+    "queue_imbalance": "(bid_amount - ask_amount) / (bid_amount + ask_amount)",
+    "quote_update_count": "Number of quote rows received in each 100ms local-arrival bin."
+  },
+  "information_contract": {
+    "decision": "Only after complete contemporaneous 0.5, 1, 2 or 5 second leader and follower windows.",
+    "rolling_history": "All scales, quote-intensity baselines and regression coefficients end strictly before shock start.",
+    "entry_if_pnl_opens": "First valid follower quote at or after decision plus 100ms; long enters at ask and short enters at bid.",
+    "source_gap": "A state with a required BBO older than 500ms at decision or 1000ms in prior modeling is unavailable. No time compression or favorable carry occurs."
+  },
+  "prior_model": {
+    "sampling": "Completed one-second quote mid returns using states no older than 1000ms.",
+    "window_seconds": 1800,
+    "minimum_finite_rows": 1200,
+    "minimum_nonzero_returns_per_leader": 100,
+    "regression": "Ridge solve of follower one-second mid return on BTC and ETH one-second mid returns. Ridge lambda equals 5 percent of half the trace of the prior leader covariance matrix.",
+    "coefficient_clip": [-2.0, 4.0],
+    "expected_horizon_return": "beta_btc * completed BTC mid return + beta_eth * completed ETH mid return"
+  },
+  "joint_leader_state": {
+    "horizon_ms": [500, 1000, 2000, 5000],
+    "same_direction_required": true,
+    "scale": "Separate prior-only 900-second realized-variance scale for each leader, multiplied by square root of horizon seconds.",
+    "common_shock_score": "direction * (BTC standardized mid return + ETH standardized mid return) / sqrt(2)",
+    "leader_balance_ratio": "min(abs(BTC z), abs(ETH z)) / max(abs(BTC z), abs(ETH z))",
+    "average_queue_support": "Mean direction-aligned BTC and ETH queue imbalance at decision.",
+    "minimum_queue_support": "Minimum direction-aligned queue imbalance across the two leaders.",
+    "quote_intensity_consensus": "Geometric mean of each leader's completed-horizon quote-update count divided by its prior 900-second positive-window median.",
+    "leader_spread_cap_bps": 5.0
+  },
+  "follower_state": {
+    "expected_target_mid": "Follower mid immediately before shock start multiplied by exp(expected follower return).",
+    "underreaction_ratio": "direction * completed follower mid return / abs(expected follower return)",
+    "queue_alignment": "direction * follower queue imbalance at decision",
+    "entry_side_price": "ask for long, bid for short at the first valid quote after decision plus 100ms",
+    "conservative_target_exit_price": "Expected target mid reduced by half the decision log spread for a long exit bid, or increased by half the decision log spread for a short exit ask.",
+    "executable_gap": "direction * log(conservative target exit price / entry-side price)",
+    "expected_return_must_match_common_direction": true
+  },
+  "frozen_grid": {
+    "horizon_ms": [500, 1000, 2000, 5000],
+    "minimum_common_shock_score": [2.0, 3.0, 4.0],
+    "minimum_leader_balance_ratio": [0.25, 0.5],
+    "minimum_average_leader_queue_support": [0.0, 0.25],
+    "minimum_each_leader_queue_support": [-0.25, 0.0],
+    "minimum_quote_intensity_consensus": [1.5, 3.0],
+    "maximum_underreaction_ratio": [0.25, 0.5, 0.75],
+    "maximum_follower_queue_alignment": [0.25, 0.5],
+    "maximum_follower_spread_bps": [3.0, 6.0],
+    "minimum_executable_gap_log": [0.0012, 0.0018, 0.0024],
+    "cells_per_follower": 6912
+  },
+  "event_independence": {
+    "cell_specific_cooldown_ms": 5000,
+    "rule": "For each follower and cell, retain the first eligible decision and suppress all subsequent decisions for that follower during the next five seconds, regardless of horizon or direction. Cooldown does not cross a UTC date boundary."
+  },
+  "fatal_event_availability_gate": {
+    "minimum_best_cell_independent_events_across_development": 40,
+    "minimum_best_cell_independent_events_each_development_date": 15,
+    "minimum_prior_valid_raw_24bp_executable_gaps_across_development": 30,
+    "zero_source_or_formula_errors": true,
+    "if_failed": "Stop the follower before PnL and do not open frozen validation."
+  },
+  "later_pnl_contract_if_gate_passes": {
+    "entry_latency_ms": 100,
+    "actual_entry": "Long at first valid follower ask; short at first valid follower bid.",
+    "state_exits": [
+      "Actual follower bid or ask crosses the frozen residual catch-up target.",
+      "Joint leader impulse decays below 25 percent of decision displacement for ten consecutive valid 100ms states.",
+      "A completed opposite joint leader shock reaches common score 2 with same-direction leaders.",
+      "Adverse follower executable return reaches max(10bp, 0.75 times decision executable gap), with uncapped gap-through at the next quote."
+    ],
+    "fixed_elapsed_time_exit": false,
+    "roundtrip_cost_stress_bps": [12, 18, 24],
+    "unresolved_source_end": "Failed incomplete path; no favorable forced close.",
+    "one_global_slot": true
+  },
+  "promotion_boundaries": {
+    "strategy_pnl_computed": false,
+    "frozen_validation_opened": false,
+    "2024_2026_opened": false,
+    "exact_funding_opened": false,
+    "full_calendar_bybit_execution_opened": false,
+    "risk_leverage_optimization_opened": false,
+    "orders_submitted": false,
+    "live_permission": false
+  },
+  "sources": [
+    "docs:tardis:bybit-derivatives",
+    "docs:tardis:downloadable-csv-api",
+    "docs:tardis:data-faq",
+    "paper:doi:10.1007/s10690-026-09589-z",
+    "paper:arxiv:1111.7103"
+  ]
+}
