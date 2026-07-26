@@ -11,8 +11,9 @@ OUT = ROOT / "reconstructed"
 MANIFEST = ROOT / "source_manifest.json"
 
 
-def reconstruct(name: str) -> dict[str, object]:
-    pattern = f"{name.replace('.', '_')}.gz.b64.part*"
+def reconstruct(name: str, item: dict[str, object]) -> dict[str, object]:
+    prefix = str(item.get("bundle_prefix") or name.replace(".", "_"))
+    pattern = f"{prefix}.gz.b64.part*"
     parts = sorted(ROOT.glob(pattern))
     if not parts:
         raise FileNotFoundError(f"no source parts for {name}: {pattern}")
@@ -31,7 +32,7 @@ def reconstruct(name: str) -> dict[str, object]:
 
 def main() -> int:
     expected = json.loads(MANIFEST.read_text(encoding="utf-8"))["files"]
-    observed = {name: reconstruct(name) for name in sorted(expected)}
+    observed = {name: reconstruct(name, expected[name]) for name in sorted(expected)}
     for name, item in expected.items():
         if observed[name]["bytes"] != item["bytes"]:
             raise ValueError(f"byte-size mismatch for {name}")
