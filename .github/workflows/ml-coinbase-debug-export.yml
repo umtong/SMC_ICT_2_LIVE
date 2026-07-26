@@ -1,9 +1,9 @@
-name: ML Coinbase outcome-sealed source debug export
+name: ML Coinbase original-source recovery export
 
 on:
   push:
     branches:
-      - agent/r11-ml-coinbase-spot-leader-001
+      - agent/r11-ml-coinbase-source-recover-001
     paths:
       - ".github/workflows/ml-coinbase-debug-export.yml"
       - "research/ml_coinbase_spot_leader_20260726/**"
@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-coinbase-debug-export-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ml-coinbase-source-recovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   export:
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -u
           root=research/ml_coinbase_spot_leader_20260726
-          out=research_runs/ml_coinbase_debug_export
+          out=research_runs/ml_coinbase_source_recovery
           mkdir -p "$out"
 
           python "$root/reconstruct.py" >"$out/reconstruct.stdout" 2>"$out/reconstruct.stderr"
@@ -80,10 +80,10 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          out=Path('research_runs/ml_coinbase_debug_export')
+          out=Path('research_runs/ml_coinbase_source_recovery')
           payload={
               'claim_id':'CLM-20260726-1935-ML-COINBASE-SPOT-001',
-              'stage':'ORIGINAL_SOURCE_AND_TEST_DEBUG_ONLY_NO_MARKET_DATA_NO_MODEL_NO_PNL',
+              'stage':'ORIGINAL_SOURCE_RECOVERY_ONLY_NO_MARKET_DATA_NO_MODEL_NO_PNL',
               'market_rows_parsed':False,
               'model_fit':False,
               'pnl_computed':False,
@@ -103,8 +103,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-coinbase-debug-export-${{ github.sha }}
-          path: research_runs/ml_coinbase_debug_export
+          name: ml-coinbase-source-recovery-${{ github.sha }}
+          path: research_runs/ml_coinbase_source_recovery
           if-no-files-found: error
           retention-days: 7
           compression-level: 6
