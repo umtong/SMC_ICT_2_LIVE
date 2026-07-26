@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: yt-trinity-source-snapshot-${{ github.ref }}
@@ -42,3 +43,148 @@ jobs:
           path: artifact
           if-no-files-found: error
           retention-days: 3
+
+  pre2024-economic-screen:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, 'Run 2023 YT Trinity economic screen'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout exact corpus-alpha source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Checkout exact canonical-data loader
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install deterministic research dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q numpy pandas scikit-learn pyarrow pytest
+          python - <<'PY'
+          import numpy, pandas, pyarrow, sklearn
+          print({'numpy': numpy.__version__, 'pandas': pandas.__version__, 'pyarrow': pyarrow.__version__, 'scikit_learn': sklearn.__version__})
+          PY
+
+      - name: Download immutable corpus and canonical 2023 BTC/ETH artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/corpus inputs/data/PRE_2024_2023/BTCUSDT inputs/data/PRE_2024_2023/ETHUSDT
+          fetch_artifact() {
+            local id="$1" target="$2"
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              -o "${target}"
+          }
+          fetch_artifact 8637502720 /tmp/corpus.zip
+          fetch_artifact 8636781702 /tmp/btc.zip
+          fetch_artifact 8636761741 /tmp/eth.zip
+          echo "9ca83d236373164129ebfa4515cbcc0dca48608a6cc5c61ef3b1e14e8ca3dc4a  /tmp/corpus.zip" | sha256sum --check --strict
+          echo "88ac7a4da817746dd165fc46b5be86ada65ecd1273270a3f90ddfaf3ae0df860  /tmp/btc.zip" | sha256sum --check --strict
+          echo "7e916dac17e66ea43067fa324d471ed20f1dafed9e19b64e02bebdd19d4cf2b8  /tmp/eth.zip" | sha256sum --check --strict
+          unzip -q /tmp/corpus.zip -d inputs/corpus
+          unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2023/BTCUSDT
+          unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2023/ETHUSDT
+          test -f inputs/corpus/yt-trinity-complete-corpus/manifest.json
+          test -f inputs/data/PRE_2024_2023/BTCUSDT/trade_bars/1m.parquet
+          test -f inputs/data/PRE_2024_2023/ETHUSDT/trade_bars/1m.parquet
+
+      - name: Verify corpus gate, canonical manifests, and causal regressions
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('inputs/corpus/yt-trinity-complete-corpus/manifest.json').read_text())
+          assert manifest['decision'] == 'PASS_COMPLETE', manifest
+          assert manifest['unique_public_video_count'] == 186, manifest
+          assert manifest['caption_status_counts'] == {'ok': 186}, manifest
+          for symbol in ('BTCUSDT', 'ETHUSDT'):
+              payload = json.loads(Path(f'inputs/data/PRE_2024_2023/{symbol}/DATASET_MANIFEST.json').read_text())
+              assert payload['status'] == 'PASS_COMPLETE', (symbol, payload.get('status'))
+              assert payload['segment'] == 'PRE_2024_2023', payload
+          PY
+          pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_entry_fill_guard.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+
+      - name: Execute causal 2023H2 after-cost sequential account screen
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          python research/yt_trinity_ml/run_primary_screen.py \
+            --repo-root canonical_repo \
+            --data-root inputs/data \
+            --corpus inputs/corpus/yt-trinity-complete-corpus \
+            --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.schema.json \
+            --output output \
+            --segments PRE_2024_2023 \
+            --risk-fraction 0.01 \
+            --validation-start 2023-07-01T00:00:00Z \
+            --validation-end-exclusive 2024-01-01T00:00:00Z \
+            2>&1 | tee output/STDOUT.log
+
+      - name: Bind run identity and hash outputs
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, platform, sys
+          from pathlib import Path
+          payload = {
+              'schema_version': 1,
+              'stage': 'PRE2024_2023H2_COARSE_1M_NOT_RANKABLE',
+              'source_commit': os.environ['GITHUB_SHA'],
+              'canonical_loader_commit': 'a2bb231966a517d29495bed7673e4d08ab8e30a9',
+              'corpus_artifact_id': 8637502720,
+              'corpus_artifact_digest': 'sha256:9ca83d236373164129ebfa4515cbcc0dca48608a6cc5c61ef3b1e14e8ca3dc4a',
+              'btc_artifact_id': 8636781702,
+              'btc_artifact_digest': 'sha256:88ac7a4da817746dd165fc46b5be86ada65ecd1273270a3f90ddfaf3ae0df860',
+              'eth_artifact_id': 8636761741,
+              'eth_artifact_digest': 'sha256:7e916dac17e66ea43067fa324d471ed20f1dafed9e19b64e02bebdd19d4cf2b8',
+              'training_information_cutoff': 'strictly before each scheduled model update',
+              'evaluation_start': '2023-07-01T00:00:00Z',
+              'evaluation_end_exclusive': '2024-01-01T00:00:00Z',
+              'fixed_activation_latency_ms': 500,
+              'python': sys.version,
+              'platform': platform.platform(),
+          }
+          Path('output').mkdir(exist_ok=True)
+          Path('output/RUN_IDENTITY.json').write_text(json.dumps(payload, indent=2, sort_keys=True) + '\n')
+          PY
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload immutable economic-screen evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-pre2024-screen-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
