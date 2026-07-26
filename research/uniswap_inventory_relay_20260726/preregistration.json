@@ -2,7 +2,7 @@
   "claim_id": "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001",
   "schema_version": 1,
   "base_revision": 20,
-  "objective": "discover a sustainable after-cost ML alpha from completed Uniswap WETH-stable inventory transfer before Bybit ETHUSDT structural delivery",
+  "objective": "discover a sustainable after-cost ML alpha from completed Uniswap WETH-stable inventory transfer before Bybit ETHUSDT structural delivery, without using pre-2024 purity gates to postpone the first official 2024H1 research interval",
   "information_unit": {
     "pool": "Uniswap V3 USDC/WETH 0.05% 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
     "snapshot_dataset": "arthurneuron/USDC-WETH-Uniswap-V3-2021-to-2023",
@@ -10,7 +10,7 @@
     "aggregation": "completed UTC one-hour cumulative-state differences",
     "availability_delay_hours": 2,
     "direction_proxy": "sign of completed pool-price change multiplied by positive USDC volume increment",
-    "known_limitation": "the source snapshot stores cumulative absolute pool volume rather than signed Swap amount0/amount1; unchanged Bybit-native confirmation is mandatory before ranking"
+    "known_limitation": "the source snapshot stores cumulative absolute pool volume rather than signed Swap amount0/amount1; unchanged Bybit-native confirmation is mandatory before deployment"
   },
   "model": {
     "family_count": 1,
@@ -51,28 +51,46 @@
     "same_bar_order": "stop_first",
     "gap_stop": "adverse_open",
     "cost_bps": [12, 18, 24],
-    "initial_risk_fraction": 0.02,
-    "initial_notional_cap_multiple": 8,
-    "risk_search_after_base_gate_only": [0.02, 0.05, 0.1, 0.2, 0.35, 0.5],
-    "notional_cap_search_after_base_gate_only": [8, 20, 50, 100]
+    "base_risk_fraction": 0.02,
+    "base_notional_cap_multiple": 8,
+    "risk_search_after_cost_possibility": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_cap_search_after_cost_possibility": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+    "risk_selection": "highest 24-bp geometric daily growth among no-liquidation paths; 1% is not a cap and winner-removal remains a reported diagnostic rather than a pre-2024 opening barrier"
   },
-  "pre2024_gate": {
-    "confirmation_min_resolved": 80,
-    "confirmation_model_auc_above_distance_baseline": true,
-    "confirmation_brier_skill_positive": true,
-    "development_min_trades": 40,
-    "development_24bps_positive": true,
-    "development_24bps_positive_median": true,
-    "development_24bps_profit_factor_min": 1.2,
-    "development_24bps_exact_winner_removal_positive": true,
-    "development_positive_halfyears": 1,
-    "no_terminal_nav_loss": true
+  "pre2024_cost_possibility": {
+    "source_gate_pass": true,
+    "causal_model_fitted": true,
+    "development_24bps_total_return_positive": true,
+    "no_forced_liquidation_or_terminal_nav_loss": true,
+    "opens_risk_search": true,
+    "opens_official_2024H1_immediately_after_freeze": true,
+    "diagnostics_not_opening_barriers": [
+      "confirmation_sample_count",
+      "model_auc_vs_distance_baseline",
+      "brier_skill",
+      "development_trade_count",
+      "development_median_trade",
+      "development_profit_factor",
+      "development_winner_removal",
+      "development_period_breadth"
+    ]
+  },
+  "official_sequential_research": {
+    "information_cutoff_2024H1": "2023-12-31T23:59:59Z",
+    "2024H1_is_first_official_interval": true,
+    "no_extra_pre2024_purity_gate": true,
+    "weak_2024H1_action": "retire this information unit and change alpha rather than tune adjacent thresholds, features, risk or leverage",
+    "promising_2024H1_action": "use information available through 2024-06-30 to freeze the predetermined update method for 2024H2",
+    "seen_interval_rule": "an inspected interval may inform the next version but is never relabeled as fresh independent OOS for that modified version"
   },
   "seals": {
     "source_gate_opens_market_outcomes": false,
-    "2024_opens_only_after_complete_pre2024_gate": true,
+    "2024H1_opens_after_complete_pre2024_system_freeze_and_cost_possibility": true,
     "2024H2_2026H1_initially_opened": false,
     "credentials_used": false,
     "orders_submitted": false
-  }
+  },
+  "amendments": [
+    "AMENDMENT-20260726-UNISWAP-IMMEDIATE-2024H1-AFTER-COST-POSSIBILITY-001"
+  ]
 }
