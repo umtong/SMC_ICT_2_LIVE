@@ -1,0 +1,143 @@
+name: ML XRPL exchange-inflow source gate r19
+
+on:
+  push:
+    branches:
+      - agent/r19-ml-xrpl-exchange-inflow-001
+    paths:
+      - '.github/workflows/ml-xrpl-exchange-inflow-source-gate-r19.yml'
+      - 'research/ml_xrpl_exchange_inflow_20260726/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-xrpl-exchange-inflow-source-gate-r19.yml'
+      - 'research/ml_xrpl_exchange_inflow_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-xrpl-exchange-inflow-source-gate-r19
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: '0'
+  PYTHONUNBUFFERED: '1'
+  PYTHONFAULTHANDLER: '1'
+  ROOT: research/ml_xrpl_exchange_inflow_20260726
+  OUT: research_runs/ml_xrpl_exchange_inflow_20260726/source-gate
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r19-ml-xrpl-exchange-inflow-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5
+
+      - name: Validate frozen source contract before network access
+        run: |
+          set -euo pipefail
+          python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+          python -m py_compile \
+            "$ROOT/probe_xrpl_exchange_inflow.py" \
+            "$ROOT/test_probe_xrpl_exchange_inflow.py"
+          PYTHONPATH="$ROOT" pytest -q "$ROOT/test_probe_xrpl_exchange_inflow.py"
+          PYTHONPATH="$ROOT" python "$ROOT/probe_xrpl_exchange_inflow.py" --self-test
+
+      - name: Run outcome-sealed official source gate
+        run: |
+          set -euo pipefail
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          PYTHONPATH="$ROOT" python "$ROOT/probe_xrpl_exchange_inflow.py" \
+            --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
+
+      - name: Enforce outcome seal and frozen decision
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          out = Path(os.environ["OUT"])
+          result = json.loads((out / "SOURCE_GATE_RESULT.json").read_text())
+          assert result["claim_id"] == "CLM-20260726-2305-ML-XRPL-INFLOW-001"
+          assert result["phase"] == "OUTCOME_SEALED_SOURCE_GATE"
+          for key in (
+              "bybit_market_opened",
+              "future_return_opened",
+              "model_fitted",
+              "strategy_pnl_opened",
+              "official_2024_opened",
+              "official_2026_opened",
+              "credentials_opened",
+              "orders_submitted",
+          ):
+              assert result[key] is False, key
+          expected = (
+              "OPEN_FROZEN_PRE2024_ML_STAGE"
+              if result["source_gate_pass"]
+              else "CLOSE_XRPL_EXCHANGE_INFLOW_SOURCE_BEFORE_MARKET_OUTCOMES"
+          )
+          assert result["scientific_decision"] == expected
+          manifest = json.loads((out / "SOURCE_MANIFEST.json").read_text())
+          assert manifest["claim_id"] == result["claim_id"]
+          summary = result.get("summary", {})
+          print(json.dumps({
+              "source_gate_pass": result["source_gate_pass"],
+              "decision": result["scientific_decision"],
+              "fatal_error": result.get("fatal_error"),
+              "external_tagged_count": summary.get("external_tagged_count"),
+              "distinct_external_sources": summary.get("distinct_external_sources"),
+              "positive_exchange_date_bins": summary.get("positive_exchange_date_bins"),
+              "qualifying_date_count": summary.get("qualifying_date_count"),
+              "per_exchange": summary.get("per_exchange"),
+          }, sort_keys=True))
+          PY
+
+      - name: Validate current project harness without blocking evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python scripts/validate_project.py 2>&1 | tee "$OUT/PROJECT_VALIDATION.log"
+
+      - name: Freeze exact evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT/source"
+          cp \
+            "$ROOT/WORK_CLAIM.json" \
+            "$ROOT/PREREGISTRATION.md" \
+            "$ROOT/SOURCES.md" \
+            "$ROOT/probe_xrpl_exchange_inflow.py" \
+            "$ROOT/test_probe_xrpl_exchange_inflow.py" \
+            "$OUT/source/"
+          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-xrpl-exchange-inflow-source-gate-${{ github.run_id }}
+          path: research_runs/ml_xrpl_exchange_inflow_20260726/source-gate
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
