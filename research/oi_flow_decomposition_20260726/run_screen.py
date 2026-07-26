@@ -13,7 +13,7 @@ EXPECTED_IMPLEMENTATION_SHA256 = "ed9be20707cb25836077f7a2e72cfa8d6339c2ffffbb79
 
 if len(PARTS) != EXPECTED_PART_COUNT:
     raise RuntimeError(f"implementation part count {len(PARTS)} != {EXPECTED_PART_COUNT}")
-encoded = "".join(path.read_text(encoding="utf-8").strip() for path in PARTS)
+encoded = "".join("".join(path.read_text(encoding="utf-8").split()) for path in PARTS)
 compressed = base64.b64decode(encoded, validate=True)
 if hashlib.sha256(compressed).hexdigest() != EXPECTED_COMPRESSED_SHA256:
     raise RuntimeError("compressed implementation SHA-256 mismatch")
