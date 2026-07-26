@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "freeze_id": "IMPLEMENTATION-FREEZE-20260726-UNISWAP-ECONOMIC-001",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "continuation_id": "EXEC-20260726-ML-UNISWAP-ECONOMIC-001",
+  "timing": "BEFORE_ANY_DECISION_READY_SOURCE_PASS_WAS_CONSUMED_OR_ANY_MARKET_OUTCOME_WAS_OPENED",
+  "scope": [
+    "full canonical WETH-USDC/USDT Uniswap V3 Swap history from 2021-05-05 through 2023-12-31",
+    "120-second causal information delay and completed five-minute aggregation",
+    "fit-only max(5m USDT, 99.5th percentile) event threshold",
+    "thirteen preregistered causal features",
+    "one fixed HistGradientBoostingClassifier and conditional isotonic map",
+    "partition-local first-passage labels",
+    "one global ETHUSDT slot with structural target/stop and no elapsed-time liquidation",
+    "12/18/24-bp identical-path replay, 0.5-percent planned structural risk and 3x notional cap",
+    "exact pre-slot top-10-percent positive-event removal and complete rerouting",
+    "confirmation and development gates exactly as preregistered"
+  ],
+  "implementation_strengthening_without_scientific_change": [
+    "aligned_fraction is computed from individual swap notional aligned with the net bucket direction, not from pool-net direction",
+    "UTC daily NAV and maximum drawdown use minute-by-minute realizable marked equity including hypothetical exit cost while a position is open",
+    "normalized source events, response hashes and request-range evidence are preserved in the immutable artifact",
+    "nonfinite diagnostic values are serialized explicitly as null rather than invalid JSON"
+  ],
+  "source_pass_consumed_before_freeze": false,
+  "market_outcome_opened_before_freeze": false,
+  "model_fit_before_freeze": false,
+  "official_2024h1_opened_before_freeze": false,
+  "orders_submitted": false
+}
