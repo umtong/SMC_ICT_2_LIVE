@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1130-ALTLAG-DECISIONTREE-001",
+  "correction_id": "COR-20260726-ALTLAG-UNUSED-EXPECTED-FIELD-003",
+  "status": "FROZEN_BEFORE_MARKET_RESULT",
+  "observed_failure": {
+    "workflow_run": 30192036419,
+    "exception": "KeyError: expected while serializing an event diagnostic row",
+    "sources_opened": [
+      "2023-09-17 BTCUSDT/SOLUSDT/XRPUSDT",
+      "2023-10-15 BTCUSDT/SOLUSDT/XRPUSDT",
+      "2023-11-19 BTCUSDT/SOLUSDT/XRPUSDT"
+    ],
+    "stage1_result_produced": false,
+    "aggregate_gate_produced": false,
+    "december_opened": false,
+    "pnl_produced": false
+  },
+  "root_cause": "The decision-tree event ledger retained an unused diagnostic field named expected from a draft feature dictionary. The registered base feature function does not expose that alias. The field is not referenced by event selection, rearm, branch choice, PnL, exits, costs, global-slot arbitration, or any gate.",
+  "deterministic_adapter_change": "Remove only the unused expected field from event-row serialization.",
+  "scientific_contract_unchanged": {
+    "hypothesis": true,
+    "dates": true,
+    "symbols": true,
+    "feature_values_used_by_rules": true,
+    "thresholds": true,
+    "event_selection": true,
+    "event_rearm": true,
+    "branch_choice": true,
+    "latencies": true,
+    "costs": true,
+    "state_exits": true,
+    "global_slot": true,
+    "stage_gates": true
+  },
+  "sealed_periods": {
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "orders_submitted": false,
+  "created_at": "2026-07-26T16:04:00+09:00"
+}
