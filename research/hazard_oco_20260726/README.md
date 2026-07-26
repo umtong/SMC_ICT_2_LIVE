@@ -7,12 +7,13 @@ This study changes the payoff structure rather than trying another ordinary dire
 ## Causal contract
 
 - Tardis `local_timestamp` is the sole information and execution clock.
-- Features use completed 100 ms bins and end strictly before each five-second decision; the preceding 60 seconds must have complete fresh midpoint coverage.
-- Market-entry acknowledgement, trigger-to-fill and exit-fill latency are each explicit.
+- Features use completed 100 ms bins and end strictly before each five-second decision.
+- An unchanged completed BBO may be carried for at most one second. Every accepted decision still requires a complete preceding 60-second state path; no feature or fit label bridges state older than one second.
+- Market-entry acknowledgement and trigger-to-fill latency are explicit. A simulated fill requires a real executable quote event no more than 200 ms after its aligned fill boundary; state carry never creates a fill.
 - Same-bin dual entry triggers become a full adverse round trip, and same-side retriggers cannot hide a later opposite trigger before cancellation becomes effective.
 - Stop wins target ambiguity.
-- No elapsed-time position liquidation exists. Positions leave only through target, stop or the preregistered hazard-decay/re-entry state rule.
-- An unresolved accepted position at the source boundary is not deleted or marked favorably; the candidate account is assigned terminal loss.
+- No elapsed-time position liquidation exists. Positions leave only through target, stop or the preregistered hazard-decay/re-entry state rule. The two state-exit observations must be exactly five seconds apart.
+- After an accepted entry, target, stop and state exits are searched only before the first unavailable BBO state. An unresolved position at that boundary or at the source-day end is not deleted or marked favorably; the candidate account is assigned terminal loss.
 - 2025 selection and every 2026 file remain physically unopened unless a frozen development survivor exists.
 
 ## Evaluation boundary
