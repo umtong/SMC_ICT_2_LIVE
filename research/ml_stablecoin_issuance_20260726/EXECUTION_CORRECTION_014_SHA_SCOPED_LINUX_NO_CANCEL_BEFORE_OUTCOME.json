@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-SHA-SCOPED-LINUX-014",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_or_model_outcome": true,
+  "observed_problem": "The Ubuntu source gate passed compilation and all source tests, then was cancelled during its 36-month source query when a later branch commit reused the branch-scoped cancel-in-progress group.",
+  "observed_run": 30206054008,
+  "observed_artifact": 8633092503,
+  "change": [
+    "Scope the Ubuntu source-gate concurrency group to the immutable workflow commit SHA.",
+    "Set cancel-in-progress to false so later source metadata cannot cancel an already-started outcome-sealed query."
+  ],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer schemas",
+    "36 pre-2024 source months",
+    "12-block primary and 64-block stress availability",
+    "density and token-breadth gates",
+    "all model, feature, label, cost, account and sequential 2024H1 rules",
+    "credentials and orders"
+  ],
+  "source_outcome_opened_before_change": false,
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
