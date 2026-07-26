@@ -33,6 +33,13 @@ def test_bybit_url() -> None:
     assert url.endswith("/ETHUSDT/2023/ETHUSDT_5_2023-12-01_2023-12-31.csv.gz")
 
 
+def test_runtime_probe_is_pre2024_only() -> None:
+    corrected = launcher.corrected_source_text()
+    assert launcher.FUTURE_BYBIT_PROBE not in corrected
+    assert corrected.count(launcher.PRE2024_BYBIT_PROBE) == 1
+    assert '("ETHUSDT", 5, 2024,' not in corrected
+
+
 def test_inspect_bybit_headerless(tmp_path: Path) -> None:
     path = tmp_path / "sample.csv.gz"
     rows = [[f"2023-01-01 00:{i:02d}:00", 100, 101, 99, 100.5, 10] for i in range(60)]
