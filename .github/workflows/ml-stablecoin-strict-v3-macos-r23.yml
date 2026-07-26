@@ -1,0 +1,123 @@
+name: Stablecoin strict causal V3 macOS authority
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/triggers/stablecoin_strict_v3_macos/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-strict-v3-macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  decision:
+    runs-on: macos-14
+    timeout-minutes: 360
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      EXECUTION_SHA: afb0af5e29b2176b477764f35a278fae448e9cbd
+      RUN_ROOT: ${{ runner.temp }}/stablecoin_strict_v3_validation_hook
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Materialize the immutable validator-hook authority
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$EXECUTION_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$EXECUTION_SHA"
+          rm -rf scripts/stablecoin_strict_v3_validation_hook.py \
+            research/execution/stablecoin_strict_validator_hook_20260727
+          git archive "$EXECUTION_SHA" \
+            scripts/stablecoin_strict_v3_validation_hook.py \
+            research/execution/stablecoin_strict_validator_hook_20260727 \
+            | tar -x
+          python -m json.tool \
+            research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION.json \
+            >/dev/null
+
+      - name: Run corrected source and strict V3 economic decision
+        run: |
+          set -euo pipefail
+          python scripts/stablecoin_strict_v3_validation_hook.py \
+            2>&1 | tee "$RUNNER_TEMP/STABLECOIN_STRICT_V3_MACOS.log"
+
+      - name: Verify compact decision marker
+        if: always()
+        run: |
+          set -euo pipefail
+          marker="$RUNNER_TEMP/stablecoin_strict_v3_validation_hook_summary.json"
+          test -f "$marker"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          marker=Path(os.environ['RUNNER_TEMP'])/'stablecoin_strict_v3_validation_hook_summary.json'
+          x=json.loads(marker.read_text())
+          assert x['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert x['source_sha'] in {
+              '3631cf01a2a2b91d690b81160e14ba033a298f75',
+              '73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539',
+          }
+          assert x['strict_sha']=='209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c'
+          assert x['source']['status'] in {
+              'PASS',
+              'FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE',
+              'SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE',
+          }
+          if x['source']['status']=='PASS':
+              assert x['source']['source_schema_id']=='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
+              assert x['source']['source_correction_id']=='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+              assert x['source']['transport_response_policy_correction']=='CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019'
+              assert x['economic']['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
+              assert x['economic']['official_2024h1_opened'] is False
+              assert x['economic']['orders_submitted'] is False
+          print('STABLECOIN_STRICT_V3_MACOS_DECISION',json.dumps(x,sort_keys=True))
+          PY
+
+      - name: Freeze portable evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/stablecoin-strict-v3-macos-evidence"
+          rm -rf "$evidence"
+          mkdir -p "$evidence"
+          cp "$RUNNER_TEMP/STABLECOIN_STRICT_V3_MACOS.log" "$evidence/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/stablecoin_strict_v3_validation_hook_summary.json" "$evidence/" 2>/dev/null || true
+          if [ -d "$RUN_ROOT/output" ]; then
+            cp -R "$RUN_ROOT/output" "$evidence/output"
+          fi
+          printf '%s\n' "$EXECUTION_SHA" > "$evidence/PINNED_EXECUTION_SHA.txt"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])/'stablecoin-strict-v3-macos-evidence'
+          rows=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n")
+          (root/'SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-v3-macos-${{ github.run_id }}
+          path: ${{ runner.temp }}/stablecoin-strict-v3-macos-evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
