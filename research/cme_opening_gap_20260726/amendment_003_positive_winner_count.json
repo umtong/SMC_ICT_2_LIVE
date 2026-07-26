@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-CME-GAP-ML-WINNER-003",
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "parent_amendment_id": "AMEND-20260726-CME-GAP-ML-PURGE-002",
+  "amended_at": "2026-07-26T17:34:00+09:00",
+  "trigger": "Pre-outcome implementation review found that the concentration stress selected ceil(10% of all trades) from the positive subset instead of ceil(10% of positive trades). The first economic workflow had already failed before producing a result_summary.json.",
+  "market_outcomes_opened_before_amendment": false,
+  "correction": {
+    "old_rule": "Remove up to ceil(total trade count * 10%) positive trades.",
+    "new_rule": "Remove exactly the largest ceil(positive trade count * 10%) positive trades, or none when no positive trade exists.",
+    "reason": "The registered gate is explicitly a top-10-percent-positive-trade removal test. Using total trade count can over-remove winners and falsely reject a viable fixed model.",
+    "global_slot_reroute": "Deferred unless a fit survivor exists; this fatal proxy uses the corrected conservative ledger-removal metric. Any survivor must receive exact event-key exclusion before global arbitration in the next frozen validation contract."
+  },
+  "unchanged": [
+    "one shared L2 logistic model",
+    "11 fixed features",
+    "all hyperparameters",
+    "purged chronological training labels",
+    "turnover alias correction",
+    "structural targets and expected-value router",
+    "dates, costs, funding, execution and stage gates",
+    "2024-2026 prohibition"
+  ],
+  "orders_submitted": false
+}
