@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "PRE_OUTCOME_RUNTIME_CORRECTION_006_EXACT_DAYARRAYS_API",
+  "timing": "before any successful matrix row, model fit, score, action or PnL",
+  "source_api_audit": {
+    "workflow_run": 30198167909,
+    "artifact_id": 8630773866,
+    "artifact_digest": "sha256:f79fecc45b2cd9a8798de13e15ce218807090e9cda108df5c5ff838230ea95a9",
+    "base_source_sha256": "5ecbfddf8443fd37b76514e30ab91028dda68e16a5e51eb63f7f76f0c073ad0f",
+    "market_data_opened": false,
+    "model_fit_performed": false,
+    "pnl_computed": false
+  },
+  "audited_api": {
+    "aggregate_signature": "(path: Path, symbol: str, date: str) -> tuple[DayArrays, SourceRecord]",
+    "day_arrays_fields": [
+      "symbol",
+      "date",
+      "mark",
+      "total_notional",
+      "signed_notional",
+      "trade_count"
+    ],
+    "continuous_features_signature": "(leader: DayArrays, follower: DayArrays, horizon: int) -> dict[str, numpy.ndarray]",
+    "inspect_source_present": false,
+    "utc_start_present": false
+  },
+  "correction": "Call the audited aggregate signature exactly once, retain the original DayArrays object and original numpy arrays, discard only the duplicate returned SourceRecord because source identity is already recorded by the compatibility inspector, and add read-only dictionary-style field access to DayArrays for the frozen downstream rule engine.",
+  "invariants": [
+    "all four DayArrays numeric arrays have exactly 864000 completed 100ms bins",
+    "no array is copied, scaled, shifted, filtered or relabeled",
+    "the original continuous_features function receives the original DayArrays objects",
+    "the frozen downstream rule engine sees the same arrays through field-name indexing",
+    "all dates, events, features, labels, outcomes, models, costs, risk and gates are unchanged"
+  ],
+  "outcome_access_before_correction": {
+    "matrix_rows_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "orders_submitted": false
+}
