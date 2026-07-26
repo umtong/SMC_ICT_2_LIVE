@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-LIQ-SWEEP-RETEST-001",
+  "worker_id": "gpt-5.6-pro-20260726",
+  "status": "ACTIVE",
+  "title": "Passive mitigation entry after liquidation sweep, reclaim and MSS",
+  "repository": "umtong/SMC_ICT_2_LIVE",
+  "branch": "agent/r11-liq-sweep-retest-001",
+  "base_revision": 11,
+  "objective_contribution": "Change the failed post-MSS taker payoff into an SMC/ICT mitigation-entry payoff that waits at external liquidity or the 50% sweep leg, reducing entry drag while retaining actual liquidation, reclaim, refill and MSS confirmation.",
+  "reused_dependency": {
+    "source_claim": "CLM-20260726-LIQ-SWEEP-MSS-001",
+    "source_branch": "agent/r11-liq-sweep-mss-001",
+    "reused_components": ["source acquisition", "causal one-second state", "liquidation-sweep-reclaim-MSS event extraction"],
+    "changed_components": ["pending post-only order state", "trade-through fill", "passive entry level", "pending global-slot arbitration", "post-fill payoff"]
+  },
+  "scope": {
+    "execution_venue": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "global_pending_or_open_slots": 1,
+    "fit_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "development_dates": ["2023-07-01", "2023-09-01", "2023-11-01"],
+    "candidate_count": 1024,
+    "sealed_periods": ["2024", "2025", "2026"]
+  },
+  "non_overlap": [
+    "market entry immediately after MSS",
+    "ordinary touch-equals-fill limit backtests",
+    "L2 maker spread capture",
+    "unconfirmed sweep limit orders",
+    "arbitrary pending-order TTL"
+  ],
+  "expected_outputs": ["fit and conditional development ledgers", "1,024 policy metrics", "pending-order outcomes", "counterfactual winner-removal reruns", "decision-ready summary and checksums"],
+  "orders_permitted": false,
+  "created_at": "2026-07-26T16:31:00+09:00"
+}
