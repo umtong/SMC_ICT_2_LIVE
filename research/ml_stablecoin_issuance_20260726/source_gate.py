@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -27,10 +28,10 @@ CONTRACTS = {
     },
 }
 
-FIXED_MONTHS = (
-    "2021-01", "2021-05", "2021-09",
-    "2022-01", "2022-05", "2022-09",
-    "2023-01", "2023-05", "2023-09",
+FIXED_MONTHS = tuple(
+    f"{year}-{month:02d}"
+    for year in (2021, 2022, 2023)
+    for month in range(1, 13)
 )
 
 DEFAULT_ENDPOINTS = (
@@ -290,10 +291,9 @@ def source_gate(
             "has_bytecode": code not in ("0x", "0x0", None),
         }
 
-    months = tuple(fixed_months)
     month_ranges: list[dict[str, Any]] = []
     previous_low = 0
-    for month in months:
+    for month in fixed_months:
         start_ts, end_ts = month_bounds(month)
         start_block = first_block_at_or_after(client, start_ts, previous_low, latest, cache)
         end_exclusive = first_block_at_or_after(client, end_ts, start_block, latest, cache)
@@ -381,10 +381,10 @@ def source_gate(
     pass_checks = {
         "chain_id_mainnet": int(client.call("eth_chainId", []), 16) == CHAIN_ID_MAINNET,
         "both_contracts_have_bytecode": all(x["has_bytecode"] for x in contract_checks.values()),
-        "all_fixed_months_resolved": len(month_ranges) == len(months),
+        "all_fixed_months_resolved": len(month_ranges) == len(tuple(fixed_months)),
         "all_events_pre_2024": all(e.block_timestamp < MAX_ALLOWED_TIMESTAMP for e in events),
-        "minimum_unique_events": len(events) >= 30,
-        "minimum_months_with_events": len(months_with_events) >= 5,
+        "minimum_unique_events": len(events) >= 120,
+        "minimum_months_with_events": len(months_with_events) >= 24,
         "minimum_distinct_tokens": len(distinct_tokens) >= 2,
     }
     status = "PASS" if all(pass_checks.values()) else "FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE"
@@ -406,7 +406,7 @@ def source_gate(
         "latest_block_observed": latest,
         "latest_timestamp_observed": latest_timestamp,
         "contracts": contract_checks,
-        "fixed_months": list(months),
+        "fixed_months": list(fixed_months),
         "month_ranges": month_ranges,
         "query_diagnostics": query_diagnostics,
         "request_count": client.request_count,
