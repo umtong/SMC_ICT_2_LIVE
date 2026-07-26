@@ -77,6 +77,15 @@ def test_target_path_and_cost_monotonicity() -> None:
     assert net12 > net18 > net24
 
 
+def test_short_linear_contract_pnl_is_entry_notional_symmetric() -> None:
+    times = np.array([1_000, 2_000, 5_000], dtype=np.int64)
+    prices = np.array([100.0, 99.8, 99.0], dtype=float)
+    out = mod.simulate_oco(times, prices, 1_000, 10.0, 50.0, 20.0, {})
+    assert out.outcome == "TARGET"
+    assert out.direction == -1
+    assert abs(out.gross_bps - 50.0) < 1e-9
+
+
 def test_no_trigger_occupies_pending_slot_without_cost() -> None:
     times = np.arange(0, 40 * 60 * 1_000, 1_000, dtype=np.int64)
     prices = np.full(times.shape, 100.0, dtype=float)
