@@ -2,13 +2,14 @@
   "schema_version": 1,
   "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
   "experiment_id": "BYBIT-DIRECT-AFTER-COST-UTILITY-POLICY-V1",
-  "scientific_question": "Can one pooled cost-aware ML state policy directly select and hold the highest expected after-cost position among Bybit BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT strongly enough to beat the current 0.0631845% geometric-daily first place at 24 bps without a named setup library?",
+  "scientific_question": "Can one pooled cost-aware ML state policy directly select and hold the highest expected after-cost position among Bybit BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT strongly enough to beat the current 0.0700189% geometric-daily first place at 24 bps without a named setup library?",
   "current_rank_benchmark": {
     "ranking_revision": 13,
-    "first_place_id": "FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9",
+    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
     "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
     "cost_bps": 24,
-    "geometric_daily_growth": 0.0006318446194384375,
+    "geometric_daily_growth": 0.0007001887213879954,
+    "recorded_12bp_geometric_daily_growth": 0.0009008544402622221,
     "comparison_confidence": "VERY_LOW"
   },
   "economic_mechanism": "At each completed hour the model estimates the next executable-hour directional delivery for all four contracts. The account compares every long, short and flat action with its current one-slot position after explicit turnover and funding costs. It changes state only when another action has higher positive net utility; otherwise the position persists. Already-completed rolling 24-hour opposite liquidity is the emergency invalidation and trails only toward price.",
@@ -46,9 +47,7 @@
     "calibration": "One non-negative zero-intercept least-squares scale fitted only on the calibration partition and clipped to [0,2].",
     "feature_grid": false,
     "hyperparameter_grid": false,
-    "feature_columns": [
-      "ret1", "ret6", "ret24", "ret168", "rv_ratio", "atr_pct", "range_atr", "body_atr", "close_location", "trend_eff24", "dist_high24_atr", "dist_low24_atr", "volume_z168", "market_ret6", "market_ret24", "residual_ret6", "breadth24", "symbol_code"
-    ],
+    "feature_columns": ["ret1", "ret6", "ret24", "ret168", "rv_ratio", "atr_pct", "range_atr", "body_atr", "close_location", "trend_eff24", "dist_high24_atr", "dist_low24_atr", "volume_z168", "market_ret6", "market_ret24", "residual_ret6", "breadth24", "symbol_code"],
     "target": "log of the following executable hourly open divided by the entry hourly open",
     "direction_and_symbol": "The one model score is evaluated for long and short on every symbol; no separate direction model exists."
   },
@@ -97,8 +96,8 @@
     "median_completed_trade_at_24bp": ">0",
     "both_development_halves_at_24bp": ">0",
     "top_10_percent_winner_removed_return_at_24bp": ">0",
-    "geometric_daily_growth_at_24bp": ">0.0631845%",
-    "beat_current_first_place_exactly": ">0.0006318446194384375",
+    "geometric_daily_growth_at_24bp": ">0.07001887213879954%",
+    "beat_current_first_place_exactly": ">0.0007001887213879954",
     "total_return_at_18bp": ">0",
     "account_ruin": false
   },
