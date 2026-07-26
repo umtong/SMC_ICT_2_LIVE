@@ -1,16 +1,20 @@
-name: ML Aave liquidation source gate
+name: ML Aave liquidation bounded source gate
 
 on:
   push:
-    branches: [agent/r11-ml-aave-liquidation-001]
+    branches:
+      - agent/r11-ml-aave-liquidation-001
+      - agent/r11-ml-aave-liquidation-transport-002
     paths:
       - 'research/ml_aave_liquidation_20260726/WORK_CLAIM.json'
       - 'research/ml_aave_liquidation_20260726/PREREGISTRATION.md'
       - 'research/ml_aave_liquidation_20260726/export_addresses.cjs'
       - 'research/ml_aave_liquidation_20260726/probe_aave_liquidations.py'
+      - 'research/ml_aave_liquidation_20260726/probe_aave_liquidations_bounded.py'
+      - 'research/ml_aave_liquidation_20260726/test_probe_aave_liquidations_bounded.py'
       - '.github/workflows/ml-aave-liquidation-source-gate-r11.yml'
   pull_request:
-    branches: [main]
+    branches: [main, agent/r11-ml-aave-liquidation-001]
     paths:
       - 'research/ml_aave_liquidation_20260726/**'
       - '.github/workflows/ml-aave-liquidation-source-gate-r11.yml'
@@ -19,10 +23,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ml-aave-liquidation-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   source-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,21 +56,51 @@ jobs:
             'requests==2.32.3' \
             'eth-abi==5.1.0' \
             'eth-utils==5.1.0' \
-            'eth-hash[pycryptodome]==0.7.1'
-      - name: Compile and run outcome-sealed source gate
+            'eth-hash[pycryptodome]==0.7.1' \
+            'pytest==8.3.4'
+      - name: Compile and test bounded source transport
         run: |
           set -euo pipefail
-          python -m py_compile research/ml_aave_liquidation_20260726/probe_aave_liquidations.py
-          set +e
-          python research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
+          root=research/ml_aave_liquidation_20260726
+          python -m py_compile \
+            "$root/probe_aave_liquidations.py" \
+            "$root/probe_aave_liquidations_bounded.py" \
+            "$root/test_probe_aave_liquidations_bounded.py"
+          python -m pytest -q "$root/test_probe_aave_liquidations_bounded.py"
+      - name: Run outcome-sealed bounded source gate
+        run: |
+          set -euo pipefail
+          python research/ml_aave_liquidation_20260726/probe_aave_liquidations_bounded.py \
             --addresses /tmp/ml-aave-liquidation-source/ADDRESSES.json \
             --output /tmp/ml-aave-liquidation-source \
-            > /tmp/ml-aave-liquidation-source/run.log 2>&1
-          status=$?
-          set -e
-          cat /tmp/ml-aave-liquidation-source/run.log
-          printf '%s\n' "$status" > /tmp/ml-aave-liquidation-source/EXIT_STATUS.txt
-          exit "$status"
+            2>&1 | tee /tmp/ml-aave-liquidation-source/run.log
+      - name: Verify outcome seal and source decision
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/ml-aave-liquidation-source')
+          result_path = root / 'PROBE_RESULT.json'
+          transport_path = root / 'TRANSPORT_ATTESTATION.json'
+          if result_path.exists():
+              result = json.loads(result_path.read_text())
+              assert result['claim_id'] == 'CLM-20260726-1952-ML-AAVE-LIQUIDATION-001'
+              assert result['scientific_decision'] in {
+                  'OPEN_FROZEN_PRE2024_HISTORY_STAGE',
+                  'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES',
+              }
+          if transport_path.exists():
+              transport = json.loads(transport_path.read_text())
+              assert transport['market_price_opened'] is False
+              assert transport['model_opened'] is False
+              assert transport['pnl_opened'] is False
+              assert transport['official_2024_2026_opened'] is False
+              assert transport['orders_submitted'] is False
+              assert transport['range_bisection_only_on_explicit_range_error'] is True
+          PY
       - name: Freeze evidence hashes
         if: always()
         run: |
@@ -71,6 +109,10 @@ jobs:
           cp research/ml_aave_liquidation_20260726/PREREGISTRATION.md \
             /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
           cp research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
+            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/probe_aave_liquidations_bounded.py \
+            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/test_probe_aave_liquidations_bounded.py \
             /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
           cp research/ml_aave_liquidation_20260726/export_addresses.cjs \
             /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
