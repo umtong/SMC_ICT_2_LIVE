@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_SHA = "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539"
+SOURCE_SHA = "3631cf01a2a2b91d690b81160e14ba033a298f75"
 STRICT_SHA = "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c"
 TRIGGER = (
     ROOT
@@ -24,7 +25,7 @@ CORRECTION = (
     / "research"
     / "execution"
     / "stablecoin_strict_validator_hook_20260727"
-    / "EXECUTION_CORRECTION_TRANSPORT_EXIT_004.json"
+    / "EXECUTION_CORRECTION.json"
 )
 RUNNER_TEMP = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
 WORK = RUNNER_TEMP / "stablecoin_strict_v3_validation_hook"
@@ -78,6 +79,16 @@ def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def sanitize(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {str(key): sanitize(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [sanitize(item) for item in value]
+    return value
+
+
 def source_summary(result: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": result.get("status"),
@@ -90,6 +101,10 @@ def source_summary(result: dict[str, Any]) -> dict[str, Any]:
         "source_correction_id": result.get("source_correction_id"),
         "transport_response_policy_correction": result.get(
             "transport_response_policy_correction"
+        ),
+        "status_zero_empty_policy": result.get("status_zero_empty_policy"),
+        "unrecognized_status_zero_policy": result.get(
+            "unrecognized_status_zero_policy"
         ),
     }
 
@@ -137,15 +152,14 @@ def economic_summary(result: dict[str, Any]) -> dict[str, Any]:
 
 def write_marker(payload: dict[str, Any]) -> None:
     MARKER.write_text(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
-        + "\n",
+        json.dumps(sanitize(payload), sort_keys=True, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
 
 
 def emit(payload: dict[str, Any]) -> None:
     print("STABLECOIN_STRICT_V3_RESULT_BEGIN", flush=True)
-    print(json.dumps(payload, sort_keys=True, allow_nan=False), flush=True)
+    print(json.dumps(sanitize(payload), sort_keys=True), flush=True)
     print("STABLECOIN_STRICT_V3_RESULT_END", flush=True)
 
 
@@ -157,14 +171,14 @@ def main() -> int:
         return 0
 
     correction = load_json(CORRECTION)
-    if correction.get("correction_id") != (
-        "EXECUTION-CORRECTION-20260727-STABLECOIN-VALIDATOR-TRANSPORT-EXIT-004"
-    ):
-        raise AssertionError("transport-exit correction identity changed")
+    if correction.get("source_sha") != SOURCE_SHA:
+        raise AssertionError("validator-hook source pin changed")
+    if correction.get("strict_sha") != STRICT_SHA:
+        raise AssertionError("validator-hook strict pin changed")
     if correction.get("recorded_before_source_decision") is not True:
-        raise AssertionError("transport-exit correction was not pre-outcome")
+        raise AssertionError("hook not frozen before source decision")
     if correction.get("recorded_before_market_outcome") is not True:
-        raise AssertionError("market outcome preceded transport-exit correction")
+        raise AssertionError("hook not frozen before market outcome")
 
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True, exist_ok=True)
@@ -267,7 +281,7 @@ def main() -> int:
                 "--output",
                 str(source_out),
                 "--transport",
-                "TRANSPORT-20260727-ML-STABLECOIN-STRICT-VALIDATOR-HOOK-001",
+                "TRANSPORT-20260727-ML-STABLECOIN-STRICT-VALIDATOR-HOOK-005",
                 "--exit-code",
                 str(source_rc),
             ]
@@ -297,7 +311,7 @@ def main() -> int:
         "next_stage": (
             "CHANGE_ALPHA"
             if source.get("status") == "FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE"
-            else "REPAIR_TRANSPORT_ONLY_OR_CHANGE_ALPHA"
+            else "CLOSE_SOURCE_OR_CHANGE_TRANSPORT_ONLY"
         ),
     }
 
@@ -309,18 +323,33 @@ def main() -> int:
             for line in events.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
+        checks = source.get("pass_checks", {})
+        if not checks or not all(value is True for value in checks.values()):
+            raise AssertionError(f"source PASS checks failed: {checks}")
         if source.get("source_schema_id") != (
             "STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1"
         ):
             raise AssertionError("wrong source schema")
+        if source.get("source_correction_id") != (
+            "CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010"
+        ):
+            raise AssertionError("wrong source correction")
         if source.get("transport_response_policy_correction") != (
             "CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019"
         ):
             raise AssertionError("wrong fail-closed policy")
+        if source.get("status_zero_empty_policy") != "EXPLICIT_NO_RECORDS_ONLY":
+            raise AssertionError("wrong empty-source policy")
+        if source.get("unrecognized_status_zero_policy") != (
+            "FAIL_CLOSED_SOURCE_UNAVAILABLE"
+        ):
+            raise AssertionError("wrong unrecognized-status policy")
         if len(rows) < 120 or len(source.get("months_with_events", [])) < 24:
             raise AssertionError("source PASS below frozen gate")
         if {row["token"] for row in rows} != {"USDT", "USDC"}:
             raise AssertionError("source PASS missing token")
+        if any(int(row["available_timestamp_64"]) >= 1_704_067_200 for row in rows):
+            raise AssertionError("post-2023 source event entered the pre-2024 gate")
         if sha256_file(events) != manifest.get("events_sha256"):
             raise AssertionError("event hash mismatch")
 
@@ -361,7 +390,7 @@ def main() -> int:
             raise AssertionError("fatal validity violation")
         serialized = json.dumps(full, sort_keys=True)
         if '"exit_reason": "SOURCE_BOUNDARY"' in serialized:
-            raise AssertionError("legacy source boundary exit")
+            raise AssertionError("legacy source-boundary exit")
         if economic.get("orders_submitted") is not False:
             raise AssertionError("order authority changed")
 
