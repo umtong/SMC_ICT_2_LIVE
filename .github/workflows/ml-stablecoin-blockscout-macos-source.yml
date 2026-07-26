@@ -1,0 +1,121 @@
+name: Stablecoin Blockscout source gate macOS
+
+on:
+  push:
+    branches: [agent/r13-ml-stablecoin-issuance-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-blockscout-macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: macos-14
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install fixed source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+
+      - name: Validate unchanged source code and pre-outcome correction
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_20260726
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          mkdir -p "$out"
+          python -m py_compile "$root"/source_gate*.py "$root/test_source_gate.py"
+          PYTHONPATH="$root" pytest -q "$root/test_source_gate.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/source_gate_blockscout_authoritative.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          python -m json.tool "$root/EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json" >/dev/null
+
+      - name: Query complete pre-2024 issuance source only
+        run: |
+          set -u
+          root=research/ml_stablecoin_issuance_20260726
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          set +e
+          PYTHONPATH="$root" python "$root/source_gate_blockscout_authoritative.py" --output "$out" 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          if [[ ! -f "$out/SOURCE_GATE_RESULT.json" ]]; then
+            python "$root/write_transport_failure.py" --output "$out" --transport TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003 --exit-code "$rc"
+          fi
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
+            echo "transport failure recorded under the unchanged outcome seal"
+          fi
+
+      - name: Verify source decision and outcome seal
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_20260726
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          python "$root/verify_source_result.py" "$out/SOURCE_GATE_RESULT.json" TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source/SOURCE_GATE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          print(json.dumps({
+            'status':result['status'],
+            'event_count':result.get('event_count'),
+            'months_with_events':len(result.get('months_with_events',[])),
+            'distinct_tokens':result.get('distinct_tokens'),
+            'conditional_model_screen_authorized':result.get('conditional_model_screen_authorized',False),
+          },sort_keys=True))
+          PY
+
+      - name: Validate current control plane without blocking source evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_20260726
+          out=research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          mkdir -p "$out/source"
+          cp "$root"/{WORK_CLAIM.json,preregistration.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,source_gate_blockscout.py,source_gate_blockscout_authoritative.py,test_source_gate.py,verify_source_result.py,write_transport_failure.py,EXECUTION_CORRECTION_009_MACOS_BLOCKSCOUT_BEFORE_OUTCOME.json} "$out/source/"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 shasum -a 256 > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-blockscout-macos-source-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_issuance_20260726/blockscout_macos_source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
