@@ -7,10 +7,11 @@ on:
       - research/yt_trinity_ml/system/**
       - research/yt_trinity_ml/run_research.py
       - research/yt_trinity_ml/extract_rule_ontology.py
+      - research/yt_trinity_ml/apply_coarse_replay_upgrade.py
       - research/yt_trinity_ml/system_contract.json
       - research/yt_trinity_ml/SYSTEM_DESIGN.md
       - research/yt_trinity_ml/INSTRUMENT_RULES.schema.json
-      - research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - research/yt_trinity_ml/tests/**
       - .github/workflows/yt-trinity-system.yml
   push:
     branches: [agent/r22-yt-trinity-ml-001]
@@ -18,14 +19,15 @@ on:
       - research/yt_trinity_ml/system/**
       - research/yt_trinity_ml/run_research.py
       - research/yt_trinity_ml/extract_rule_ontology.py
+      - research/yt_trinity_ml/apply_coarse_replay_upgrade.py
       - research/yt_trinity_ml/system_contract.json
       - research/yt_trinity_ml/SYSTEM_DESIGN.md
       - research/yt_trinity_ml/INSTRUMENT_RULES.schema.json
-      - research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - research/yt_trinity_ml/tests/**
       - .github/workflows/yt-trinity-system.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: yt-trinity-system-${{ github.ref }}
@@ -37,6 +39,32 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+      - name: Materialize deterministic coarse replay upgrade
+        if: github.event_name == 'push'
+        run: python research/yt_trinity_ml/apply_coarse_replay_upgrade.py
+      - name: Persist coarse replay upgrade on the work branch
+        if: github.event_name == 'push'
+        run: |
+          if ! git diff --quiet -- research/yt_trinity_ml/system/coarse.py; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/yt_trinity_ml/system/coarse.py
+            git commit -m "Accelerate causal barrier replay and enforce evaluation cutoff"
+            TARGET_BRANCH="${GITHUB_REF_NAME}"
+            for attempt in 1 2 3; do
+              git pull --rebase origin "${TARGET_BRANCH}"
+              if git push origin "HEAD:${TARGET_BRANCH}"; then
+                break
+              fi
+              if [[ "${attempt}" == "3" ]]; then
+                exit 1
+              fi
+              sleep $((attempt * 2))
+            done
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -44,7 +72,7 @@ jobs:
       - name: Install system dependencies
         run: |
           python -m pip install -q --upgrade pip
-          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow pytest
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
       - name: Compile and test causal invariants
         env:
           PYTHONPATH: research/yt_trinity_ml
@@ -56,7 +84,7 @@ jobs:
             python research/yt_trinity_ml/extract_rule_ontology.py --self-test
             python -m json.tool research/yt_trinity_ml/system_contract.json >/dev/null
             python -m json.tool research/yt_trinity_ml/INSTRUMENT_RULES.schema.json >/dev/null
-            pytest -q -x --junitxml=artifact/system-test/junit.xml research/yt_trinity_ml/tests/test_yt_trinity_system.py
+            pytest -q -x --junitxml=artifact/system-test/junit.xml research/yt_trinity_ml/tests
           } 2>&1 | tee artifact/system-test/pytest.log
       - name: Upload causal-system diagnostics and source snapshot
         if: always()
