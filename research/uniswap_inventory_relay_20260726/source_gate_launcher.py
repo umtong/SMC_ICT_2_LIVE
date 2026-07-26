@@ -19,9 +19,12 @@ def sha256_bytes(payload: bytes) -> str:
 def corrected_source_text() -> str:
     text = SOURCE.read_text(encoding="utf-8")
     count = text.count(BAD)
-    if count != 1:
-        raise RuntimeError(f"expected exactly one frozen typo occurrence, found {count}")
-    corrected = text.replace(BAD, GOOD)
+    if count == 1:
+        corrected = text.replace(BAD, GOOD)
+    elif count == 0:
+        corrected = text
+    else:
+        raise RuntimeError(f"expected zero or one frozen typo occurrence, found {count}")
     compile(corrected, str(SOURCE), "exec")
     return corrected
 
@@ -31,10 +34,10 @@ def verify_only() -> int:
     corrected = corrected_source_text().encode("utf-8")
     print(
         {
-            "status": "SOURCE_RUNTIME_CORRECTION_VERIFIED",
+            "status": "SOURCE_RUNTIME_VERIFIED",
             "original_sha256": sha256_bytes(original),
             "corrected_sha256": sha256_bytes(corrected),
-            "replacement_count": 1,
+            "replacement_count": SOURCE.read_text(encoding="utf-8").count(BAD),
         }
     )
     return 0
