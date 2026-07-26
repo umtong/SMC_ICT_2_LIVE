@@ -1,22 +1,29 @@
 {
-  "schema_version": 1,
-  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VISIBLE-PINNED-018",
+  "schema_version": 2,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VISIBLE-PINNED-CAUSAL-019",
   "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
   "recorded_before_source_decision": true,
   "recorded_before_market_outcome": true,
   "source_commit": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
-  "economic_commit": "6cbff14ed8dd5ebba3b6b47bf6854bf090e4db2c",
-  "purpose": "Run the unchanged corrected source gate and frozen economic engine inside a workflow already present on main, eliminating branch-churn cancellation and workflow-visibility failures.",
+  "economic_commit": "b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8",
+  "economic_entrypoint": "run_causal.py",
+  "purpose": "Run the corrected source gate and causally corrected economic engine inside a workflow already registered on main, eliminating workflow-visibility failures without changing the alpha information unit.",
+  "supersedes": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VISIBLE-PINNED-018",
+  "pre_outcome_defects_removed": [
+    "completed-state features may not be read from the entry-minute close; use the last completed minute before entry",
+    "an unresolved chronological boundary is a marked NAV state, not a synthetic structural-stop exit",
+    "prediction skill, median, PF, breadth and winner-removal remain diagnostics rather than extra pre-2024 vetoes"
+  ],
   "scientific_changes": [],
   "unchanged": [
     "USDT Issue/Redeem and USDC zero-address Transfer source identities",
     "2021-2023 source chronology and block+12/block+64 availability",
     "source coverage and density gates",
     "single HGBT, calibration map and economic action equation",
-    "features, labels, partitions, costs, structural target and stop",
+    "features, labels, chronological partitions, costs, structural target and stop",
     "one global slot and exact winner-removal rerouting",
     "risk and notional search domain",
-    "immediate official 2024H1 only after complete pre-2024 survivor"
+    "immediate official 2024H1 only after positive no-liquidation pre-2024 alpha"
   ],
   "official_2024_2026_opened_before_correction": false,
   "credentials_used": false,
