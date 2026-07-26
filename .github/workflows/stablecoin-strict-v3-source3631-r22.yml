@@ -1,0 +1,99 @@
+name: Stablecoin strict V3 source3631 decision
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stablecoin-strict-v3-source3631-r22.yml'
+      - 'scripts/stablecoin_strict_v3_source3631_runner.py'
+      - 'research/execution/stablecoin_strict_source3631_r22/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-strict-v3-source3631-r22
+  cancel-in-progress: true
+
+jobs:
+  decision:
+    runs-on: ubuntu-slim
+    timeout-minutes: 360
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen source and ML dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5 \
+            numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1 pyarrow==18.1.0
+
+      - name: Validate execution-only authority
+        run: |
+          set -euo pipefail
+          python -m json.tool \
+            research/execution/stablecoin_strict_source3631_r22/EXECUTION_CORRECTION.json \
+            >/dev/null
+          python -m py_compile scripts/stablecoin_strict_v3_source3631_runner.py
+
+      - name: Run fail-closed source and strict causal V3 decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/stablecoin_strict_v3_source3631_runner.py \
+            2>&1 | tee stablecoin_strict_v3_source3631_run.log
+
+      - name: Enforce decision envelope
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path(
+              'research_runs/stablecoin_strict_source3631_r22/RESULT_SUMMARY.json'
+          )
+          result = json.loads(path.read_text())
+          assert result['claim_id'] == (
+              'CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          )
+          assert result['source_sha'] == (
+              '3631cf01a2a2b91d690b81160e14ba033a298f75'
+          )
+          assert result['strict_sha'] == (
+              '209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c'
+          )
+          assert result['next_stage'] in {
+              'CLOSE_SOURCE_OR_CHANGE_TRANSPORT_ONLY',
+              'CHANGE_ALPHA',
+              'OFFICIAL_2024H1_IMMEDIATELY',
+          }
+          assert result['economic'].get('orders_submitted') in {None, False}
+          print(json.dumps(result, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-v3-source3631-${{ github.run_id }}
+          path: |
+            research_runs/stablecoin_strict_source3631_r22
+            stablecoin_strict_v3_source3631_run.log
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
