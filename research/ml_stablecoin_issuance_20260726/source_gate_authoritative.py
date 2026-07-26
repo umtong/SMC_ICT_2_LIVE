@@ -8,6 +8,15 @@ from typing import Any, Iterable
 import source_gate as base
 
 
+def eligibility_safe_boundary(block_number: int, target_timestamp: int) -> int:
+    """Exclude events whose +64-block stress confirmation enters 2024."""
+    if target_timestamp == base.MAX_ALLOWED_TIMESTAMP:
+        if block_number < 64:
+            raise ValueError("invalid 2024 boundary block")
+        return block_number - 64
+    return block_number
+
+
 def first_block_at_or_after(
     client: base.RpcClient,
     target_timestamp: int,
@@ -15,16 +24,17 @@ def first_block_at_or_after(
     high: int,
     cache: dict[int, int],
 ) -> int:
-    """Locate the first block at/after a permitted source boundary.
+    """Locate a permitted source boundary without requesting 2024 data.
 
-    Exactly 2024-01-01 00:00 UTC is allowed only as the end-exclusive
-    boundary for December 2023. Any timestamp after it remains prohibited,
-    and base.source_gate still rejects every event at or after the boundary.
+    Exactly 2024-01-01 00:00 UTC is allowed only to locate the end-exclusive
+    chain boundary. The returned eligibility boundary is shifted back 64
+    blocks, so every included event has both +12 and +64 confirmations strictly
+    before 2024. Any timestamp after the boundary remains prohibited.
     """
     if target_timestamp > base.MAX_ALLOWED_TIMESTAMP:
         raise ValueError("timestamps after the 2024 boundary are prohibited")
     if base.block_timestamp(client, low, cache) >= target_timestamp:
-        return low
+        return eligibility_safe_boundary(low, target_timestamp)
     if base.block_timestamp(client, high, cache) < target_timestamp:
         raise base.RpcError("latest block predates requested target")
     while low + 1 < high:
@@ -33,11 +43,11 @@ def first_block_at_or_after(
             high = mid
         else:
             low = mid
-    return high
+    return eligibility_safe_boundary(high, target_timestamp)
 
 
-# Patch the single pre-outcome boundary defect while preserving the base source
-# implementation and its exact transport, decoding, identity, density and seal logic.
+# Patch only the pre-outcome boundary helper while preserving all base
+# transport, decoding, identity, density and outcome-seal logic.
 base.first_block_at_or_after = first_block_at_or_after
 
 CONTRACTS = base.CONTRACTS
@@ -73,16 +83,19 @@ def self_test() -> None:
             return {"timestamp": hex(self.timestamps[number])}
 
     boundary = base.MAX_ALLOWED_TIMESTAMP
-    fake = FakeClient({0: boundary - 24, 1: boundary - 12, 2: boundary})
-    if first_block_at_or_after(fake, boundary, 0, 2, {}) != 2:
-        raise AssertionError("exact end-exclusive boundary lookup failed")
+    timestamps = {i: boundary - (100 - i) * 12 for i in range(101)}
+    fake = FakeClient(timestamps)
+    if first_block_at_or_after(fake, boundary, 0, 100, {}) != 36:
+        raise AssertionError("64-block pre-2024 eligibility boundary failed")
+    if first_block_at_or_after(fake, boundary - 120, 0, 100, {}) != 90:
+        raise AssertionError("ordinary historical boundary was altered")
     try:
-        first_block_at_or_after(fake, boundary + 1, 0, 2, {})
+        first_block_at_or_after(fake, boundary + 1, 0, 100, {})
     except ValueError:
         pass
     else:
         raise AssertionError("post-2024 timestamp was not rejected")
-    print("authoritative boundary self-test passed")
+    print("authoritative pre-2024 confirmation-boundary self-test passed")
 
 
 def parse_args() -> argparse.Namespace:
