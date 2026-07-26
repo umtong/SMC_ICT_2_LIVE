@@ -1,0 +1,42 @@
+{
+  "artifact_fingerprint": "6ae5b92ed162e3c6135abddfc5dfb89a62ec2797d5fff989b6a25ac5c0206c5a",
+  "claim_id": "CLM-20260726-0952-XASSET-MICROSHOCK-001",
+  "costs_bps_roundtrip": [12, 18, 24],
+  "decision": "RETIRE_BTC_TO_ETH_SUBMINUTE_RESIDUAL_INFORMATION_UNIT",
+  "dependency_fingerprint": "d2e86a80ac7afa52d7df82b3dcb09607012ff8b230efd26884f4b6a32b406eaf",
+  "diagnostic_rows": 2,
+  "economic_status": "BELOW_GATE",
+  "evaluation_contract_sha256": "1562b58265af50039716d22da0bbdac3f74e7cdfffd631cc699ee2a2fd589d2a",
+  "fatal_finding": {
+    "development_gap_at_least_12bp_events": 0,
+    "development_gap_at_least_18bp_events": 0,
+    "development_gap_at_least_24bp_events": 0,
+    "development_gate_minimum_trades": 20,
+    "development_pregrid_economic_events": 0,
+    "fit_pregrid_economic_events": 2,
+    "reason": "No development event simultaneously had a prior-scaled BTC shock, aligned aggressive BTC flow, abnormal BTC activity, weak contemporaneous ETH incorporation and a direction-aligned residual gap of at least 12bp. Therefore every one of 2,592 frozen parameter cells has zero possible development trades.",
+    "strategy_pnl_computed": false
+  },
+  "hard_validity_status": "PASS_PRE_PNL_CAUSAL_DIAGNOSTIC",
+  "leader": "BTCUSDT",
+  "live_permission": false,
+  "next_action": "Test the same economic mechanism on SOLUSDT and XRPUSDT, where lower liquidity can create an economically larger residual response; preserve 2024+ sealing.",
+  "orders_submitted": false,
+  "preregistration_commits": [
+    "8c440816b5b2961ea1ee0df05f8956db8df24526",
+    "d5b2dac2be8c7b997ebeaf911e9874e4a29c9856"
+  ],
+  "ranking_role": "NONE",
+  "result_id": "RES-20260726-XASSET-MICROSHOCK-ETH-001",
+  "reuse_boundary": "Do not retune BTC/ETH z, imbalance, activity, underreaction, residual-gap or catch-up thresholds on these six SHA-fixed 2023 public-trade dates. Reopen only with a less efficient follower (SOL/XRP), independently observed queue/depth state, or materially different information source.",
+  "schema_version": 1,
+  "stages": {
+    "2024_2026_opened": false,
+    "development_dates_opened": ["2023-05-21", "2023-07-16"],
+    "fit_dates_opened": ["2023-01-15", "2023-03-19"],
+    "frozen_validation_dates_opened": []
+  },
+  "status": "TESTED_BELOW_FATAL_EVENT_AVAILABILITY_GATE",
+  "traded_follower": "ETHUSDT",
+  "venue": "Bybit USDT linear perpetual public trades"
+}
