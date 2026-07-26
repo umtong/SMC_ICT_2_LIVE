@@ -1,9 +1,8 @@
 name: Bybit vulnerable-inventory pressure-map fatal screen
 
 on:
-  push:
-    branches:
-      - agent/r11-inventory-pressure-map-001
+  pull_request:
+    branches: [main]
     paths:
       - "research/inventory_pressure_map_20260726/**"
       - ".github/workflows/inventory-pressure-map-r11.yml"
@@ -14,7 +13,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: inventory-pressure-map-${{ github.ref }}
+  group: inventory-pressure-map-refs/heads/agent/r11-inventory-pressure-map-001
   cancel-in-progress: true
 
 jobs:
