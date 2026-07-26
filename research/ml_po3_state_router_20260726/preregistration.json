@@ -1,0 +1,103 @@
+{
+  "account_contract": {
+    "costs_bps": [
+      12,
+      18,
+      24
+    ],
+    "daily_growth_denominator": "all UTC calendar days in the stage",
+    "funding_proxy": "2bp adverse charge at every crossed UTC 8-hour boundary",
+    "initial_nav": 10000.0,
+    "notional_cap_multiple": 3.0,
+    "risk_fraction": 0.01,
+    "top_trade_removal": "remove the top 10% positive routed events from the 12bp path and reroute the global slot"
+  },
+  "calibration_gate": {
+    "18bp_top10_removed_total_return_positive": true,
+    "24bp_calendar_daily_growth_at_least": 0.001,
+    "24bp_mean_positive": true,
+    "24bp_median_positive": true,
+    "24bp_profit_factor_above": 1.0,
+    "both_half_years_positive": true,
+    "minimum_trades": 60,
+    "positive_months_at_least": 8,
+    "top5_positive_pnl_share_at_most": 0.4,
+    "unresolved_fraction": 0.0
+  },
+  "claim_id": "CLM-20260726-1712-ML-PO3-STATE-001",
+  "development_gate": {
+    "18bp_top10_removed_calendar_daily_growth_at_least": 0.001,
+    "24bp_calendar_daily_growth_at_least": 0.0025,
+    "24bp_mean_and_median_positive": true,
+    "both_half_years_positive": true,
+    "minimum_trades": 100,
+    "positive_months_at_least": 8,
+    "top5_positive_pnl_share_at_most": 0.4,
+    "unresolved_fraction": 0.0
+  },
+  "information_contract": {
+    "calibration": "2022; select at most one probability threshold",
+    "development": "2023 opens only if calibration gate passes",
+    "feature_availability": "completed 5-minute bar only; prior EWMA denominators are shifted one bar",
+    "features": [
+      "ret_z",
+      "range_ratio",
+      "body_eff",
+      "wick_skew",
+      "flow_imb"
+    ],
+    "sealed": [
+      2024,
+      2025,
+      2026
+    ],
+    "state_filter": "causal forward probability recursion; full-sequence Viterbi, smoothing and future labels prohibited",
+    "state_semantics": "the 2021 emission means are assigned once to accumulation, manipulation and distribution",
+    "training": "2021 only"
+  },
+  "market_contract": {
+    "fatal_screen_provider": "Binance Vision official USD-M monthly klines",
+    "final_execution_market": "Bybit USDT linear perpetual",
+    "global_pending_or_open_slots": 1,
+    "interval": "5m",
+    "proxy_rank_eligible": false,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ]
+  },
+  "model_contract": {
+    "candidate_probability_thresholds": [
+      0.45,
+      0.6,
+      0.75
+    ],
+    "emission_covariance": "diagonal",
+    "feature_count": 5,
+    "model_id": "SHARED_3STATE_GAUSSIAN_MARKOV_PO3_V1",
+    "parameter_estimation": "2021 MiniBatchKMeans emission initialization plus chronological transition counts; no post-2021 refit",
+    "random_seed": 20260726,
+    "states": 3
+  },
+  "promotion_boundary": "A development survivor is not ranked. It must be rerun unchanged on exact Bybit historical BBO/depth, actual funding, realistic latency/fills, continuous NAV and sequential 2024 opening.",
+  "provisional_result_id": "RES-20260726-ML-PO3-STATE-001",
+  "research_question": "Can one minimal causal ML model identify the accumulation-manipulation-distribution transition strongly enough to exceed realistic cost and materially close the 1% daily-growth gap?",
+  "schema_version": 1,
+  "strategy_contract": {
+    "box_lifetime_bars": 6,
+    "confirmation_lifetime_bars": 3,
+    "distribution": "within three bars, distribution probability clears the same threshold and signed body plus taker flow point away from the raid",
+    "elapsed_time_exit": null,
+    "entry": "next 5-minute open",
+    "maximum_accumulation_bars": 24,
+    "minimum_accumulation_bars": 3,
+    "minimum_reward_risk": 1.5,
+    "raid": "exactly one side exceeds the frozen box by max(5% of box range, 1bp) and closes back inside while manipulation probability clears the threshold",
+    "same_bar_ambiguity": "stop first",
+    "source_boundary": "full stop loss",
+    "stop": "beyond the raid extreme plus the same structural buffer",
+    "target": "opposite frozen accumulation-box boundary"
+  }
+}
