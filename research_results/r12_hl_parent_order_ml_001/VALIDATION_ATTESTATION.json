@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-HL-PARENT-ORDER-ML-001",
+  "result_id": "RES-20260726-HL-PARENT-ORDER-ML-001",
+  "dependency_fingerprint": "HL-PARENT-CADENCE-TO-15M-LIQUIDITY-FIRSTPASS-754FE22C-V1",
+  "status": "PASS_NEGATIVE_CONCLUSION",
+  "scope": [
+    "immutable 36-file prevalidation source identity and sealed eight-file validation boundary",
+    "causal child-order completion and two-second information delay",
+    "one direction-locked HGBT, one isotonic calibrator and one EV rule",
+    "all-fill market path, proper size-weighted child VWAP and strict global-slot timing",
+    "distance-only first-passage baseline comparison",
+    "identical 12, 18 and 24bp action paths, concentration removal and no-trade date accounting"
+  ],
+  "evidence": {
+    "workflow_run": 30198047916,
+    "artifact_id": 8630747943,
+    "artifact_digest": "sha256:40aee73651c78a756c94492073e547dd8778ce8df5df75c2b151d5e58fd422b6",
+    "result_json_sha256": "2c9ac3faa4ac3d73f3dc7e65935c41cd2a2cbb9b8b4b281ffb8aae45fa3ba9b5",
+    "confirmation_event_ledger_sha256": "210bd457797ee6faec97eea8ee08ae0c08863796b6a407cfc7290b31835e2dd1",
+    "model_contract_sha256": "af722fa28831bd3dc55a7cfd8ce810a7a9e31f38d74ae014aa56c731e69a28d6"
+  },
+  "validated_boundaries": {
+    "confirmation_resolved_rows": 1031,
+    "model_auc": 0.7645943937759516,
+    "baseline_auc": 0.8068973803760739,
+    "authorized_actions": 0,
+    "validation_rows_read": false,
+    "bybit_execution_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "conclusion": "The attestation validates retirement of the exact parent-cadence to previous-15-minute-liquidity first-passage payoff. It does not validate profitability. The structural-distance baseline dominated the ML model and no event cleared the preregistered cost-adjusted EV threshold."
+}
