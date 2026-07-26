@@ -27,6 +27,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: absorption-or-donchian-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     if: github.head_ref != 'agent/r14-donchian-2024h1-trigger-001'
@@ -106,7 +110,7 @@ jobs:
 
   donchian-2024h1:
     if: github.head_ref == 'agent/r14-donchian-2024h1-trigger-001'
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       ROOT: research/donchian_2024h1_20260726
@@ -135,6 +139,7 @@ jobs:
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_CORRECTION_001_SLIM_SHA_SCOPED_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_TRIGGER_002_PR_VISIBLE_SAME_CONTRACT.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_TRIGGER_003_VISIBLE_RUN_AFTER_HARNESS_INSTALL.json" >/dev/null
           python "$ROOT/reconstruct.py"
           python -m py_compile "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/download_bars.py" "$ROOT/download_funding.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_run.py"
@@ -184,6 +189,7 @@ jobs:
             "$ROOT/WORK_CLAIM.json" "$ROOT/preregistration.json" "$ROOT/README.md" "$ROOT/SOURCES.md" \
             "$ROOT/EXECUTION_CORRECTION_001_SLIM_SHA_SCOPED_BEFORE_OUTCOME.json" \
             "$ROOT/EXECUTION_TRIGGER_002_PR_VISIBLE_SAME_CONTRACT.json" \
+            "$ROOT/EXECUTION_TRIGGER_003_VISIBLE_RUN_AFTER_HARNESS_INSTALL.json" \
             "$ROOT/bundle_manifest.json" "$ROOT/reconstruct.py" "$ROOT"/source_bundle.tar.gz.b64.part* \
             "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/download_bars.py" "$ROOT/download_funding.py" \
             > research_runs/donchian_2024h1_20260726/input/INPUT_SHA256SUMS.txt
