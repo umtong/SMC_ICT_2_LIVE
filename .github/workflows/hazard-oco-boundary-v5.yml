@@ -1,0 +1,145 @@
+name: Hazard OCO V5 boundary-accounting diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [".github/workflows/hazard-oco-boundary-v5.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hazard-oco-boundary-v5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "scipy==1.14.1" "scikit-learn==1.5.2" "pytest==8.3.4"
+      - name: Reconstruct and patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
+          python "$root/reconstruct.py"
+          python - <<'PY'
+          import base64, hashlib, json
+          from pathlib import Path
+
+          root = Path("research/hazard_oco_20260726")
+          source = root / "reconstructed/run.py"
+          out = root / "boundary_v5"
+          out.mkdir(parents=True, exist_ok=True)
+          original = source.read_text()
+          original_sha = hashlib.sha256(original.encode()).hexdigest()
+          assert original_sha == "378ce2219b460829f93c201068cae7b4c1b192b6fc9d3ef59b64396ef93989ee"
+          old = base64.b64decode("ICAgICAgICBpZiBvdXRjb21lLnVucmVzb2x2ZWQgb3Igb3V0Y29tZS5lbnRyeV9wcmljZSBpcyBOb25lIG9yIG91dGNvbWUuZXhpdF9wcmljZSBpcyBOb25lIG9yIG91dGNvbWUuZW50cnlfdXMgaXMgTm9uZSBvciBvdXRjb21lLmV4aXRfdXMgaXMgTm9uZToKICAgICAgICAgICAgYmVmb3JlID0gbmF2CiAgICAgICAgICAgIG5hdiA9IDAuMAogICAgICAgICAgICBtYXhpbXVtX2RyYXdkb3duID0gMS4wCiAgICAgICAgICAgIHRlcm1pbmFsID0gVHJ1ZQogICAgICAgICAgICB0cmFkZXMuYXBwZW5kKAogICAgICAgICAgICAgICAgQWNjb3VudFRyYWRlKAogICAgICAgICAgICAgICAgICAgIGRlY2lzaW9uX2tleSwgZGF0ZSwgY2FuZGlkYXRlLm1vZGVsLCBjYW5kaWRhdGUuY2FuZGlkYXRlX2lkLCBjb3N0X2JwLCBjYW5jZWxfbGF0ZW5jeV9tcywKICAgICAgICAgICAgICAgICAgICBvdXRjb21lLnNpZGUsIGludChvdXRjb21lLmVudHJ5X3VzIG9yIGRlY2lzaW9uX3VzKSwgaW50KG91dGNvbWUuZXhpdF91cyBvciBvdXRjb21lLnJlbGVhc2VfdXMpLAogICAgICAgICAgICAgICAgICAgIGZsb2F0KG91dGNvbWUuZW50cnlfcHJpY2Ugb3Igcm93Lm1pZCksIGZsb2F0KG91dGNvbWUuZXhpdF9wcmljZSBvciAwLjApLCBub3Rpb25hbCwKICAgICAgICAgICAgICAgICAgICAtYmVmb3JlLCAwLjAsIC1iZWZvcmUsIGJlZm9yZSwgMC4wLCAtMS4wLCAtMS4wLCAxLjAsCiAgICAgICAgICAgICAgICAgICAgb3V0Y29tZS5kb3VibGVfdHJpZ2dlciwgb3V0Y29tZS5leGl0X3JlYXNvbiwKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgKQogICAgICAgICAgICBicmVhawo=").decode()
+          new = base64.b64decode("ICAgICAgICAjIEEgdHJpZ2dlciB3aXRob3V0IGEgY2F1c2FsbHkgb2JzZXJ2ZWQgZXhlY3V0YWJsZSBlbnRyeSBxdW90ZSBpcyBub3QgYSBmaWxsZWQKICAgICAgICAjIHBvc2l0aW9uLiBSZWxlYXNpbmcgdGhlIHNsb3QgcmVzcGVjdHMgdGhlIGZyb3plbiBleGVjdXRpb24gY29udHJhY3QuCiAgICAgICAgaWYgb3V0Y29tZS5lbnRyeV9wcmljZSBpcyBOb25lIG9yIG91dGNvbWUuZW50cnlfdXMgaXMgTm9uZToKICAgICAgICAgICAgY29udGludWUKICAgICAgICAjIE9uY2UgYW4gZW50cnkgaXMgYWNjZXB0ZWQsIGEgc3BhcnNlLWZpbGUgYm91bmRhcnkgaXMgbm90IGV2aWRlbmNlIG9mCiAgICAgICAgIyBhY2NvdW50IGxpcXVpZGF0aW9uLiBDaGFyZ2UgdGhlIGZ1bGwgcGxhbm5lZCBzdG9wIHBsdXMgZnJvemVuIGNvc3QuCiAgICAgICAgaWYgb3V0Y29tZS51bnJlc29sdmVkIG9yIG91dGNvbWUuZXhpdF9wcmljZSBpcyBOb25lIG9yIG91dGNvbWUuZXhpdF91cyBpcyBOb25lOgogICAgICAgICAgICBiZWZvcmUgPSBuYXYKICAgICAgICAgICAgc3RvcF9yZXR1cm4gPSAtY2FuZGlkYXRlLnN0b3BfYnAgLyAxZTQKICAgICAgICAgICAgZ3Jvc3NfcG5sID0gbm90aW9uYWwgKiBzdG9wX3JldHVybgogICAgICAgICAgICBleHBsaWNpdF9jb3N0ID0gbm90aW9uYWwgKiBjb3N0X2JwIC8gMWU0CiAgICAgICAgICAgIG5ldF9wbmwgPSBncm9zc19wbmwgLSBleHBsaWNpdF9jb3N0CiAgICAgICAgICAgIG5hdiA9IG1heCgwLjAsIG5hdiArIG5ldF9wbmwpCiAgICAgICAgICAgIGFjY291bnRfcmV0dXJuID0gLTEuMCBpZiBiZWZvcmUgPD0gMCBlbHNlIG5hdiAvIGJlZm9yZSAtIDEuMAogICAgICAgICAgICBzeW50aGV0aWNfZXhpdF9wcmljZSA9IG91dGNvbWUuZW50cnlfcHJpY2UgKiAoMS4wIC0gb3V0Y29tZS5zaWRlICogY2FuZGlkYXRlLnN0b3BfYnAgLyAxZTQpCiAgICAgICAgICAgIGFkdmVyc2VfbmF2ID0gbmF2CiAgICAgICAgICAgIGludHJhdHJhZGVfZGQgPSAxLjAgLSBhZHZlcnNlX25hdiAvIG1heChiZWZvcmUsIDFlLTEyKQogICAgICAgICAgICBwYXRoX2RkID0gMS4wIC0gYWR2ZXJzZV9uYXYgLyBtYXgocGVhaywgMWUtMTIpCiAgICAgICAgICAgIHBlYWsgPSBtYXgocGVhaywgbmF2KQogICAgICAgICAgICBjbG9zZWRfZGQgPSAxLjAgLSBuYXYgLyBtYXgocGVhaywgMWUtMTIpCiAgICAgICAgICAgIG1heGltdW1fZHJhd2Rvd24gPSBtYXgobWF4aW11bV9kcmF3ZG93biwgaW50cmF0cmFkZV9kZCwgcGF0aF9kZCwgY2xvc2VkX2RkKQogICAgICAgICAgICB0cmFkZXMuYXBwZW5kKAogICAgICAgICAgICAgICAgQWNjb3VudFRyYWRlKAogICAgICAgICAgICAgICAgICAgIGRlY2lzaW9uX2tleSwgZGF0ZSwgY2FuZGlkYXRlLm1vZGVsLCBjYW5kaWRhdGUuY2FuZGlkYXRlX2lkLCBjb3N0X2JwLCBjYW5jZWxfbGF0ZW5jeV9tcywKICAgICAgICAgICAgICAgICAgICBvdXRjb21lLnNpZGUsIGludChvdXRjb21lLmVudHJ5X3VzKSwgaW50KG91dGNvbWUuZXhpdF91cyBvciBvdXRjb21lLnJlbGVhc2VfdXMpLAogICAgICAgICAgICAgICAgICAgIGZsb2F0KG91dGNvbWUuZW50cnlfcHJpY2UpLCBmbG9hdChzeW50aGV0aWNfZXhpdF9wcmljZSksIG5vdGlvbmFsLAogICAgICAgICAgICAgICAgICAgIGdyb3NzX3BubCwgZXhwbGljaXRfY29zdCwgbmV0X3BubCwgYmVmb3JlLCBuYXYsIGFjY291bnRfcmV0dXJuLAogICAgICAgICAgICAgICAgICAgIHN0b3BfcmV0dXJuLCBpbnRyYXRyYWRlX2RkLCBvdXRjb21lLmRvdWJsZV90cmlnZ2VyLAogICAgICAgICAgICAgICAgICAgIGYie291dGNvbWUuZXhpdF9yZWFzb259X19jaGFyZ2VkX2Z1bGxfcGxhbm5lZF9zdG9wIiwKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgKQogICAgICAgICAgICBjb250aW51ZQo=").decode()
+          assert original.count(old) == 1
+          patched = original.replace(old, new).replace(
+              'ENGINE_VERSION = "BYBIT_HAZARD_OCO_V1"',
+              'ENGINE_VERSION = "BYBIT_HAZARD_OCO_V1_BOUNDARY_ACCOUNTING_DIAGNOSTIC"', 1,
+          )
+          patched_sha = hashlib.sha256(patched.encode()).hexdigest()
+          assert patched_sha == "d65a27341a9da1167a35b8ef1b0e88066f72646e29f162d2a0fca0eebb566eb3"
+          (out / "run.py").write_text(patched)
+          (out / "PATCH_ATTESTATION.json").write_text(json.dumps({
+              "schema_version": 1,
+              "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+              "status": "POST_OUTCOME_ACCOUNTING_DIAGNOSTIC_NOT_CLEAN_HOLDOUT",
+              "original_source_sha256": original_sha,
+              "patched_source_sha256": patched_sha,
+              "changes": [
+                  "no executable entry quote means no fill",
+                  "accepted unresolved entry is charged full planned stop plus frozen cost",
+                  "dates signals thresholds candidates and market rules unchanged",
+              ],
+          }, indent=2, sort_keys=True) + "\n")
+          PY
+      - name: Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
+          code="$root/boundary_v5"
+          cp "$root/reconstructed/test_run.py" "$code/test_run_legacy.py"
+          python -m py_compile "$code/run.py" "$code/test_run_legacy.py"
+          PYTHONPATH="$code" pytest -q "$code/test_run_legacy.py" -k "not unresolved_trade_sets_terminal_nav"
+          PYTHONPATH="$code" python - <<'PY'
+          import numpy as np
+          import run as h
+          from test_run_legacy import candidate, decision_frame, synthetic_grid
+
+          f = decision_frame()
+          for name in h.FEATURE_COLUMNS:
+              f[name] = 0.0
+          m = h.TrainedModel("logistic", None, np.array([0.9]), {0.95: 0.5}, 0.5, {})
+          old_days, old_resolver = h.DEVELOPMENT_DAYS, h.resolve_pair
+          h.DEVELOPMENT_DAYS = ("synthetic",)
+          try:
+              filled = h.PotentialOutcome(
+                  str(f.iloc[0].decision_key), "synthetic", int(f.iloc[0].decision_us), 99_000_000,
+                  1_000_000.0, True, True, 1, 10_000_000, None, 100.0, None, -1.0, False, "unresolved",
+              )
+              h.resolve_pair = lambda *a, **k: filled
+              trades, state = h.simulate_account(
+                  candidate(), m, 0.5, {"synthetic": f}, {"synthetic": np.array([0.9])},
+                  {"synthetic": synthetic_grid()}, 12.0, 100,
+              )
+              expected = trades[0].notional * (candidate().stop_bp + 12.0) / 1e4
+              assert not state["terminal_account_loss"]
+              assert abs(state["ending_nav"] - (h.INITIAL_NAV - expected)) < 1e-9
+              assert trades[0].exit_reason.endswith("__charged_full_planned_stop")
+
+              no_fill = h.PotentialOutcome(
+                  str(f.iloc[0].decision_key), "synthetic", int(f.iloc[0].decision_us), 99_000_000,
+                  1_000_000.0, True, True, 1, None, None, None, None, -1.0, False, "entry_fill_unresolved",
+              )
+              h.resolve_pair = lambda *a, **k: no_fill
+              trades, state = h.simulate_account(
+                  candidate(), m, 0.5, {"synthetic": f}, {"synthetic": np.array([0.9])},
+                  {"synthetic": synthetic_grid()}, 12.0, 100,
+              )
+              assert trades == [] and state["ending_nav"] == h.INITIAL_NAV
+          finally:
+              h.DEVELOPMENT_DAYS, h.resolve_pair = old_days, old_resolver
+          print("boundary accounting tests passed")
+          PY
+          PYTHONPATH="$code" python "$code/run.py" --self-test
+          python scripts/validate_project.py
+      - name: Run corrected 162-candidate screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=research/hazard_oco_20260726/boundary_v5
+          out=research_runs/hazard_oco_20260726/boundary_v5
+          mkdir -p "$out"
+          cp "$code/PATCH_ATTESTATION.json" "$out/"
+          PYTHONPATH="$code" python "$code/run.py" --output "$out" --cache "$RUNNER_TEMP/hazard-oco-bybit-cache" 2>&1 | tee "$out/run.log"
+      - name: Checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/hazard_oco_20260726
+          out=research_runs/hazard_oco_20260726/boundary_v5
+          mkdir -p "$out"
+          sha256sum "$root/reconstructed/run.py" "$root/boundary_v5/run.py" "$root/boundary_v5/PATCH_ATTESTATION.json" ".github/workflows/hazard-oco-boundary-v5.yml" > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hazard-oco-boundary-v5-${{ github.sha }}
+          path: research_runs/hazard_oco_20260726/boundary_v5
+          if-no-files-found: error
+          retention-days: 90
