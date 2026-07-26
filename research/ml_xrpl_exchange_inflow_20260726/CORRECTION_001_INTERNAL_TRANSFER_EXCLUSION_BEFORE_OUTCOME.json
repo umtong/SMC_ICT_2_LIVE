@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-XRPL-INTERNAL-TRANSFER-EXCLUSION-001",
+  "claim_id": "CLM-20260726-2305-ML-XRPL-INFLOW-001",
+  "recorded_at": "2026-07-26T23:39:00+09:00",
+  "status": "PRE_MARKET_OUTCOME_SOURCE_CLASSIFICATION_CORRECTION",
+  "trigger": "The initial exclusion set contained only the five queried deposit accounts. Public account and transaction labels identify an additional Binance consolidation counterparty and an additional Bybit consolidation counterparty. Transfers from these exchange-owned accounts could otherwise be classified as external tagged customer-like inflows and inflate the source-density gate.",
+  "added_exclusion_only_accounts": {
+    "Binance": "rDAE53VfMvftPB4ogpWGWvzkQxfht6JPxr",
+    "Bybit": "raQxZLtqurEXvH5sgijrif7yXMNwvFRkJN"
+  },
+  "change": "Patch only the internal-transfer exclusion set before event classification. Do not query either added account as a destination and do not add its activity to a feature or density count.",
+  "outcome_state_before_correction": {
+    "source_gate_decision_ready_result_observed": false,
+    "bybit_market_data_opened": false,
+    "future_return_or_label_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_or_2026_opened": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "five queried exchange destination accounts",
+    "five pre-2024 source dates",
+    "destination-tag requirement",
+    "ledger boundaries pagination and validation rules",
+    "all source-density thresholds",
+    "phase-two model features labels and action equation",
+    "chronological split and immediate 2024H1 progression rule",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ]
+}
