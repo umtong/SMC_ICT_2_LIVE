@@ -66,6 +66,8 @@ def audit(root: Path, research_root: Path) -> dict:
                 if previous_open:
                     raise AssertionError("trade follows a boundary-open position")
                 assert int(row.activation_bin) >= previous_exit + 1
+                assert int(row.entry_bin) >= int(row.activation_bin)
+                assert int(row.exit_bin) >= int(row.entry_bin)
                 nav *= 1.0 + float(row.account_return)
                 assert close(nav, float(row.nav_after), 1e-9)
                 previous_exit = int(row.exit_bin)
@@ -89,15 +91,24 @@ def audit(root: Path, research_root: Path) -> dict:
     symbols = set()
     total_events = 0
     for path in event_files:
-        frame = pd.read_csv(path, usecols=["date", "symbol", "activation_bin", "signal_bin"])
+        frame = pd.read_csv(path, usecols=[
+            "date", "symbol", "activation_bin", "signal_bin",
+            "follow_filled", "follow_entry_bin", "follow_slot_release_bin", "follow_exit_bin",
+            "fade_filled", "fade_entry_bin", "fade_slot_release_bin", "fade_exit_bin",
+        ])
         total_events += len(frame)
         event_dates.update(frame.date.astype(str).unique())
         symbols.update(frame.symbol.astype(str).unique())
         assert (frame.activation_bin > frame.signal_bin).all()
+        for prefix in ("follow", "fade"):
+            assert (frame[f"{prefix}_entry_bin"] >= frame.activation_bin).all()
+            assert (frame[f"{prefix}_slot_release_bin"] >= frame[f"{prefix}_entry_bin"]).all()
+            assert (frame[f"{prefix}_exit_bin"] >= frame[f"{prefix}_entry_bin"]).all()
     assert event_dates == {"2022-07-01", "2023-03-01", "2023-07-01"}
     assert symbols == {"BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"}
     checks.append("all source-derived events are pre-2024 and include the four frozen symbols")
     checks.append("every activation follows its completed signal state")
+    checks.append("every filled or expired action uses a quote no earlier than activation and releases the global slot no earlier than entry")
 
     prereg = research_root / "preregistration.json"
     source = research_root / "run.py"

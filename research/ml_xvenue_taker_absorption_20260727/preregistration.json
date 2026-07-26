@@ -45,15 +45,15 @@
   "execution_contract": {
     "order_latency_ms": 500,
     "signal_availability": "the 100ms signal state completes before the fixed 500ms latency starts",
-    "entry": "marketable Bybit BBO using a marketable-limit protection; the executable BBO immediately before activation is used and a reversal order expires if its frozen structural anchor was already delivered",
+    "entry": "marketable Bybit BBO using a marketable-limit protection; execution uses the first actual Bybit BBO observed at or after the fixed activation boundary, an order with no quote within 1000ms expires while occupying the global pending slot, and a reversal order expires if its frozen structural anchor was already delivered",
     "position_capacity": "10% of displayed opposing Bybit best-quote notional",
     "resting_target": "frozen at signal and entry from causal structural anchors",
     "resting_stop": "maximum of 8bp, 0.75 times shock magnitude and 1.5 times prior 500ms volatility, capped only for the initial screen at 80/100/160/160bp by symbol",
     "discretionary_exit_latency_ms": 500,
-    "discretionary_exits": ["external reference reversal", "opposite displacement"],
+    "discretionary_exits": ["external reference reversal after 500ms then first actual Bybit BBO", "opposite displacement after 500ms then first actual Bybit BBO"],
     "source_boundary": "open exposure is marked to executable Bybit BBO for NAV and remains strategy-open; it is not force-closed",
     "elapsed_time_exit": false,
-    "one_global_slot": "account arbitration sorts actual activation times across all symbols; an open position blocks every later entry"
+    "one_global_slot": "account arbitration sorts actual activation times across all symbols; a pending order blocks later activation until fill or expiry and an open position blocks every later entry until structural exit"
   },
   "features": [
     "shock magnitude and prior-volatility z-score",

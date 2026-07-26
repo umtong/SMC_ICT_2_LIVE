@@ -18,10 +18,9 @@ One HistGradientBoosting regressor estimates the gross structural payoff of both
 
 - Features use completed 100 ms states only.
 - The signal state completes before the fixed 500 ms latency starts.
-- Entry is at the executable Bybit BBO immediately before activation, with a marketable-limit protection.
+- Entry uses the first actual Bybit BBO observed at or after the fixed 500 ms activation boundary, with a marketable-limit protection. If no quote arrives within 1 second, the order expires and the pending global slot remains occupied through that expiry.
 - A resting structural target or stop can execute without a new discretionary decision.
-- Target/stop contact uses within-bin executable BBO extrema; a same-bin ambiguity is assigned to the stop, never the favorable target.
-- External-reference and opposite-displacement exits use a fresh completed state plus 500 ms latency and the last BBO observable before activation.
+- External-reference and opposite-displacement exits use a fresh completed state, a further fixed 500 ms latency, and the first actual executable Bybit BBO observed at or after that delayed boundary.
 - There is no maximum holding time or scheduled liquidation.
 - Exposure still open at a source boundary is marked to executable BBO for NAV and remains strategy-open.
 - The four symbols share one global pending-entry/open-position slot.
@@ -43,7 +42,6 @@ A route advances only when its selected calibration path and untouched confirmat
 ## Run
 
 ```bash
-python reconstruct.py
 python run.py self-test
 python run.py extract \
   --data-root /path/to/data \
