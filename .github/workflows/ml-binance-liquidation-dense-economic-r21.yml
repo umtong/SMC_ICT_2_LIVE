@@ -1,4 +1,4 @@
-name: ML Binance dense liquidation economic screen
+name: ML Binance executed-snapshot liquidation economic screen
 
 on:
   push:
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   economic:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     env:
       PYTHONHASHSEED: '0'
@@ -66,18 +66,30 @@ jobs:
           python "$source_root/reconstruct.py" 2>&1 | tee "$out/SOURCE_RECONSTRUCT.log"
           python "$econ_root/reconstruct.py" 2>&1 | tee "$out/ECON_RECONSTRUCT.log"
           python -m py_compile \
-            "$source_root/source_gate.py" "$source_root/test_source_gate.py" \
+            "$source_root/source_gate.py" \
+            "$source_root/source_gate_coinm.py" \
+            "$source_root/source_gate_coinm_executed.py" \
+            "$source_root/test_source_gate.py" \
+            "$source_root/test_source_gate_coinm.py" \
+            "$source_root/test_source_gate_coinm_executed.py" \
             "$econ_root/run.py" "$econ_root/test_run.py"
-          PYTHONPATH="$source_root" pytest -q "$source_root/test_source_gate.py" \
+          PYTHONPATH="$source_root" pytest -q \
+            "$source_root/test_source_gate.py" \
+            "$source_root/test_source_gate_coinm.py" \
+            "$source_root/test_source_gate_coinm_executed.py" \
             2>&1 | tee "$out/SOURCE_PYTEST.log"
           PYTHONPATH="$econ_root:$source_root" pytest -q "$econ_root/test_run.py" \
             2>&1 | tee "$out/ECON_PYTEST.log"
+          PYTHONPATH="$source_root" python "$source_root/source_gate_coinm_executed.py" --self-test \
+            2>&1 | tee "$out/SOURCE_SELF_TEST.log"
           PYTHONPATH="$econ_root:$source_root" python "$econ_root/run.py" --self-test \
             2>&1 | tee "$out/SELF_TEST.log"
+          python -m json.tool "$source_root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$source_root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$econ_root/ECONOMIC_STAGE.json" >/dev/null
 
       - id: source
-        name: Consume only the decision-ready current source HEAD
+        name: Consume only the decision-ready current corrected source HEAD
         shell: bash
         run: |
           set -euo pipefail
@@ -99,12 +111,16 @@ jobs:
               'Accept':'application/vnd.github+json',
               'Authorization':f'Bearer {token}',
               'X-GitHub-Api-Version':'2022-11-28',
-              'User-Agent':'SMC-ICT-2-dense-liquidation-economic/1.0',
+              'User-Agent':'SMC-ICT-2-dense-liquidation-economic/1.1',
           }
           api=f'https://api.github.com/repos/{repo}'
           branch='agent/r11-ml-binance-liquidation-dense-001'
-          workflow_name='ML Binance dense liquidation source gate'
+          workflow_name='ML Binance dense COIN-M liquidation source gate'
           destination=Path('research_runs/ml_binance_liquidation_dense_economic_20260726/r21/source-artifact')
+          required_corrections={
+              'CORRECTION-20260726-ML-BINANCE-LIQ-COINM-CONTRACT-NOTIONAL-003',
+              'CORRECTION-20260726-ML-BINANCE-LIQ-SNAPSHOT-CENSORING-EXECUTED-FILL-004',
+          }
           selected=None
           for attempt in range(180):
               ref=requests.get(f'{api}/git/ref/heads/{branch}',headers=headers,timeout=30)
@@ -122,6 +138,7 @@ jobs:
                   if item['name']==workflow_name
                   and item['head_sha']==head
                   and item['status']=='completed'
+                  and item['conclusion']=='success'
               ]
               if candidates:
                   candidates.sort(key=lambda item:item['created_at'],reverse=True)
@@ -140,28 +157,50 @@ jobs:
                   with zipfile.ZipFile(io.BytesIO(payload.content)) as archive:
                       archive.extractall(destination)
                   results=list(destination.rglob('SOURCE_GATE_RESULT.json'))
-                  if len(results)!=1:
-                      raise RuntimeError(f'expected one source result, observed {len(results)}')
+                  manifests=list(destination.rglob('SOURCE_MANIFEST.json'))
+                  if len(results)!=1 or len(manifests)!=1:
+                      raise RuntimeError(
+                          f'expected one source result/manifest, observed {len(results)}/{len(manifests)}'
+                      )
                   result=json.loads(results[0].read_text())
+                  manifest=json.loads(manifests[0].read_text())
+                  result_corrections=set(result.get('authoritative_corrections',[]))
+                  manifest_corrections=set(manifest.get('authoritative_corrections',[]))
+                  if not required_corrections.issubset(result_corrections):
+                      raise RuntimeError('source result lacks mandatory pre-outcome corrections')
+                  if not required_corrections.issubset(manifest_corrections):
+                      raise RuntimeError('source manifest lacks mandatory pre-outcome corrections')
+                  semantics=result.get('source_semantics',{})
+                  if not str(semantics.get('coverage','')).startswith('censored lower-bound'):
+                      raise RuntimeError('source result does not bind censored lower-bound semantics')
+                  if not bool(result.get('checks',{}).get('only_positive_executed_snapshots_enter_signal_rows')):
+                      raise RuntimeError('source result does not exclude zero-executed snapshots')
                   selected={
                       'branch_head':head,
+                      'workflow_name':workflow_name,
                       'run_id':run['id'],
                       'conclusion':run['conclusion'],
                       'artifact_id':usable[0]['id'],
                       'artifact_digest':usable[0].get('digest'),
                       'result_path':str(results[0]),
+                      'manifest_path':str(manifests[0]),
                       'source_status':result.get('status'),
                       'source_pass':bool(result.get('source_gate_pass',False)),
+                      'authoritative_corrections':sorted(required_corrections),
+                      'source_semantics':semantics,
                   }
                   Path('research_runs/ml_binance_liquidation_dense_economic_20260726/r21/SOURCE_SELECTION.json').write_text(
                       json.dumps(selected,indent=2,sort_keys=True)+'\n'
                   )
                   print(json.dumps(selected,sort_keys=True))
                   break
-              print(f'current source HEAD has no completed result: attempt={attempt+1} head={head}',flush=True)
+              print(
+                  f'current corrected source HEAD has no completed successful result: attempt={attempt+1} head={head}',
+                  flush=True,
+              )
               time.sleep(60)
           if selected is None:
-              raise RuntimeError('timed out before current source HEAD produced a decision-ready artifact')
+              raise RuntimeError('timed out before current corrected source HEAD produced a decision-ready artifact')
           PY
           result=$(find "$out/source-artifact" -type f -name SOURCE_GATE_RESULT.json -print -quit)
           test -n "$result"
@@ -240,7 +279,13 @@ jobs:
             "$source_root/PREREGISTRATION.md" \
             "$source_root/SOURCE_MANIFEST.json" \
             "$source_root/reconstruct.py" \
+            "$source_root/source_gate_coinm.py" \
+            "$source_root/source_gate_coinm_executed.py" \
             "$source_root/test_source_gate.py" \
+            "$source_root/test_source_gate_coinm.py" \
+            "$source_root/test_source_gate_coinm_executed.py" \
+            "$source_root/CORRECTION_003_COINM_CONTRACT_NOTIONAL_BEFORE_OUTCOME.json" \
+            "$source_root/CORRECTION_004_SNAPSHOT_CENSORING_AND_EXECUTED_FILL_BEFORE_OUTCOME.json" \
             "$econ_root/ECONOMIC_STAGE.json" \
             "$econ_root/README.md" \
             "$econ_root/SOURCE_MANIFEST.json" \
