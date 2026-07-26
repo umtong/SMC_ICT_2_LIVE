@@ -1,0 +1,117 @@
+name: Persist SMT overreaction MSS reclaim result
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-overreaction-reclaim-001
+    paths:
+      - ".github/workflows/smt-overreaction-reclaim-record.yml"
+      - "research/smt_overreaction_reclaim_20260726/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: smt-overreaction-reclaim-record-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  TZ: UTC
+  CACHE: /tmp/smt-overreaction-reclaim-cache
+  OUT: ${{ github.workspace }}/research_runs/smt_overreaction_reclaim_record
+
+jobs:
+  execute-and-record:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install environment and reconstruct registered dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+          mkdir -p runtime "$OUT/result"
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 \
+            > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64, pathlib, zlib
+          root=pathlib.Path('runtime')
+          source=zlib.decompress(base64.b64decode((root/'base_probe.py.zlib.b64').read_text().strip()))
+          (root/'base_probe.py').write_bytes(source)
+          PY
+          cp research/smt_overreaction_reclaim_20260726/run.py runtime/run.py
+          python -m py_compile runtime/base_probe.py runtime/run.py
+          PYTHONPATH=runtime python runtime/run.py --self-test
+          python scripts/validate_project.py
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/smt-overreaction-reclaim-cache
+          key: smt-overreaction-reclaim-record-${{ runner.os }}-${{ hashFiles('research/smt_overreaction_reclaim_20260726/preregistration.json') }}
+          restore-keys: |
+            smt-overreaction-reclaim-
+
+      - name: Execute exact frozen screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=runtime python runtime/run.py \
+            --cache "$CACHE" \
+            --output "$OUT/result" \
+            2>&1 | tee "$OUT/run.log"
+
+      - name: Assert boundaries and commit compact decision record
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['OUT'])/'result'
+          result=json.loads((root/'RESULT.json').read_text())
+          assert result['hard_validity']=='PASS'
+          assert result['candidate_count']==36
+          assert result['pair_count']==18
+          assert result['official_2024_opened'] is False
+          assert result['official_2025_opened'] is False
+          assert result['official_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          PY
+          target=research_results/r11_smt_overreaction_reclaim_001
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp "$OUT/result/RESULT.json" "$target/result.json"
+          cp "$OUT/result/candidate_results.json" "$target/candidate_results.json"
+          cp "$OUT/result/pair_results.json" "$target/pair_results.json"
+          cp "$OUT/result/candidate_metrics.csv" "$target/candidate_metrics.csv"
+          cp "$OUT/result/source_manifest.json" "$target/source_manifest.json"
+          cp "$OUT/result/SUMMARY.md" "$target/screen_summary.md"
+          cp "$OUT/result/OUTPUT_SHA256SUMS.txt" "$target/OUTPUT_SHA256SUMS.txt"
+          tail -n 300 "$OUT/run.log" > "$target/RUN_TAIL.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          git commit -m "Record SMT overreaction reclaim result [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-overreaction-reclaim-record-${{ github.sha }}
+          path: research_runs/smt_overreaction_reclaim_record
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
