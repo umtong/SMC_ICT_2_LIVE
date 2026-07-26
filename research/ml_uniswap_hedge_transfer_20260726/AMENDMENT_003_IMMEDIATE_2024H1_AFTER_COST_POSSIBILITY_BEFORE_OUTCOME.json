@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT-20260726-ML-UNISWAP-SIGNED-IMMEDIATE-2024H1-003",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "recorded_before_source_or_market_outcome": true,
+  "source_gate_result_observed": false,
+  "market_outcome_observed": false,
+  "model_fit_observed": false,
+  "official_2024H1_observed": false,
+  "orders_submitted": false,
+  "source_identity": "canonical Uniswap V3 Swap logs with signed amount0 and amount1, exact transaction hash and log index",
+  "pre2024_advancement": {
+    "requires": [
+      "source gate PASS under signed Swap semantics",
+      "causal HGBT successfully fitted",
+      "calendar-2023 development total return positive after 24bp",
+      "no forced liquidation, bankruptcy or terminal NAV loss"
+    ],
+    "diagnostics_not_opening_barriers": [
+      "AUC lift over structural distance",
+      "Brier skill",
+      "median completed trade",
+      "profit factor",
+      "minimum trade count",
+      "period breadth",
+      "top-10%-winner-removal return"
+    ]
+  },
+  "risk_search": {
+    "planned_stop_risk_fraction": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_cap_multiple": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+    "selection": "highest 24-bp geometric daily growth among no-liquidation paths",
+    "growth_cap": null
+  },
+  "official_2024H1": {
+    "opens_immediately_after_freeze": true,
+    "information_cutoff": "2023-12-31T23:59:59Z",
+    "weak_result_action": "retire this information unit and change alpha rather than tune adjacent features, thresholds, risk or leverage",
+    "promising_result_action": "use only information through 2024-06-30 and the predetermined update method to freeze the 2024H2 version",
+    "seen_interval_rule": "never relabel a seen interval as fresh independent OOS for a modified version"
+  }
+}
