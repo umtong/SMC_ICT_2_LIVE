@@ -1,0 +1,20 @@
+{
+  "base_revision": 11,
+  "branch": "agent/r11-smt-fvg-liquidity-sweep-001",
+  "claim_id": "CLM-20260726-1539-SMT-FVG-SWEEP-001",
+  "lease_until": "2026-07-26T23:39:00+09:00",
+  "non_overlap": [
+    "Not the active fixed-session range claim: liquidity pools are causally confirmed rolling swing/equal-high/equal-low levels and the primary state is cross-market SMT divergence.",
+    "Not the active BTC/ETH common-factor or BTC-to-alt microshock claims: no return-residual threshold defines the event; one market must physically raid pre-existing external liquidity while the paired market leaves its corresponding liquidity intact.",
+    "Not L2 cancellation/refill or passive maker research: official public trade prints only, no queue fill model or displayed-depth signal.",
+    "Not match-sweep topology: fills are aggregated into completed one-second bars and the signal requires confirmed liquidity structure, MSS/displacement and FVG."
+  ],
+  "objective_fingerprint": "b83d24358b9d58f22dbcb7eaf06c66c31b5b067633979a5836fe25801d966a96",
+  "orders_permitted": false,
+  "schema_version": 1,
+  "scope": "Official Bybit BTCUSDT and ETHUSDT public trade archives on six sparse 2023 dates. Build completed 1-second bars and causally confirmed 5-second swing/equal-high/equal-low liquidity pools. Detect one-market external-liquidity sweeps while the paired market does not take corresponding liquidity. Test (1) sweep-reclaim plus opposite displacement/FVG reversal in the sweeper and (2) accepted leader sweep plus laggard liquidity-transfer continuation toward its unswept pool. Entry only after confirmation plus 100ms on the next observed trade or conservative FVG midpoint trade-through; structural stop beyond sweep/internal swing, target at fixed R or paired liquidity; one global slot; 12/18/24bp identical path replay; 2024-2026 sealed; no credentials or orders.",
+  "scope_fingerprint": "9d26599beef8e67c483df46502469623b93cf00c7ca775979ede37566925c67b",
+  "started_at": "2026-07-26T15:39:00+09:00",
+  "status": "RUNNING",
+  "worker_id": "gpt-5.6-pro-20260726-1539"
+}
