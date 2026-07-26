@@ -1,0 +1,105 @@
+name: Bybit SOL XRP event-time transmission screen
+
+on:
+  push:
+    branches:
+      - agent/r11-xasset-alt-microshock-001
+    paths:
+      - "research/bybit_xasset_alt_microshock_20260726/**"
+      - ".github/workflows/xasset-alt-microshock-screen.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/bybit_xasset_alt_microshock_20260726/**"
+      - ".github/workflows/xasset-alt-microshock-screen.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xasset-alt-microshock-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Verify frozen inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/bybit_xasset_alt_microshock_20260726
+          python -m py_compile "$root/source_and_event_screen.py"
+          python scripts/validate_project.py
+          mkdir -p research_runs/bybit_xasset_alt_microshock_20260726
+          sha256sum \
+            "$root/preregistration_v1.json" \
+            "$root/preregistration_v2.json" \
+            "$root/README.md" \
+            "$root/source_and_event_screen.py" \
+            > research_runs/bybit_xasset_alt_microshock_20260726/INPUT_SHA256SUMS.txt
+
+      - name: Download official public trades and run fatal screen
+        shell: bash
+        run: |
+          set -o pipefail
+          root=research/bybit_xasset_alt_microshock_20260726
+          output=research_runs/bybit_xasset_alt_microshock_20260726/result
+          cache="$RUNNER_TEMP/bybit-xasset-alt-cache"
+          python "$root/source_and_event_screen.py" \
+            --output "$output" \
+            --cache "$cache" \
+            2>&1 | tee research_runs/bybit_xasset_alt_microshock_20260726/run.log
+
+      - name: Record immutable output hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/bybit_xasset_alt_microshock_20260726
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bybit-xasset-alt-microshock-${{ github.sha }}
+          path: research_runs/bybit_xasset_alt_microshock_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Enforce source and stage boundaries
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/bybit_xasset_alt_microshock_20260726/result')
+          source=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          result=json.loads((root/'EVENT_AVAILABILITY.json').read_text())
+          assert source['all_required_sources_usable'] is True
+          assert result['all_required_sources_usable'] is True
+          assert result['strategy_pnl_computed'] is False
+          assert result['frozen_validation_opened'] is False
+          assert result['2024_2026_opened'] is False
+          print(json.dumps({
+              'SOLUSDT': result['followers']['SOLUSDT']['fatal_event_availability_gate_passed'],
+              'XRPUSDT': result['followers']['XRPUSDT']['fatal_event_availability_gate_passed'],
+              'any_follower_passed': result['any_follower_passed'],
+          }, sort_keys=True))
+          PY
