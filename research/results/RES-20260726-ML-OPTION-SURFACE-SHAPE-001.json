@@ -1,0 +1,187 @@
+{
+  "claim_id": "CLM-20260726-1914-ML-OPTION-SURFACE-001",
+  "created_at": "2026-07-26T19:36:00+09:00",
+  "current_first_place_unchanged": "FIRST-20260725-DYNAMIC-STATE-021FBAB6",
+  "decision": "RETIRE_EXACT_PUBLIC_INFORMATION_UNIT",
+  "economic_status": "DATA_SCARCITY_AND_CONFIRMATION_BELOW_GATE",
+  "execution_evidence": {
+    "artifact_digest": "sha256:2dc98787559a81826ac60e0523d7ce6d6c7e8fd10215021356a56c99d05a207a",
+    "artifact_id": 8630880496,
+    "binance_price_dataset_fingerprint": "11c44bcdc9682e985250384a7c4c2bf8a294c19d4173a9d5087813dce7579de2",
+    "dependency_fingerprint": "2f10e5799c826938663503fef308da189cfe6124437d6a33b90b61594b5150c2",
+    "evaluation_contract_sha256": "6ab8242baf55f972eaa168d65c0eb9c1ff90f4d67f198e8767089fcb480b5113",
+    "executed_code_commit": "af8952b04de6c63da3dc21198b58be10557156ef",
+    "github_branch": "agent/r11-ml-option-surface-shape-001",
+    "price_manifest_sha256": "fd7423121726425a8b752abddc07ed1896ba3eb0e6149891ad98021786b2b575",
+    "pull_request": 150,
+    "raw_result_sha256": "6b123ecaff2cabef30632c7a39170cb9003a84f7a5ef210451ed5909e53d0321",
+    "runner_sha256": "823a0d20ebf920c45d4dfbcc07892556eaaa39fb83be8f5fc0765c2254d8a186",
+    "source_manifest_sha256": "fcf3a8237000637dedb59c9112ec5b27c90d0bfe0152c5e73877fc447fac4737",
+    "tardis_prefix_dataset_fingerprint": "eb445fce3a8a693e4362aa2e55588a73b654b49d82d0dd6c7561ce9e7ab1cbb7",
+    "workflow_run_id": 30198375775
+  },
+  "failure_interpretation": "The preregistered 75% complete-date gate failed only in 2022H2 because July through September 150,000-row prefixes ended before the first completed five-minute boundary. Independently, the six available confirmation rows already reject the model: AUC 0.875 versus 1.000 for structural distance and Brier skill -1.127109. Increasing the row cap or opening 2023 PnL after observing this result is prohibited; the exact public option-surface-shape information unit is retired.",
+  "hard_validity_status": "PASS_INITIAL_CAUSAL_SOURCE_ATTEMPT",
+  "independent_reproduction": {
+    "method": "Refit the frozen reconstructed runner from CAUSAL_ROWS.json without network access.",
+    "note": "Only sub-1e-16 floating serialization differences were observed.",
+    "reproduced_confirmation": {
+      "auc_delta": -0.125,
+      "baseline_auc": 1.0,
+      "baseline_brier": 0.11253643632749767,
+      "brier_skill": -1.1271088774966556,
+      "model_auc": 0.875,
+      "model_brier": 0.2393772527540574,
+      "positive_rate": 0.6666666666666666,
+      "rows": 6,
+      "status": "OK"
+    },
+    "reproduced_stage_counts": {
+      "calibration": 16,
+      "confirmation": 6,
+      "development": 26,
+      "train": 94
+    },
+    "status": "PASS_NUMERIC_REPRODUCTION"
+  },
+  "permissions": {
+    "credentials": false,
+    "live_orders": false,
+    "paper_orders": false,
+    "testnet_orders": false
+  },
+  "rank_eligible": false,
+  "ranking_role": "NONE_NOT_RANK_ELIGIBLE_PRE2024_FATAL_SCREEN",
+  "raw_scientific_result": {
+    "claim_id": "CLM-20260726-1914-ML-OPTION-SURFACE-001",
+    "decision": "RETIRE_EXACT_PUBLIC_INFORMATION_UNIT",
+    "economic_status": "DATA_SCARCITY_BELOW_GATE",
+    "failure_reason": "At least one chronological stage failed the preregistered 75% complete-date surface gate.",
+    "hard_validity": "PASS_CAUSAL_SOURCE_ATTEMPT",
+    "model": {
+      "calibration": "raw_logistic_probability",
+      "coefficients_standardized": {
+        "asset_indicator": 0.025518958902869877,
+        "back_atm_missing": 0.6865927996722225,
+        "back_minus_middle_atm": -0.08309977541159184,
+        "back_minus_middle_rr25": -0.5672219652625625,
+        "back_rr_missing": 0.6865927996722225,
+        "front_bf25": -0.27715895362522586,
+        "front_bf25_change": 0.13309361484583823,
+        "front_put_call_oi_log_ratio": -0.04018288249385305,
+        "front_rr25": -0.4629881907714557,
+        "front_rr25_change": 0.04080145406579177,
+        "lower_distance": 0.8974167411933625,
+        "mark_fraction": 0.2633469982071109,
+        "middle_bf25": 0.012374863741625549,
+        "middle_minus_front_atm": 0.19067917963596573,
+        "middle_minus_front_rr25": 0.6029758924770261,
+        "middle_rr25": -0.254522590763082,
+        "oi_missing": 0.0,
+        "prior_60m_realized_volatility": 0.24471563876674504,
+        "prior_60m_return": 0.49475965621758067,
+        "upper_distance": -0.3133797956755393
+      },
+      "confirmation": {
+        "auc_delta": -0.125,
+        "baseline_auc": 1.0,
+        "baseline_brier": 0.11253643632749767,
+        "brier_skill": -1.1271088774966556,
+        "model_auc": 0.875,
+        "model_brier": 0.2393772527540574,
+        "positive_rate": 0.6666666666666666,
+        "rows": 6,
+        "status": "OK"
+      },
+      "feature_names": [
+        "front_rr25",
+        "middle_rr25",
+        "front_bf25",
+        "middle_bf25",
+        "middle_minus_front_atm",
+        "middle_minus_front_rr25",
+        "back_minus_middle_atm",
+        "back_atm_missing",
+        "back_minus_middle_rr25",
+        "back_rr_missing",
+        "front_rr25_change",
+        "front_bf25_change",
+        "front_put_call_oi_log_ratio",
+        "oi_missing",
+        "mark_fraction",
+        "prior_60m_return",
+        "prior_60m_realized_volatility",
+        "upper_distance",
+        "lower_distance",
+        "asset_indicator"
+      ],
+      "intercept": 0.06391577712599839,
+      "stage_resolved_counts": {
+        "calibration": 16,
+        "confirmation": 6,
+        "development": 26,
+        "train": 94
+      },
+      "status": "FIT"
+    },
+    "official_2024_2026_opened": false,
+    "permissions": {
+      "credentials": false,
+      "live_orders": false,
+      "paper_orders": false,
+      "testnet_orders": false
+    },
+    "rank_eligible": false,
+    "resolved_rows": {
+      "calibration": 16,
+      "confirmation": 6,
+      "development": 26,
+      "train": 94
+    },
+    "result_id": "RES-20260726-ML-OPTION-SURFACE-SHAPE-001",
+    "rows": {
+      "calibration": 16,
+      "confirmation": 6,
+      "development": 26,
+      "train": 94
+    },
+    "source_completeness": {
+      "calibration": {"attempted_dates": 6, "complete_dates": 6, "ratio": 1.0},
+      "confirmation": {"attempted_dates": 6, "complete_dates": 3, "ratio": 0.5},
+      "development": {"attempted_dates": 12, "complete_dates": 12, "ratio": 1.0},
+      "train": {"attempted_dates": 24, "complete_dates": 24, "ratio": 1.0}
+    },
+    "validation_stage": "PRE_2024_PUBLIC_SPARSE_FATAL_SCREEN"
+  },
+  "result_id": "RES-20260726-ML-OPTION-SURFACE-SHAPE-001",
+  "schema_version": 1,
+  "scientific_summary": {
+    "auc_delta": -0.125,
+    "brier_skill": -1.1271088774966556,
+    "causal_resolved_rows": 142,
+    "completed_surface_observations": 144,
+    "confirmation_rows": 6,
+    "development_pnl_opened": false,
+    "distance_baseline_auc": 1.0,
+    "distance_baseline_brier": 0.11253643632749767,
+    "model_auc": 0.875,
+    "model_brier": 0.2393772527540574,
+    "official_2024_2026_opened": false,
+    "source_completeness": {
+      "calibration": {"attempted_dates": 6, "complete_dates": 6, "ratio": 1.0},
+      "confirmation": {"attempted_dates": 6, "complete_dates": 3, "ratio": 0.5},
+      "development": {"attempted_dates": 12, "complete_dates": 12, "ratio": 1.0},
+      "train": {"attempted_dates": 24, "complete_dates": 24, "ratio": 1.0}
+    },
+    "tardis_dates_attempted": 48,
+    "tardis_rows_consumed": 7200000,
+    "zero_surface_dates": [
+      {"date": "2022-07-01", "first_event": "2022-07-01T00:00:00.007233+00:00", "last_event": "2022-07-01T00:03:27.408987+00:00", "rows_read": 150000, "stage": "confirmation", "surface_count": 0},
+      {"date": "2022-08-01", "first_event": "2022-08-01T00:00:00.000949+00:00", "last_event": "2022-08-01T00:04:15.223908+00:00", "rows_read": 150000, "stage": "confirmation", "surface_count": 0},
+      {"date": "2022-09-01", "first_event": "2022-09-01T00:00:00.002270+00:00", "last_event": "2022-09-01T00:04:46.919667+00:00", "rows_read": 150000, "stage": "confirmation", "surface_count": 0}
+    ]
+  },
+  "status": "TESTED_BELOW_GATE",
+  "validation_stage": "PRE_2024_PUBLIC_SPARSE_FATAL_SCREEN",
+  "worker_id": "gpt-5.6-pro-20260726-1914"
+}
