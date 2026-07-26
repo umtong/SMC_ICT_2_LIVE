@@ -1,0 +1,183 @@
+name: CME opening-gap single-model ML screen
+
+on:
+  push:
+    branches:
+      - agent/r11-cme-opening-gap-001
+    paths:
+      - research/cme_opening_gap_20260726/**
+      - .github/workflows/cme-opening-gap-ml-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/cme_opening_gap_20260726/**
+      - .github/workflows/cme-opening-gap-ml-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cme-opening-gap-ml-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  ml-fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen ML environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4" "scikit-learn==1.5.2"
+
+      - name: Validate project and single-model contract
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py
+          python -m py_compile \
+            research/cme_opening_gap_20260726/probe.py \
+            research/cme_opening_gap_20260726/run_screen.py \
+            research/cme_opening_gap_20260726/run_ml_screen.py
+          python research/cme_opening_gap_20260726/probe.py self-test
+          python research/cme_opening_gap_20260726/run_ml_screen.py self-test
+          python -m json.tool research/cme_opening_gap_20260726/preregistration.json >/dev/null
+          python -m json.tool research/cme_opening_gap_20260726/amendment_001_ml_core.json >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          amendment = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
+          assert amendment["active_model_contract"]["policy_count"] == 1
+          assert amendment["active_model_contract"]["model_selection"] == "NONE"
+          assert amendment["active_model_contract"]["hyperparameter_grid"] == "NONE"
+          assert amendment["superseded_unopened_contract"]["legacy_grid_executed"] is False
+          assert amendment["chronological_contract"]["2024_2025_2026_opened"] is False
+          print("CME_GAP_SINGLE_MODEL_CONTRACT_PASS")
+          PY
+
+      - name: Reconfirm source-only gate
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/cme_opening_gap_source_probe
+          python research/cme_opening_gap_20260726/probe.py run \
+            --output artifacts/cme_opening_gap_source_probe
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("artifacts/cme_opening_gap_source_probe/SOURCE_PROBE.json").read_text())
+          assert result["probe_pass"] is True
+          assert result["strategy_pnl_opened"] is False
+          assert result["candidate_metrics_opened"] is False
+          assert result["official_2024_opened"] is False
+          assert result["orders_submitted"] is False
+          print("CME_GAP_SOURCE_GATE_PASS")
+          PY
+
+      - name: Cache immutable pre-2024 proxy sources
+        uses: actions/cache@v4
+        with:
+          path: /tmp/cme-opening-gap-ml
+          key: cme-opening-gap-ml-v1-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json') }}
+
+      - name: Run one-policy chronological ML screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/cme_opening_gap_ml
+          mkdir -p artifacts/cme_opening_gap_ml
+          set -o pipefail
+          python research/cme_opening_gap_20260726/run_ml_screen.py run \
+            --cache /tmp/cme-opening-gap-ml \
+            --output artifacts/cme_opening_gap_ml \
+            2>&1 | tee artifacts/cme_opening_gap_ml/run.log
+
+      - name: Verify causal, ML and stage boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/cme_opening_gap_ml")
+          result = json.loads((root / "result_summary.json").read_text())
+          manifest = json.loads((root / "source_manifest.json").read_text())
+          amendment = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
+          model = json.loads((root / "fit_model.json").read_text())
+
+          assert result["claim_id"] == amendment["claim_id"]
+          assert result["result_id"] == amendment["provisional_result_id"]
+          assert result["scientific_contract"] == amendment["amendment_id"]
+          assert result["policy_count"] == 1
+          assert result["model_id"] == amendment["active_model_contract"]["model_id"]
+          assert result["legacy_432_rule_grid_executed"] is False
+          assert result["qualification"] == "FATAL_PROXY_ML_SCREEN_NOT_RANK_ELIGIBLE"
+          assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
+          assert result["orders_submitted"] is False
+          assert result["paper_or_testnet_started"] is False
+          assert model["feature_names"] == amendment["active_model_contract"]["feature_names"]
+          assert model["training_labeled_count"] >= 40
+          assert manifest["stages_opened"]["official_2024"] is False
+          assert manifest["stages_opened"]["official_2025"] is False
+          assert manifest["stages_opened"]["official_2026"] is False
+          assert manifest["orders_submitted"] is False
+
+          stages = result["stage_results"]
+          assert "fit_holdout" in stages
+          if not result["fit_pass"]:
+              assert result["development_opened"] is False
+              assert "development" not in stages
+          if result["development_opened"] and not result["development_pass"]:
+              assert result["confirmation_opened"] is False
+              assert "confirmation" not in stages
+          for stage in stages.values():
+              metrics = stage["metrics"]
+              counts = [metrics[str(cost)]["trade_count"] for cost in (12, 18, 24)]
+              unresolved = [metrics[str(cost)]["unresolved_positions"] for cost in (12, 18, 24)]
+              totals = [metrics[str(cost)]["total_return"] for cost in (12, 18, 24)]
+              assert counts[0] == counts[1] == counts[2]
+              assert unresolved[0] == unresolved[1] == unresolved[2]
+              assert totals[0] >= totals[1] >= totals[2]
+          print("CME_GAP_ML_FROZEN_CONTRACT_PASS")
+          print(json.dumps({
+              "fit_pass": result["fit_pass"],
+              "development_opened": result["development_opened"],
+              "development_pass": result["development_pass"],
+              "confirmation_opened": result["confirmation_opened"],
+              "confirmation_pass": result["confirmation_pass"],
+          }, sort_keys=True))
+          PY
+
+      - name: Build immutable output inventory
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/cme_opening_gap_source_probe artifacts/cme_opening_gap_ml
+          find artifacts/cme_opening_gap_source_probe artifacts/cme_opening_gap_ml \
+            -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 -r sha256sum \
+            > artifacts/cme_opening_gap_ml/CI_SHA256SUMS.txt
+          sha256sum artifacts/cme_opening_gap_ml/CI_SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cme-opening-gap-single-model-ml-${{ github.sha }}
+          path: |
+            artifacts/cme_opening_gap_source_probe
+            artifacts/cme_opening_gap_ml
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
