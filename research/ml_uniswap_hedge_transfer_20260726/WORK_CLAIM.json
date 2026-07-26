@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "status": "ACTIVE",
+  "created_at": "2026-07-26T21:10:00+09:00",
+  "owner": "agent",
+  "branch": "agent/r14-ml-uniswap-hedge-transfer-001",
+  "objective": "Test whether large finalized Uniswap V3 WETH-stablecoin inventory transfers contain causal information about the next executable ETHUSDT structural-liquidity first passage after realistic costs.",
+  "distinct_information_unit": "Actual Ethereum mainnet Uniswap V3 Swap balance deltas in canonical WETH-USDC and WETH-USDT pools, available only after a conservative finality delay.",
+  "current_phase": "OUTCOME_SEALED_SOURCE_GATE",
+  "scope": [
+    "verify canonical factory, tokens, pools and Swap ABI from chain state",
+    "verify keyless historical eth_getLogs access and deterministic decoding on frozen pre-2024 windows",
+    "open no CEX/DEX price comparison, return, label, trade, PnL or model metric before the source gate passes",
+    "conditionally implement one preregistered ETHUSDT HGBT first-passage policy only after source passage"
+  ],
+  "excluded_overlap": [
+    "Aave LiquidationCall forced-debt flow",
+    "CEX ordinary trade prints and order-book imbalance",
+    "CEX liquidation messages",
+    "funding or open-interest state",
+    "completed-bar Donchian or named setup extensions"
+  ],
+  "duplication_check": {
+    "github_open_pr_search": "no Uniswap Swap work claim found",
+    "drive_search": "no Uniswap WETH-stablecoin swap ML work claim found"
+  },
+  "official_2024_2026_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
