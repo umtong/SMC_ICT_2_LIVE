@@ -8,7 +8,7 @@ import pandas as pd
 
 from . import run as sealed_run
 from .common import CachedDownloader, MarketData
-from .source_hf_pinned import load_markets_hf_pinned
+from .source_hf_pinned_v2 import load_markets_hf_pinned_listing_aware
 
 _MARKETS: dict[str, MarketData] = {}
 
@@ -35,7 +35,7 @@ def load_market_pinned(
 ) -> MarketData:
     if not _MARKETS:
         _MARKETS.update(
-            load_markets_hf_pinned(
+            load_markets_hf_pinned_listing_aware(
                 downloader,
                 list(contract["symbols"]),
                 start,
