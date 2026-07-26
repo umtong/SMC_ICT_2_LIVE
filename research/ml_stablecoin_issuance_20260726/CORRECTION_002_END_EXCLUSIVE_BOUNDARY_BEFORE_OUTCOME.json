@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-END-BOUNDARY-002",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_outcome": true,
+  "defect": "The base helper rejected target_timestamp equal to 2024-01-01 00:00 UTC. That timestamp is required only to locate the end-exclusive block boundary for December 2023; rejecting it prevents the last permitted month from being assembled.",
+  "correction": "Allow exactly the 2024-01-01 boundary for end-exclusive block search while continuing to reject any later timestamp and every event whose block timestamp is at or after the boundary. Convert source-month iterables to an immutable tuple at the authoritative entry point.",
+  "implementation": "source_gate_authoritative.py patches only first_block_at_or_after and delegates all transport, decoding, event identity, density and seal logic to source_gate.py.",
+  "unchanged": [
+    "contracts and event topics",
+    "full 2021-2023 source months",
+    "12/64 block confirmation",
+    "source thresholds",
+    "conditional model and features",
+    "cost and account contract",
+    "2024-2026 prohibition",
+    "no credentials or orders"
+  ],
+  "observed_before_correction": {
+    "cryptocurrency_prices": false,
+    "future_labels": false,
+    "model_metrics": false,
+    "trades": false,
+    "pnl": false,
+    "2024_2026_source": false
+  }
+}
