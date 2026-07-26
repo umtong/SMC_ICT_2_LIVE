@@ -1,0 +1,36 @@
+{
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "correction_id": "CORRECTION_001_COOLDOWN_SENTINEL_BEFORE_OUTCOME",
+  "status": "PRE_OUTCOME_MECHANICAL_FIX",
+  "failed_workflow_run": 30196413896,
+  "failed_artifact": 8630361912,
+  "failure_stage": "first call to generate_events before the first candidate event was emitted",
+  "failure": "subtracting pd.Timestamp.min from the first timezone-aware decision timestamp overflowed pandas Timedelta",
+  "outcome_access": {
+    "candidate_events_generated": false,
+    "model_fit": false,
+    "prediction_metrics_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "change": "replace the unbounded pd.Timestamp.min cooldown sentinel with None and apply the existing cooldown comparison only after one event has been accepted",
+  "unchanged": [
+    "source instruments and dates",
+    "source rows and causal availability",
+    "event thresholds and cooldown duration",
+    "features and labels",
+    "model and calibration",
+    "probability and EV rules",
+    "structural target and stop",
+    "costs, risk, capacity and global-slot rules",
+    "fit and conditional development gates"
+  ],
+  "authority": {
+    "credentials": false,
+    "orders": false,
+    "live_permission_change": false,
+    "ranking_change": false
+  }
+}
