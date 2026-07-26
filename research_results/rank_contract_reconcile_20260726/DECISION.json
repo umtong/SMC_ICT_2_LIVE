@@ -9,47 +9,64 @@
     "strategy_replayed": false
   },
   "claim_id": "CLM-20260726-2014-RANK-CONTRACT-RECONCILE-001",
-  "decision": "REMOVE_FORMER_FIRST_AND_PROMOTE_DONCHIAN_PROVISIONALLY",
+  "decision": "REMOVE_FORMER_FIRST_AND_PROMOTE_HIGHEST_CURRENT_CONTRACT_DONCHIAN_PATH",
   "follow_up": [
     "Stop the fixed 2024 portfolio claim because one frozen component is contract-ineligible before 2024 outcomes are opened.",
     "Audit lower legacy ranked candidates for prohibited horizon exits using existing evidence only.",
-    "Continue only high-information ML routes with strategy-defined exits."
+    "Continue high-information ML routes with strategy-defined exits; the new first is a non-ML benchmark only."
   ],
   "former_first": {
     "candidate_id": "021fbab613517a31ad98",
     "invalidation": "PROHIBITED_ELAPSED_TIME_LIQUIDATION",
     "prior_geometric_daily_growth": 0.0005730774040979547,
     "source": {
-      "blob_sha": "f46b87ef342e392b9226386edd5717def276e7c0",
+      "artifact_digest": "sha256:d1677e1bb776dfe6d52db913d4a689b6bfd95a5bad648b1b8e92c7846ef7ad20",
+      "artifact_id": 8620014408,
       "facts": [
-        "Candidate stores hold_bars.",
-        "Simulation computes time exit index ti = entry index + hold.",
-        "If the stop is not reached, the trade exits at the open at ti."
+        "ExitCandidate stores maximum_hold_bars.",
+        "The ranked candidate uses maximum_hold_bars=96 on five-minute bars.",
+        "Surviving trades default to the open at entry_index plus maximum_hold_bars unless an ATR stop or state condition exits earlier."
       ],
       "line_ranges": [
-        "31-34",
-        "96-116"
+        "44-48",
+        "62-74",
+        "126-142",
+        "146-190"
       ],
-      "path": "research/dynamic_factor_residual_20260725/dynamic_factor_residual.py"
+      "path": "state_exit.py",
+      "sha256": "7ed8ebda8e8744f4dcefb6405b5576582fe682b03ad586fc8576e89cf80eedb0"
     },
     "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001"
   },
   "new_first": {
-    "candidate_id": "a70626d9e484285f2cb4",
+    "candidate_id": "a70626d9e484285f2cb4|all",
     "comparison_confidence": "VERY_LOW",
-    "cost_bps": 24,
-    "first_place_id": "FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9",
-    "geometric_daily_growth": 0.0006318446194384375,
-    "maximum_drawdown": 0.1102976476441001,
-    "median_account_return_bps": -50.0,
-    "profit_factor": 1.6226240830708625,
-    "ranking_basis": "24-bp daily growth exceeds the former first place's 12-bp daily growth and the exit is channel/stop logic rather than elapsed-time liquidation.",
+    "cost_bps": 12,
+    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
+    "geometric_daily_growth": 0.0009008544402622221,
+    "geometric_daily_growth_at_24bps": 0.0007001887213879954,
+    "ml_requirement_status": "NOT_MET_NON_ML_BASELINE",
+    "ranking_basis": "Highest recorded after-cost geometric daily growth among paths whose exit implementation was audited against the current no-elapsed-time-liquidation contract. Missing comparator risk fields reduce confidence but do not justify suppressing the highest recorded result.",
+    "risk_fields_status": "INCOMPLETE_COMPACT_COMPARATOR_RECORD",
     "source_result_blob_sha": "31453a4b313412549f9d78a505d1329d4528436a",
     "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-    "target_gap": 0.009368155380561563,
-    "top10pct_removed_return": -0.26306178630598,
-    "top5_positive_share": 0.6735035238367593,
-    "total_return": 0.259293006748736,
+    "target_gap": 0.009099145559737778,
+    "target_gap_at_24bps": 0.009299811278612004
+  },
+  "second_place_complete_metrics": {
+    "candidate_id": "a70626d9e484285f2cb4|after_loser",
+    "geometric_daily_growth": 0.0008299955525170599,
+    "geometric_daily_growth_at_24bps": 0.0006318446194384375,
+    "maximum_drawdown": 0.11022614033372702,
+    "maximum_drawdown_at_24bps": 0.1102976476441001,
+    "median_account_return_bps": -50.0,
+    "profit_factor": 1.8083335951907238,
+    "profit_factor_at_24bps": 1.6226240830708625,
+    "top10pct_removed_return": -0.2577753295011854,
+    "top10pct_removed_return_at_24bps": -0.26306178630598,
+    "top5_positive_share": 0.684910996822014,
+    "total_return": 0.3536744682127009,
+    "total_return_at_24bps": 0.259293006748736,
     "trade_count": 89
   },
   "schema_version": 1,
