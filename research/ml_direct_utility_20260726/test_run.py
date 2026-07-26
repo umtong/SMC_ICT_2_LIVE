@@ -50,3 +50,10 @@ def test_risk_multiplier_respects_cap():
 def test_prohibited_period_boundary():
     assert run.END_EXCLUSIVE == pd.Timestamp("2024-01-01T00:00:00Z")
     assert run.DEV_END.year == 2024 and run.DEV_END.month == 1 and run.DEV_END.day == 1
+
+
+def test_gap_resets_all_crossing_horizons():
+    prices = pd.Series([100.0, 101.0, math.nan, 103.0, 104.0, 105.0])
+    returns = run.continuous_log_return(prices.map(math.log), prices.notna(), 2)
+    assert returns.iloc[:5].isna().all()
+    assert math.isclose(float(returns.iloc[5]), math.log(105.0 / 103.0))
