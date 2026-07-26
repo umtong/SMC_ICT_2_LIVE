@@ -1,0 +1,29 @@
+{
+  "amendment_id": "L2_CANCEL_REFILL_TAKER_PREOUTCOME_AMENDMENT_001",
+  "changes": [
+    "retain final decision quote per completed 100ms bucket instead of the full quote stream",
+    "retain first executable quote per 50ms bucket; all frozen 100/250/500ms targets lie on 50ms boundaries",
+    "cast retained feature/outcome floats to float32 after calculations",
+    "require at least 0.50 normalized one-second cancellation and 0.10 normalized 500ms replenishment before duplicating an event into directional candidates"
+  ],
+  "claim_id": "CLM-20260726-0946-L2-CANCEL-REFILL-001",
+  "gzip_transport_sha256": "5fe67a20b5f5297f60c8759bc52d0bd5bea2dcbe401f6967a9f4582902f6d96c",
+  "outcome_visibility": "NO_SUMMARY_OR_MARKET_METRIC_PRODUCED; both workflow attempts ended before summary.json and artifact creation",
+  "raw_source_sha256": "af94c567aa31593aaf77644e89592e30178b7eeb18da7561ac288a514a358d3c",
+  "reason": "Two identical runner-level cancellations before any economic output indicate memory exhaustion from retaining the full quote stream and overly broad intermediate event frames.",
+  "recorded_at": "2026-07-26T10:05:00+09:00",
+  "scientific_boundary": "The amendment is pre-outcome and memory-bounded. It cannot be used to claim that omitted low-intensity rows were unprofitable; it defines the economically material L2 event population before the first successful replay.",
+  "unchanged": [
+    "fit/development dates",
+    "symbols",
+    "mechanisms",
+    "candidate grid and count",
+    "latencies",
+    "horizons",
+    "costs",
+    "capacity",
+    "global slot",
+    "gates",
+    "sealed 2024-2026"
+  ]
+}
