@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           root=research/funding_transfer_liquidity_20260726
-          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py"
+          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py" "$root/probe_tardis_derivative_ticker.py"
           python -m pytest -q "$root/test_run_screen.py"
           mkdir -p research_runs/funding_transfer_liquidity/self_test
           python "$root/run_screen.py" \
@@ -62,7 +62,29 @@ jobs:
             --cache "$RUNNER_TEMP/funding-transfer-cache"
           (cd research_runs/funding_transfer_liquidity/self_test && sha256sum --check SHA256SUMS.txt)
 
-      - name: Run frozen official pre-2024 screen
+      - name: Run outcome-free Tardis derivative-ticker schema probe
+        run: |
+          set -euo pipefail
+          root=research/funding_transfer_liquidity_20260726
+          mkdir -p research_runs/funding_transfer_liquidity/tardis_probe
+          python "$root/probe_tardis_derivative_ticker.py" \
+            --output research_runs/funding_transfer_liquidity/tardis_probe
+          (cd research_runs/funding_transfer_liquidity/tardis_probe && sha256sum --check SHA256SUMS.txt)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          probe = json.loads(Path("research_runs/funding_transfer_liquidity/tardis_probe/PROBE.json").read_text())
+          assert probe["status"] == "SOURCE_SCHEMA_PROBE_PASS"
+          assert probe["strategy_outcomes_read"] is False
+          assert probe["candidate_pnl_computed"] is False
+          assert probe["orders_submitted"] is False
+          assert probe["2024_opened"] is False
+          assert probe["2025_or_2026_opened"] is False
+          assert probe["row_count"] > 0
+          print(json.dumps(probe["field_summary"], sort_keys=True))
+          PY
+
+      - name: Run frozen official pre-2024 API screen
         run: |
           set -euo pipefail
           root=research/funding_transfer_liquidity_20260726
@@ -109,11 +131,13 @@ jobs:
           sha256sum \
             research/funding_transfer_liquidity_20260726/preregistration.json \
             research/funding_transfer_liquidity_20260726/AMENDMENT-001-SOURCE-TRANSPORT.json \
+            research/funding_transfer_liquidity_20260726/AMENDMENT-002-TARDIS-SOURCE-PROBE.json \
             research/funding_transfer_liquidity_20260726/README.md \
             research/funding_transfer_liquidity_20260726/run_screen.py \
             research/funding_transfer_liquidity_20260726/implementation.b64.part00 \
             research/funding_transfer_liquidity_20260726/implementation.b64.part01 \
             research/funding_transfer_liquidity_20260726/test_run_screen.py \
+            research/funding_transfer_liquidity_20260726/probe_tardis_derivative_ticker.py \
             .github/workflows/funding-transfer-liquidity-r11.yml \
             > research_runs/funding_transfer_liquidity/INPUT_SHA256SUMS.txt
 
