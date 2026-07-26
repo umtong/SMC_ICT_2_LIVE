@@ -1,0 +1,107 @@
+name: YT Trinity Piped subtitle and audio probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001-resume
+    paths:
+      - research/yt_trinity_ml/probe_piped_audio_transport.py
+      - .github/workflows/yt-trinity-piped-audio-probe.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-piped-audio-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install focused dependency
+        run: |
+          python -m pip install -q --upgrade pip requests
+
+      - name: Compile and test transport parsers
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/yt_trinity_ml/probe_piped_audio_transport.py
+          python - <<'PY'
+          import probe_piped_audio_transport as probe
+
+          assert probe.absolute_url("https://api.example", "/stream/a") == "https://api.example/stream/a"
+          assert probe.parse_timestamped_segments(
+              b"WEBVTT\n\n00:00.000 --> 00:01.000\nhello\n", "text/vtt"
+          )["segments"] == 1
+          assert probe.parse_timestamped_segments(
+              b"<transcript><text start='0'>hello</text></transcript>", "application/xml"
+          )["segments"] == 1
+          assert probe.parse_timestamped_segments(
+              b'{"events":[{"segs":[{"utf8":"hello"}]}]}', "application/json"
+          )["segments"] == 1
+          assert len(probe.parse_videos([])) == 7
+          PY
+
+      - name: Probe current public Piped instances sequentially
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/piped-audio
+          python research/yt_trinity_ml/probe_piped_audio_transport.py \
+            --output artifact/piped-audio \
+            --max-instances 8 \
+            --request-timeout-seconds 18 \
+            --between-instance-seconds 1.5 \
+            --between-video-seconds 3 \
+            --audio-sample-bytes 65536 \
+            2>&1 | tee artifact/piped-audio/stdout.log
+          (
+            cd artifact/piped-audio
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload immutable probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-piped-audio-${{ github.sha }}
+          path: artifact/piped-audio
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Persist compact transport decision
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifact/piped-audio/probe.json
+          cp artifact/piped-audio/probe.json research/yt_trinity_ml/CAPTION_TRANSPORT_PIPED_AUDIO.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/CAPTION_TRANSPORT_PIPED_AUDIO.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record Piped subtitle and audio transport probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
