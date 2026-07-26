@@ -1,0 +1,73 @@
+{
+  "artifact": {
+    "id": 8630565994,
+    "name": "ml-sweep-fvg-maker-r11-f2cccdafb58e5ae5ea2b444a9fca9188cb6c68da",
+    "sha256": "abddac3197b17e518fca7ed41566398561b4aded3cdaf24fc6ba98fd752735ed",
+    "result_sha256": "7ac89ad4fc5a18baf6427f61f3dd241771f3d9b5858092cca643ae354f99e204",
+    "ledger_sha256": "a61df9f27fa0724f2c63732f3a8f4133a551583ffac5a64795a0f0ae05e915b1"
+  },
+  "base_revision": 11,
+  "claim_id": "CLM-20260726-1837-ML-SWEEP-FVG-MAKER-001",
+  "code_commit": "b9f2766fb8063ba9f9b6e77b8c9b5eb2242715fe",
+  "decision": "KILL_EXACT_MAKER_ROUTE_NO_ADJACENT_TUNING",
+  "development": {
+    "date": "2023-07-01",
+    "opened": false
+  },
+  "engine_version": "ML-SWEEP-FVG-QUEUE-MAKER-V1",
+  "event_population": {
+    "displacement_count": 8,
+    "order_candidate_count": 3,
+    "outcome_count": 3,
+    "training_count": 2,
+    "confirmation_count": 1,
+    "model_fitted": false,
+    "reason": "The frozen raid-MSS-FVG-62%-maker sequence produced too few chronological rows and lacked all three labels required by the single preregistered model."
+  },
+  "fit_gate_checks": {
+    "at_least_two_positive_blocks_at_12bp": false,
+    "full_brier_better_than_structure": false,
+    "full_log_loss_better_than_structure": false,
+    "minimum_100_confirmation_candidates": false,
+    "minimum_20_filled_trades_at_12bp": false,
+    "no_liquidation": true,
+    "positive_median_at_12bp": false,
+    "positive_median_at_18bp": false,
+    "positive_return_at_12bp": false,
+    "positive_return_at_18bp": false,
+    "profit_factor_above_one_at_12bp": false,
+    "profit_factor_above_one_at_18bp": false,
+    "top10pct_removed_positive_at_12bp": false
+  },
+  "hard_validity": "PASS_INITIAL_CAUSAL_EVENT_SCARCITY",
+  "observed_route_diagnostic": {
+    "filled_positions": 3,
+    "full_fill_fraction": 1.0,
+    "no_fills": 0,
+    "target_first": 0,
+    "stop_first": 3,
+    "mean_gross_return_bps_before_non_price_cost": -18.870014627534733,
+    "median_gross_return_bps_before_non_price_cost": -19.052590369307055,
+    "sum_gross_return_bps_before_non_price_cost": -56.610043882604195,
+    "minimum_gross_return_bps": -31.881498920933883,
+    "maximum_gross_return_bps": -5.6759545923632615,
+    "interpretation": "Every observed passive fill was toxic: all three orders filled completely and reached structural stop before target even before adding the frozen 8/12/18 bp non-price costs. This is descriptive only because the model sample gate failed."
+  },
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "prohibited_years_opened": [],
+  "pull_request": 145,
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "result_id": "RES-20260726-ML-SWEEP-FVG-MAKER-SCARCITY-001",
+  "schema_version": 1,
+  "source": {
+    "artifact_id": 8626087323,
+    "artifact_sha256": "90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+    "fit_date": "2022-07-01",
+    "symbol": "BTCUSDT",
+    "raw_book_sha256": "7787c36c35a591c8fcf1bf629d8b82624ac61a6b970f09cdbcff01c9afb624b6",
+    "raw_trades_sha256": "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f"
+  },
+  "status": "HARD_VALID_EVENT_SCARCITY_BELOW_GATE",
+  "workflow_run_id": 30197481487
+}
