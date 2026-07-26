@@ -94,6 +94,14 @@ def source_gate(output: Path) -> dict[str, Any]:
     return result
 
 
+# Any transport that imports this authoritative module through the shared
+# source_gate_blockscout module must receive the same schema-bound result.
+# _base_source_gate was captured before this assignment, so the wrapper cannot
+# recurse. This specifically prevents a valid batched timestamp source PASS
+# from being rejected by the frozen economic consumer for missing provenance.
+base.source_gate = source_gate
+
+
 def self_test() -> None:
     if parse_int("0x10") != 16 or parse_int("16") != 16:
         raise AssertionError("integer parsing failed")
@@ -108,6 +116,8 @@ def self_test() -> None:
         raise AssertionError("authoritative Blockscout request pace is not frozen")
     if SOURCE_SCHEMA_ID != "STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1":
         raise AssertionError("source schema binding changed")
+    if base.source_gate is not source_gate:
+        raise AssertionError("shared Blockscout source gate is not schema-bound")
     boundary = base.auth.base.MAX_ALLOWED_TIMESTAMP
     if eligible_boundary_block(18_000_000, boundary, "after") != 17_999_936:
         raise AssertionError("64-block pre-2024 boundary was not applied")
