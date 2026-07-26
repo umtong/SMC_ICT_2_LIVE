@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-HOURWEEK-XRP-BYBIT-DOMAIN-002",
+  "claim_id": "CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
+  "created_at": "2026-07-26T23:10:00+09:00",
+  "observed_run": {
+    "workflow_run": 30205357962,
+    "artifact_id": 8632906287,
+    "artifact_digest": "sha256:fee0106e44845dcc07821bd960be91be34f0f4b62966b71685624df3bef17963",
+    "failure": "The corrected run reached the first Bybit public kline request and received HTTP 403 from api.bybit.com on a US-hosted GitHub runner before any Bybit panel, model fit, prediction, action, trade, funding cashflow or PnL was produced."
+  },
+  "outcome_state_before_correction": {
+    "binance_signal_panel_downloaded": true,
+    "bybit_execution_panel_completed": false,
+    "bybit_mark_panel_completed": false,
+    "bybit_funding_panel_completed": false,
+    "model_fitted_for_2026H1": false,
+    "predictions_computed_for_2026H1": false,
+    "actions_computed_for_2026H1": false,
+    "trades_computed_for_2026H1": false,
+    "pnl_computed_for_2026H1": false,
+    "orders_submitted": false
+  },
+  "correction": {
+    "scope": "public market-data transport only",
+    "official_endpoint_order": [
+      "https://api.bybit.com",
+      "https://api.bytick.com",
+      "https://api-demo.bybit.com",
+      "https://api.bybit.nl"
+    ],
+    "rule": "For each unchanged V5 market request, try the documented official endpoints in this fixed order after transport or HTTP failure and record the successful endpoint in the source manifest. Reject any nonzero retCode and preserve identical pagination, timestamps and payload decoding.",
+    "documentation_basis": "Bybit V5 integration guidance states that US IP addresses receive 403, documents api.bytick.com as a mainnet alternative, and lists all market endpoints on api-demo.bybit.com."
+  },
+  "unchanged": [
+    "all dates and chronological boundaries",
+    "Binance signal source and all Bybit market endpoint paths",
+    "Ridge model family alpha features and target",
+    "six-month causal refits and 183-day prior-only calibration",
+    "XRPUSDT UTC08-15 threshold-1.25 route",
+    "next-hour entry and expected-edge exit",
+    "one global slot and no elapsed-time liquidation",
+    "fixed base quantity account logic",
+    "12 24 72 96bp cost paths",
+    "actual and adverse funding paths",
+    "winner-removal rerouting",
+    "official 2026H1 single-open authority",
+    "credentials and order prohibition"
+  ],
+  "source_identity": {
+    "header_corrected_raw_sha256": "c4aef87f1bb42fe8f196630a545a37d6a4ae3b7a1e4f8d3b4b7ada60f9826aaa",
+    "final_corrected_raw_sha256": "40e80b39783d2a85cb6b7f5dbee1553c4aaabd650687e0938a284f36535c1f00",
+    "combined_patch_sha256": "871479be903cfeca68faa533b55db8bba4cfa84b5625225ccce689623d5808bf"
+  },
+  "scientific_contract_unchanged": true,
+  "orders_submitted": false
+}
