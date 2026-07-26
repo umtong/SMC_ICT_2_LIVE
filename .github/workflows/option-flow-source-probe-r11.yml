@@ -1,0 +1,96 @@
+name: Deribit option-flow source probe
+
+on:
+  push:
+    branches:
+      - agent/r11-option-flow-hedge-001
+    paths:
+      - research/option_flow_hedge_20260726/**
+      - .github/workflows/option-flow-source-probe-r11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/option_flow_hedge_20260726/**
+      - .github/workflows/option-flow-source-probe-r11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: option-flow-source-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deterministic dependency
+        run: pip install --disable-pip-version-check requests==2.32.4
+      - name: Validate probe implementation and project
+        run: |
+          python scripts/validate_project.py
+          python -m py_compile research/option_flow_hedge_20260726/probe.py
+          python research/option_flow_hedge_20260726/probe.py self-test
+          python -m json.tool research/option_flow_hedge_20260726/preregistration.json >/dev/null
+      - name: Run bounded pre-2024 source and schema probe
+        run: |
+          rm -rf artifacts/option_flow_source_probe
+          python research/option_flow_hedge_20260726/probe.py run \
+            --output artifacts/option_flow_source_probe
+      - name: Verify probe-only stage boundaries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/option_flow_source_probe")
+          result = json.loads((root / "SOURCE_PROBE.json").read_text())
+          prereg = json.loads(Path("research/option_flow_hedge_20260726/preregistration.json").read_text())
+
+          assert result["claim_id"] == prereg["claim_id"]
+          assert result["probe_id"] == prereg["probe_id"]
+          assert result["date"] == prereg["probe_contract"]["date"] == "2023-01-01"
+          assert len(result["records"]) == len(prereg["probe_contract"]["datasets"]) == 6
+          assert result["strategy_pnl_opened"] is False
+          assert result["candidate_grid_opened"] is False
+          assert result["official_2024_opened"] is False
+          assert result["official_2025_opened"] is False
+          assert result["official_2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert all(str(row["date"]).startswith("2023-") for row in result["records"])
+          assert all(bool(row.get("url")) for row in result["records"])
+          print("OPTION_FLOW_PROBE_BOUNDARIES_PASS")
+          print(json.dumps({
+              "probe_pass": result["probe_pass"],
+              "all_required_schema_present": result["all_required_schema_present"],
+              "btc_and_eth_option_trades_present_in_sample": result["btc_and_eth_option_trades_present_in_sample"],
+              "option_underlying_delta_gamma_populated": result["option_underlying_delta_gamma_populated"],
+              "bybit_btc_eth_executable_sources_present": result["bybit_btc_eth_executable_sources_present"],
+          }, sort_keys=True))
+          PY
+      - name: Build immutable artifact inventory
+        run: |
+          find artifacts/option_flow_source_probe -type f ! -name CI_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > artifacts/option_flow_source_probe/CI_SHA256SUMS.txt
+          sha256sum artifacts/option_flow_source_probe/CI_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: option-flow-source-probe-20260726
+          path: artifacts/option_flow_source_probe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
