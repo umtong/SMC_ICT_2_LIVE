@@ -14,11 +14,39 @@ import cross_venue_pilot as v1
 _PATCHED = False
 _ORIGINAL_ENTRY_CANDIDATES = None
 MAX_DELAY_US = v1.MAX_QUOTE_AGE_MS * 1_000
+_STATE_COLUMNS = ("bn_mid", "bb_mid", "bn_spread", "bb_spread")
+_INVALID_POSITIONS_CACHE_KEY = "_v5d_invalid_state_positions"
 
 
 def _finite_state(row: pd.Series) -> bool:
-    values = [row.get(name) for name in ("bn_mid", "bb_mid", "bn_spread", "bb_spread")]
+    values = [row.get(name) for name in _STATE_COLUMNS]
     return all(value is not None and math.isfinite(float(value)) and float(value) > 0 for value in values)
+
+
+def _invalid_state_positions(frame: pd.DataFrame) -> np.ndarray:
+    """Index unavailable completed states once for an immutable aligned frame.
+
+    V5D previously scanned the complete position interval one row at a time for
+    every accepted trade. A pilot frame has roughly 864,000 completed 100-ms
+    buckets, so the repeated scan dominated the otherwise vectorized replay.
+    The aligned frame is immutable after construction. Searching the sorted
+    invalid-position index returns the same first unavailable bucket without
+    changing any signal, fill, latency, stop, exit, cost, slot or account path.
+    """
+
+    cached = frame.attrs.get(_INVALID_POSITIONS_CACHE_KEY)
+    if cached is not None:
+        return cached
+    values = frame.loc[:, _STATE_COLUMNS].apply(pd.to_numeric, errors="coerce").to_numpy(float)
+    valid = np.isfinite(values).all(axis=1) & (values > 0).all(axis=1)
+    positions = np.flatnonzero(~valid).astype(np.int64, copy=False)
+    positions.setflags(write=False)
+    frame.attrs[_INVALID_POSITIONS_CACHE_KEY] = positions
+    return positions
+
+
+def clear_frame_cache(frame: pd.DataFrame) -> None:
+    frame.attrs.pop(_INVALID_POSITIONS_CACHE_KEY, None)
 
 
 def _entry_candidates_failclosed(
@@ -40,9 +68,15 @@ def _entry_candidates_failclosed(
 
 
 def _first_invalid_position(frame: pd.DataFrame, start: int, stop: int) -> int | None:
-    for position in range(start, min(stop + 1, len(frame))):
-        if not _finite_state(frame.iloc[position]):
-            return position
+    if start < 0:
+        start = 0
+    stop = min(int(stop), len(frame) - 1)
+    if start > stop:
+        return None
+    positions = _invalid_state_positions(frame)
+    offset = int(np.searchsorted(positions, start, side="left"))
+    if offset < len(positions) and int(positions[offset]) <= stop:
+        return int(positions[offset])
     return None
 
 
