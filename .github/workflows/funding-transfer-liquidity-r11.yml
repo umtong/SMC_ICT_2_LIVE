@@ -7,6 +7,11 @@ on:
     paths:
       - "research/funding_transfer_liquidity_20260726/**"
       - ".github/workflows/funding-transfer-liquidity-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/funding_transfer_liquidity_20260726/**"
+      - ".github/workflows/funding-transfer-liquidity-r11.yml"
   workflow_dispatch:
 
 permissions:
@@ -14,7 +19,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: funding-transfer-liquidity-${{ github.ref }}
+  group: funding-transfer-liquidity-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
