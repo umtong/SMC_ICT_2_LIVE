@@ -1,0 +1,126 @@
+name: ML Donchian convex-tail selection
+
+on:
+  push:
+    branches: [agent/r13-ml-donchian-tail-select-001]
+    paths:
+      - 'research/ml_donchian_tail_20260726/**'
+      - '.github/workflows/ml-donchian-tail-r13.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_donchian_tail_20260726/**'
+      - '.github/workflows/ml-donchian-tail-r13.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-donchian-tail-r13-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: macos-14
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 \
+            scikit-learn==1.6.1 pytest==8.3.5
+      - name: Compile and run causal tests
+        run: |
+          set -euo pipefail
+          root=research/ml_donchian_tail_20260726
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/run.py" "$root/test_run.py"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py"
+          PYTHONPATH="$root" python "$root/run.py" --self-test
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/ml-donchian-tail-r13
+          key: ml-donchian-tail-r13-${{ hashFiles('research/ml_donchian_tail_20260726/preregistration.json') }}
+          restore-keys: |
+            ml-donchian-tail-r13-
+      - name: Run frozen chronological screen
+        run: |
+          set -euo pipefail
+          root=research/ml_donchian_tail_20260726
+          out=research_runs/ml_donchian_tail_20260726/r13
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/run.py" \
+            --output "$out" \
+            --cache /tmp/ml-donchian-tail-r13 \
+            2>&1 | tee "$out/RUN.log"
+      - name: Enforce minimal system and sealed periods
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/ml_donchian_tail_20260726/r13')
+          result=json.loads((root/'RESULT.json').read_text())
+          contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+          source=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2122-ML-DONCHIAN-TAIL-001'
+          assert result['model_family_count']==1
+          assert result['hyperparameter_grid'] is False
+          assert result['feature_grid'] is False
+          assert result['channel_grid'] is False
+          assert result['threshold_grid'] is False
+          assert result['one_global_slot'] is True
+          assert result['no_elapsed_time_liquidation'] is True
+          assert result['orders_submitted'] is False
+          assert contract['entry_lookback']==96
+          assert contract['exit_lookback']==48
+          assert contract['stop_atr']==2.0
+          assert contract['current_rank_one_gdg_24']==0.0007001887213879954
+          opened_2024=any(x.get('year')==2024 and x.get('available') for x in source['files'])
+          if not result['rank_challenge_passed']:
+              assert opened_2024 is False
+              assert result['validation_2024h1'] is None
+          assert all(x.get('year', 0) < 2025 for x in source['files'])
+          print(json.dumps({
+              'status':result['status'],
+              'confirmation_alpha_gate':result['confirmation']['alpha_gate_passed'],
+              'rank_challenge':result['rank_challenge_passed'],
+              'validation':None if result['validation_2024h1'] is None else result['validation_2024h1']['gate_passed'],
+              'decision':result['decision'],
+          },sort_keys=True))
+          PY
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          root=research/ml_donchian_tail_20260726
+          out=research_runs/ml_donchian_tail_20260726/r13
+          mkdir -p "$out"
+          shasum -a 256 \
+            "$root/WORK_CLAIM.json" "$root/preregistration.json" "$root/README.md" \
+            "$root/reconstruct.py" "$root/run.py.gz.b64" "$root/run.py" "$root/test_run.py" \
+            > "$out/INPUT_SHA256SUMS.txt"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 shasum -a 256 > "$out/OUTPUT_SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-donchian-tail-r13-${{ github.run_id }}
+          path: research_runs/ml_donchian_tail_20260726/r13
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
