@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1150-FUNDING-TRANSFER-001",
+  "result_id": "RES-20260726-FUNDING-TRANSFER-001",
+  "study_id": "BYBIT_FUNDING_TRANSFER_LIQUIDITY_ENGINE_V1",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-funding-transfer-liquidity-001",
+  "status": "PREREGISTERED_BEFORE_ANY_2022_2023_OUTCOME",
+  "objective": "Test whether the exact settled funding cash transfer creates a causal payer-side liquidity release or a completed-sweep reversal large enough to survive realistic cost stress before any official 2024 opening.",
+  "smc_ict_translation": {
+    "liquidity_pool": "The mechanically vulnerable side is defined by the final settled funding debit, extreme aligned premium and fit-only crowding thresholds rather than a hindsight swing.",
+    "displacement": "A completed post-settlement bar moves in the payer-flush direction or produces a completed extension-and-reclaim against that direction.",
+    "liquidity_run": "Deferred payer reduction or a prepaid extension through the prior extreme is the objective sweep event.",
+    "execution_if_survivor": "Only the first causal retracement into the displacement imbalance may become the exact-execution entry; the fatal screen uses a deliberately conservative later next-open proxy.",
+    "invalidation": "Failure of the settlement-derived state, completed reclaim against the intended direction, or premium-anchor non-contraction invalidates the corresponding family."
+  },
+  "information_contract": {
+    "venue": "Bybit",
+    "execution_universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "source_endpoints": [
+      "/v5/market/funding/history",
+      "/v5/market/kline",
+      "/v5/market/premium-index-price-kline"
+    ],
+    "fit": ["2022-01-01T00:00:00Z", "2022-12-31T23:59:59.999Z"],
+    "development": ["2023-01-01T00:00:00Z", "2023-12-31T23:59:59.999Z"],
+    "maximum_request_timestamp": "2023-12-31T23:59:59.999Z",
+    "funding_availability": "The final settled rate becomes usable only at the exact timestamp returned by Bybit.",
+    "bar_availability": "Pre-state uses bars completed strictly before settlement. Post-state uses one or two fully completed five-minute bars.",
+    "entry_delay": "One additional full five-minute boundary after confirmation: T+10m for one confirmation bar and T+15m for two.",
+    "global_slot": "One pending/open position across all four symbols; simultaneous candidates are ranked by frozen normalized state score and deterministic symbol order."
+  },
+  "families": {
+    "deferred_payer_flush": "Extreme settled funding plus aligned premium, limited prepaid move and completed payer-direction impulse; trade the payer-flush direction.",
+    "prepaid_sweep_reversal": "Extreme settled funding after a large prepaid payer-direction move, followed by completed extension through the prior extreme and at least half-range reclaim; trade against the payer-flush direction.",
+    "premium_anchor_snapback": "Extreme settled funding and aligned premium followed by a frozen fractional absolute-premium contraction; trade toward the index anchor."
+  },
+  "frozen_grid": {
+    "candidate_count": 720,
+    "funding_quantiles": [0.75, 0.9, 0.97],
+    "premium_quantiles": [0.5, 0.75, 0.9],
+    "pre_move_thresholds": [0.5, 1.0],
+    "post_impulse_or_reversal_thresholds": [0.0, 0.25],
+    "premium_contraction_thresholds": [0.1, 0.25],
+    "confirmation_bars": [1, 2],
+    "diagnostic_horizons_minutes": [15, 30, 60, 120],
+    "all_in_round_trip_cost_bps": [12, 18, 24]
+  },
+  "survivor_gate": {
+    "minimum_fit_trades_18bps": 80,
+    "minimum_development_trades_18bps": 80,
+    "positive_fit_return_18bps": true,
+    "positive_development_return_18_and_24bps": true,
+    "positive_development_median_12bps": true,
+    "minimum_development_profit_factor_18bps": 1.15,
+    "positive_after_top10pct_positive_removal_18bps": true,
+    "minimum_positive_development_months": 8,
+    "maximum_top5_positive_pnl_share_18bps": 0.25,
+    "minimum_gross_direction_accuracy": 0.53,
+    "minimum_fit_matched_accuracy_lift": 1.05,
+    "maximum_unresolved_share": 0.01
+  },
+  "interpretation_boundary": {
+    "rank_eligible": false,
+    "orders_submitted": false,
+    "if_zero_survivors": "Retire this exact funding-transfer dependency and change source or payoff without adjacent threshold tuning.",
+    "if_survivor": "Keep 2024 sealed and reconstruct exact BBO/depth, first-imbalance-retracement entry, hold-period funding, state-transition exits, risk sizing and continuous NAV on remaining pre-2024 data."
+  },
+  "prohibitions": [
+    "No 2024-2026 request or outcome access.",
+    "No final funding rate before the exact returned settlement timestamp.",
+    "No assumed fixed UTC settlement clock as a trigger.",
+    "No same-confirmation-boundary or favorable OHLC fill.",
+    "No parameter, family, threshold, cost, gate or fallback change after development outcomes.",
+    "No live credentials or orders.",
+    "No cumulative-ranking promotion from the proxy fatal screen."
+  ]
+}
