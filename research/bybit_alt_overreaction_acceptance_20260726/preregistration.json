@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1643-ALT-ACCEPTANCE-001",
+  "created_at": "2026-07-26T16:43:00+09:00",
+  "base_revision": 11,
+  "status": "FROZEN_BEFORE_ANY_NEW_DATE_SOURCE_OR_OUTCOME_ACCESS",
+  "purpose": "Test a materially different continuation payoff for the previously observed Bybit BTC-to-SOL/XRP high-attention relative-overextension state. The prior residual-reclaim reversal payoff is retired and is not retuned.",
+  "dependency": {
+    "parent_result_id": "RES-20260726-ALT-OVERREACTION-PNL-001",
+    "parent_result_status": "TESTED_BELOW_GATE",
+    "parent_finding": "The relative-overextension state had 163 unique events across four December 2023 dates, but all four partial-reclaim reversal variants were strongly negative at both 100ms and 300ms latency.",
+    "reused_event_formula_without_retuning": [
+      "BTC completed displacement z >= 3",
+      "BTC aggressive-flow alignment >= 0.5",
+      "BTC activity ratio >= 2",
+      "prior follower/BTC actual-trade-count ratio >= 1",
+      "prior follower/BTC realised-volatility ratio >= 1.5",
+      "follower overreaction ratio >= 1.25",
+      "follower aggressive-flow alignment >= 0.5",
+      "beta-relative excess >= 12bp",
+      "completed 1/2/5-second horizons on a causal 100ms grid",
+      "the parent impulse rearm rule"
+    ]
+  },
+  "smc_ict_translation": {
+    "displacement": "BTC prints a completed high-z move with aligned aggressive flow.",
+    "relative_external_liquidity": "SOL or XRP moves beyond its prior-beta-implied response while relative attention and volatility are high.",
+    "acceptance_not_sweep": "The excess does not reclaim. It remains above 75% or 100% of the initial relative raid for a completed 0.5s or 1.0s while BTC retains 0% or 25% of its signed displacement.",
+    "entry": "Trade in the direction of the follower extension after acceptance and explicit latency.",
+    "structural_stop": "One observed price tick beyond the worst follower pullback between the original event and acceptance confirmation.",
+    "draw_on_liquidity": "Relative excess expands to 150% or 200% of the initial raid for five completed 100ms states.",
+    "invalidation": "Relative excess reclaims to 25% or 50% of the initial raid for five completed states, BTC loses its signed displacement for ten completed states, or the structural price stop trades first."
+  },
+  "data_contract": {
+    "venue": "Bybit USDT linear perpetual public trades",
+    "symbols": ["BTCUSDT", "SOLUSDT", "XRPUSDT"],
+    "fit_dates": ["2023-12-18", "2023-12-20", "2023-12-22"],
+    "conditional_development_dates": ["2023-12-19", "2023-12-21", "2023-12-23"],
+    "source_access_order": "Download, hash and evaluate fit dates first. Development source URLs and bytes may be accessed only after at least one frozen fit candidate passes every fit gate.",
+    "decision_clock": "completed 100ms public-trade states",
+    "entry_execution": "first actual follower trade at or after acceptance confirmation plus 100ms or 300ms",
+    "source_gaps": "never compressed or forward-filled",
+    "2024_2026_opened": false
+  },
+  "candidate_grid": {
+    "acceptance_fraction_of_initial_excess": [0.75, 1.0],
+    "acceptance_run_bins": [5, 10],
+    "leader_retention_fraction_of_initial_displacement": [0.0, 0.25],
+    "target_multiple_of_initial_excess": [1.5, 2.0],
+    "stop_reclaim_fraction_of_initial_excess": [0.25, 0.5],
+    "state_run_bins": 5,
+    "leader_loss_run_bins": 10,
+    "candidate_count": 32,
+    "latency_ms": [100, 300],
+    "roundtrip_cost_bps": [12, 18, 24]
+  },
+  "execution_contract": {
+    "position_direction": "same direction as the follower relative extension",
+    "global_slot": "one pending or open SOLUSDT/XRPUSDT position total",
+    "same_confirmation_priority": "larger initial relative excess, larger BTC z, lexical follower, shorter event horizon, candidate id",
+    "pre_entry_extreme": "For a long, the minimum actual follower trade price from the event decision through confirmation; for a short, the maximum.",
+    "price_stop": "one observed tick beyond that pre-entry extreme",
+    "target": "relative excess >= target multiple for five completed 100ms states",
+    "state_stop": "relative excess <= reclaim fraction for five completed states or BTC signed displacement <= 0 for ten completed states",
+    "same_state_ambiguity": "price stop first, then state stop, then relative-liquidity target",
+    "funding_boundary": "If the position would cross 00:00, 08:00 or 16:00 UTC without an exact funding record, charge the full structural price-stop loss plus cost before the boundary.",
+    "source_boundary": "Charge the full structural price-stop loss plus cost for any accepted unresolved position.",
+    "elapsed_time_exit": false,
+    "risk_or_leverage_optimisation": false,
+    "orders_submitted": false
+  },
+  "fit_gate": {
+    "applies_at_both_latency_settings": true,
+    "minimum_trades": 20,
+    "18bp_mean_net_positive": true,
+    "18bp_median_net_positive": true,
+    "18bp_profit_factor_minimum": 1.10,
+    "18bp_top_10_percent_winner_removed_total_positive": true,
+    "18bp_positive_dates_minimum": 2,
+    "18bp_largest_five_winner_share_maximum": 0.50,
+    "24bp_mean_net_positive": true,
+    "boundary_full_stop_share_maximum": 0.20,
+    "select_at_most": 3
+  },
+  "development_gate": {
+    "applies_at_both_latency_settings": true,
+    "minimum_trades": 20,
+    "18bp_mean_and_median_net_positive": true,
+    "18bp_profit_factor_minimum": 1.10,
+    "18bp_top_10_percent_winner_removed_total_positive": true,
+    "18bp_positive_dates_minimum": 2,
+    "18bp_largest_five_winner_share_maximum": 0.40,
+    "24bp_mean_net_positive": true,
+    "boundary_full_stop_share_maximum": 0.20
+  },
+  "selection_rule": "Among fit-gate survivors only, maximise the worse 100ms/300ms 18bp total net bps, then worse 24bp mean, then candidate id. No outcome-driven amendment is allowed.",
+  "promotion_boundary": "One development survivor may open a separate continuous exact Bybit BBO/depth/funding replay frozen before 2024-01-01. This sparse pre-2024 screen is not ranking eligible.",
+  "failure_boundary": "If no candidate passes, retire the exact relative-liquidity acceptance/continuation payoff. Do not invert the result, retune acceptance/target/stop fractions, or reopen the parent reversal payoff."
+}
