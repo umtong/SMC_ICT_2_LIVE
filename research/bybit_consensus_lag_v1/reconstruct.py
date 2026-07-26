@@ -4,6 +4,8 @@ import base64
 import gzip
 import hashlib
 import json
+import os
+import zlib
 from pathlib import Path
 from typing import Iterable
 
@@ -33,6 +35,19 @@ def decode_stream(encoded: bytes) -> tuple[bytes, bytes]:
     return compressed, raw
 
 
+def partial_decode(encoded: bytes) -> tuple[bytes, bytes, bool]:
+    """Recover every available raw byte from a truncated base64/gzip stream."""
+    padded = encoded + b"=" * ((-len(encoded)) % 4)
+    compressed = base64.b64decode(padded, validate=False)
+    inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    raw = inflater.decompress(compressed)
+    try:
+        raw += inflater.flush()
+    except zlib.error:
+        pass
+    return compressed, raw, bool(inflater.eof)
+
+
 def longest_suffix_prefix(left: bytes, right: bytes) -> int:
     for size in range(min(len(left), len(right)), 0, -1):
         if left[-size:] == right[:size]:
@@ -41,8 +56,6 @@ def longest_suffix_prefix(left: bytes, right: bytes) -> int:
 
 
 def candidate_streams(parts: list[bytes]) -> Iterable[tuple[str, bytes]]:
-    # Each checked-in file may be either the complete immutable transport, a
-    # literal base64 fragment, or a separately compressed source fragment.
     for index, part in enumerate(parts):
         yield f"single:{SOURCE_PARTS[index].name}", part
 
@@ -64,6 +77,8 @@ def main() -> int:
         raise SystemExit(f"missing source transport part(s): {missing}")
 
     parts = [path.read_bytes().strip() for path in SOURCE_PARTS]
+    diagnostic_root = Path(os.environ.get("OUT", str(ROOT)))
+    diagnostic_root.mkdir(parents=True, exist_ok=True)
     diagnostics: dict[str, object] = {
         "expected": EXPECTED,
         "parts": [],
@@ -89,14 +104,27 @@ def main() -> int:
                 }
             )
             decoded_parts.append((compressed, raw))
-        except Exception as exc:  # diagnostic only; exact raw hash remains gate
+        except Exception as exc:
             item.update({"decode_status": "FAIL", "error": repr(exc)})
             decoded_parts.append(None)
+            try:
+                compressed, recovered, reached_eof = partial_decode(encoded)
+                recovered_path = diagnostic_root / f"transport_recovery_{path.name}.py.partial"
+                recovered_path.write_bytes(recovered)
+                item.update(
+                    {
+                        "partial_gzip_bytes": len(compressed),
+                        "partial_gzip_sha256": sha256(compressed),
+                        "partial_raw_bytes": len(recovered),
+                        "partial_raw_sha256": sha256(recovered),
+                        "partial_reached_eof": reached_eof,
+                        "partial_raw_path": str(recovered_path),
+                    }
+                )
+            except Exception as partial_exc:
+                item["partial_decode_error"] = repr(partial_exc)
         diagnostics["parts"].append(item)
 
-    # First accept any transport representation that reconstructs the exact
-    # preregistered raw implementation. Transport compression/layout is not an
-    # economic degree of freedom; the raw code hash is the scientific identity.
     for label, encoded in candidate_streams(parts):
         attempt: dict[str, object] = {
             "label": label,
@@ -131,8 +159,6 @@ def main() -> int:
             print(json.dumps(diagnostics, sort_keys=True))
             return 0
 
-    # A split writer may have independently compressed source fragments. Test
-    # both raw concatenation orders, again accepting only the exact raw hash.
     if len(decoded_parts) == 2 and all(item is not None for item in decoded_parts):
         raw_left = decoded_parts[0][1]  # type: ignore[index]
         raw_right = decoded_parts[1][1]  # type: ignore[index]
@@ -160,6 +186,10 @@ def main() -> int:
                 return 0
 
     diagnostics["status"] = "FAIL"
+    (diagnostic_root / "transport_diagnostic.json").write_text(
+        json.dumps(diagnostics, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(diagnostics, sort_keys=True))
     raise SystemExit("no transport representation reconstructs preregistered raw implementation")
 
