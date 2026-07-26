@@ -17,14 +17,15 @@ permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-ytt-keyed-probe-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: yt-trinity-ytt-keyed-probe-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
 
 env:
   TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   probe:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
