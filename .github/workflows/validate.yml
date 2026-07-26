@@ -32,7 +32,7 @@ jobs:
         run: python -m pytest
       - name: Build hot context bundle
         run: python scripts/build_context_bundle.py
-      - name: Upload one-time official Donchian evidence
+      - name: Upload one-time official Donchian evidence and reconstructed source
         if: always() && hashFiles('research/donchian_2024h1_20260726/RUN_VIA_VALIDATE_PROJECT_20260726T2218KST.txt') != ''
         uses: actions/upload-artifact@v4
         with:
@@ -41,6 +41,10 @@ jobs:
             ${{ runner.temp }}/donchian_2024h1_hook.log
             ${{ runner.temp }}/donchian_2024h1_validation_hook_summary.json
             ${{ runner.temp }}/donchian_2024h1_validator_result
+            research/donchian_2024h1_20260726/run.py
+            research/donchian_2024h1_20260726/download_bars.py
+            research/donchian_2024h1_20260726/download_funding.py
+            research/donchian_2024h1_20260726/test_run.py
           if-no-files-found: warn
           retention-days: 30
           compression-level: 6
