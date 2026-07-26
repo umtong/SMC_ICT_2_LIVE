@@ -3,8 +3,11 @@ from __future__ import annotations
 import pandas as pd
 
 import cross_venue_execution_v5 as base
+import cross_venue_failclosed_v5d as failclosed
+import cross_venue_performance_v5d as performance
 import cross_venue_pilot as v1
 import cross_venue_pilot_cache_v5d as cache
+import cross_venue_pilot_fast_exit_v5d as fast_exit
 
 
 def _trade(config_id: str) -> base.FixedTradeV5:
@@ -79,3 +82,10 @@ def test_snapback_ignores_non_signal_cartesian_dimensions() -> None:
     left = v1.Config("simultaneous_shock_basis_snapback", 1000, 4.0, 0.60, 0.25, 100, 3000, 4.0, 2.0)
     right = v1.Config("simultaneous_shock_basis_snapback", 1000, 8.0, 0.75, 0.50, 100, 3000, 4.0, 2.0)
     assert cache.semantic_execution_key(frames, events, left) == cache.semantic_execution_key(frames, events, right)
+
+
+def test_fast_fixed_pilot_exit_matches_frozen_core_path() -> None:
+    performance.patch()
+    failclosed.patch()
+    fast_exit.patch()
+    fast_exit.self_test()
