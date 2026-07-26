@@ -1,0 +1,132 @@
+{
+  "account_contract": {
+    "base_alpha_screen_risk_fraction": 0.01,
+    "costs_bps_round_trip": [
+      12,
+      18,
+      24
+    ],
+    "daily_boundary": "00:00 UTC",
+    "funding": "actual Bybit settlements when available; adverse proxy before exact source",
+    "initial_nav_usdt": 10000,
+    "liquidation": "forced liquidation invalidates the selected account path",
+    "max_notional_leverage_screen": 20.0,
+    "position_sizing": "NAV risk budget divided by structural stop loss per unit including costs"
+  },
+  "actions_and_orders": {
+    "actions": [
+      "reject",
+      "continue",
+      "flat"
+    ],
+    "boundary": "NAV mark; never strategy-forced close",
+    "continuation_stop": "back inside accepted level plus volatility buffer",
+    "continuation_target": "measured dealing-range expansion",
+    "entry": "first causally observable marketable minute price after completed decision plus 500ms; with 1m OHLCV this is next-minute open",
+    "maximum_holding_time": null,
+    "model": "two HistGradientBoosting regressors for after-cost structural payoff, calibrated with monotone isotonic maps",
+    "rejection_stop": "beyond sweep extreme plus volatility buffer",
+    "rejection_target": "nearest internal/opposing mapped liquidity",
+    "same_minute_barrier_order": "stop before target",
+    "scheduled_close": null,
+    "structural_exit": "completed 5m acceptance/failure reversal"
+  },
+  "advance_or_kill": {
+    "advance": "positive non-liquidating 24bp calibration and untouched 2023H2 account freezes and opens official 2024H1 immediately",
+    "kill": "negative, sub-cost, sparse or winner-concentrated pre-2024 account closes the exact route without adjacent rescue",
+    "ranking": "insert any superior hard-valid account path immediately",
+    "risk_search": "broad risk and leverage optimization only after positive base alpha"
+  },
+  "claim_id": "CLM-20260727-ML-INTRADAY-LIQUIDITY-AUCTION-001",
+  "credentials_used": false,
+  "economic_thesis": {
+    "continuation": "Price obtains acceptance beyond external liquidity and continues after completed displacement/FVG structure.",
+    "flat": "No action when neither structural path has positive calibrated utility after stressed costs.",
+    "payoff_scale": "material intraday moves measured in fractions of a percent to several percent, not individual ticks",
+    "rejection": "A confirmed external-liquidity raid fails to obtain acceptance and rotates toward internal or opposing liquidity."
+  },
+  "engine_version": "ML-INTRADAY-LIQUIDITY-AUCTION-R23-V1",
+  "event_and_features": {
+    "availability": "all feature values end no later than the completed decision timestamp",
+    "confirmation": "completed 5m displacement, failure and FVG geometry available by the 15m decision close",
+    "event": "completed 15m crossing/sweep of a previously available external-liquidity level",
+    "features": [
+      "side",
+      "level_kind_code",
+      "sweep_atr",
+      "close_beyond_atr",
+      "wick_atr",
+      "body_atr",
+      "atr_pct",
+      "ret_1h",
+      "ret_4h",
+      "volume_z",
+      "last5_ret_atr",
+      "last5_body_atr",
+      "fvg_same_side_atr",
+      "range_position",
+      "reject_stop_atr",
+      "reject_target_atr",
+      "continue_stop_atr",
+      "continue_target_atr",
+      "hour_sin",
+      "hour_cos"
+    ]
+  },
+  "information_contract": {
+    "base_bars": "completed 1m OHLCV",
+    "confirmation_bars": "completed 5m",
+    "context_bars": "completed 1h",
+    "event_bars": "completed 15m",
+    "forbidden_inputs": [
+      "raw trades or quotes used as signal rows",
+      "100ms state",
+      "queue ahead",
+      "microprice",
+      "same-bar future high/low",
+      "unconfirmed pivot"
+    ],
+    "liquidity_levels": [
+      "confirmed 1h swing high/low after two right-side bars",
+      "prior UTC-day high/low",
+      "prior-only rolling 24h high/low",
+      "completed eight-hour session range high/low"
+    ]
+  },
+  "market_scope": {
+    "execution_exchange": "Bybit",
+    "global_pending_or_open_slots": 1,
+    "optional_symbol_admission": "pre-2024 combined-account opportunity, growth and stability improvement",
+    "optional_symbols": [
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "primary_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "product": "USDT linear perpetual"
+  },
+  "objective": "Discover and causally validate a machine-learning SMC/ICT day-trading system on Bybit USDT linear perpetuals that captures minute-to-hour liquidity-auction moves after costs, without tick-by-tick, subsecond or queue-position alpha.",
+  "orders_submitted": false,
+  "result_id": "RES-20260727-ML-INTRADAY-LIQUIDITY-AUCTION-001",
+  "schema_version": 1,
+  "training_and_updates": {
+    "activation": "new model activates only after fit and calibration complete; prior model remains active until then",
+    "calibration": "2023H1",
+    "initial_fit": "2021-01-01 through 2022-12-31",
+    "official_first_interval": "2024H1",
+    "official_freeze_cutoff": "2023-12-31T23:59:59Z",
+    "retraining": "expanding-window monthly refit using data available through the prior UTC month",
+    "untouched_preofficial_confirmation": "2023H2"
+  },
+  "user_scope": {
+    "fixed_latency_ms": 500,
+    "intended_holding_scale": "minutes to hours; no forced minimum and no elapsed-time liquidation",
+    "latency_role": "causal activation assumption only; never optimized or used as alpha",
+    "minimum_market_information_clock": "1 minute completed bars",
+    "queue_position_alpha": false,
+    "subsecond_alpha": false,
+    "tick_by_tick_alpha": false
+  }
+}
