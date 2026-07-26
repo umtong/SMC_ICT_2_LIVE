@@ -51,21 +51,26 @@ jobs:
           python -m py_compile \
             research/cme_opening_gap_20260726/probe.py \
             research/cme_opening_gap_20260726/run_screen.py \
-            research/cme_opening_gap_20260726/run_ml_screen.py
+            research/cme_opening_gap_20260726/run_ml_screen.py \
+            research/cme_opening_gap_20260726/run_ml_screen_v2.py
           python research/cme_opening_gap_20260726/probe.py self-test
-          python research/cme_opening_gap_20260726/run_ml_screen.py self-test
+          python research/cme_opening_gap_20260726/run_ml_screen_v2.py self-test
           python -m json.tool research/cme_opening_gap_20260726/preregistration.json >/dev/null
           python -m json.tool research/cme_opening_gap_20260726/amendment_001_ml_core.json >/dev/null
+          python -m json.tool research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
-          amendment = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
-          assert amendment["active_model_contract"]["policy_count"] == 1
-          assert amendment["active_model_contract"]["model_selection"] == "NONE"
-          assert amendment["active_model_contract"]["hyperparameter_grid"] == "NONE"
-          assert amendment["superseded_unopened_contract"]["legacy_grid_executed"] is False
-          assert amendment["chronological_contract"]["2024_2025_2026_opened"] is False
-          print("CME_GAP_SINGLE_MODEL_CONTRACT_PASS")
+          core = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
+          purge = json.loads(Path("research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json").read_text())
+          assert core["active_model_contract"]["policy_count"] == 1
+          assert core["active_model_contract"]["model_selection"] == "NONE"
+          assert core["active_model_contract"]["hyperparameter_grid"] == "NONE"
+          assert core["superseded_unopened_contract"]["legacy_grid_executed"] is False
+          assert core["chronological_contract"]["2024_2025_2026_opened"] is False
+          assert purge["parent_amendment_id"] == core["amendment_id"]
+          assert purge["market_outcomes_opened_before_amendment"] is False
+          print("CME_GAP_SINGLE_MODEL_PURGED_CONTRACT_PASS")
           PY
 
       - name: Reconfirm source-only gate
@@ -90,7 +95,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/cme-opening-gap-ml
-          key: cme-opening-gap-ml-v1-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json') }}
+          key: cme-opening-gap-ml-v2-${{ hashFiles('research/cme_opening_gap_20260726/preregistration.json', 'research/cme_opening_gap_20260726/amendment_001_ml_core.json', 'research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json') }}
 
       - name: Run one-policy chronological ML screen
         shell: bash
@@ -99,7 +104,7 @@ jobs:
           rm -rf artifacts/cme_opening_gap_ml
           mkdir -p artifacts/cme_opening_gap_ml
           set -o pipefail
-          python research/cme_opening_gap_20260726/run_ml_screen.py run \
+          python research/cme_opening_gap_20260726/run_ml_screen_v2.py run \
             --cache /tmp/cme-opening-gap-ml \
             --output artifacts/cme_opening_gap_ml \
             2>&1 | tee artifacts/cme_opening_gap_ml/run.log
@@ -110,25 +115,31 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+          import pandas as pd
 
           root = Path("artifacts/cme_opening_gap_ml")
           result = json.loads((root / "result_summary.json").read_text())
           manifest = json.loads((root / "source_manifest.json").read_text())
-          amendment = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
+          core = json.loads(Path("research/cme_opening_gap_20260726/amendment_001_ml_core.json").read_text())
+          purge = json.loads(Path("research/cme_opening_gap_20260726/amendment_002_purged_training_cutoff.json").read_text())
           model = json.loads((root / "fit_model.json").read_text())
 
-          assert result["claim_id"] == amendment["claim_id"]
-          assert result["result_id"] == amendment["provisional_result_id"]
-          assert result["scientific_contract"] == amendment["amendment_id"]
+          assert result["claim_id"] == core["claim_id"]
+          assert result["result_id"] == core["provisional_result_id"]
+          assert result["scientific_contract"] == core["amendment_id"]
+          assert result["purge_amendment"] == purge["amendment_id"]
           assert result["policy_count"] == 1
-          assert result["model_id"] == amendment["active_model_contract"]["model_id"]
+          assert result["model_id"] == core["active_model_contract"]["model_id"]
           assert result["legacy_432_rule_grid_executed"] is False
           assert result["qualification"] == "FATAL_PROXY_ML_SCREEN_NOT_RANK_ELIGIBLE"
           assert result["official_periods_opened"] == {"2024": False, "2025": False, "2026": False}
           assert result["orders_submitted"] is False
           assert result["paper_or_testnet_started"] is False
-          assert model["feature_names"] == amendment["active_model_contract"]["feature_names"]
+          assert model["feature_names"] == core["active_model_contract"]["feature_names"]
           assert model["training_labeled_count"] >= 40
+          assert pd.Timestamp(model["training_max_entry_ts"]) <= pd.Timestamp("2021-08-31T23:59:59Z")
+          assert pd.Timestamp(model["training_max_resolution_ts"]) <= pd.Timestamp("2021-08-31T23:59:59Z")
+          assert model["purge_amendment_id"] == purge["amendment_id"]
           assert manifest["stages_opened"]["official_2024"] is False
           assert manifest["stages_opened"]["official_2025"] is False
           assert manifest["stages_opened"]["official_2026"] is False
@@ -150,13 +161,15 @@ jobs:
               assert counts[0] == counts[1] == counts[2]
               assert unresolved[0] == unresolved[1] == unresolved[2]
               assert totals[0] >= totals[1] >= totals[2]
-          print("CME_GAP_ML_FROZEN_CONTRACT_PASS")
+          print("CME_GAP_ML_PURGED_FROZEN_CONTRACT_PASS")
           print(json.dumps({
               "fit_pass": result["fit_pass"],
               "development_opened": result["development_opened"],
               "development_pass": result["development_pass"],
               "confirmation_opened": result["confirmation_opened"],
               "confirmation_pass": result["confirmation_pass"],
+              "training_labeled_count": result["training_labeled_count"],
+              "purged_cross_boundary_label_count": result["purged_cross_boundary_label_count"],
           }, sort_keys=True))
           PY
 
