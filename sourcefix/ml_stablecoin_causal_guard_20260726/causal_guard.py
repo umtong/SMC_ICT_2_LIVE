@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,27 +15,28 @@ ENGINE_ROOT = REPO_ROOT / "research" / "ml_stablecoin_issuance_economic_20260726
 if str(ENGINE_ROOT) not in sys.path:
     sys.path.insert(0, str(ENGINE_ROOT))
 
-import run as engine  # noqa: E402
+# The direct causal engine was recorded before source/model/market outcomes. It
+# fixes entry-bar lookahead, marks unresolved positions instead of clock-closing
+# them, opens calendar-2023 after model fit, and applies amendment-004 risk gates.
+import run_causal as engine  # noqa: E402
+
+engine.CLAIM_ID = engine.base.CLAIM_ID
+engine.json_safe = engine.base.json_safe
 
 CORRECTION_ID = "CORRECTION-20260726-ML-STABLECOIN-ENTRY-BAR-CAUSALITY-001"
+DIRECT_ENGINE_CORRECTION_ID = (
+    "CORRECTION-20260726-ML-STABLECOIN-CAUSAL-FEATURE-BOUNDARY-MARK-006"
+)
 SHIFTED_FEATURES = (
     "prior_15m_return",
     "prior_60m_realized_volatility",
     "prior_60m_path_efficiency",
 )
-_ORIGINAL_RETURNS_FEATURES = engine._returns_features
+_ORIGINAL_RETURNS_FEATURES = engine.base._returns_features
 
 
 def causal_returns_features(frame: pd.DataFrame) -> dict[str, np.ndarray]:
-    """Return features available strictly before the next-minute entry open.
-
-    The original engine correctly shifts prior high/low liquidity pools, but its
-    return, volatility and path-efficiency arrays use close[j] at entry index j.
-    At the entry open, close[j] is future information. Shift only those three
-    completed-close features by one bar; leave already-causal liquidity arrays
-    unchanged.
-    """
-
+    """Diagnostic equivalent of information available before the entry open."""
     observed = _ORIGINAL_RETURNS_FEATURES(frame)
     corrected: dict[str, np.ndarray] = {}
     for key, values in observed.items():
@@ -49,9 +49,6 @@ def causal_returns_features(frame: pd.DataFrame) -> dict[str, np.ndarray]:
         else:
             corrected[key] = array.copy()
     return corrected
-
-
-engine._returns_features = causal_returns_features
 
 
 def _walk_source_boundary(value: Any, paths: list[str], prefix: str = "$") -> None:
@@ -69,7 +66,13 @@ def _walk_source_boundary(value: Any, paths: list[str], prefix: str = "$") -> No
 
 def _write_json(path: Path, payload: Any) -> None:
     path.write_text(
-        json.dumps(engine.json_safe(payload), indent=2, sort_keys=True, allow_nan=False) + "\n",
+        json.dumps(
+            engine.base.json_safe(payload),
+            indent=2,
+            sort_keys=True,
+            allow_nan=False,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -90,13 +93,7 @@ def _refresh_hashes(output: Path) -> None:
 
 
 def audit_result(output: Path) -> dict[str, Any]:
-    """Bind the causal fix and prohibit synthetic elapsed-time exits.
-
-    The underlying engine keeps the conservative synthetic stop in its raw
-    accounting code. This guard makes any selected occurrence fatal, so that
-    such a path can never authorize development, risk search or 2024H1.
-    """
-
+    """Bind direct causal execution and make any legacy synthetic stop fatal."""
     result_path = output / "RESULT.json"
     full_path = output / "FULL_RESULT.json"
     if not result_path.is_file() or not full_path.is_file():
@@ -110,12 +107,16 @@ def audit_result(output: Path) -> dict[str, Any]:
 
     guard = {
         "correction_id": CORRECTION_ID,
+        "direct_engine_correction_id": DIRECT_ENGINE_CORRECTION_ID,
+        "direct_engine": engine.ENGINE,
         "entry_bar_close_excluded": True,
         "shifted_completed_close_features": list(SHIFTED_FEATURES),
         "prior_liquidity_arrays_changed": False,
         "unresolved_selected_path_count": len(unresolved_paths),
         "unresolved_selected_paths": unresolved_paths,
+        "stage_boundary_positions_marked_not_closed": True,
         "elapsed_time_liquidation_accepted": False,
+        "confirmation_robustness_is_advancement_veto": False,
     }
     result["causal_guard"] = guard
     full["causal_guard"] = guard
@@ -124,12 +125,14 @@ def audit_result(output: Path) -> dict[str, Any]:
         result["status"] = "PRE2024_INVALID_UNRESOLVED_SELECTED_PATH"
         full["status"] = result["status"]
         for payload in (result, full):
-            confirmation_gate = payload.setdefault("confirmation_gate", {})
-            confirmation_gate["zero_unresolved_selected_paths"] = False
-            confirmation_gate["all"] = False
-            development_gate = payload.setdefault("development_gate", {})
-            development_gate["zero_unresolved_selected_paths"] = False
-            development_gate["all"] = False
+            payload.setdefault("confirmation_gate", {})[
+                "zero_unresolved_selected_paths"
+            ] = False
+            payload["confirmation_gate"]["all"] = False
+            payload.setdefault("development_gate", {})[
+                "zero_unresolved_selected_paths"
+            ] = False
+            payload["development_gate"]["all"] = False
             payload["official_2024h1_opened"] = False
             payload["official_2024_2026_opened"] = False
     else:
@@ -141,6 +144,12 @@ def audit_result(output: Path) -> dict[str, Any]:
                 payload.setdefault("development_gate", {})[
                     "zero_unresolved_selected_paths"
                 ] = True
+                # The direct engine already computed objective-first "all".
+                payload["development_gate"]["all"] = all(
+                    bool(value)
+                    for key, value in payload["development_gate"].items()
+                    if key not in {"all"}
+                )
 
     _write_json(result_path, result)
     _write_json(full_path, full)
@@ -149,6 +158,8 @@ def audit_result(output: Path) -> dict[str, Any]:
 
 
 def self_test() -> None:
+    engine.self_test()
+
     times = np.arange(
         pd.Timestamp("2021-01-01", tz="UTC").value // 1_000_000,
         pd.Timestamp("2021-01-01 03:00", tz="UTC").value // 1_000_000,
@@ -170,7 +181,6 @@ def self_test() -> None:
     entry_index = 100
     mutated.loc[entry_index, "close"] = frame.loc[entry_index, "close"] * 1.25
     mutated.loc[entry_index, "high"] = mutated.loc[entry_index, "close"]
-
     before = causal_returns_features(frame)
     after = causal_returns_features(mutated)
     for key in ("ret15", "vol60", "eff60", "prior_high", "prior_low"):
@@ -185,7 +195,7 @@ def self_test() -> None:
         after["ret15"][entry_index + 1],
         equal_nan=True,
     ):
-        raise AssertionError("completed entry bar did not become available one bar later")
+        raise AssertionError("completed entry bar did not become available later")
 
     import tempfile
 
@@ -203,7 +213,7 @@ def self_test() -> None:
         }
         full = {
             **compact,
-            "confirmation": {
+            "development": {
                 "costs": {
                     "24": {
                         "trade_ledger": [
@@ -219,16 +229,16 @@ def self_test() -> None:
         }
         _write_json(output / "RESULT.json", compact)
         _write_json(output / "FULL_RESULT.json", full)
-        guard = audit_result(output)
+        observed = audit_result(output)
         corrected = json.loads((output / "RESULT.json").read_text())
-        if guard["unresolved_selected_path_count"] != 1:
-            raise AssertionError(guard)
+        if observed["unresolved_selected_path_count"] != 1:
+            raise AssertionError(observed)
         if corrected["status"] != "PRE2024_INVALID_UNRESOLVED_SELECTED_PATH":
-            raise AssertionError(corrected["status"])
+            raise AssertionError(corrected)
         if corrected["development_gate"]["all"] is not False:
-            raise AssertionError("unresolved path did not close development")
+            raise AssertionError("legacy unresolved path did not close development")
 
-    print("stablecoin causal guard self-test passed")
+    print("stablecoin direct-causal guard self-test passed")
 
 
 def parse_args() -> argparse.Namespace:
