@@ -9,6 +9,7 @@ on:
       - research/data_foundation_20260727/**
       - scripts/market_data/**
       - tests/test_canonical_market_data.py
+      - tests/test_public_trade_month.py
       - instructions/project-instructions.md
       - prompts/goal-worker.md
       - .github/workflows/canonical-bybit-halfyear-data.yml
@@ -36,12 +37,18 @@ jobs:
           mkdir -p diagnostic
           python scripts/validate_project.py > diagnostic/validate-project.log 2>&1
           echo $? > diagnostic/validate-project.exit
-          python -m pytest -q tests/test_canonical_market_data.py > diagnostic/canonical-tests.log 2>&1
+          python -m pytest -q \
+            tests/test_canonical_market_data.py \
+            tests/test_public_trade_month.py \
+            > diagnostic/canonical-tests.log 2>&1
           echo $? > diagnostic/canonical-tests.exit
           python -m pytest -q > diagnostic/full-tests.log 2>&1
           echo $? > diagnostic/full-tests.exit
           python -m py_compile \
             scripts/market_data/build_canonical_bybit.py \
+            scripts/market_data/build_public_trade_month.py \
+            scripts/market_data/inventory_public_bybit.py \
+            scripts/market_data/probe_public_archive_format.py \
             scripts/market_data/bybit_client.py \
             scripts/market_data/bybit_fetch.py \
             scripts/market_data/canonical_spec.py \
