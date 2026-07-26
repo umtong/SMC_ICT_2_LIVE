@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "project_revision": 13,
+  "hypothesis": "A causally confirmed large USDT or USDC mint/burn changes immediately deployable crypto-dollar liquidity. Event size, direction, clustering and the pre-event market state can predict whether BTCUSDT or ETHUSDT next delivers to upper or lower pre-known external liquidity after realistic costs.",
+  "phase_0_source_gate": {
+    "outcome_sealed": true,
+    "contracts": {
+      "USDT": {
+        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "decimals": 6
+      },
+      "USDC": {
+        "address": "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "decimals": 6
+      }
+    },
+    "event": "ERC20 Transfer(address,address,uint256); mint has from=zero, burn has to=zero",
+    "availability_primary": "event block plus 12 subsequent canonical Ethereum blocks",
+    "availability_stress": "event block plus 64 subsequent canonical Ethereum blocks",
+    "fixed_months": [
+      "2021-01", "2021-05", "2021-09",
+      "2022-01", "2022-05", "2022-09",
+      "2023-01", "2023-05", "2023-09"
+    ],
+    "rpc_methods": ["eth_chainId", "eth_blockNumber", "eth_getCode", "eth_getBlockByNumber", "eth_getLogs"],
+    "adaptive_log_query": true,
+    "pass_rule": {
+      "chain_id": 1,
+      "both_contracts_have_bytecode": true,
+      "all_fixed_months_resolved_to_block_ranges": true,
+      "all_returned_logs_decode_and_have_block_timestamps": true,
+      "minimum_unique_events": 30,
+      "minimum_months_with_events": 5,
+      "minimum_distinct_tokens": 2
+    },
+    "prohibited": [
+      "BTC_ETH_or_other_market_price",
+      "future_return_or_first_passage_label",
+      "model_fit_or_metric",
+      "trade_or_pnl",
+      "2024_2026_data",
+      "credentials",
+      "orders"
+    ]
+  },
+  "conditional_model_screen": {
+    "opens_only_if_source_gate_passes": true,
+    "one_model": "HistGradientBoostingClassifier plus one frozen isotonic calibration",
+    "markets": ["BTCUSDT", "ETHUSDT"],
+    "execution_market": "Bybit USDT linear perpetual",
+    "features": [
+      "log_event_usd_notional",
+      "mint_or_burn",
+      "usdt_or_usdc",
+      "prior_60m_same_direction_event_notional",
+      "prior_24h_net_issuance",
+      "event_block_gas_utilization",
+      "prior_15m_return",
+      "prior_60m_realized_volatility",
+      "prior_60m_path_efficiency",
+      "distance_to_frozen_upper_60m_liquidity",
+      "distance_to_frozen_lower_60m_liquidity",
+      "btc_eth_completed_return_breadth"
+    ],
+    "label": "upper versus lower frozen pre-event 60-minute external liquidity reached first after event availability",
+    "action": "LONG, SHORT or FLAT from one cost-adjusted expected-value equation",
+    "entry": "first adverse executable Bybit quote/open after the selected confirmation delay",
+    "exit": "frozen target liquidity, opposite frozen liquidity structural stop, or source-boundary punitive stop; never elapsed time",
+    "one_global_slot": true,
+    "cost_bps": [12, 18, 24],
+    "primary_cost_bps": 24,
+    "chronology": {
+      "train": "2020-01-01 through 2021-12-31",
+      "calibrate": "2022-01-01 through 2022-06-30",
+      "confirmation": "2022-07-01 through 2022-12-31",
+      "conditional_development": "2023-01-01 through 2023-12-31",
+      "prohibited": "2024-01-01 onward"
+    },
+    "confirmation_gate": {
+      "minimum_resolved_labels": 120,
+      "minimum_actions": 40,
+      "auc_lift_over_structural_distance": 0.02,
+      "positive_brier_skill": true,
+      "positive_total_return_at_24bps": true,
+      "positive_median_trade_at_24bps": true,
+      "profit_factor_at_24bps": 1.2,
+      "positive_top10pct_winner_removed_return_at_24bps": true,
+      "both_half_years_positive_at_24bps": true
+    },
+    "risk_search_only_after_full_gate": {
+      "planned_stop_risk_fraction": [0.0025, 0.6],
+      "notional_cap_multiple": [1, 100],
+      "selection_metric": "highest after-cost geometric daily growth subject to positive top10pct-winner-removed growth and no liquidation"
+    }
+  },
+  "orders_submitted": false
+}
