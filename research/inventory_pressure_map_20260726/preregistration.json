@@ -1,0 +1,182 @@
+{
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "base_revision": 11,
+  "branch": "agent/r11-inventory-pressure-map-001",
+  "causal_feature_contract": {
+    "aggressive_flow_purity_floors": [
+      0.4,
+      0.65
+    ],
+    "bucket_availability": "A bucket becomes actionable only at its right boundary; quote and OI states are received strictly before that boundary.",
+    "bucket_seconds": 5,
+    "bucket_vwap": "sum(price*amount)/sum(amount) over completed trades by local_timestamp; use the last causal mid only when no completed trade VWAP exists.",
+    "calendar_decay": "Each map decays once every five-second bucket even through a temporarily unavailable BBO.",
+    "closing_attribution": "For negative OI delta, sell aggression removes inferred long cohorts and buy aggression removes inferred short cohorts pro rata.",
+    "families": [
+      "cluster_attraction",
+      "cascade_followthrough",
+      "depletion_reversal"
+    ],
+    "fit_pressure_quantiles": [
+      0.9,
+      0.97
+    ],
+    "hazard_displacement_sigma": [
+      0.5,
+      1.0,
+      2.0
+    ],
+    "inventory_half_lives_seconds": [
+      1800,
+      7200,
+      28800
+    ],
+    "kernel_bandwidth_sigma": [
+      0.15,
+      0.3
+    ],
+    "oi_delta": "Finite raw relative change between the latest OI received strictly before consecutive bucket boundaries; no outcome-dependent clipping.",
+    "opening_attribution": "For positive OI delta, add abs(delta)*abs(flow purity) to inferred long cohorts when flow is positive and short cohorts when flow is negative.",
+    "pressure_quantile_basis": "All finite positive fit pressure states by symbol, map and direction.",
+    "prior_realized_scale": "Square root of the sum of the previous 180 completed five-second squared log returns, shifted one bucket, minimum 60 observations, floored by two causal spreads.",
+    "search_offsets_sigma": [
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.5,
+      2.0
+    ]
+  },
+  "claim_id": "CLM-20260726-1058-INVENTORY-MAP-001",
+  "conditional_next_stage": {
+    "one_or_more_survivors": "Freeze survivors, test every remaining pre-2024 first-day sample, then implement structural state exits, funding, risk sizing and continuous NAV before any sequential 2024 opening.",
+    "zero_survivors": "Retire this exact inventory-map dependency and keep 2024-2026 sealed."
+  },
+  "data_contract": {
+    "availability_clock": "local_timestamp in microseconds",
+    "data_types": [
+      "trades",
+      "quotes",
+      "derivative_ticker"
+    ],
+    "development_dates": [
+      "2023-07-01",
+      "2023-09-01",
+      "2023-11-01"
+    ],
+    "fit_dates": [
+      "2023-01-01",
+      "2023-03-01",
+      "2023-05-01"
+    ],
+    "integrity": "Every downloaded gzip must match the frozen byte count and SHA-256 before parsing.",
+    "later_periods": "2024-2026 are code- and workflow-prohibited in this stage.",
+    "market": "USDT linear perpetual public normalized data",
+    "source": "Tardis first-day public samples",
+    "source_file_count": 36,
+    "source_manifest_sha256": "7256997af2a86c2c1f6854451a8e8c69498e14d1be7387bf55836cc4ac668b93",
+    "source_manifest_total_compressed_bytes": 405238541,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "venue": "Bybit"
+  },
+  "development_gate": {
+    "fit_matched_accuracy_lift": ">= 1.10",
+    "gross_direction_accuracy": "> 0.55",
+    "maximum_top_five_positive_pnl_share_at_18bp": 0.5,
+    "maximum_unavailable_share": 0.05,
+    "median_trade_at_18bp": "> 0",
+    "minimum_accepted_trades_at_18bp": 40,
+    "positive_symbol_date_segments_at_18bp": ">= 4 of 6",
+    "profit_factor_at_18bp": ">= 1.15",
+    "return_after_removing_largest_10pct_positive_trades_at_18bp": "> 0",
+    "total_return_at_18bp": "> 0",
+    "total_return_at_24bp": "> 0"
+  },
+  "economic_mechanism": {
+    "cascade_followthrough": "Price crosses the previously mapped band while open interest contracts and aggression remains aligned, indicating forced inventory release.",
+    "cluster_attraction": "Aligned displacement and aggressive flow approach a dense un-crossed vulnerable-inventory band.",
+    "depletion_reversal": "After a crossed band loses at least half of its mapped pressure and price/flow reclaim the opposite side, trade away from the exhausted pool.",
+    "inventory_stock": "Positive open-interest change is assigned to the dominant aggressor side at the completed bucket VWAP; negative open-interest change removes the dominant closing side pro rata from all surviving cohorts. Cohorts decay in calendar time.",
+    "liquidity_pool": "Each surviving short cohort projects an upside stop/liquidation-hazard band and each surviving long cohort projects a downside band using only prior realized volatility and the causal spread. Local kernel density is the quantitative pool pressure.",
+    "smc_ict_translation": "The pool is not a later-confirmed swing. It is a contemporaneous estimate of trapped outstanding inventory; displacement, liquidity run and reclaim are separately timestamped causal states."
+  },
+  "execution_and_cost_contract": {
+    "additional_all_in_round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "diagnostic_horizons_seconds": [
+      30,
+      120,
+      300
+    ],
+    "entry": "First executable BBO observed at or after the completed decision boundary plus latency; long buys ask and short sells bid.",
+    "entry_latencies_ms": [
+      100,
+      500
+    ],
+    "exit": "First executable BBO at or after entry quote time plus the diagnostic horizon; long sells bid and short buys ask.",
+    "funding": "Deferred because this fatal screen uses only 30-300 second diagnostic markouts; any survivor must add exact funding before rank eligibility.",
+    "global_slot": "One accepted event across BTCUSDT and ETHUSDT. Same-boundary ties choose the largest pressure-to-fit-threshold score, then deterministic symbol order. Exact exit-timestamp re-entry is prohibited.",
+    "observed_spread": "Embedded in executable entry and exit quotes.",
+    "qualification": "Elapsed-time markouts are diagnostic and cannot be ranked or deployed. A survivor must replace them with state-transition exits and continuous NAV replay.",
+    "quote_freshness_max_ms": 1000,
+    "same_gross_path_replay": true
+  },
+  "frozen_grid": {
+    "candidate_count": 1296,
+    "dimensions": "18 maps x 2 pressure quantiles x 2 flow floors x 3 families x 2 latencies x 3 horizons",
+    "map_count": 18
+  },
+  "hard_validity": {
+    "fit_thresholds_never_use_development": true,
+    "later_periods_opened": false,
+    "no_same_bucket_or_predecision_fill": true,
+    "one_global_slot": true,
+    "orders_submitted": false,
+    "source_sha_verification": true
+  },
+  "implementation": {
+    "compressed_implementation_sha256": "535fa0ffe310b4f377dee6fdf60e666c61f3436b30b08da4effc3f0ae6021292",
+    "implementation_parts": 2,
+    "loader_path": "research/inventory_pressure_map_20260726/run_screen.py",
+    "loader_sha256": "bcbd6b58a01ecd2aca0d9e8698b25e0f0334a55aa8abac1deda95790b682c4b2",
+    "performance_note": "Signal arrays are cached within each map only; each latency/horizon replays its own causal executable quotes and global slot.",
+    "scientific_implementation_sha256": "ddc5d9c6dd22a27d5f3f86572f5c4b80780396c583f29de44ef1d175fc2bf384",
+    "synthetic_tests": 8,
+    "test_path": "research/inventory_pressure_map_20260726/test_run_screen.py",
+    "test_sha256": "0015f08c85cd15f87d59ae77c9d2cf8b6561713d34f39281891af3c532833281"
+  },
+  "information_cutoff": "2023-12-31T23:59:59Z",
+  "issue_number": 83,
+  "matched_baseline_contract": {
+    "fallback": "Use matched cell with at least 5 fit events; otherwise symbol baseline with at least 10 fit events; otherwise global fit baseline.",
+    "matching": "Each selected development trade is matched by symbol, fit-only low/high realized-volatility bucket and fixed distance bucket <=0.75 sigma, (0.75,1.50] sigma or >1.50 sigma.",
+    "required_lift": 1.1,
+    "source": "Fit outcomes only from the identical map, family, flow floor, latency and horizon without the high-pressure threshold."
+  },
+  "non_overlap": [
+    "Not adjacent tuning of PR #74 instantaneous 1/2/5-second OI-change, flow-efficiency and fixed-barrier policies.",
+    "Not cross-venue OI breadth, wallet identity, public liquidation labels, L2 cancellation/refill, passive queues, event-tape pace, metaorder cadence, cross-venue price lag, options, premium, clock seasonality or completed-bar momentum."
+  ],
+  "objective": "Test whether a causal stock of still-open long/short cohorts by inferred entry price creates a repeatable vulnerable-inventory pressure map whose attraction, forced-closure crossing or depletion-reclaim state leaves executable residual markout after realistic spread and additional cost stress.",
+  "prohibitions": [
+    "No 2024-2026 source access in this workflow.",
+    "No parameter, attribution, closure, threshold, latency, cost, horizon or gate change after development outcomes are read.",
+    "No stale or favorable missing-price fill.",
+    "No live credentials, paper orders, testnet orders or live orders.",
+    "No project-wide ranking promotion from this sparse diagnostic screen."
+  ],
+  "rank_eligible": false,
+  "registered_at": "2026-07-26T11:16:17+09:00",
+  "research_stage": "sparse_pre_2024_fatal_alpha_screen",
+  "result_id": "RES-20260726-INVENTORY-MAP-001",
+  "schema_version": 1,
+  "status": "PREREGISTERED_BEFORE_PRE2024_FATAL_SCREEN",
+  "study_id": "BYBIT_VULNERABLE_INVENTORY_PRESSURE_MAP_V1"
+}
