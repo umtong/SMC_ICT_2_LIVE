@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-1M-MIRROR-004",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "outcome_state_before_correction": {
+    "market_paths_opened": false,
+    "candidate_rows_opened": false,
+    "model_metrics_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "official_period_opened": false
+  },
+  "superseded_transport": {
+    "source": "Bybit official static MT4 monthly one-minute archives",
+    "observed_failure": "BTCUSDT covered 90.631254% of the continuous 2021-01-01 through 2024-06-30 one-minute grid, below the frozen 99.5% source requirement",
+    "economic_inference": "none"
+  },
+  "replacement": {
+    "dataset_id": "rogerdehe/klines-bybit",
+    "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
+    "probe_id": "PROBE-20260727-HF-BYBIT-1M-PINNED-002",
+    "files": {
+      "BTCUSDT": {
+        "path": "futures/1m/BTC_USDT_USDT.parquet",
+        "sha256": "f9e742f7f7fa1af32ca09b03a0ba8773ab251213cd420f79d4380701ca81f265",
+        "start": "2021-01-01T00:00:00Z",
+        "end": "2024-06-30T23:59:00Z",
+        "minutes": 1838880,
+        "coverage": 1.0,
+        "internal_missing_minutes": 0
+      },
+      "ETHUSDT": {
+        "path": "futures/1m/ETH_USDT_USDT.parquet",
+        "sha256": "d9fab6b1fd3d1599cc98a0397127d0ed30ca3a518e1a2bf7981705d123bb266c",
+        "start": "2021-03-15T00:00:00Z",
+        "end": "2024-06-30T23:59:00Z",
+        "minutes": 1733760,
+        "coverage": 1.0,
+        "internal_missing_minutes": 0
+      }
+    },
+    "quality": "minute aligned; no duplicate timestamps; finite positive OHLC; no impossible OHLC rows; maximum internal gap one minute",
+    "funding": "unchanged immutable actual Bybit settlement files and SHA-256 values from PROBE-20260727-HF-BYBIT-FUNDING-PINNED-002"
+  },
+  "listing_boundary_correction": {
+    "symbol": "ETHUSDT",
+    "from": "2021-03-01T00:00:00Z",
+    "to": "2021-03-15T00:00:00Z",
+    "evidence": "the first price probe showed every minute from 2021-03-15 onward and no internal gap; the entire 20,160-minute deficit was the fourteen days before the observed contract start"
+  },
+  "unchanged": [
+    "symbols and one global slot",
+    "completed five-minute signal clock and twelve-hour external-liquidity sweep",
+    "continuation/reversal action candidates",
+    "every model feature and one-full-observation delay for external metrics",
+    "HGBT class and hyperparameters",
+    "structural stop and 3R target",
+    "fixed 500ms latency and next observable one-minute entry",
+    "24bp base all-in cost, 18/30bp stresses and actual funding",
+    "risk, leverage and probability threshold grids",
+    "2021-2022 resolved-event fit, calendar-2023 selection and immediate official 2024H1 rule"
+  ],
+  "decision": "Execute the exact sealed economic route once. A source-valid nonpositive calendar-2023 account closes the route without adjacent rescue. A positive survivor opens official 2024H1 immediately, and any superior official result enters the cumulative ranking immediately.",
+  "credentials_used": false,
+  "orders_submitted": false
+}
