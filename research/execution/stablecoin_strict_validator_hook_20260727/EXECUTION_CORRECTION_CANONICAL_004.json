@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-STRICT-VALIDATOR-HOOK-004",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:55:00+09:00",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "source_sha": "3631cf01a2a2b91d690b81160e14ba033a298f75",
+  "strict_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "engine": "ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3",
+  "reason": "The dedicated workflow is canonical on main but pull-request synchronization exposed only the established repository validator. The validator is used once as a read-only execution carrier for the exact current-main source and strict-engine pins.",
+  "change": [
+    "Run the immutable schema-bound, status-zero-fail-closed source snapshot and strict V3 snapshot only when the branch trigger is present.",
+    "Print one compact source/economic decision between explicit log markers.",
+    "Persist an in-run marker so later pytest imports cannot repeat the network or market computation."
+  ],
+  "scientific_changes": [],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer identity",
+    "explicit no-record and range-limit classification with all other responses fail closed",
+    "12/64 block availability",
+    "one HGBT and one isotonic rule",
+    "strict source-decision-second feature boundary and next-open execution-only rule",
+    "structural target and stop, one global BTC/ETH slot",
+    "12/18/24bp paths and conditional risk/notional frontier",
+    "immediate official 2024H1 for a complete pre-2024 survivor",
+    "no credentials or orders"
+  ],
+  "source_or_market_outcome_observed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
