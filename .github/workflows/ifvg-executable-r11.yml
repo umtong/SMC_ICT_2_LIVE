@@ -59,7 +59,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: reused/bybit_l2_resiliency
 
-      - name: Verify source artifact and causal implementation
+      - name: Verify source artifact and corrected causal implementation
         run: |
           set -euo pipefail
           (cd reused/bybit_l2_resiliency/output && sha256sum --check SHA256SUMS.txt)
@@ -72,8 +72,9 @@ jobs:
           python -m pytest -q "$root/test_run_screen.py"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/amendment_001_source_frequency_correction.json" >/dev/null
 
-      - name: Run frozen objective-first fatal screen
+      - name: Run corrected frozen objective-first fatal screen
         run: |
           set -euo pipefail
           root=research/ifvg_executable_20260726
@@ -115,6 +116,7 @@ jobs:
             research/ifvg_executable_20260726/SOURCES.md \
             research/ifvg_executable_20260726/WORK_CLAIM.json \
             research/ifvg_executable_20260726/preregistration.json \
+            research/ifvg_executable_20260726/amendment_001_source_frequency_correction.json \
             research/ifvg_executable_20260726/reconstruct.py \
             research/ifvg_executable_20260726/bundle_manifest.json \
             research/ifvg_executable_20260726/source_bundle.tar.gz.b64 \
