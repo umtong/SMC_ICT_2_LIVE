@@ -61,6 +61,7 @@ jobs:
           python -m py_compile "$root/run.py" "$root/test_run.py" "$root/apply_pre_outcome_fix.py"
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
           PYTHONPATH="$root" python "$root/run.py" --self-test
+          python -m json.tool "$root/CORRECTION_004_NODE_ARRAY_FORMAT_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py
 
       - name: Record frozen Dukascopy runtime probe
@@ -127,6 +128,7 @@ jobs:
             "$root/CORRECTION_001_COOLDOWN_SENTINEL_BEFORE_OUTCOME.json" \
             "$root/CORRECTION_002_REDUNDANT_PROBE_NONBLOCKING_BEFORE_OUTCOME.json" \
             "$root/CORRECTION_003_ADAPTIVE_TRANSPORT_AND_EXCLUSIVE_SEAL_BEFORE_OUTCOME.json" \
+            "$root/CORRECTION_004_NODE_ARRAY_FORMAT_BEFORE_OUTCOME.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
             "$root/download_dukascopy.js" \
