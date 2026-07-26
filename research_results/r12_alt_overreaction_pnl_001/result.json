@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ALT-OVERREACTION-PNL-001",
+  "claim_id": "CLM-20260726-1612-ALT-OVERREACTION-PNL-001",
+  "worker_id": "gpt-5.6-pro-20260726-1612",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE",
+  "summary": "The preregistered BTC-displacement to SOL/XRP relative-overextension residual-reclaim payoff was hard-valid but strongly negative. The parent opportunity screen supplied 163 unique decision events on four previously unopened December 2023 dates. All four structural confirmation/stop variants failed at both 100 ms and 300 ms. The least-negative frozen-order candidate C50_S10 made 129 trades; at 18 bp its 100 ms path averaged -19.0024 bp per trade, median -14.6261 bp, PF 0.01550, total -2451.31 bp, exact top-10%-winner-removed total -2456.60 bp, and zero of four positive dates. The 300 ms path averaged -19.1346 bp, median -14.4753 bp, PF 0.01472, total -2468.37 bp and zero positive dates. The exact payoff is retired without adjacent threshold tuning. The opportunity state appears to describe continuation or irregular exhaustion rather than a repeatable residual-reclaim reversal.",
+  "trader_translation": "BTC displacement followed by a high-attention SOL/XRP extension beyond beta-implied equilibrium was treated as a relative external-liquidity raid. Entry required BTC non-confirmation and a completed 25% or 50% residual reclaim, then traded opposite the follower extension with a stop beyond the post-raid extreme and a target at relative equilibrium. That sequence did not produce positive expectancy.",
+  "metrics": {
+    "candidate_count": 4,
+    "unique_decision_events": 163,
+    "development_gate_pass_count": 0,
+    "dates": [
+      "2023-12-25",
+      "2023-12-27",
+      "2023-12-29",
+      "2023-12-31"
+    ],
+    "least_negative_candidate_id": "C50_S10",
+    "least_negative_parameters": {
+      "confirm_fraction": 0.50,
+      "confirm_run_bins": 5,
+      "target_fraction": 0.10,
+      "target_run_bins": 5,
+      "stop_buffer_fraction": 0.10,
+      "leader_extension_fraction": 0.25
+    },
+    "latency_100ms_12bp": {
+      "trade_count": 129,
+      "mean_net_bp": -13.0024180320,
+      "median_net_bp": -8.6260909392,
+      "total_net_bp": -1677.3119261282,
+      "profit_factor": 0.0473716549,
+      "top10_removed_total_net_bp": -1760.5951636960,
+      "positive_dates": 0,
+      "diagnostic_half_percent_risk_total_return": -0.2050587612,
+      "diagnostic_half_percent_risk_mdd": 0.2050587612
+    },
+    "latency_100ms_18bp": {
+      "trade_count": 129,
+      "mean_net_bp": -19.0024180320,
+      "median_net_bp": -14.6260909392,
+      "total_net_bp": -2451.3119261282,
+      "profit_factor": 0.0155002736,
+      "top10_removed_total_net_bp": -2456.5951636960,
+      "positive_dates": 0,
+      "largest_five_winner_share": 1.0,
+      "diagnostic_half_percent_risk_total_return": -0.2465241801,
+      "diagnostic_half_percent_risk_mdd": 0.2465241801
+    },
+    "latency_100ms_24bp": {
+      "trade_count": 129,
+      "mean_net_bp": -25.0024180320,
+      "median_net_bp": -20.6260909392,
+      "total_net_bp": -3225.3119261282,
+      "profit_factor": 0.0060578583,
+      "positive_dates": 0,
+      "diagnostic_half_percent_risk_total_return": -0.2755946043
+    },
+    "latency_300ms_18bp": {
+      "trade_count": 129,
+      "mean_net_bp": -19.1346208395,
+      "median_net_bp": -14.4752612687,
+      "total_net_bp": -2468.3660882940,
+      "profit_factor": 0.0147168832,
+      "top10_removed_total_net_bp": -2470.3489507603,
+      "positive_dates": 0,
+      "largest_five_winner_share": 1.0,
+      "diagnostic_half_percent_risk_total_return": -0.2471610798,
+      "diagnostic_half_percent_risk_mdd": 0.2471610798
+    },
+    "boundary_full_stop_share": 0.0,
+    "official_target_met": false,
+    "continuous_bybit_replication_complete": false,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "interpretation": {
+    "supported": "The overreaction state exists with adequate event density across the four pre-2024 sample dates.",
+    "rejected": "A completed partial residual reclaim after the state does not identify a profitable mean-reversion entry at realistic cost and latency.",
+    "retired_dependency": "BTC-to-alt high-attention relative overextension followed by 25%/50% residual-reclaim reversal using the frozen parent event formula.",
+    "next_information_requirement": "Change the information source or payoff mechanism; do not tune adjacent reclaim or stop thresholds. A materially different continuation payoff may only be tested under a new preregistration and untouched dates."
+  },
+  "source_ids": [
+    "bybit-public-trades:BTCUSDT:2023-12-25,27,29,31",
+    "bybit-public-trades:SOLUSDT:2023-12-25,27,29,31",
+    "bybit-public-trades:XRPUSDT:2023-12-25,27,29,31"
+  ],
+  "code_commit": "3f6d163cde77ae362282d9b0a91cf9082a42e961",
+  "source_manifest_sha256": "95115a6a21c3c0843ad820502b41af0b4602c4cf5ce5f980cd6ab5294b22fb36",
+  "artifact_fingerprint": "e1f195f55a3c2ffb461cbbdc508643cd0f4b2b2b7f0b5c802b4f48f77c301ce4",
+  "artifacts": [
+    {
+      "path": "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30192865332/artifacts/8629176105",
+      "sha256": "e1f195f55a3c2ffb461cbbdc508643cd0f4b2b2b7f0b5c802b4f48f77c301ce4"
+    },
+    {
+      "path": "artifact://result/result.json",
+      "sha256": "77e47fd76e67cf99b027472c212e4b2ff0c9e82950ba894e3cdb79257b92fe1f"
+    },
+    {
+      "path": "artifact://result/candidate_results.csv",
+      "sha256": "c2b99e68bd39bedfa5d16b17524df96d078b58d191f019ddd99b6c32bbb39116"
+    },
+    {
+      "path": "artifact://result/trades.csv",
+      "sha256": "687b88168774c591d2cd2262c2953999c71504ce85bcefd4edc0f97ff453cefd"
+    },
+    {
+      "path": "artifact://result/decision_events.csv",
+      "sha256": "1b85d77ba5344070c7196d822abcbac92678b0817913ce6a20cc2d8077fd1414"
+    }
+  ],
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/107",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30192865332"
+  ],
+  "orders_submitted": false,
+  "paper_or_live_enabled": false,
+  "created_at": "2026-07-26T16:36:00+09:00"
+}
