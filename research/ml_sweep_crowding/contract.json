@@ -7,12 +7,11 @@
   "data": {
     "bybit_1m_start": "2021-01-01T00:00:00Z",
     "bybit_1m_end": "2024-06-30T23:59:00Z",
-    "bybit_source_mode": "official_static_mt4_listing_aware",
-    "bybit_static_root": "https://public.bybit.com/kline_for_metatrader4",
-    "bybit_source_correction_id": "CORRECTION-20260727-ML-SWEEP-STATIC-MT4-PINNED-FUNDING-003",
+    "bybit_source_mode": "immutable_bybit_derived_one_minute_mirror",
+    "bybit_source_correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-1M-MIRROR-004",
     "bybit_symbol_first_expected": {
       "BTCUSDT": "2021-01-01T00:00:00Z",
-      "ETHUSDT": "2021-03-01T00:00:00Z"
+      "ETHUSDT": "2021-03-15T00:00:00Z"
     },
     "superseded_sources": [
       {
@@ -22,8 +21,31 @@
       {
         "mode": "official_v5_paginated_kline_and_funding",
         "failure": "all documented public REST hosts returned country-restriction HTTP 403 from the GitHub US runner before opening market rows"
+      },
+      {
+        "mode": "official_static_mt4_listing_aware",
+        "failure": "monthly objects existed but BTCUSDT contained only 90.631254% of the continuous one-minute grid; no model or PnL opened"
       }
     ],
+    "pinned_bybit_one_minute_mirror": {
+      "dataset_id": "rogerdehe/klines-bybit",
+      "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
+      "probe_id": "PROBE-20260727-HF-BYBIT-1M-PINNED-002",
+      "timestamp_column": "date",
+      "files": {
+        "BTCUSDT": "futures/1m/BTC_USDT_USDT.parquet",
+        "ETHUSDT": "futures/1m/ETH_USDT_USDT.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "f9e742f7f7fa1af32ca09b03a0ba8773ab251213cd420f79d4380701ca81f265",
+        "ETHUSDT": "d9fab6b1fd3d1599cc98a0397127d0ed30ca3a518e1a2bf7981705d123bb266c"
+      },
+      "coverage": {
+        "BTCUSDT": "100% of 1,838,880 UTC minutes from 2021-01-01 through 2024-06-30",
+        "ETHUSDT": "100% of 1,733,760 UTC minutes from observed 2021-03-15 listing start through 2024-06-30"
+      },
+      "validity": "minute-aligned, no duplicates, no internal gap, finite positive OHLC and zero impossible OHLC rows"
+    },
     "pinned_bybit_funding_mirror": {
       "dataset_id": "rogerdehe/klines-bybit",
       "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
