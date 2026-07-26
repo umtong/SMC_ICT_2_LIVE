@@ -2,14 +2,35 @@
   "claim_id": "CLM-20260726-1914-ML-OPTION-SURFACE-001",
   "worker_id": "gpt-5.6-pro-20260726-1914",
   "base_revision": 11,
-  "status": "RUNNING",
+  "status": "REPORTED",
   "started_at": "2026-07-26T19:14:10+09:00",
-  "lease_until": "2026-07-27T03:14:10+09:00",
+  "completed_at": "2026-07-26T19:43:44+09:00",
   "objective_fingerprint": "0af3a73048864abf7f1e74026e67fa7e2f9dc16335c3b59bc86d314cce14a3b9",
   "scope_fingerprint": "0718cc2af0f104322f12a8f643f2f44360c66f6fb38b1d5859dbd744d867c909",
   "supersedes": "CLM-20260726-0107-OPTION-SURFACE-001",
   "supersession_reason": "The prior lease expired after a successful source/schema probe but before any model, candidate outcome, trade, PnL, Result Registry entry or rank decision.",
   "github_branch": "agent/r11-ml-option-surface-shape-001",
+  "pull_request": 150,
+  "result_id": "RES-20260726-ML-OPTION-SURFACE-SHAPE-001",
+  "result": {
+    "decision": "RETIRE_EXACT_PUBLIC_INFORMATION_UNIT",
+    "validation_stage": "PRE_2024_PUBLIC_SPARSE_FATAL_SCREEN",
+    "hard_validity": "PASS_INITIAL_CAUSAL_SOURCE_ATTEMPT",
+    "economic_status": "DATA_SCARCITY_AND_CONFIRMATION_BELOW_GATE",
+    "confirmation_complete_dates": "3/6",
+    "confirmation_rows": 6,
+    "model_auc": 0.875,
+    "structural_distance_auc": 1.0,
+    "brier_skill": -1.1271088774966556,
+    "development_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "workflow_run_id": 30198375775,
+    "artifact_id": 8630880496,
+    "artifact_digest": "sha256:2dc98787559a81826ac60e0523d7ce6d6c7e8fd10215021356a56c99d05a207a",
+    "drive_evidence_file_id": "1tVPhaa4iYFs1C00638VLui35H8aq-49q",
+    "run_report_document_id": "14RH5_KnVYjsVri16doZbThVBx9x9a3IzYBENRhZ57ao",
+    "durable_result_commit": "b9314ca917c332723b2311777023f29021043d4b"
+  },
   "scope": {
     "information_unit": "Completed Deribit BTC/ETH option-surface shape only: 25-delta risk reversal, 25-delta butterfly, ATM and RR term slopes, open-interest concentration when point-in-time, and prior-only changes.",
     "model": "Exactly one fixed explainable regularized logistic first-passage model, with one frozen calibration map if calibration sample size permits.",
@@ -19,7 +40,7 @@
       "RES-20260726-DVOL-XSEC-001 used ATM/DVOL level and IV-minus-realized-volatility, not surface shape.",
       "RES-20260726-ML-OPTION-HEDGE-001 used signed option transaction flow and inferred dealer gamma pressure, not completed cross-strike surface shape."
     ],
-    "data_treatment": "The public 2024 parquet is pilot-only and non-rank-eligible unless timestamp and point-in-time semantics pass. Pre-2024 Tardis month-start option-chain samples are a separate sparse falsification set. Official 2024-2026 project OOS remains sealed until a pre-2024 gate passes."
+    "data_treatment": "The public 2024 parquet was used only for source semantics and never for outcomes. The exact pre-2024 public sparse information unit failed before development PnL; official 2024-2026 remained sealed."
   },
   "permissions": {
     "credentials": false,
