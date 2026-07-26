@@ -1,14 +1,9 @@
-name: Direct utility authoritative macOS gap-safe screen
+name: Direct utility authoritative SHA-scoped gap-safe screen
 
 on:
   push:
     branches:
       - agent/r13-ml-direct-utility-gapfix-002
-    paths:
-      - ".github/workflows/ml-direct-utility-macos-r13.yml"
-      - "research/ml_direct_utility_20260726/**"
-  pull_request:
-    branches: [main]
     paths:
       - ".github/workflows/ml-direct-utility-macos-r13.yml"
       - "research/ml_direct_utility_20260726/**"
@@ -18,12 +13,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-direct-utility-macos-r13-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ml-direct-utility-authoritative-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   research:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     timeout-minutes: 340
     env:
       PYTHONHASHSEED: "0"
@@ -32,10 +27,10 @@ jobs:
       OMP_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
-      VECLIB_MAXIMUM_THREADS: "2"
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: agent/r13-ml-direct-utility-gapfix-002
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
@@ -55,9 +50,9 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_direct_utility_20260726
-          out=research_runs/ml_direct_utility_20260726/macos-r13
+          out=research_runs/ml_direct_utility_20260726/authoritative-r13
           mkdir -p "$out/source"
-          python -m json.tool "$root/EXECUTION_CORRECTION_007_MACOS_RUNNER_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_008_SHA_SCOPED_AUTOMATIC_RUN_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/CORRECTION_004_CURRENT_RANK_BENCHMARK_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
           python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
@@ -67,20 +62,17 @@ jobs:
           cp "$root/run.py" "$root/test_run.py" "$root/source_manifest.json" \
             "$root/preregistration.json" \
             "$root/CORRECTION_004_CURRENT_RANK_BENCHMARK_BEFORE_OUTCOME.json" \
-            "$root/EXECUTION_CORRECTION_007_MACOS_RUNNER_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_008_SHA_SCOPED_AUTOMATIC_RUN_BEFORE_OUTCOME.json" \
             "$out/source/"
-          (
-            cd "$out/source"
-            for file in *; do shasum -a 256 "$file"; done | sort > SOURCE_SHA256SUMS.txt
-          )
+          (cd "$out/source" && sha256sum * | sort > SOURCE_SHA256SUMS.txt)
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
 
       - uses: actions/cache@v4
         with:
           path: /tmp/ml-direct-utility-r13
-          key: ml-direct-utility-r13-macos-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json') }}
+          key: ml-direct-utility-r13-authoritative-${{ hashFiles('research/ml_direct_utility_20260726/preregistration.json') }}
           restore-keys: |
-            ml-direct-utility-r13-macos-
+            ml-direct-utility-r13-authoritative-
             ml-direct-utility-r13-
 
       - name: Run the unchanged corrected pre-2024 direct-utility screen
@@ -88,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           root=research/ml_direct_utility_20260726
-          out=research_runs/ml_direct_utility_20260726/macos-r13
+          out=research_runs/ml_direct_utility_20260726/authoritative-r13
           PYTHONPATH="$root" python "$root/run.py" \
             --output "$out" \
             --cache /tmp/ml-direct-utility-r13 \
@@ -101,9 +93,10 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          root=Path('research_runs/ml_direct_utility_20260726/macos-r13')
+          root=Path('research_runs/ml_direct_utility_20260726/authoritative-r13')
           result=json.loads((root/'RESULT.json').read_text())
           contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+          source=json.loads((root/'SOURCE_MANIFEST.json').read_text())
           prereg=json.loads(Path('research/ml_direct_utility_20260726/preregistration.json').read_text())
           assert result['claim_id']=='CLM-20260726-2013-ML-DIRECT-UTILITY-001'
           assert result['model_family_count']==1
@@ -116,14 +109,12 @@ jobs:
           assert contract['one_economic_decision_rule'] is True
           assert contract['prohibited_years']==[2024, 2025, 2026]
           assert '0.07001887213879954%' in prereg['development_gate_all_required']['geometric_daily_growth_at_24bp']
+          coverage=[x for x in source['files'] if x.get('kind')=='assembled_hourly_grid']
+          assert len(coverage)==4
+          assert all(x['gap_policy']=='NO_IMPUTATION_RESET_ALL_CROSSING_HORIZONS' for x in coverage)
           if not result['confirmation']['gate_passed']:
               assert result['development'] is None
               assert result['selected_risk_config'] is None
-          elif result['development'] is not None:
-              metric=result['development'].get('geometric_daily_growth_24bp')
-              if metric is None:
-                  metric=result['development'].get('geometric_daily_growth')
-              print(json.dumps({'current_rank_benchmark_24bp':0.0007001887213879954,'reported_development_growth':metric},sort_keys=True))
           print(json.dumps({'status':result['status'],'confirmation_gate':result['confirmation']['gate_passed'],'development_opened':result['development_opened'],'decision':result['decision']},sort_keys=True))
           PY
 
@@ -132,18 +123,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out=research_runs/ml_direct_utility_20260726/macos-r13
+          out=research_runs/ml_direct_utility_20260726/authoritative-r13
           mkdir -p "$out"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
-            | sort -z \
-            | while IFS= read -r -d '' file; do shasum -a 256 "$file"; done \
-            > "$out/OUTPUT_SHA256SUMS.txt"
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-direct-utility-macos-r13-${{ github.run_id }}
-          path: research_runs/ml_direct_utility_20260726/macos-r13
+          name: ml-direct-utility-authoritative-r13-${{ github.run_id }}
+          path: research_runs/ml_direct_utility_20260726/authoritative-r13
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
