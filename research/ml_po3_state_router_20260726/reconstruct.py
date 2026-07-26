@@ -6,7 +6,6 @@ import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-BUNDLE = ROOT / "run.py.gz.b64"
 OUTPUT_DIR = ROOT / "reconstructed"
 OUTPUT = OUTPUT_DIR / "run.py"
 EXPECTED_GZIP_SHA256 = "0eeb3a57d708d7ed7771acbaeea5cc8b42f35b67e56da796a29f006da83224e2"
@@ -14,7 +13,10 @@ EXPECTED_RUN_SHA256 = "7b6cccffe35e3253d1659ef0bba62450ba222a100252f42e771df7ba6
 
 
 def main() -> None:
-    encoded = "".join(BUNDLE.read_text(encoding="ascii").split())
+    parts = sorted(ROOT.glob("run.py.gz.b64.part*"))
+    if len(parts) != 5:
+        raise SystemExit(f"unexpected implementation part count: {len(parts)}")
+    encoded = "".join("".join(path.read_text(encoding="ascii").split()) for path in parts)
     compressed = base64.b64decode(encoded, validate=True)
     if hashlib.sha256(compressed).hexdigest() != EXPECTED_GZIP_SHA256:
         raise SystemExit("compressed implementation SHA-256 mismatch")
