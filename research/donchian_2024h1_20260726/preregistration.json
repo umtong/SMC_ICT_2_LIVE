@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2139-DONCHIAN-2024H1-001",
+  "result_id": "RES-20260726-DONCHIAN-2024H1-001",
+  "scientific_question": "Does the fixed pre-2024 current rank-one Donchian all-breakout strategy retain positive, cost-sized account growth on the first official sequential interval 2024H1 when replayed on Bybit-native hourly data with funding and one global slot?",
+  "chronology": {
+    "warmup_only": ["2023-12-01T00:00:00Z", "2023-12-31T23:59:59Z"],
+    "official_evaluation": ["2024-01-01T00:00:00Z", "2024-06-30T23:59:59Z"],
+    "prohibited": ["2024H2", "2025H1", "2025H2", "2026H1"],
+    "observed_interval_cannot_later_be_claimed_as_independent_oos_for_modified_rule": true
+  },
+  "strategy": {
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "timeframe_minutes": 60,
+    "entry": "completed close outside prior 96-hour high/low, enter next-hour open",
+    "stop": "two ATR20 from entry with adverse opening-gap execution",
+    "exit": "completed close through opposite prior 48-hour channel, exit next-hour open",
+    "elapsed_time_liquidation": false,
+    "global_slot": 1,
+    "simultaneous_signal_priority": "largest frozen breakout-distance divided by ATR; then symbol and event key",
+    "planned_structural_risk_fraction": 0.005,
+    "notional_cap_multiple": 5.0
+  },
+  "cost_and_execution": {
+    "round_trip_cost_bps": [12, 18, 24],
+    "actual_funding": "official Bybit funding history when complete",
+    "funding_fallback": "adverse 1bp per 8-hour boundary for either direction when history is incomplete",
+    "intrabar_ambiguity": "protective stop first",
+    "terminal_boundary": "mark open position at 2024-07-01T00:00:00Z without a forced close"
+  },
+  "outputs": [
+    "complete trade ledger",
+    "hourly marked equity",
+    "all UTC calendar-day NAV",
+    "MDD, PF, median, mean, win rate and symbol/month decomposition",
+    "top 1%, 5% and 10% positive-event removal followed by full slot rerouting"
+  ],
+  "decision_rule": {
+    "positive_but_structurally_weak": "record and use 2024H1 evidence to choose a materially different next-half hypothesis; do not protect the route",
+    "negative_or_winner_removal_collapse": "retire or demote immediately and switch alpha source/payoff",
+    "ranking": "insert or reorder immediately under normalized available conditions"
+  },
+  "orders_submitted": false
+}
