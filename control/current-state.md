@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 14
+- revision: 15
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9E484`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
@@ -27,9 +27,7 @@ The provisional first place is the Donchian all-breakout route `a70626d9e484285f
 - maximum used leverage: `0.875x / 0.723x`
 - exits: `25` channel exits, `74` ATR stops
 
-It is first because it has the highest recorded after-cost geometric growth among current-contract-compatible paths. It is not a solution: the source is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, winner removal destroys the account, and the route is non-ML.
-
-Rank does not determine research priority.
+It is first only because it has the highest recorded after-cost geometric growth among current-contract-compatible paths. It is not a solution or a protected research direction: the source is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, winner removal destroys the account, and the route is non-ML.
 
 ## Cumulative strategy ranking
 
@@ -42,42 +40,25 @@ Rank does not determine research priority.
 7. KRW-relative regional SMT reversal `297bb96ecbf036bb` — `0.00487483%`/day at 12 bps; two trades; winner-removal failure.
 8. Liquidation exhaustion reversal `0c0b773a5be4eab4` — `0.00358316%`/day at 18 bps; 19 development trades; fit sign reversal and winner-removal failure.
 
-All eight are below the 1% reference and none has deployment authority.
+All eight are below the 1% reference and none has deployment authority. Rank creates no incumbency protection.
 
-## Removed from the active ranking
+## Removed or unranked completed work
 
-- dynamic state-exit: `maximum_hold_bars=96` and default eight-hour timeout exit.
-- aligned continuation: `maximum_holding_minutes` and scheduled horizon close.
-- spot-perpetual overshoot reversal: `candidate.hold`, `timeout_i` and timeout exit.
-- DVOL low-VRP continuation: `maximum_hold_bars`.
-- high-resistance sweep: durable result status `INVALID` and `hold=48`.
-- fragmented-flow reversal: `hold_minutes=30`, only four trades and negative winner-removal path.
+- Dynamic state-exit, aligned continuation, spot-perpetual overshoot reversal, DVOL low-VRP continuation, high-resistance sweep and fragmented-flow reversal remain outside the ranking because of prohibited elapsed-time exits or hard invalidity.
+- Direct after-cost utility ML, `RES-20260726-ML-DIRECT-UTILITY-001`: the frozen calibration scale was `0`, untouched confirmation prediction variance was `0`, error was worse than a constant baseline, and 12/18/24-bp authorized trades were `0 / 0 / 0`. Development and risk/leverage search remained unopened; exact information unit retired.
+- Path-continuity first-passage ML: HGBT AUC `0.571277` versus structural-distance baseline `0.635450`; 24-bp account return `-71.93%`; exact route retired.
+- OKX spot-swap/OI consensus relay: train/calibration/confirmation event counts `116 / 67 / 8`; no model; exact sparse unit retired.
+- Aave V2/V3 liquidation forced-flow: keyless archival log transport unavailable before any price, label, model or PnL; source route closed without an alpha conclusion.
+- Coinbase spot-flow and mark/index raid-acceptance ML remain closed under their recorded source or economic failures.
 
-These historical results remain recorded but cannot rank under the fixed no-elapsed-time-liquidation contract.
-
-## Ranking policy
-
-- A result-local label such as `fatal screen` or `non-rank-eligible` does not erase a current-contract-compatible account path from the project cumulative ranking.
-- Incomplete cost, data or execution comparability is represented by a provisional rank and explicit comparison confidence.
-- A prohibited elapsed-time liquidation is a contract failure and cannot be offset by higher return.
-- Below 1%, higher sustainable after-cost geometric growth and the smaller target gap rank ahead.
-- Economic-gate status, validation stage, deployment status and research priority remain separate from rank.
-- A new positive hard-valid result is inserted immediately; a newly discovered contract failure removes the candidate immediately.
-
-## Work stopped and retired
-
-The fixed 2024 portfolio combining the invalid dynamic component with aligned continuation remains closed before any 2024 strategy outcome.
-
-Coinbase spot-flow ML is closed as `SOURCE_UNAVAILABLE`; no market row or model outcome existed. Bybit mark/index raid-acceptance ML is a complete negative result. Neither route receives threshold, risk or leverage rescue.
+Failed candidates receive no adjacent feature, threshold, calibration, stop, risk or leverage rescue.
 
 ## Active high-information ML work
 
-- four-asset direct after-cost utility regression with turnover-aware `KEEP / SWITCH / FLAT` actions;
-- OKX spot-swap consensus and OI sponsorship relay into delayed executable Bybit BBO;
-- path-continuity structural first-passage ML;
-- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH ML screen.
+- Stablecoin issuance/destruction source gate, PR #189: actual Ethereum USDT/USDC mint and burn events, followed conditionally by one frozen BTC/ETH first-passage HGBT.
+- Uniswap WETH-stable inventory-transfer source gate, PR #190: actual WETH/USDC/USDT pool inventory deltas, followed conditionally by one frozen ETH hedge-relay HGBT.
 
-These paths are prioritized because they can create cost-sized information before Bybit delivery, not because of the current rank.
+These sources are prioritized because they observe external inventory creation or completed inventory transfer before potential Bybit delivery. They are not extensions of Donchian or completed-bar setup grids.
 
 ## Current blockers
 
@@ -85,13 +66,13 @@ The first two ranks collapse when large winners are removed. CME gap is also win
 
 ## Current objective
 
-Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the active direct-utility, OKX, path-continuity and Aave paths; insert any superior result immediately and retire any failed dependency immediately.
+Maximize realistic after-cost account growth and replace the benchmark with a materially stronger ML information source or payoff. Do not tune or protect the Donchian benchmark. Consume each source gate immediately: a pass opens the frozen economic screen; a failure closes the route without polishing it.
 
 ## Next exact action
 
-1. Complete the direct-utility gap-boundary correction without imputation and run its frozen chronological screen.
-2. Consume the OKX and path-continuity results as soon as immutable account paths exist.
-3. Finish the Aave source gate; pass opens the frozen ML screen, failure retires the source.
-4. If all fail, open a materially new forced-flow or inventory-transfer source rather than another completed-bar parameter family.
+1. Finish the Uniswap WETH-stable inventory-transfer source gate; on pass run the frozen conditional ML screen immediately, on failure close the source route.
+2. Finish the full-chronology stablecoin issuance/burn source gate under the same pass-or-close rule.
+3. Insert any superior hard-valid account path into the cumulative ranking immediately.
+4. If both external-inventory routes fail, select a materially different forced-flow source rather than returning to completed-bar parameter families.
 
-Updated: 2026-07-26 21:08 KST
+Updated: 2026-07-26 21:40 KST
