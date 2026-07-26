@@ -24,6 +24,7 @@ root=Path('research_runs/cross_venue_price_discovery_20260725/exact_arrival_v5d'
     '2026_opened':False,
     'causal_engine_version':'5D',
     'source_clock_contract':'same-region Tardis local_timestamp; completed 100ms state only',
+    'performance_contract':'immutable first-executable-quote index cached once per aligned frame',
 },indent=2,sort_keys=True)+'\n',encoding='utf-8')
 PY
 
@@ -45,6 +46,7 @@ python -m py_compile \
   "$root/cross_venue_basis_v5d.py" \
   "$root/cross_venue_execution_v5d.py" \
   "$root/cross_venue_failclosed_v5d.py" \
+  "$root/cross_venue_performance_v5d.py" \
   "$root/cross_venue_pilot_v5d.py" \
   "$root/cross_venue_counterfactual_v5d.py" \
   "$root/cross_venue_development_v5d.py" \
@@ -54,7 +56,8 @@ python -m py_compile \
   "$root/test_cross_venue_execution_v5c.py" \
   "$root/test_cross_venue_development_v5c.py" \
   "$root/test_cross_venue_execution_v5d.py" \
-  "$root/test_cross_venue_development_v5d.py"
+  "$root/test_cross_venue_development_v5d.py" \
+  "$root/test_cross_venue_performance_v5d.py"
 
 PYTHONPATH="$root" pytest -q \
   "$root/test_cross_venue_execution_v5.py" \
@@ -64,6 +67,7 @@ PYTHONPATH="$root" pytest -q \
   "$root/test_cross_venue_development_v5c.py" \
   "$root/test_cross_venue_execution_v5d.py" \
   "$root/test_cross_venue_development_v5d.py" \
+  "$root/test_cross_venue_performance_v5d.py" \
   2>&1 | tee "$runroot/tests.log"
 PYTHONPATH="$root" python "$root/source_probe_v2.py" --self-test \
   --output "$runroot" 2>&1 | tee "$runroot/probe_self_test.log"
@@ -87,11 +91,13 @@ sha256sum \
   "$root/cross_venue_basis_v5d.py" \
   "$root/cross_venue_execution_v5d.py" \
   "$root/cross_venue_failclosed_v5d.py" \
+  "$root/cross_venue_performance_v5d.py" \
   "$root/cross_venue_pilot_v5d.py" \
   "$root/cross_venue_counterfactual_v5d.py" \
   "$root/cross_venue_development_v5d.py" \
   "$root/test_cross_venue_execution_v5d.py" \
   "$root/test_cross_venue_development_v5d.py" \
+  "$root/test_cross_venue_performance_v5d.py" \
   "$root/run_v5d_ci.sh" \
   > "$runroot/INPUT_SHA256SUMS.txt"
 
@@ -170,6 +176,7 @@ payload={
     'execution_gap_contract':development.get('execution_gap_contract'),
     'exit_floor_contract':development.get('exit_floor_contract'),
     'drawdown_contract':development.get('drawdown_contract'),
+    'performance_contract':pilot.get('performance_contract'),
 }
 (root/'V5D_SEQUENTIAL_RESULT.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
 print(json.dumps(payload,indent=2,sort_keys=True))
