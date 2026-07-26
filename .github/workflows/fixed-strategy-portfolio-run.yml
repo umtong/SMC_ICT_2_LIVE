@@ -6,253 +6,61 @@ on:
     paths:
       - "research/fixed_strategy_portfolio_20260726/**"
       - ".github/workflows/fixed-strategy-portfolio-run.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "research/fixed_strategy_portfolio_20260726/**"
-      - ".github/workflows/fixed-strategy-portfolio-run.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
-  actions: read
 
 concurrency:
-  group: fixed-two-strategy-portfolio-${{ github.event.pull_request.number || github.ref }}
+  group: fixed-two-strategy-portfolio-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  PYTHONHASHSEED: "0"
-  PYTHONUNBUFFERED: "1"
-  PYTHONFAULTHANDLER: "1"
-  OMP_NUM_THREADS: "2"
-  OPENBLAS_NUM_THREADS: "2"
-  MKL_NUM_THREADS: "2"
-  NUMEXPR_NUM_THREADS: "2"
-  ROOT: research/fixed_strategy_portfolio_20260726
-  DATA_ROOT: /tmp/fixed-strategy-portfolio-market
-  COMPONENT_ROOT: /tmp/fixed-strategy-portfolio-components
-  OUT: ${{ github.workspace }}/research_runs/fixed_strategy_portfolio_20260726
-
 jobs:
-  causal-account-replay:
+  stop-before-market-outcome:
     runs-on: ubuntu-24.04
-    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install frozen environment
-        run: |
-          set -euo pipefail
-          python -m pip install --upgrade "pip==25.1.1"
-          python -m pip install \
-            "numpy==2.1.3" "pandas==2.2.3" "pyarrow==18.1.0" \
-            "numba==0.61.2" "requests==2.32.4" "pytest==8.3.4"
-
-      - name: Checkout exact frozen dynamic source
-        uses: actions/checkout@v4
-        with:
-          repository: umtong/SMC_ICT_2_LIVE
-          ref: 4a36ca54115517e77955d2d6ce1e4cb58c1fe691
-          path: dependency/dynamic
-          fetch-depth: 1
-
-      - name: Checkout exact frozen absorption source
-        uses: actions/checkout@v4
-        with:
-          repository: umtong/SMC_ICT_2_LIVE
-          ref: agent/absorption-flow-benchmark-20260725
-          path: dependency/absorption
-          fetch-depth: 1
-
-      - name: Reconstruct and verify scientific sources
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf "$COMPONENT_ROOT" "$OUT"
-          mkdir -p "$COMPONENT_ROOT/dynamic" "$OUT"
-          python "$ROOT/reconstruct_portfolio.py"
-          python -m py_compile "$ROOT/reconstruct_portfolio.py" \
-            "$ROOT/reconstructed_portfolio/prepare_data.py" \
-            "$ROOT/reconstructed_portfolio/portfolio.py"
-          python "$ROOT/reconstructed_portfolio/portfolio.py" --self-test
-          python - <<'PY'
-          import base64, hashlib, io, json, os, pathlib, shutil, tarfile
-          root=pathlib.Path('dependency/dynamic/research/dynamic_factor_residual_20260725')
-          manifest=json.loads((root/'EXTENSION_BUNDLE_MANIFEST.json').read_text())
-          chunks=[]
-          for item in manifest['parts']:
-              raw=(root/item['path']).read_bytes()
-              assert len(raw)==item['bytes']
-              assert hashlib.sha256(raw).hexdigest()==item['sha256']
-              chunks.append(raw)
-          combined=b''.join(chunks)
-          assert hashlib.sha256(combined).hexdigest()==manifest['combined_base64_sha256']
-          archive=base64.b64decode(combined,validate=True)
-          assert len(archive)==manifest['decoded_tar_gz_bytes']
-          assert hashlib.sha256(archive).hexdigest()==manifest['decoded_tar_gz_sha256']
-          out=pathlib.Path(os.environ['COMPONENT_ROOT'])/'dynamic'
-          with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tf:
-              tf.extractall(out,filter='data')
-          assert hashlib.sha256((out/'MANIFEST.json').read_bytes()).hexdigest()==manifest['content_manifest_sha256']
-          inner=json.loads((out/'MANIFEST.json').read_text())
-          for item in inner['files']:
-              payload=(out/item['path']).read_bytes()
-              assert len(payload)==item['bytes']
-              assert hashlib.sha256(payload).hexdigest()==item['sha256']
-          shutil.copy2(root/'dynamic_factor_residual.py',out/'dynamic_factor_residual.py')
-          shutil.copy2(root/'preregistration.json',out/'dynamic_preregistration.json')
-          shutil.copy2(root/'result_summary.json',out/'dynamic_result_summary.json')
-          PY
-          python dependency/absorption/research/absorption_flow_benchmark_v1/reconstruct.py
-          absorption=dependency/absorption/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
-          echo "e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  $absorption" | sha256sum -c -
-          python -m py_compile "$COMPONENT_ROOT"/dynamic/*.py "$absorption"
-          echo "b1351e751000a04a866bca134deaae37763998500fe2a453127311040c8c6c49  $ROOT/preregistration.json" | sha256sum -c -
-          python scripts/validate_project.py
-
-      - name: Download immutable dynamic market snapshot
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p source
-          gh run download 30147824722 --repo umtong/SMC_ICT_2_LIVE \
-            --name cross-asset-leadlag-baseline-20260725 --dir source
-          test -f source/snapshot/BTCUSDT_5m.npz
-          test -f source/snapshot/DATASET_MANIFEST.json
-          sha256sum source/snapshot/* > "$OUT/DYNAMIC_SNAPSHOT_SHA256SUMS.txt"
-
-      - name: Restore official Binance archive cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/fixed-strategy-portfolio-market/raw
-          key: fixed-strategy-portfolio-binance-usdm-202203-202412-v1
-
-      - name: Build checksum-verified official market dataset
-        run: |
-          set -euo pipefail
-          python "$ROOT/reconstructed_portfolio/prepare_data.py" \
-            --root "$DATA_ROOT" --start 2022-03 --end 2024-12 --workers 12 \
-            2>&1 | tee "$OUT/PREPARE_DATA.log"
-          cp "$DATA_ROOT/DATASET_MANIFEST.json" "$OUT/DATASET_MANIFEST.json"
-          cp "$DATA_ROOT/DATASET_SUMMARY.json" "$OUT/DATASET_SUMMARY.json"
-
-      - name: Reproduce components and replay frozen 2024 accounts
-        shell: bash
-        run: |
-          set -euo pipefail
-          python "$ROOT/reconstructed_portfolio/portfolio.py" \
-            --dynamic-root "$COMPONENT_ROOT/dynamic" \
-            --absorption-root dependency/absorption/research/absorption_flow_benchmark_v1 \
-            --snapshot source/snapshot --data-root "$DATA_ROOT" --output "$OUT" \
-            2>&1 | tee "$OUT/RUN.log"
-
-      - name: Verify authority, seals and decision-ready result
-        if: always()
-        run: |
-          set -euo pipefail
-          test -s "$OUT/RESULT.json"
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          out=Path(os.environ['OUT'])
-          result=json.loads((out/'RESULT.json').read_text())
-          assert result['orders_submitted'] is False
-          assert result['2025_opened'] is False and result['2026_opened'] is False
-          passed=bool(result['component_equivalence']['passed'])
-          if passed:
-              assert result['official_2024_opened'] is True
-              assert result['hard_validity']=='PASS_CAUSAL_FIXED_2024_INTEGRATION'
-              assert result['status'] in {'PASS_GATE','TESTED_BELOW_GATE'}
-          else:
-              assert result['official_2024_opened'] is False
-              assert result['status']=='HARD_INVALID_COMPONENT_EQUIVALENCE_FAIL'
-              assert result['hard_validity']=='FAIL_CLOSED'
-          print('VERIFIED_RESULT='+json.dumps(result,sort_keys=True,separators=(',',':')))
-          PY
-          sha256sum "$ROOT/preregistration.json" "$ROOT/source_manifest.json" \
-            "$ROOT/reconstruct_portfolio.py" "$ROOT"/source_bundle.tar.gz.b64.part* \
-            "$ROOT/reconstructed_portfolio/prepare_data.py" \
-            "$ROOT/reconstructed_portfolio/portfolio.py" \
-            dependency/absorption/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py \
-            "$COMPONENT_ROOT"/dynamic/dynamic_factor_residual.py \
-            "$COMPONENT_ROOT"/dynamic/rank_rotation.py \
-            "$COMPONENT_ROOT"/dynamic/state_exit.py > "$OUT/INPUT_SHA256SUMS.txt"
-          find "$OUT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
-            | sort -z | xargs -0 sha256sum > "$OUT/OUTPUT_SHA256SUMS.txt"
-
-      - name: Publish decision-ready small result to claim branch
-        if: always() && github.event_name == 'push'
+      - name: Record current-contract invalidation without opening 2024 outcome
         shell: bash
         run: |
           set -euo pipefail
           dest=research_results/fixed_strategy_portfolio_20260726
           rm -rf "$dest"
           mkdir -p "$dest"
-          if test -s "$OUT/RESULT.json"; then
-            for name in RESULT.json COMPONENT_EQUIVALENCE.json METRICS.json WINNER_REMOVAL.json \
-              DATASET_SUMMARY.json DATASET_MANIFEST.json INPUT_SHA256SUMS.txt OUTPUT_SHA256SUMS.txt; do
-              test ! -f "$OUT/$name" || cp "$OUT/$name" "$dest/$name"
-            done
-            python - <<'PY'
-          import json, os
-          from pathlib import Path
-          dest=Path('research_results/fixed_strategy_portfolio_20260726')
-          result=json.loads((dest/'RESULT.json').read_text())
-          attestation={
-              'schema_version':1,
-              'active_claim_id':'CLM-20260726-1955-FIXED-PORTFOLIO-TAKEOVER-001',
-              'scientific_claim_id':'CLM-20260726-0100-FIXED-PORTFOLIO-001',
-              'workflow_run_id':os.environ['GITHUB_RUN_ID'],
-              'workflow_sha':os.environ['GITHUB_SHA'],
-              'status':result['status'],
-              'hard_validity':result['hard_validity'],
-              'official_2024_opened':result['official_2024_opened'],
-              'orders_submitted':False,
+          cat > "$dest/RESULT.json" <<'JSON'
+          {
+            "schema_version": 1,
+            "active_claim_id": "CLM-20260726-1955-FIXED-PORTFOLIO-TAKEOVER-001",
+            "scientific_claim_id": "CLM-20260726-0100-FIXED-PORTFOLIO-001",
+            "result_id": "RES-20260726-FIXED-PORTFOLIO-STOPPED-001",
+            "status": "STOPPED_INVALID_COMPONENT_BEFORE_ADMISSIBLE_2024_OUTCOME",
+            "hard_validity": "NOT_RUN_COMPONENT_INELIGIBLE_CURRENT_EXIT_CONTRACT",
+            "economic_status": "NOT_TESTED",
+            "ranking_role": "NONE",
+            "reason": "Dynamic component 021fbab613517a31ad98 stores maximum_hold_bars and closes surviving positions at entry plus that fixed horizon. Revision-13 Project State removed it from the current-contract ranking because elapsed-time liquidation is prohibited. A portfolio containing that component cannot produce ranking-eligible evidence.",
+            "official_2024_opened": false,
+            "admissible_2024_outcome_created": false,
+            "2025_opened": false,
+            "2026_opened": false,
+            "orders_submitted": false,
+            "next_action": "Do not repair or replace the invalid component inside this preregistration. Continue strategy-defined-exit ML paths and compare any survivor with current first place FIRST-20260726-DONCHIAN-AFTER-LOSER-A70626D9."
           }
-          (dest/'CI_ATTESTATION.json').write_text(json.dumps(attestation,indent=2,sort_keys=True)+'\n')
-          PY
-          else
-            python - <<'PY'
-          import json, os
-          from pathlib import Path
-          payload={
-              'schema_version':1,
-              'active_claim_id':'CLM-20260726-1955-FIXED-PORTFOLIO-TAKEOVER-001',
-              'status':'INCOMPLETE_MECHANICAL_NO_RESULT',
-              'workflow_run_id':os.environ['GITHUB_RUN_ID'],
-              'workflow_sha':os.environ['GITHUB_SHA'],
-              'official_2024_opened':False,
-              'orders_submitted':False,
+          JSON
+          cat > "$dest/CI_ATTESTATION.json" <<JSON
+          {
+            "schema_version": 1,
+            "workflow_run_id": "${GITHUB_RUN_ID}",
+            "workflow_sha": "${GITHUB_SHA}",
+            "status": "STOPPED_INVALID_COMPONENT_BEFORE_ADMISSIBLE_2024_OUTCOME",
+            "orders_submitted": false
           }
-          Path('research_results/fixed_strategy_portfolio_20260726/CI_ATTESTATION.json').write_text(
-              json.dumps(payload,indent=2,sort_keys=True)+'\n')
-          PY
-            test ! -f "$OUT/PREPARE_DATA.log" || cp "$OUT/PREPARE_DATA.log" "$dest/PREPARE_DATA.log"
-            test ! -f "$OUT/RUN.log" || cp "$OUT/RUN.log" "$dest/RUN.log"
-          fi
+          JSON
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add "$dest"
-          if git diff --cached --quiet; then
-            exit 0
+          if ! git diff --cached --quiet; then
+            git commit -m "Stop invalid fixed portfolio before admissible 2024 outcome"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
-          git commit -m "Record fixed portfolio 2024 decision-ready result"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: fixed-strategy-portfolio-2024-${{ github.sha }}
-          path: research_runs/fixed_strategy_portfolio_20260726
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 6
