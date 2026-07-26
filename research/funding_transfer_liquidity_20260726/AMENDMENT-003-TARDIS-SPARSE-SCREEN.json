@@ -1,0 +1,170 @@
+{
+  "amendment_id": "AMEND-20260726-FUNDING-TRANSFER-TARDIS-SPARSE-003",
+  "causal_reconstruction": {
+    "availability_clock": "Tardis local_timestamp in microseconds",
+    "bar_clock": "Completed UTC-aligned 5-minute states are reconstructed from messages grouped by local_timestamp; last_price supplies OHLC and (mark_price-index_price)/index_price supplies the causal premium close.",
+    "confirmation": "One or two complete post-settlement bars [T,T+5m) or [T,T+10m).",
+    "entry": "First observed last_price at or after T+(confirm_bars+1)*5m, required within 1 second of that boundary.",
+    "exit": "First observed last_price at or after entry+15/30/60/120 minutes, required within 1 second.",
+    "global_slot": "One accepted position across all eligible symbols; same-entry conflicts use frozen state score then symbol order; entry at or before the preceding exit timestamp is prohibited.",
+    "pre_state": "Pre-close and premium use [T-5m,T). The signed 60-minute move uses the close 12 completed bars earlier. sigma5 is the square-root mean of the prior rolling 48 five-minute squared log returns with at least 36 observations.",
+    "settled_rate_availability": "For a funding_timestamp T, the final funding_rate becomes usable at the first record carrying T whose local_timestamp is >= T and <= T+5 minutes.",
+    "settlement_filter": "Only nonzero settlements inside the source UTC day with sufficient prior state are admitted. The 00:00 event is skipped because first-day files do not contain the required prior 60-minute and volatility state."
+  },
+  "claim_id": "CLM-20260726-1150-FUNDING-TRANSFER-001",
+  "data_contract": {
+    "development_dates": [
+      "2023-01-01",
+      "2023-02-01",
+      "2023-03-01",
+      "2023-04-01",
+      "2023-05-01",
+      "2023-06-01",
+      "2023-07-01",
+      "2023-08-01",
+      "2023-09-01",
+      "2023-10-01",
+      "2023-11-01",
+      "2023-12-01"
+    ],
+    "fit_dates": [
+      "2022-01-01",
+      "2022-02-01",
+      "2022-03-01",
+      "2022-04-01",
+      "2022-05-01",
+      "2022-06-01",
+      "2022-07-01",
+      "2022-08-01",
+      "2022-09-01",
+      "2022-10-01",
+      "2022-11-01",
+      "2022-12-01"
+    ],
+    "later_periods": "2024-2026 code-prohibited and unopened",
+    "provider": "Tardis public normalized Bybit derivative_ticker first-day samples",
+    "source_coverage_eligibility": {
+      "at_least_one_of": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "minimum_available_dates_per_partition": 10,
+      "minimum_valid_non_midnight_settlements_per_partition": 18,
+      "rule": "Eligibility is determined only from source availability and causal field completeness, never returns or candidate performance."
+    },
+    "symbols_attempted": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "url_template": "https://datasets.tardis.dev/v1/bybit/derivative_ticker/{YYYY}/{MM}/01/{SYMBOL}.csv.gz"
+  },
+  "dependency_fingerprint": "ac4a68536463e12dc0fb897da7eca685964bf3f201a1c7cb8f71e8bb1be0db97",
+  "fit_only_thresholds": {
+    "funding_and_premium_quantiles": "estimated per eligible symbol from unique fit settlements only",
+    "minimum_unique_fit_settlements_per_eligible_symbol": 18,
+    "volatility_buckets": "per-symbol fit-only 1/3 and 2/3 sigma quantiles"
+  },
+  "interpretation_boundary": {
+    "if_survivor": "Keep 2024 sealed and reconstruct remaining pre-2024 continuous data, exact BBO/depth, first-imbalance-retracement execution, actual hold-period funding, structural exits, risk sizing and continuous NAV.",
+    "if_zero_survivors": "Retire this exact first-day Tardis funding-transfer formulation. Reopen only with continuous point-in-time coverage or a materially different cash-transfer/payoff source, not adjacent threshold tuning.",
+    "orders_submitted": false,
+    "rank_eligible": false
+  },
+  "prohibitions": [
+    "No 2024-2026 file URL, request, row or outcome.",
+    "No exchange timestamp in place of local arrival time for information availability.",
+    "No same-boundary or favorable OHLC fill.",
+    "No symbol inclusion based on return or candidate performance.",
+    "No family, threshold, cost, baseline, gate or fallback change after fit/development outcome rows are read.",
+    "No live credentials or orders.",
+    "No cumulative-ranking promotion from this sparse proxy screen."
+  ],
+  "registered_before_outcome_bearing_fit_or_development_rows": true,
+  "result_id": "RES-20260726-FUNDING-TRANSFER-TARDIS-SPARSE-001",
+  "schema_version": 1,
+  "source_probe_evidence": {
+    "artifact_id": 8628812877,
+    "candidate_pnl_computed": false,
+    "probe_source_sha256": "7e6c4f3efb9e0b77bde2a22c077b13563fe49aed07b25edaf5edd613cf44cf20",
+    "strategy_outcomes_read": false,
+    "verified_fields": [
+      "timestamp",
+      "local_timestamp",
+      "funding_timestamp",
+      "funding_rate",
+      "last_price",
+      "index_price",
+      "mark_price",
+      "open_interest"
+    ],
+    "workflow_run_id": 30191841221
+  },
+  "sparse_matched_baseline": {
+    "direction_minimum": 24,
+    "exact_symbol_direction_volatility_minimum": 6,
+    "fallback_accuracy": 0.5,
+    "source": "fit events only; evaluated separately by confirmation-bars and horizon",
+    "symbol_direction_minimum": 12
+  },
+  "sparse_survivor_gate": {
+    "maximum_fit_and_development_unresolved_share": 0.01,
+    "maximum_top5_positive_pnl_share_18bps": 0.5,
+    "minimum_development_profit_factor_18bps": 1.15,
+    "minimum_development_trades_18bps": 12,
+    "minimum_fit_matched_accuracy_lift": 1.05,
+    "minimum_fit_trades_18bps": 12,
+    "minimum_gross_direction_accuracy_strictly_above": 0.55,
+    "minimum_positive_development_months": 7,
+    "positive_after_top10pct_positive_removal_18bps": true,
+    "positive_development_median_12bps": true,
+    "positive_development_return_18_and_24bps": true,
+    "positive_fit_return_18bps": true
+  },
+  "unchanged_scientific_contract": {
+    "candidate_count": 720,
+    "confirmation_bars": [
+      1,
+      2
+    ],
+    "families": [
+      "deferred_payer_flush",
+      "prepaid_sweep_reversal",
+      "premium_anchor_snapback"
+    ],
+    "funding_quantiles": [
+      0.75,
+      0.9,
+      0.97
+    ],
+    "horizons_minutes": [
+      15,
+      30,
+      60,
+      120
+    ],
+    "post_thresholds": [
+      0.0,
+      0.25
+    ],
+    "pre_move_thresholds": [
+      0.5,
+      1.0
+    ],
+    "premium_contraction_thresholds": [
+      0.1,
+      0.25
+    ],
+    "premium_quantiles": [
+      0.5,
+      0.75,
+      0.9
+    ],
+    "round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ]
+  }
+}
