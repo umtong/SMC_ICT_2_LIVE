@@ -2,17 +2,6 @@ name: YT Trinity public transcript corpus
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - research/yt_trinity_ml/channels.json
-      - research/yt_trinity_ml/harvest_transcripts.py
-      - research/yt_trinity_ml/build_concept_index.py
-      - research/yt_trinity_ml/extract_rule_ontology.py
-      - research/yt_trinity_ml/tests/test_harvest_transcripts.py
-      - research/yt_trinity_ml/WORK_CLAIM.md
-      - .github/workflows/yt-trinity-transcript-harvest.yml
   push:
     branches:
       - agent/r22-yt-trinity-ml-001
