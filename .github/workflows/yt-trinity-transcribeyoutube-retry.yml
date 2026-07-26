@@ -1,28 +1,30 @@
-name: YT Trinity retry 7 transcripts via public API
+name: YT Trinity complete native-caption corpus
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - agent/r22-yt-trinity-ml-001
     paths:
+      - research/yt_trinity_ml/harvest_transcribeyoutube_full.py
       - .github/workflows/yt-trinity-transcribeyoutube-retry.yml
-      - control/yt-trinity-transcribeyoutube-retry-trigger.json
+      - control/yt-trinity-transcribeyoutube-full-trigger.json
 
 permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-transcribeyoutube-retry-${{ github.ref_name }}
-  cancel-in-progress: true
+  group: yt-trinity-complete-native-caption-${{ github.ref_name }}
+  cancel-in-progress: false
 
 env:
   PYTHONUNBUFFERED: "1"
 
 jobs:
-  retry-seven:
+  harvest:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,314 +33,55 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install bounded HTTP dependency
-        run: python -m pip install --disable-pip-version-check "requests==2.32.4"
-      - name: Fetch the seven unresolved target transcripts sequentially
+          cache: pip
+      - name: Install bounded dependency and validate parser
+        run: |
+          python -m pip install -q --disable-pip-version-check "requests==2.32.4"
+          python -m py_compile \
+            research/yt_trinity_ml/harvest_transcribeyoutube_full.py \
+            research/yt_trinity_ml/build_concept_index.py \
+            research/yt_trinity_ml/extract_rule_ontology.py
+          python research/yt_trinity_ml/harvest_transcribeyoutube_full.py --self-test
+      - name: Harvest all 196 inventory items sequentially below provider rate limit
         continue-on-error: true
         run: |
-          mkdir -p artifact/transcribeyoutube-retry
-          python - <<'PY'
-          from __future__ import annotations
-
-          import hashlib
-          import json
-          import os
-          import time
-          from datetime import datetime, timezone
-          from pathlib import Path
-          from typing import Any
-
-          import requests
-
-          ENDPOINT = "https://transcribeyoutube.com/api/transcript"
-          POSITIVE_CONTROL = {
-              "channel_slug": "indicator_sensei",
-              "channel_display_name": "지표센세",
-              "video_id": "F6wDs1HRTSo",
-              "title": "positive control",
-          }
-          TARGETS = [
-              {
-                  "channel_slug": "chartbro",
-                  "channel_display_name": "차트브로",
-                  "video_id": "Fg3vsezz714",
-                  "title": "⏰️Trading Becomes Easier When You Set a Reference Time",
-                  "duration_s": 621,
-              },
-              {
-                  "channel_slug": "indicator_sensei",
-                  "channel_display_name": "지표센세",
-                  "video_id": "1duAc0fYbNI",
-                  "title": "웨이브 트렌드 지표 사용방법",
-                  "duration_s": 64,
-              },
-              {
-                  "channel_slug": "indicator_sensei",
-                  "channel_display_name": "지표센세",
-                  "video_id": "9wqZejuyv6Y",
-                  "title": "게으른 트레이더가 하루 5분투자해서 돈버는방법",
-                  "duration_s": 1026,
-              },
-              {
-                  "channel_slug": "indicator_sensei",
-                  "channel_display_name": "지표센세",
-                  "video_id": "Dg4t3Um5n6I",
-                  "title": "지표가 다 알려주는 세상",
-                  "duration_s": 37,
-              },
-              {
-                  "channel_slug": "indicator_sensei",
-                  "channel_display_name": "지표센세",
-                  "video_id": "I5uZNpp6xu8",
-                  "title": "$5,000 → $15,000,000 이 남자의 전략 지표3개로 통합완료. (무료공개)",
-                  "duration_s": 937,
-              },
-              {
-                  "channel_slug": "indicator_sensei",
-                  "channel_display_name": "지표센세",
-                  "video_id": "V9q9XRGAzg0",
-                  "title": "1년반동안 연구한 독창적인 기법",
-                  "duration_s": 63,
-              },
-              {
-                  "channel_slug": "indicator_sensei",
-                  "channel_display_name": "지표센세",
-                  "video_id": "yR-3bdUirho",
-                  "title": "천재 트레이더들은 3가지만 봅니다 (3가지 지표+통합제작지표 공개)",
-                  "duration_s": 1842,
-              },
-          ]
-          OUTPUT = Path("artifact/transcribeyoutube-retry")
-          TRANSCRIPTS = OUTPUT / "transcripts"
-          TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
-
-          session = requests.Session()
-          session.headers.update(
-              {
-                  "Accept": "application/json",
-                  "Content-Type": "application/json",
-                  "Origin": "https://transcribeyoutube.com",
-                  "Referer": "https://transcribeyoutube.com/",
-                  "User-Agent": "SMC-ICT-2-LIVE-transcript-research/1.0",
-              }
-          )
-          last_call_started = 0.0
-
-          def paced_post(video_id: str) -> tuple[requests.Response, bytes]:
-              global last_call_started
-              elapsed = time.monotonic() - last_call_started
-              if last_call_started and elapsed < 6.5:
-                  time.sleep(6.5 - elapsed)
-              last_call_started = time.monotonic()
-              response = session.post(
-                  ENDPOINT,
-                  json={
-                      "url": f"https://www.youtube.com/watch?v={video_id}",
-                      "lang": "auto",
-                  },
-                  timeout=90,
-              )
-              return response, response.content
-
-          def fetch(item: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-              video_id = item["video_id"]
-              attempts: list[dict[str, Any]] = []
-              for attempt in range(1, 4):
-                  try:
-                      response, raw = paced_post(video_id)
-                      evidence = {
-                          "attempt": attempt,
-                          "http_status": response.status_code,
-                          "content_type": response.headers.get("content-type"),
-                          "response_bytes": len(raw),
-                          "response_sha256": hashlib.sha256(raw).hexdigest(),
-                          "rate_limit": {
-                              key: value
-                              for key, value in response.headers.items()
-                              if key.lower().startswith(("x-rate", "retry-after"))
-                          },
-                      }
-                      try:
-                          payload = response.json()
-                      except Exception as exc:
-                          payload = None
-                          evidence["json_error"] = f"{type(exc).__name__}: {exc}"[-1000:]
-                      if isinstance(payload, dict):
-                          evidence.update(
-                              {
-                                  "ok": payload.get("ok"),
-                                  "error": payload.get("error"),
-                                  "message": payload.get("message"),
-                                  "selected_lang": payload.get("selectedLang"),
-                                  "auto_generated": payload.get("isAutoGenerated"),
-                              }
-                          )
-                      attempts.append(evidence)
-                      transcript = payload.get("transcript") if isinstance(payload, dict) else None
-                      if response.ok and payload.get("ok") is True and isinstance(transcript, list) and transcript:
-                          segments: list[dict[str, Any]] = []
-                          for segment in transcript:
-                              if not isinstance(segment, dict):
-                                  continue
-                              text = " ".join(str(segment.get("text") or "").split())
-                              if not text:
-                                  continue
-                              start_ms = round(float(segment.get("start") or 0) * 1000)
-                              duration_ms = round(float(segment.get("dur") or 0) * 1000)
-                              segments.append(
-                                  {
-                                      "start_ms": max(start_ms, 0),
-                                      "duration_ms": max(duration_ms, 0),
-                                      "text": text,
-                                      "timing_quality": "native_caption_api",
-                                  }
-                              )
-                          if segments:
-                              text = " ".join(segment["text"] for segment in segments)
-                              row = {
-                                  **item,
-                                  "caption_status": "ok",
-                                  "caption_provider": "transcribeyoutube.com/api/transcript",
-                                  "caption_timing_quality": "native_caption_api",
-                                  "caption_segment_count": len(segments),
-                                  "caption_character_count": len(text),
-                                  "caption_language_code": payload.get("selectedLang"),
-                                  "caption_auto_generated": payload.get("isAutoGenerated"),
-                                  "provider_title": payload.get("title"),
-                                  "provider_channel": payload.get("channel"),
-                                  "caption_text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-                                  "attempts": attempts,
-                              }
-                              return row, segments
-                      error = str(payload.get("error") or "") if isinstance(payload, dict) else ""
-                      if error == "NO_CAPTIONS":
-                          return (
-                              {
-                                  **item,
-                                  "caption_status": "asr_required",
-                                  "caption_provider": "transcribeyoutube.com/api/transcript",
-                                  "caption_segment_count": 0,
-                                  "caption_character_count": 0,
-                                  "caption_error_code": error,
-                                  "caption_error": payload.get("message"),
-                                  "attempts": attempts,
-                              },
-                              [],
-                          )
-                      retryable = error in {"AUTOMATED_ACCESS", "FETCH_ERROR", "INTERNAL_ERROR"} or response.status_code >= 500
-                      if not retryable:
-                          break
-                  except Exception as exc:
-                      attempts.append(
-                          {
-                              "attempt": attempt,
-                              "exception": f"{type(exc).__name__}: {exc}"[-2000:],
-                          }
-                      )
-                  if attempt < 3:
-                      time.sleep(8.0 * attempt)
-              return (
-                  {
-                      **item,
-                      "caption_status": "retry_required",
-                      "caption_provider": "transcribeyoutube.com/api/transcript",
-                      "caption_segment_count": 0,
-                      "caption_character_count": 0,
-                      "caption_error": "all bounded attempts failed",
-                      "attempts": attempts,
-                  },
-                  [],
-              )
-
-          outcomes: list[dict[str, Any]] = []
-          control_row, control_segments = fetch(POSITIVE_CONTROL)
-          for position, item in enumerate(TARGETS, start=1):
-              row, segments = fetch(item)
-              if segments:
-                  channel_dir = TRANSCRIPTS / item["channel_slug"]
-                  channel_dir.mkdir(parents=True, exist_ok=True)
-                  jsonl_path = channel_dir / f"{item['video_id']}.jsonl"
-                  txt_path = channel_dir / f"{item['video_id']}.txt"
-                  jsonl_path.write_text(
-                      "".join(json.dumps(segment, ensure_ascii=False, sort_keys=True) + "\n" for segment in segments),
-                      encoding="utf-8",
-                  )
-                  txt_path.write_text(" ".join(segment["text"] for segment in segments) + "\n", encoding="utf-8")
-                  row["transcript_jsonl"] = str(jsonl_path.relative_to(OUTPUT))
-                  row["transcript_txt"] = str(txt_path.relative_to(OUTPUT))
-              outcomes.append(row)
-              print(
-                  json.dumps(
-                      {
-                          "position": position,
-                          "total": len(TARGETS),
-                          "video_id": item["video_id"],
-                          "caption_status": row["caption_status"],
-                          "caption_segment_count": row["caption_segment_count"],
-                      },
-                      ensure_ascii=False,
-                      sort_keys=True,
-                  ),
-                  flush=True,
-              )
-
-          videos_raw = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in outcomes)
-          (OUTPUT / "videos.jsonl").write_text(videos_raw, encoding="utf-8")
-          status_counts: dict[str, int] = {}
-          for row in outcomes:
-              status = row["caption_status"]
-              status_counts[status] = status_counts.get(status, 0) + 1
-          manifest = {
-              "schema_version": 1,
-              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
-              "provider": "transcribeyoutube.com/api/transcript",
-              "provider_contract": {
-                  "endpoint": "POST /api/transcript",
-                  "language": "auto",
-                  "documented_rate_limit": "10 per minute per IP",
-                  "request_pace_seconds": 6.5,
-              },
-              "source_run_id": 30219818812,
-              "source_corpus_digest_sha256": "891e0967f74c248fc74ac8be561f556cd5d91b52cf63abba2c3827e9a3adccb6",
-              "built_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-              "run_id": int(os.environ["GITHUB_RUN_ID"]),
-              "source_sha": os.environ["GITHUB_SHA"],
-              "target_count": len(TARGETS),
-              "status_counts": dict(sorted(status_counts.items())),
-              "resolved_count": status_counts.get("ok", 0),
-              "asr_required_count": status_counts.get("asr_required", 0),
-              "retry_required_count": status_counts.get("retry_required", 0),
-              "positive_control": control_row,
-              "positive_control_passed": control_row.get("caption_status") == "ok" and len(control_segments) >= 50,
-              "videos_sha256": hashlib.sha256(videos_raw.encode("utf-8")).hexdigest(),
-              "decision": (
-                  "PASS_ALL_SEVEN_RESOLVED"
-                  if status_counts.get("ok", 0) == len(TARGETS)
-                  else "PARTIAL_ASR_REQUIRED"
-                  if status_counts.get("ok", 0) + status_counts.get("asr_required", 0) == len(TARGETS)
-                  else "PARTIAL_REQUIRES_RETRY"
-              ),
-          }
-          (OUTPUT / "manifest.json").write_text(
-              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          hashes = []
-          for path in sorted(candidate for candidate in OUTPUT.rglob("*") if candidate.is_file() and candidate.name != "SHA256SUMS"):
-              hashes.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(OUTPUT).as_posix()}")
-          (OUTPUT / "SHA256SUMS").write_text("\n".join(hashes) + "\n", encoding="utf-8")
-          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
-          session.close()
-          PY
-      - uses: actions/upload-artifact@v4
+          mkdir -p artifact/yt-trinity-complete-native-caption
+          python research/yt_trinity_ml/harvest_transcribeyoutube_full.py \
+            --inventory research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl \
+            --inventory-manifest research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json \
+            --output artifact/yt-trinity-complete-native-caption \
+            --max-attempts 3 \
+            --checkpoint-every 10 \
+            2>&1 | tee artifact/HARVEST_STDOUT.log
+      - name: Build channel-attributed concept and rule evidence
         if: always()
+        run: |
+          root=artifact/yt-trinity-complete-native-caption
+          if [[ -f "$root/videos.jsonl" ]]; then
+            python research/yt_trinity_ml/build_concept_index.py \
+              --corpus "$root" \
+              2>&1 | tee artifact/CONCEPT_INDEX_STDOUT.log
+            python research/yt_trinity_ml/extract_rule_ontology.py \
+              --corpus "$root" \
+              2>&1 | tee artifact/RULE_ONTOLOGY_STDOUT.log
+          fi
+          python -m pip freeze | LC_ALL=C sort > "$root/DEPENDENCIES.txt"
+          (
+            cd "$root"
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+      - name: Upload immutable complete-corpus evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: yt-trinity-transcribeyoutube-retry-${{ github.sha }}
-          path: artifact/transcribeyoutube-retry
+          name: yt-trinity-complete-native-caption-${{ github.sha }}
+          path: artifact
           if-no-files-found: error
           compression-level: 6
           retention-days: 90
-      - name: Persist compact retry pointer
+      - name: Write compact result pointer
         if: always()
         run: |
           python - <<'PY'
@@ -346,33 +89,56 @@ jobs:
           import json
           import os
           from pathlib import Path
-
-          source = Path("artifact/transcribeyoutube-retry/manifest.json")
-          manifest = json.loads(source.read_text(encoding="utf-8")) if source.exists() else None
-          pointer = {
-              "schema_version": 1,
-              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
-              "workflow": "YT Trinity retry 7 transcripts via public API",
-              "run_id": int(os.environ["GITHUB_RUN_ID"]),
-              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
-              "source_sha": os.environ["GITHUB_SHA"],
-              "artifact_name": f"yt-trinity-transcribeyoutube-retry-{os.environ['GITHUB_SHA']}",
-              "manifest_sha256": hashlib.sha256(source.read_bytes()).hexdigest() if source.exists() else None,
-              "manifest": manifest,
+          root = Path('artifact/yt-trinity-complete-native-caption')
+          manifest_path = root / 'manifest.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
+          raw = manifest_path.read_bytes() if manifest_path.exists() else b''
+          payload = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'workflow': 'YT Trinity complete native-caption corpus',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-complete-native-caption-{os.environ['GITHUB_SHA']}",
+              'manifest_sha256': hashlib.sha256(raw).hexdigest() if raw else None,
+              'manifest': manifest,
+              'concept_index_present': (root / 'concept_index.json').exists(),
+              'rule_ontology_present': (root / 'rule_ontology_candidates.json').exists(),
           }
-          Path("research/yt_trinity_ml/TRANSCRIBEYOUTUBE_RETRY_POINTER.json").write_text(
-              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
+          Path('research/yt_trinity_ml/FULL_NATIVE_CAPTION_CORPUS_POINTER.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
           )
+          print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
           PY
+      - name: Persist corpus pointer without retrigger
+        if: always()
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/yt_trinity_ml/TRANSCRIBEYOUTUBE_RETRY_POINTER.json
+          git add research/yt_trinity_ml/FULL_NATIVE_CAPTION_CORPUS_POINTER.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Record seven-video transcript retry ${GITHUB_RUN_ID}"
+          git commit -m "Record complete YT Trinity native-caption corpus ${GITHUB_RUN_ID}"
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin "${GITHUB_REF_NAME}"
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
-            sleep $((attempt * 2))
+            sleep $((attempt * 3))
           done
           exit 1
+      - name: Enforce complete corpus gate
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('artifact/yt-trinity-complete-native-caption')
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['inventory_count'] == 196, manifest
+          assert manifest['completed_count'] == 196, manifest
+          assert manifest['caption_classification_complete'] is True, manifest
+          assert manifest['positive_control_passed'] is True, manifest
+          assert manifest['decision'] == 'PASS_COMPLETE', manifest
+          assert (root / 'rule_ontology_candidates.json').exists()
+          print('complete native-caption corpus: PASS_COMPLETE')
+          PY
