@@ -67,3 +67,36 @@ def test_stale_last_trade_cannot_be_a_raid():
         {"BTCUSDT": {"fair_gap_abs_bps": 10.0, "last_mark_abs_bps": 10.0}},
     )
     assert events.empty
+
+
+def test_global_slot_reserves_from_decision_not_entry():
+    module = load_module()
+    base = module.synthetic_states()
+    event = module.extract_events(
+        {("2022-01-01", "BTCUSDT"): base},
+        ("2022-01-01",),
+        {"BTCUSDT": {"fair_gap_abs_bps": 10.0, "last_mark_abs_bps": 10.0}},
+    ).iloc[[0]].copy()
+    event["route"] = "FADE_TO_FAIR_VALUE"
+    event["authorized"] = True
+    event["gross_bps"] = event["reversion_win_bps"]
+    event["planned_loss_bps"] = event["reversion_loss_bps"]
+    first = event.copy()
+    first["event_key"] = "first"
+    first["decision_ts"] = 100
+    first["entry_ts"] = 101
+    first["exit_ts"] = 110
+    pending_overlap = event.copy()
+    pending_overlap["event_key"] = "pending-overlap"
+    pending_overlap["decision_ts"] = 109
+    pending_overlap["entry_ts"] = 110
+    pending_overlap["exit_ts"] = 120
+    after_exit = event.copy()
+    after_exit["event_key"] = "after-exit"
+    after_exit["decision_ts"] = 110
+    after_exit["entry_ts"] = 111
+    after_exit["exit_ts"] = 130
+    selected = module.global_slot(
+        module.pd.concat([first, pending_overlap, after_exit], ignore_index=True)
+    )
+    assert selected["event_key"].tolist() == ["first", "after-exit"]
