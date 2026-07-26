@@ -44,12 +44,17 @@ jobs:
           root=research/ml_stablecoin_issuance_20260726
           out=research_runs/ml_stablecoin_issuance_20260726/source_gate
           mkdir -p "$out"
-          python -m py_compile "$root/source_gate.py" "$root/test_source_gate.py" 2>&1 | tee "$out/COMPILE.log"
+          python -m py_compile \
+            "$root/source_gate.py" \
+            "$root/source_gate_authoritative.py" \
+            "$root/test_source_gate.py" \
+            2>&1 | tee "$out/COMPILE.log"
           PYTHONPATH="$root" pytest -q "$root/test_source_gate.py" 2>&1 | tee "$out/PYTEST.log"
-          PYTHONPATH="$root" python "$root/source_gate.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          PYTHONPATH="$root" python "$root/source_gate_authoritative.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_002_END_EXCLUSIVE_BOUNDARY_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
       - name: Run outcome-sealed source gate
         run: |
@@ -58,7 +63,7 @@ jobs:
           out=research_runs/ml_stablecoin_issuance_20260726/source_gate
           mkdir -p "$out"
           set +e
-          PYTHONPATH="$root" python "$root/source_gate.py" --output "$out" 2>&1 | tee "$out/RUN.log"
+          PYTHONPATH="$root" python "$root/source_gate_authoritative.py" --output "$out" 2>&1 | tee "$out/RUN.log"
           rc=${PIPESTATUS[0]}
           set -e
           echo "$rc" > "$out/RUN_EXIT_CODE.txt"
@@ -114,7 +119,7 @@ jobs:
           root=research/ml_stablecoin_issuance_20260726
           out=research_runs/ml_stablecoin_issuance_20260726/source_gate
           mkdir -p "$out/source"
-          cp "$root"/{WORK_CLAIM.json,preregistration.json,AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json,README.md,SOURCES.md,source_gate.py,test_source_gate.py} "$out/source/"
+          cp "$root"/{WORK_CLAIM.json,preregistration.json,AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json,CORRECTION_002_END_EXCLUSIVE_BOUNDARY_BEFORE_OUTCOME.json,README.md,SOURCES.md,source_gate.py,source_gate_authoritative.py,test_source_gate.py} "$out/source/"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         if: always()
