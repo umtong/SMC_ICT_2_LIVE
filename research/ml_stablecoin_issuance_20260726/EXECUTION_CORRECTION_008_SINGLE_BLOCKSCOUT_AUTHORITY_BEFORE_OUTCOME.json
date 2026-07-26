@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-SINGLE-BLOCKSCOUT-008",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-26T21:59:30+09:00",
+  "pre_outcome_status": {
+    "source_gate_result_opened": false,
+    "market_outcome_opened": false,
+    "model_fit": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "observed_execution_defect": "The Ethereum RPC and Blockscout transports queued duplicate full-chronology source gates under SHA-scoped non-cancelling concurrency. The duplicate execution increased queue delay without adding independent scientific evidence.",
+  "correction": [
+    "Use the indexed Blockscout transport as the single first-pass authority for the unchanged 36-month source contract.",
+    "Use pull-request-or-branch-scoped concurrency and cancel superseded executions.",
+    "Open the direct Ethereum RPC transport only if the indexed transport records source unavailability rather than an admissible pass/fail density decision.",
+    "Preserve all token addresses, zero-address Transfer decoding, +12/+64 block availability, 2024 end-exclusive boundary and density gates."
+  ],
+  "unchanged": [
+    "USDT and USDC source identities",
+    "2021-01 through 2023-12 month set",
+    "mint and burn event semantics",
+    "source-gate pass thresholds",
+    "pre-2024 ML model and chronology",
+    "sequential 2024H1 evaluation contract",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used_to_choose_correction": false,
+  "orders_submitted": false
+}
