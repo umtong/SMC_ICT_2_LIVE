@@ -39,6 +39,30 @@ One `HistGradientBoostingClassifier` is trained on causally resolved January–J
 
 The model must beat the exact distance-only first-passage baseline, not merely a 50/50 classifier. The untouched 2023 source is downloaded only when **every** preregistered fit gate passes. Source access to 2024, 2025 and 2026 is rejected by code.
 
+## Decision-ready result
+
+`RES-20260726-ML-LIQUIDITY-DRAW-001` is hard-valid at the initial causal fatal-screen stage and economically `BELOW_GATE`.
+
+- 15,854 fit-confirmation event rows; 15,831 resolved; 375 authorized actions.
+- Model AUC: `0.693656`; distance-only structural baseline AUC: `0.734865`; AUC lift: `-0.041210`.
+- Model Brier score: `0.224404`; distance baseline Brier: `0.208793`; Brier skill: `-0.074766`.
+- 12 bp: 156 trades, `-5.2115%`, geometric daily growth `-0.05816%`, median `-52.45 bp`, winner-removed return `-12.3856%`.
+- 18 bp: 156 trades, `-9.1929%`, geometric daily growth `-0.10476%`, median `-58.43 bp`, winner-removed return `-16.4685%`.
+- 24 bp: 156 trades, `-12.4182%`, geometric daily growth `-0.14402%`, median `-64.42 bp`, winner-removed return `-19.6946%`.
+- Only November was positive at every cost; October and December were negative.
+- Every economic and model-lift gate except raw model AUC, sample size and trade count failed.
+- Untouched 2023 remained physically unopened; 2024–2026 remained sealed; no orders were submitted.
+
+The result shows that the selected candle-state feature set did not add information beyond the two structural distances. Do not tune adjacent HGBT parameters, probability advantage, pivot width, feature list or cost threshold under this dependency. Reopen only after changing the information unit materially. The next proposed unit is event-conditioned L2 acceptance-versus-rejection after a causal external-liquidity raid.
+
+## Evidence
+
+- workflow run: `30194348946`
+- artifact: `8629624480`
+- artifact digest: `sha256:e986870c95f524a5c6a872d38534b5714111746f215096c722ff9ee62986a817`
+- scientific source SHA-256: `87957a81a70cc9c777f555bb23ccbeb2ecae50c50ff0d730ce72de974b30c741`
+- artifact result SHA-256: `991b8663ca4623cdbe0821f149943175ef3fab9056a984517afb399bda7bf794`
+
 ## Promotion boundary
 
-Even a fit and 2023 survivor remains an initial candle-data screen. Promotion requires a separately frozen sequential 2024–2026 replay with historical Bybit executable quotes/depth, actual funding and the full project account contract. No credential, paper order, testnet order or live order is used here.
+This exact model is retired. The cumulative strategy ranking and live-order permission remain unchanged.
