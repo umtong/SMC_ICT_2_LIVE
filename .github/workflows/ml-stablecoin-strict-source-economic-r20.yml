@@ -1,0 +1,255 @@
+name: Stablecoin strict causal source-economic decision
+
+on:
+  push:
+    branches:
+      - agent/r20-ml-stablecoin-strict-causal-001
+    paths:
+      - '.github/workflows/ml-stablecoin-strict-source-economic-r20.yml'
+      - 'research/execution/stablecoin_strict_visible_20260727/**'
+      - 'research/ml_stablecoin_issuance_economic_20260726/**'
+      - 'sourcefix/ml_stablecoin_causal_guard_20260726/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-stablecoin-strict-source-economic-r20.yml'
+      - 'research/execution/stablecoin_strict_visible_20260727/**'
+      - 'research/ml_stablecoin_issuance_economic_20260726/**'
+      - 'sourcefix/ml_stablecoin_causal_guard_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-strict-source-economic-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  PYTHONHASHSEED: '0'
+  PYTHONUNBUFFERED: '1'
+  PYTHONFAULTHANDLER: '1'
+  OMP_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '2'
+  MKL_NUM_THREADS: '2'
+  SOURCE_SHA: 7bdf54c93607d6d71e8e9f35b66fd9c2c464e637
+  SOURCE_ROOT: research/ml_stablecoin_issuance_20260726
+  ECON_ROOT: research/ml_stablecoin_issuance_economic_20260726
+  FIX_ROOT: sourcefix/ml_stablecoin_causal_guard_20260726
+  EXEC_ROOT: research/execution/stablecoin_strict_visible_20260727
+  OUT_ROOT: research_runs/stablecoin_strict_visible_20260727
+  MARKET_CACHE: /tmp/stablecoin-strict-market
+
+jobs:
+  decision:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r20-ml-stablecoin-strict-causal-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5 \
+            numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1 pyarrow==18.1.0
+
+      - name: Materialize exact corrected source commit
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$SOURCE_SHA"
+          rm -rf "$SOURCE_ROOT"
+          git archive "$SOURCE_SHA" "$SOURCE_ROOT" | tar -x
+
+      - name: Prove source and strict economic engines before network access
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT_ROOT/source" "$OUT_ROOT/economic"
+          python -m json.tool "$SOURCE_ROOT/CORRECTION_010_USDT_ISSUE_REDEEM_EVENT_SCHEMA_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$SOURCE_ROOT/CORRECTION_011_BLOCKSCOUT_NULL_TOPIC_PADDING_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$FIX_ROOT/CORRECTION_001_ENTRY_BAR_LOOKAHEAD_AND_UNRESOLVED_PATH_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$FIX_ROOT/CORRECTION_002_PREENTRY_INFORMATION_BOUNDARY_BEFORE_OUTCOME.json" >/dev/null
+          python -m py_compile \
+            "$SOURCE_ROOT"/source_gate*.py "$SOURCE_ROOT/test_source_gate.py" \
+            "$EXEC_ROOT/run_source.py"
+          PYTHONPATH="$SOURCE_ROOT:$EXEC_ROOT" pytest -q "$SOURCE_ROOT/test_source_gate.py" \
+            2>&1 | tee "$OUT_ROOT/source/PYTEST.log"
+          PYTHONPATH="$SOURCE_ROOT:$EXEC_ROOT" python "$SOURCE_ROOT/source_gate_blockscout_authoritative.py" --self-test \
+            2>&1 | tee "$OUT_ROOT/source/AUTHORITY_SELF_TEST.log"
+          PYTHONPATH="$SOURCE_ROOT:$EXEC_ROOT" python "$EXEC_ROOT/run_source.py" --self-test \
+            2>&1 | tee "$OUT_ROOT/source/BATCH_SELF_TEST.log"
+
+          python "$ECON_ROOT/reconstruct.py"
+          python -m py_compile \
+            "$ECON_ROOT/run.py" "$ECON_ROOT/run_causal.py" "$ECON_ROOT/test_run.py" \
+            "$FIX_ROOT/strict_guard.py" "$FIX_ROOT/causal_guard.py" "$FIX_ROOT/test_causal_guard.py"
+          PYTHONPATH="$ECON_ROOT" pytest -q "$ECON_ROOT/test_run.py" \
+            2>&1 | tee "$OUT_ROOT/economic/ORIGINAL_TESTS.log"
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" pytest -q "$FIX_ROOT/test_causal_guard.py" \
+            2>&1 | tee "$OUT_ROOT/economic/STRICT_TESTS.log"
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/causal_guard.py" self-test \
+            2>&1 | tee "$OUT_ROOT/economic/STRICT_SELF_TEST.log"
+
+      - name: Run complete corrected 2021-2023 source gate
+        id: source
+        shell: bash
+        run: |
+          set -u
+          mkdir -p "$OUT_ROOT/source"
+          set +e
+          PYTHONPATH="$SOURCE_ROOT:$EXEC_ROOT" python "$EXEC_ROOT/run_source.py" \
+            --output "$OUT_ROOT/source" 2>&1 | tee "$OUT_ROOT/source/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$rc" > "$OUT_ROOT/source/RUN_EXIT_CODE.txt"
+          if [[ ! -f "$OUT_ROOT/source/SOURCE_GATE_RESULT.json" ]]; then
+            python "$SOURCE_ROOT/write_transport_failure.py" \
+              --output "$OUT_ROOT/source" \
+              --transport TRANSPORT-20260727-ML-STABLECOIN-STRICT-V3-020 \
+              --exit-code "$rc"
+          fi
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['OUT_ROOT'])/'source'
+          result=json.loads((root/'SOURCE_GATE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['status'] in {
+              'PASS',
+              'FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE',
+              'SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE',
+          }
+          assert result['market_outcome_opened'] is False
+          assert result['model_fit'] is False
+          assert result['trade_or_pnl_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f"authorized={'true' if result['status']=='PASS' else 'false'}\n")
+          print(json.dumps({
+              'status':result['status'],
+              'events':result.get('event_count'),
+              'months':len(result.get('months_with_events',[])),
+              'tokens':result.get('distinct_tokens'),
+          },sort_keys=True))
+          PY
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
+            echo "unexpected source process failure: $rc" >&2
+            exit "$rc"
+          fi
+
+      - uses: actions/cache@v4
+        if: steps.source.outputs.authorized == 'true'
+        with:
+          path: ${{ env.MARKET_CACHE }}
+          key: stablecoin-strict-market-2020-12-2023-12-v3
+
+      - name: Run strict causal V3 pre-2024 economic screen immediately
+        if: steps.source.outputs.authorized == 'true'
+        shell: bash
+        run: |
+          set -u
+          mkdir -p "$OUT_ROOT/economic" "$MARKET_CACHE"
+          set +e
+          PYTHONPATH="$ECON_ROOT:$FIX_ROOT" python "$FIX_ROOT/causal_guard.py" run \
+            --events "$OUT_ROOT/source/EVENTS.jsonl" \
+            --market-cache "$MARKET_CACHE" \
+            --output "$OUT_ROOT/economic" 2>&1 | tee "$OUT_ROOT/economic/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$rc" > "$OUT_ROOT/economic/RUN_EXIT_CODE.txt"
+          if [[ "$rc" != "0" && "$rc" != "2" ]]; then
+            echo "unexpected economic process failure: $rc" >&2
+            exit "$rc"
+          fi
+          test -f "$OUT_ROOT/economic/RESULT.json"
+          test -f "$OUT_ROOT/economic/FULL_RESULT.json"
+
+      - name: Enforce strict authority and sequential decision
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['OUT_ROOT'])
+          source=json.loads((root/'source/SOURCE_GATE_RESULT.json').read_text())
+          assert source['orders_submitted'] is False
+          if source['status']!='PASS':
+              print(json.dumps({
+                  'source':source['status'],
+                  'economic':'NOT_OPENED',
+                  'next':'CLOSE_SOURCE_OR_REPAIR_TRANSPORT_ONLY',
+              },sort_keys=True))
+              raise SystemExit(0)
+
+          result=json.loads((root/'economic/RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
+          assert result['strict_causal_guard']['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002'
+          assert result['strict_causal_guard']['fatal_validity_violation'] is False
+          assert result['strict_causal_guard']['future_entry_open_used_for_model_or_action'] is False
+          assert result['strict_causal_guard']['stage_boundary_positions_marked_not_closed'] is True
+          assert result['orders_submitted'] is False
+          assert result['official_2024h1_opened'] is False
+          assert result['official_2024_2026_opened'] is False
+          assert result['status'] in {
+              'PRE2024_BELOW_GATE',
+              'PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1',
+          }
+          next_stage='CHANGE_ALPHA'
+          if result['status']=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
+              selected=result['risk_search']['selected']
+              assert result['development_gate']['all'] is True
+              assert selected is not None
+              assert selected['growth'] > 0
+              assert selected['liquidation'] is False
+              next_stage='OFFICIAL_2024H1_IMMEDIATELY'
+          print(json.dumps({
+              'source':source['status'],
+              'economic':result['status'],
+              'engine':result['engine'],
+              'development_gate':result['development_gate'].get('all'),
+              'selected_risk_path':result.get('risk_search',{}).get('selected') if result.get('risk_search') else None,
+              'next':next_stage,
+          },sort_keys=True))
+          PY
+
+      - name: Record moving project validation without blocking evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python scripts/validate_project.py 2>&1 | tee "$OUT_ROOT/PROJECT_VALIDATION.log"
+
+      - name: Freeze immutable evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT_ROOT"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ['OUT_ROOT'])
+          rows=[]
+          for path in sorted(item for item in root.rglob('*') if item.is_file() and item.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-source-economic-${{ github.run_id }}
+          path: research_runs/stablecoin_strict_visible_20260727
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
