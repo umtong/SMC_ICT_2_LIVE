@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260727-0328-ML-LEVERAGE-FLOW-001",
+  "frozen_before_oi_outcome_evaluation": true,
+  "archive": {
+    "encoding": "base64 concatenation of bundle.part*",
+    "decoded_name": "leverage_flow_frozen_code.tar.gz",
+    "decoded_bytes": 22025,
+    "decoded_sha256": "4cb48f08ad1d03f22d11c7b02b8e6fe11398f1c88c4248b0eb89898bf4aebcd0",
+    "base64_bytes": 29368,
+    "base64_sha256": "a4e898b11e9f655a3621fa9f70c1721ac139926fcb27035e3e4b44f1cf297f11"
+  },
+  "files": {
+    "evaluate_leverage_flow.py": "233c56d05fd97374239e3020a4c3cb384ffb815d5845123e288c764e2f1ac7a0",
+    "test_leverage_flow.py": "cbb26f5f97ff43d666acf248379702d1133507c509b856f3587735b5de483469",
+    "xasset_base.py": "367468c72c59014e68875882188edf7aa48da30859ed8b1c6631d25f4f36e300"
+  },
+  "tests": {
+    "command": "python -m pytest -q test_leverage_flow.py",
+    "passed": 6,
+    "failed": 0,
+    "coverage_focus": [
+      "full five-minute OI information delay",
+      "direction-specific exact 24-bps break-even",
+      "fixed pre-2024 cutoff",
+      "no hidden probability margin",
+      "unresolved boundary exposure is NAV-marked rather than future-filtered",
+      "an exit after the stage boundary is not treated as a completed stage trade"
+    ]
+  }
+}
