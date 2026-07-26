@@ -43,14 +43,15 @@ jobs:
           cache: pip
       - name: Install system dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade numpy pandas scikit-learn pyarrow pytest
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow pytest
       - name: Compile and test causal invariants
         env:
           PYTHONPATH: research/yt_trinity_ml
         run: |
+          set -o pipefail
           python -m py_compile research/yt_trinity_ml/system/*.py research/yt_trinity_ml/run_research.py research/yt_trinity_ml/extract_rule_ontology.py
           python research/yt_trinity_ml/extract_rule_ontology.py --self-test
           python -m json.tool research/yt_trinity_ml/system_contract.json >/dev/null
           python -m json.tool research/yt_trinity_ml/INSTRUMENT_RULES.schema.json >/dev/null
-          pytest -q research/yt_trinity_ml/tests/test_yt_trinity_system.py
+          pytest -q -x research/yt_trinity_ml/tests/test_yt_trinity_system.py 2>&1 | tee /tmp/yt-trinity-pytest.log
