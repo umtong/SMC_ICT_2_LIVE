@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-STRICT-V4-MAIN-PUSH-PUBLISH-006",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_result_or_market_outcome": true,
+  "reason": "The pull-request-triggered strict V4 workflow did not instantiate an observable decision run, while a subsequently merged strict V3 push publisher would create stale evidence. Preserve the existing V4 science, execute it only after the frozen sentinel reaches main, and publish the immutable V4 evidence as a dedicated result pull request.",
+  "changes": [
+    "strict V4 macOS workflow trigger: pull_request -> main push on the existing strict V4 sentinel path",
+    "grant only contents and pull-request write permissions required to publish immutable evidence",
+    "write one compact source/economic/V4 decision marker",
+    "commit complete evidence and hashes to an automation branch and open one result PR",
+    "disable the stale strict V3 automatic push publisher"
+  ],
+  "source_sha": "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+  "strict_base_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "v4_authority_commit": "3532417885505da08c6664a107cf63957e80d922",
+  "source_identity_or_chronology_changed": false,
+  "feature_model_calibration_label_action_target_stop_changed": false,
+  "cost_risk_notional_leverage_or_sequential_contract_changed": false,
+  "market_outcome_opened_before_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
