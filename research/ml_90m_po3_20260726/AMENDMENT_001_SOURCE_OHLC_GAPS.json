@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1807-ML-90M-PO3-001",
+  "amendment_id": "AMENDMENT-001-SOURCE-OHLC-GAPS",
+  "created_at": "2026-07-26T18:31:00+09:00",
+  "timing": "The first exact-head workflow stopped on an impossible provider OHLC row before model fitting, threshold selection, simulated account PnL or any later-period opening.",
+  "failure_run_id": 30196477421,
+  "failure_artifact_id": 8630267202,
+  "failure_reason": "At least one downloaded Bybit MT4 archive row violated candle geometry because its reported low exceeded another reported OHLC field.",
+  "frozen_correction": {
+    "policy": "Rows with non-positive prices, negative volume or impossible OHLC geometry are not repaired or reordered. Impossible-geometry rows are removed before exact-grid reindexing, their timestamps remain unavailable gaps, and each archive records the dropped-row count.",
+    "imputation": false,
+    "price_repair": false,
+    "event_or_label_bridge_across_gap": false,
+    "source_gap_after_entry": "structural stop",
+    "economic_contract_changed": false,
+    "model_changed": false,
+    "features_changed": false,
+    "thresholds_changed": false,
+    "risk_or_leverage_changed": false,
+    "sealed_periods_changed": false
+  },
+  "orders_permitted": false
+}
