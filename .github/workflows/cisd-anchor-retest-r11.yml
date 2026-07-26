@@ -51,7 +51,7 @@ jobs:
           name: bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: reused/bybit_l2_resiliency
-      - name: Verify source and implementation
+      - name: Verify source and corrected implementation
         run: |
           set -euo pipefail
           (cd reused/bybit_l2_resiliency/output && sha256sum --check SHA256SUMS.txt)
@@ -64,6 +64,7 @@ jobs:
           python -m pytest -q "$root/test_run_screen.py"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/amendment_001_source_frequency_correction.json" >/dev/null
       - name: Diagnose source continuity and raid opportunity
         run: |
           set -euo pipefail
@@ -74,7 +75,7 @@ jobs:
             --development reused/bybit_l2_resiliency/output/compact_states/2023-07-01_BTCUSDT_state.parquet \
             --output research_runs/cisd_anchor_retest/CONTINUITY_DIAGNOSTIC.json \
             2>&1 | tee research_runs/cisd_anchor_retest/continuity.log
-      - name: Run frozen objective-first screen
+      - name: Run corrected frozen objective-first screen
         run: |
           set -euo pipefail
           root=research/cisd_anchor_retest_20260726
@@ -115,6 +116,7 @@ jobs:
             research/cisd_anchor_retest_20260726/SOURCES.md \
             research/cisd_anchor_retest_20260726/WORK_CLAIM.json \
             research/cisd_anchor_retest_20260726/preregistration.json \
+            research/cisd_anchor_retest_20260726/amendment_001_source_frequency_correction.json \
             research/cisd_anchor_retest_20260726/reconstruct.py \
             research/cisd_anchor_retest_20260726/diagnose_continuity.py \
             research/cisd_anchor_retest_20260726/bundle_manifest.json \
