@@ -7,10 +7,14 @@ name = "smc-ict-2-live-harness"
 version = "0.1.0"
 description = "Configuration-driven research control plane for SMC_ICT_2_LIVE"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+  "pandas==2.2.3",
+  "pyarrow==25.0.0",
+  "requests==2.32.4",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest==8.3.4"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
