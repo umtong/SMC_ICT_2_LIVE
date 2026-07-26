@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-STRICT-VALIDATOR-HOOK-001",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:45:00+09:00",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "source_sha": "73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+  "strict_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "engine": "ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3",
+  "reason": "The dedicated main workflows were installed but did not create a pull-request job for several path-only trigger branches. The established Validate project harness is observable and is used once as a read-only execution carrier.",
+  "change": [
+    "Run the exact immutable corrected source snapshot and strict V3 snapshot from a helper called by validate_project only when the branch sentinel is present.",
+    "Print a compact hash-identified source and economic decision between explicit log markers.",
+    "Persist an in-run marker so subsequent test imports cannot repeat the computation."
+  ],
+  "scientific_changes": [],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer identity",
+    "Blockscout status=0 fail-closed policy",
+    "12/64 block availability",
+    "one HGBT and one isotonic rule",
+    "strict second-level feature boundary and next-open execution-only rule",
+    "structural target and stop, one global BTC/ETH slot",
+    "12/18/24bp paths and risk/notional frontier",
+    "immediate official 2024H1 for a complete pre-2024 survivor",
+    "no credentials or orders"
+  ],
+  "source_or_market_outcome_observed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
