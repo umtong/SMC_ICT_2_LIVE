@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "correction_id": "CORRECTION_004_NODE_ARRAY_FORMAT_BEFORE_OUTCOME",
+  "recorded_at": "2026-07-26T19:31:00+09:00",
+  "timing": "Recorded after workflow 30198174869 failed during source acquisition and before any candidate event, model fit, score, action, trade path or PnL existed.",
+  "observed_failure": "download_dukascopy.js requested getHistoricalRates format=json, then required Array.isArray(data). The Dukascopy Node API distinguishes array and JSON output formats; the official Node examples use the default array return. A nonempty JSON string was therefore eligible to be misclassified as no rows.",
+  "change": {
+    "file": "research/ml_intermarket_smt_20260726/download_dukascopy.js",
+    "from": "format: json",
+    "to": "format: array",
+    "scope": "Return container only. Instrument, side, timeframe, dates, volumes, flat-row policy, retry/splitting, timestamp checks and all scientific rules are unchanged."
+  },
+  "frozen_scientific_contract_unchanged": [
+    "Dukascopy instruments usatechidxusd and usa500idxusd",
+    "completed one-minute bid bars",
+    "external shock and crypto-underreaction event definition",
+    "twelve features",
+    "one HGBT and one isotonic calibrator",
+    "chronological train calibration confirmation and conditional development",
+    "continuation-direction lock",
+    "structural target and stop",
+    "one global slot",
+    "12/18/24bp paths",
+    "risk and capacity rules",
+    "2024-2026 seals"
+  ],
+  "outcome_accessed_before_change": false,
+  "orders_permitted": false
+}
