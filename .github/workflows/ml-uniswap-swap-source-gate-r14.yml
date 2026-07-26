@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-uniswap-signed-source-authoritative
-  cancel-in-progress: true
+  group: ml-uniswap-signed-source-authoritative-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source-gate:
