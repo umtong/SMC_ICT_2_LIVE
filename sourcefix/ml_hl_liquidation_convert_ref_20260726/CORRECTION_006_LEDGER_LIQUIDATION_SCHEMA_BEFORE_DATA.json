@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-HL-LEDGER-LIQUIDATION-SCHEMA-006",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "recorded_at": "2026-07-26T22:18:00+09:00",
+  "status": "PRE_OUTCOME_SOURCE_ONLY",
+  "trigger": "Primary Hyperliquid Events documentation identifies the account-level forced-liquidation delta as ledgerLiquidation with accountValue, leverageType and liquidatedPositions[{coin,szi}]. The frozen parser instead matched type=liquidation and required an undocumented liquidatedNtlPos field, which could falsely report zero or malformed events. No authoritative Hyperliquid event row, Bybit price, label, model, action, trade or PnL had opened.",
+  "correction": {
+    "accepted_delta_type": "ledgerLiquidation only",
+    "required_fields": [
+      "accountValue",
+      "leverageType",
+      "liquidatedPositions[].coin",
+      "liquidatedPositions[].szi"
+    ],
+    "optional_field": "liquidatedNtlPos is preserved only when present and finite-positive; it is never required or invented",
+    "notional_policy": "When explicit notional is absent, retain signed coin size and account state. Any later notional feature must be derived only after a causal point-in-time price join in the separately frozen model stage.",
+    "individual_fill_boundary": "Per-fill liquidation executions belong to the separate TRADES stream and are not inferred from this Events source gate."
+  },
+  "unchanged": [
+    "same immutable convert/parquet revision and exact 36 _src identities",
+    "same six dates and six frozen UTC hours per date",
+    "same account-level event identity and duplicate definition",
+    "same mechanical forced-flow sign: positive liquidated position size implies forced sell, negative size implies forced buy",
+    "same source-density and represented-coin gates",
+    "same prohibition on market price, future return, labels, model metrics, PnL, official 2026 and orders"
+  ],
+  "hyperliquid_event_row_opened_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false,
+  "primary_source": "QuickNode Hyperliquid Events Dataset documentation, Liquidation Operations: ledgerLiquidation(accountValue, leverageType, liquidatedPositions[{coin,szi}])"
+}
