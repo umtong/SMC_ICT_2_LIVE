@@ -33,6 +33,30 @@ class ScoredCandidate:
     lower_confidence_score: float
 
 
+def candidate_model_features(candidate: EventCandidate) -> dict[str, float]:
+    """Return the exact numeric feature vector used for both fitting and scoring."""
+    row = {
+        str(key): float(value)
+        for key, value in candidate.feature_row.items()
+        if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(value)
+    }
+    row.update(
+        {
+            "side": float(candidate.side),
+            "stop_distance_fraction": candidate.stop_distance / max(candidate.entry_reference, 1e-12),
+            "target_distance_fraction": candidate.target_distance / max(candidate.entry_reference, 1e-12),
+            "raw_reward_risk": candidate.target_distance / max(candidate.stop_distance, 1e-12),
+            "family_liquidity_sweep": float(candidate.family.value == "LIQUIDITY_SWEEP_REVERSAL"),
+            "family_displacement_retest": float(candidate.family.value == "DISPLACEMENT_BREAK_RETEST_CONTINUATION"),
+            "symbol_btc": float(candidate.symbol == "BTCUSDT"),
+            "symbol_eth": float(candidate.symbol == "ETHUSDT"),
+            "symbol_sol": float(candidate.symbol == "SOLUSDT"),
+            "symbol_xrp": float(candidate.symbol == "XRPUSDT"),
+        }
+    )
+    return row
+
+
 class ChronologicalEventModel:
     """Three-head event model with strictly later calibration data."""
 
@@ -120,8 +144,9 @@ class ChronologicalEventModel:
     ) -> ScoredCandidate:
         if not self._fitted:
             raise RuntimeError("model not fitted")
+        candidate_features = candidate_model_features(candidate)
         vector = pd.DataFrame(
-            [{name: candidate.feature_row.get(name, np.nan) for name in self.feature_names}]
+            [{name: candidate_features.get(name, np.nan) for name in self.feature_names}]
         ).replace([np.inf, -np.inf], np.nan)
         raw_p = float(self._positive_probability(self.win_model, vector)[0])
         p = float(self.calibrator.predict([raw_p])[0])
