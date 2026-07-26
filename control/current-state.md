@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 15
+- revision: 16
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9E484`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
@@ -27,7 +27,7 @@ The provisional first place is the Donchian all-breakout route `a70626d9e484285f
 - maximum used leverage: `0.875x / 0.723x`
 - exits: `25` channel exits, `74` ATR stops
 
-It is first only because it has the highest recorded after-cost geometric growth among current-contract-compatible paths. It is not a solution or a protected research direction: the source is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, winner removal destroys the account, and the route is non-ML.
+It is first only because it has the highest recorded after-cost geometric growth among current-contract-compatible paths. It is not a solution or a protected research direction: the source is a Binance proxy, funding and exact Bybit BBO/depth are absent, official 2024H1 is not yet reported, winner removal destroys the account, the route is non-ML, and the 12-bp growth is still approximately `11.10x` below the 1% reference.
 
 ## Cumulative strategy ranking
 
@@ -53,26 +53,39 @@ All eight are below the 1% reference and none has deployment authority. Rank cre
 
 Failed candidates receive no adjacent feature, threshold, calibration, stop, risk or leverage rescue.
 
+## Official 2024-2026 sequential research contract
+
+The official half-years are sequential research intervals, not one final block protected from observation.
+
+- `2024H1` is the first official evaluation. A strategy fixed using information through `2023-12-31` is tested there immediately when it is the current promising candidate.
+- The observed `2024H1` result is used to decide whether to retire the alpha, keep the unchanged rule, or create a later version using information available through `2024-06-30` for `2024H2`.
+- The same causal progression applies to `2025H1`, `2025H2` and `2026H1`, while the project account NAV remains one continuous path.
+- A half-year already observed and used for revision or selection is never described as a new independent OOS for the revised strategy.
+- OOS discipline distinguishes what was known when each version was fixed; it does not justify preserving official periods while a candidate remains unevaluated.
+- If an official result is structurally far from the objective, research switches alpha or payoff immediately rather than adding pre-gates or protecting unused periods.
+
+`CLM-20260726-2139-DONCHIAN-2024H1-001` is the active official evaluation of the unchanged pre-2024 rank-one benchmark. Its result changes the next research decision but does not protect the Donchian family.
+
 ## Active high-information ML work
 
-- Stablecoin issuance/destruction source gate, PR #189: actual Ethereum USDT/USDC mint and burn events, followed conditionally by one frozen BTC/ETH first-passage HGBT.
+- Stablecoin issuance/destruction source gate, PR #189: actual Ethereum USDT/USDC mint and burn events, followed conditionally by one frozen BTC/ETH first-passage HGBT. A pre-2024 survivor opens `2024H1` immediately under the sequential contract.
 - Uniswap WETH-stable inventory-transfer source gate, PR #190: actual WETH/USDC/USDT pool inventory deltas, followed conditionally by one frozen ETH hedge-relay HGBT.
 
 These sources are prioritized because they observe external inventory creation or completed inventory transfer before potential Bybit delivery. They are not extensions of Donchian or completed-bar setup grids.
 
 ## Current blockers
 
-The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived realistic sequential 2024-2026 Bybit execution, funding, winner removal and regime changes, and the leading routes are not a deployable ML system.
+The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has yet survived the official causal `2024H1` Bybit evaluation with realistic funding, execution and winner-removal robustness, and the leading routes are not a deployable ML system.
 
 ## Current objective
 
-Maximize realistic after-cost account growth and replace the benchmark with a materially stronger ML information source or payoff. Do not tune or protect the Donchian benchmark. Consume each source gate immediately: a pass opens the frozen economic screen; a failure closes the route without polishing it.
+Maximize realistic after-cost account growth and replace the benchmark with a materially stronger ML information source or payoff. Do not tune or protect the Donchian benchmark. Consume each official interval and source gate immediately: a promising result advances causally, a weak economic result retires the alpha, and a source failure closes only the unavailable transport.
 
 ## Next exact action
 
-1. Finish the Uniswap WETH-stable inventory-transfer source gate; on pass run the frozen conditional ML screen immediately, on failure close the source route.
-2. Finish the full-chronology stablecoin issuance/burn source gate under the same pass-or-close rule.
-3. Insert any superior hard-valid account path into the cumulative ranking immediately.
-4. If both external-inventory routes fail, select a materially different forced-flow source rather than returning to completed-bar parameter families.
+1. Consume the unchanged Donchian `2024H1` account result as soon as `CLM-20260726-2139-DONCHIAN-2024H1-001` becomes decision-ready; if structurally weak, retire it as an improvement path and switch alpha.
+2. Finish the Uniswap WETH-stable inventory-transfer source gate; on pass run the frozen conditional ML screen immediately, on failure close the source route.
+3. Finish the full-chronology stablecoin issuance/burn source gate under the same pass-or-close rule, with immediate `2024H1` evaluation for a robust pre-2024 survivor.
+4. Insert any superior hard-valid account path into the cumulative ranking immediately; if the external-inventory routes fail, select another materially different forced-flow source rather than returning to completed-bar parameter families.
 
-Updated: 2026-07-26 21:40 KST
+Updated: 2026-07-26 21:51 KST
