@@ -55,45 +55,33 @@ jobs:
           p=Path('runtime/decision_tree.py')
           text=p.read_text()
 
-          old="                    'follower_return':float(f['follower_return'][i]),'under':float(f['under'][i]),\n"
-          new="                    'under':float(f['under'][i]),\n"
-          if old not in text:
-              raise SystemExit('expected unused follower_return serialization line not found')
-          text=text.replace(old,new,1)
-
-          old_acquire="""        status,payload,error=base._download(session,url,target)
-          if status!=200: raise RuntimeError(f'source unavailable {url}: {status} {error}')
-          rec=base.inspect_source(target,symbol,date,url,payload)
-          if not rec.timestamp_monotonic: raise RuntimeError(f'nonmonotonic {url}')
-          arrays[symbol]=base.aggregate(target,date); records.append(rec)
-          """
-          new_acquire="""        base._download(session,url,target)
-          day,rec=base.aggregate(target,symbol,date)
-          if not rec.timestamp_monotonic: raise RuntimeError(f'nonmonotonic {url}')
-          arrays[symbol]=day; records.append(rec)
-          """
-          if old_acquire not in text:
-              raise SystemExit('expected registered-base acquire interface mismatch not found')
-          text=text.replace(old_acquire,new_acquire,1)
-
-          replacements={
-              "leader['mark']":"leader.mark",
-              "leader['trade_count']":"leader.trade_count",
-              "follower['mark']":"follower.mark",
-              "follower['trade_count']":"follower.trade_count",
-              "base.utc_start(date)":"datetime.strptime(date,'%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()",
-          }
-          for old_value,new_value in replacements.items():
-              if old_value not in text:
-                  raise SystemExit(f'expected adapter token not found: {old_value}')
-              text=text.replace(old_value,new_value)
-
-          old_features="            f=base.continuous_features(leader,follower,h); tr,vr=attention(leader,follower,h)\n"
-          new_features="            f=base.continuous_features(leader,follower,h); f['under']=f['underreaction']; f['leader_mark']=leader.mark; tr,vr=attention(leader,follower,h)\n"
-          if old_features not in text:
-              raise SystemExit('expected feature-interface line not found')
-          text=text.replace(old_features,new_features,1)
-
+          replacements=[
+              ("                    'follower_return':float(f['follower_return'][i]),'under':float(f['under'][i]),\n",
+               "                    'under':float(f['under'][i]),\n"),
+              ("        status,payload,error=base._download(session,url,target)\n",
+               "        base._download(session,url,target)\n"),
+              ("        if status!=200: raise RuntimeError(f'source unavailable {url}: {status} {error}')\n",
+               ""),
+              ("        rec=base.inspect_source(target,symbol,date,url,payload)\n",
+               "        day,rec=base.aggregate(target,symbol,date)\n"),
+              ("        arrays[symbol]=base.aggregate(target,date); records.append(rec)\n",
+               "        arrays[symbol]=day; records.append(rec)\n"),
+              ("leader['mark']","leader.mark"),
+              ("leader['trade_count']","leader.trade_count"),
+              ("follower['mark']","follower.mark"),
+              ("follower['trade_count']","follower.trade_count"),
+              ("base.utc_start(date)","datetime.strptime(date,'%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()"),
+              ("            f=base.continuous_features(leader,follower,h); tr,vr=attention(leader,follower,h)\n",
+               "            f=base.continuous_features(leader,follower,h); f['under']=f['underreaction']; f['leader_mark']=leader.mark; tr,vr=attention(leader,follower,h)\n"),
+          ]
+          for old,new in replacements:
+              count=text.count(old)
+              if count<1:
+                  raise SystemExit(f'expected adapter token not found: {old!r}')
+              text=text.replace(old,new)
+          forbidden=('inspect_source(',"leader['mark']","follower['mark']","base.utc_start(date)")
+          if any(token in text for token in forbidden):
+              raise SystemExit(f'interface adapter left forbidden token: {[x for x in forbidden if x in text]}')
           p.write_text(text)
           PY
           python -m py_compile runtime/base_probe.py runtime/decision_tree.py
