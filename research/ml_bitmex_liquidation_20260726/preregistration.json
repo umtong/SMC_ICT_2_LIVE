@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1735-ML-BITMEX-LIQ-001",
+  "provisional_result_id": "RES-20260726-ML-BITMEX-LIQ-FATAL-001",
+  "engine_version": "ML-BITMEX-LIQUIDATION-RELAY-V1",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-ml-bitmex-liquidation-001",
+  "issue": 126,
+  "objective_fingerprint": "995ea2772ecb1def260023770f453025f549976b5bc91ee1d5e067b9317f0cd3",
+  "scope_fingerprint": "d3017f6b0434cc070b24ba5ff7ae74865b5c3b6f3fcb0b9f4a6c27b395322b10",
+  "single_hypothesis": "Point-in-time BitMEX XBTUSD forced-liquidation bursts contain incremental information, beyond frozen Bybit structural distances, about whether Bybit BTCUSDT reaches upper or lower external liquidity first.",
+  "smc_ict_translation": "BitMEX forced deleveraging raids liquidity. The model distinguishes Bybit displacement acceptance and same-side delivery from sweep exhaustion, reclaim and opposing-liquidity delivery.",
+  "source_contract": {
+    "provider": "Tardis normalized downloadable CSV",
+    "signal_venue": "bitmex",
+    "signal_symbol": "XBTUSD",
+    "signal_types": ["liquidations", "trades", "quotes"],
+    "execution_venue": "bybit",
+    "execution_symbol": "BTCUSDT",
+    "execution_types": ["trades", "quotes"],
+    "availability_clock": "local_timestamp",
+    "free_sample_constraint": "exact first-day quarterly samples only",
+    "source_gap_rule": "unavailable entry is rejected; an accepted unresolved position pays the full structural stop"
+  },
+  "exact_dates": {
+    "training": ["2020-07-01", "2020-10-01", "2021-01-01", "2021-04-01"],
+    "calibration": ["2021-07-01", "2021-10-01"],
+    "untouched_confirmation": ["2022-01-01", "2022-04-01", "2022-07-01", "2022-10-01"],
+    "conditional_development": ["2023-01-01", "2023-04-01", "2023-07-01", "2023-10-01"],
+    "prohibited": [2024, 2025, 2026]
+  },
+  "event_contract": {
+    "burst_grouping": "all XBTUSD liquidation rows separated by no more than two seconds; one row may form a burst",
+    "burst_availability": "two-second quiet interval after the last row",
+    "post_close_delay_seconds": 5,
+    "entry_delay_seconds": 1,
+    "entry": "first Bybit BTCUSDT BBO at or after the delayed request, maximum additional delay two seconds",
+    "structure": "four-hour pre-burst Bybit BBO-mid range frozen before the burst",
+    "label": "upper versus lower executable pool first passage",
+    "ambiguous_touch": "adverse and unavailable as a favorable training label",
+    "elapsed_time_exit": false
+  },
+  "minimal_ml_contract": {
+    "model": "one HistGradientBoostingClassifier",
+    "model_parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 120,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 40,
+      "l2_regularization": 5.0,
+      "max_bins": 63,
+      "random_state": 20260726
+    },
+    "calibration": "one frozen isotonic probability map learned only on the calibration dates",
+    "features": [
+      "signed liquidation amount divided by prior BitMEX turnover",
+      "log liquidation row count",
+      "liquidation pace divided by prior BitMEX turnover rate",
+      "BitMEX delayed price impact per forced-flow share",
+      "BitMEX aggressive-flow alignment",
+      "Bybit delayed response fraction",
+      "BitMEX-Bybit relative response residual divided by prior relative volatility",
+      "Bybit BBO size pressure",
+      "upper-pool structural distance fraction",
+      "lower-pool structural distance fraction"
+    ],
+    "baseline": "zero-drift structural-distance first-passage probability",
+    "decision": "one cost-adjusted LONG/SHORT/FLAT expected-value equation at 18 bp",
+    "forbidden_search": [
+      "model family",
+      "hyperparameter",
+      "feature subset",
+      "probability threshold",
+      "event quiet interval",
+      "structure lookback",
+      "risk fraction",
+      "leverage"
+    ]
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "risk_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "prior_hour_turnover_capacity_fraction": 0.0005,
+    "global_slot_count": 1,
+    "cost_paths_round_trip_bps": [12, 18, 24],
+    "same_gross_path_replay": true,
+    "top_10_percent_winner_counterfactual": "remove event keys before slot competition and rerun the whole account"
+  },
+  "confirmation_gate_all_required": {
+    "resolved_rows": ">=100",
+    "model_auc": ">=0.55",
+    "auc_lift_over_distance_baseline": ">=0.02",
+    "brier_skill_over_distance_baseline": ">0",
+    "trades_at_18bp": ">=40",
+    "total_return_at_18bp": ">0",
+    "total_return_at_24bp": ">0",
+    "median_trade_at_12bp": ">0",
+    "top_10_percent_winner_removed_return_at_18bp": ">0",
+    "positive_confirmation_date_fraction_at_18bp": ">=0.75",
+    "top_five_positive_pnl_share_at_18bp": "<=0.50",
+    "bankruptcy": false
+  },
+  "ranking_eligibility": false,
+  "survivor_obligation": "continuous exact Bybit reconstruction, actual funding, broader capacity and causal 2023 evidence before any official 2024 opening",
+  "credentials": false,
+  "orders": false,
+  "source_code": {
+    "raw_sha256": "89bf545c4edfbdde2743f150a9128c5e1da35854d5877723bbd3a6d785bfb606",
+    "raw_bytes": 50059,
+    "zlib_sha256": "97ea5cca8d4f00eb17d16029dabb6ada3f3ab132d73adbbdc9b7c41e38de47ac",
+    "base64_file_sha256": "dfbb9b959a7e5d872b4c321645394a94e7e92ca7f8e8f85b6bb8d7c1cc77f3a1"
+  }
+}
