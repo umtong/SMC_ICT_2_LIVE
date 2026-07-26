@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "execution_correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-STRICT-V3-VISIBLE-001",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:24:00+09:00",
+  "status": "PRE_SOURCE_PASS_AND_PRE_MARKET_OUTCOME_EXECUTION_ONLY",
+  "source_sha": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
+  "strict_economic_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+  "supersedes_execution_pins": [
+    "b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8",
+    "6cbff14ed8dd5ebba3b6b47bf6854bf090e4db2c"
+  ],
+  "reason": "The source event may finalize mid-minute. The prior causal V2 still allowed the minute immediately before the next-minute entry open to be treated as completed and therefore could use an unfinished bar. Strict V3 ends every market feature and liquidity level at the last bar whose close is at or before the source availability timestamp, uses the next-minute open for realized execution only, and marks unresolved stage-boundary exposure without asserting a strategy close.",
+  "unchanged": [
+    "canonical USDT Issue/Redeem and USDC zero-address Transfer source semantics",
+    "2021-2023 source chronology and block plus 12/64 availability",
+    "one HGBT and one isotonic calibration map",
+    "structural first-passage target and stop",
+    "one global BTC/ETH slot",
+    "12/18/24bp paths",
+    "registered risk and notional search after positive base alpha",
+    "immediate official 2024H1 handoff for a complete pre-2024 survivor",
+    "no credentials or orders"
+  ],
+  "source_pass_consumed_before_correction": false,
+  "market_archive_opened_before_correction": false,
+  "label_computed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
