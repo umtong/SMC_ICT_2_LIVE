@@ -1,0 +1,36 @@
+{
+  "account": {
+    "costs_bps": [12, 18, 24],
+    "funding_proxy": "adverse 2bp at each crossed UTC 8-hour boundary",
+    "initial_nav": 10000.0,
+    "notional_cap_multiple": 3.0,
+    "risk_fraction": 0.01,
+    "top_trade_removal": "top 10% positive routed events removed and global account rerun"
+  },
+  "claim_id": "CLM-20260726-1712-ML-PO3-STATE-001",
+  "chronology": {
+    "calibration": 2022,
+    "development": "2023 conditional on calibration pass",
+    "sealed": [2024, 2025, 2026],
+    "training": 2021
+  },
+  "features": [
+    "ret_z",
+    "range_ratio",
+    "body_eff",
+    "wick_skew",
+    "flow_imb"
+  ],
+  "model": {
+    "candidate_probability_thresholds": [0.45, 0.6, 0.75],
+    "emission_covariance": "diagonal",
+    "model_id": "SHARED_3STATE_GAUSSIAN_MARKOV_PO3_V1",
+    "state_count": 3,
+    "state_filter": "causal forward recursion only"
+  },
+  "one_global_slot": true,
+  "preregistration_sha256": "4d4ad2a2580496d980e6f5118199e4b93971b166370f8633264a7d3876df0139",
+  "result_id": "RES-20260726-ML-PO3-STATE-001",
+  "schema_version": 1,
+  "strategy": "learned accumulation box, one-sided manipulation raid/reclaim, learned distribution confirmation, next-open entry, raid-extreme stop, opposite-box target, no elapsed-time exit"
+}
