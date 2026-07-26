@@ -1,14 +1,23 @@
 name: Hyperliquid wallet skill persistence gate
 
 on:
+  push:
+    branches:
+      - agent/r11-hl-wallet-flow-001
+    paths:
+      - ".github/workflows/hl-wallet-skill-persistence-gate.yml"
+      - "research/hyperliquid_wallet_flow_20260726/source_selection_v2.json"
+      - "research/hyperliquid_wallet_flow_20260726/preregistration_skill_persistence_v1.json"
+      - "research/hyperliquid_wallet_flow_20260726/run_wallet_skill_gate.py"
+      - "research/hyperliquid_wallet_flow_20260726/test_wallet_skill_gate.py"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: hl-wallet-skill-manual-${{ github.ref }}
-  cancel-in-progress: true
+  group: hl-wallet-skill-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   wallet-skill-gate:
