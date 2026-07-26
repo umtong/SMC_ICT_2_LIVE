@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   research:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 340
     env:
       PYTHONHASHSEED: "0"
@@ -73,6 +73,7 @@ jobs:
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_001_SOURCE_GAP_CONTINUITY.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_004_ARM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
 
       - uses: actions/cache@v4
         with:
@@ -114,10 +115,10 @@ jobs:
               assert result['development'] is None
               assert result['selected_risk_config'] is None
           print(json.dumps({
-              'status':result['status'],
-              'confirmation_gate':result['confirmation']['gate_passed'],
-              'development_opened':result['development_opened'],
-              'decision':result['decision'],
+            'status':result['status'],
+            'confirmation_gate':result['confirmation']['gate_passed'],
+            'development_opened':result['development_opened'],
+            'decision':result['decision'],
           },sort_keys=True))
           PY
 
@@ -132,6 +133,7 @@ jobs:
             "$root/WORK_CLAIM.json" \
             "$root/preregistration.json" \
             "$root/AMENDMENT_001_SOURCE_GAP_CONTINUITY.json" \
+            "$root/EXECUTION_CORRECTION_004_ARM_RUNNER_BEFORE_OUTCOME.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
             "$root/source_manifest.json" \
