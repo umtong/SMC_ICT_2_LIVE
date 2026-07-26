@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2315-ML-UNISWAP-INVENTORY-001",
+  "correction_id": "CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME",
+  "recorded_at": "2026-07-26T23:33:00+09:00",
+  "status": "PRE_OUTCOME_CAUSAL_PERIOD_SEAL_CORRECTION",
+  "finding": "The source-only implementation included an ETHUSDT January 2024 archive probe before the complete pre-2024 strategy, model, sizing and execution contract had passed. Even without computing labels or PnL, reading 2024 price rows at this stage violates the intended official-interval seal.",
+  "change": {
+    "remove": "ETHUSDT 5-minute January 2024 source probe",
+    "replace_with": "ETHUSDT 5-minute July 2022 source probe",
+    "retained_pre2024_probes": [
+      "ETHUSDT July 2021",
+      "ETHUSDT July 2022",
+      "ETHUSDT December 2023"
+    ],
+    "workflow_assertion": "every Bybit probe year must be no later than 2023"
+  },
+  "superseded_run_policy": "Any source-gate run from an earlier commit that accessed or could access the January 2024 archive is non-authoritative and must not be consumed for source passage or later economic work.",
+  "unchanged": [
+    "Uniswap and Ethereum block source identities",
+    "two-hour information-availability delay",
+    "one HGBT and one isotonic calibrator",
+    "features, structural target, stop and action rule",
+    "pre-2024 partitions and complete advancement gate",
+    "12/18/24-bp paths",
+    "risk and notional search conditional on the base gate",
+    "immediate official 2024H1 evaluation only after the full pre-2024 system is frozen",
+    "no credentials or orders"
+  ],
+  "strategy_outcome_observed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
