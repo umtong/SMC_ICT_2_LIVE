@@ -48,7 +48,7 @@ def patch_metric() -> None:
 
 
 def run(output: Path, cache: Path) -> dict[str, Any]:
-    corrected_source.patch_loader()
+    corrected_source.patch_contract()
     patch_metric()
     result = corrected_source.purged.run(output, cache)
     result["winner_removal_amendment"] = json.loads(
