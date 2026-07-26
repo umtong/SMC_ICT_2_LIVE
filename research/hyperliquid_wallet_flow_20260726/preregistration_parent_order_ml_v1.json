@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1040-HL-WALLET-FLOW-001",
+  "experiment_id": "HL-PARENT-ORDER-DELIVERY-ML-V1",
+  "created_at": "2026-07-26T09:48:00Z",
+  "stage": "PRE_2026_PARENT_ORDER_PRICE_FATAL_SCREEN",
+  "purpose": "Test whether a causally detected Hyperliquid repeated-child-order sequence predicts same-direction delivery to already-known external liquidity strongly enough to survive realistic cost stress and justify exact Bybit execution reconstruction.",
+  "trader_explanation": [
+    "Three same-wallet, same-coin, same-side taker child orders spaced 20 to 40 seconds apart identify a likely active parent execution after the third child order completes.",
+    "The parent side fixes direction; ML may accept or reject continuation but may never reverse it.",
+    "The previous fully completed 15-minute high or low in the parent direction is the external-liquidity target.",
+    "The observed three-child-order origin extreme is structural invalidation.",
+    "Entry is the first Hyperliquid market trade at least two seconds after detection; target and stop are frozen before entry; no elapsed-time liquidation is used."
+  ],
+  "source_contract": {
+    "selection": "source_selection_v2.json",
+    "repository": "gionuibk/hyperliquid-node-fills-by-block",
+    "revision": "754fe22c46b1e061d3594c75815c9e672001964a",
+    "expected_file_count": 44,
+    "expected_total_bytes": 2045945803,
+    "expected_manifest_sha256": "85f63f431ef4e4aff01f777aef8d74f05b9c568ab055bec48652b896dfc47f6b",
+    "allowed_hours_utc": [12, 13, 14, 15],
+    "allowed_dates": [
+      "2025-07-27", "2025-07-28", "2025-07-29", "2025-07-30",
+      "2025-07-31", "2025-08-01", "2025-08-02", "2025-08-03",
+      "2025-08-04", "2025-08-05", "2025-08-06"
+    ],
+    "read_validation_condition": "2025-08-05 and 2025-08-06 files remain unread until every confirmation gate passes.",
+    "prohibited": [
+      "any 2026 row",
+      "any official project 2024-2026 Bybit evaluation outcome",
+      "file substitution",
+      "credential or order use"
+    ]
+  },
+  "partitions": {
+    "warmup_only": ["2025-07-27"],
+    "train": ["2025-07-28", "2025-07-29", "2025-07-30"],
+    "calibration": ["2025-07-31", "2025-08-01"],
+    "confirmation": ["2025-08-02", "2025-08-03", "2025-08-04"],
+    "conditional_validation": ["2025-08-05", "2025-08-06"]
+  },
+  "event_contract": {
+    "eligible_fill": "coin in BTC, ETH, SOL, XRP; crossed=true; recognized side; finite positive price and size; valid wallet, time and oid; liquidation-tagged fills excluded",
+    "child_order_key": ["wallet", "coin", "side", "oid"],
+    "partial_fill_collapse": "minimum fill time, notional-weighted VWAP, summed notional and majority non-empty cloid",
+    "sequence_scope": ["wallet", "coin"],
+    "cadence_gap_seconds_inclusive": [20, 40],
+    "detection": "third child order of a maximal consecutive same-side cadence run",
+    "one_event_per_run": true,
+    "availability_delay_ms": 2000,
+    "entry_proxy": "first same-coin market-series trade at or after detection plus 2000ms, rejected when more than 5000ms late",
+    "decision_window_utc": ["12:20:00", "15:50:00"]
+  },
+  "structure_contract": {
+    "external_range": "high and low of the immediately preceding fully completed 15-minute UTC interval from retained same-coin market trades",
+    "long_target": "preceding completed 15-minute high",
+    "short_target": "preceding completed 15-minute low",
+    "long_stop": "minimum VWAP of the first three child orders, buffered 2bp lower",
+    "short_stop": "maximum VWAP of the first three child orders, buffered 2bp higher",
+    "eligibility": "entry must lie strictly between target and stop and each structural distance must be finite, positive and no more than 300bp",
+    "exit": "first market trade reaching target or stop; equal-timestamp ambiguity is stop-first; unresolved source boundary receives the full structural stop in account replay",
+    "elapsed_time_exit": false
+  },
+  "model_contract": {
+    "family": "HistGradientBoostingClassifier",
+    "one_model_only": true,
+    "hyperparameters": {
+      "learning_rate": 0.05,
+      "max_iter": 160,
+      "max_leaf_nodes": 15,
+      "max_depth": 3,
+      "min_samples_leaf": 30,
+      "l2_regularization": 1.0,
+      "random_state": 20260726
+    },
+    "calibration": "one IsotonicRegression fitted only on the calibration partition",
+    "feature_columns": [
+      "same_cloid_three",
+      "mean_cadence_error_seconds",
+      "log_total_child_notional",
+      "log_third_to_first_notional_ratio",
+      "directional_run_displacement_bp",
+      "directional_market_return_30s_bp",
+      "directional_market_return_120s_bp",
+      "directional_taker_imbalance_60s",
+      "target_distance_bp",
+      "stop_distance_bp"
+    ],
+    "direction_lock": "model can only accept or reject the detected parent-order side; it cannot reverse direction",
+    "baseline": "zero-drift structural first-passage probability stop_distance/(target_distance+stop_distance)",
+    "minimum_rows": {
+      "train_resolved": 300,
+      "calibration_resolved": 100,
+      "confirmation_resolved": 150,
+      "each_class_train": 30,
+      "each_class_calibration": 15
+    }
+  },
+  "economic_decision": {
+    "decision_cost_bp": 18,
+    "expected_value_bp": "p_success*target_distance_bp - (1-p_success)*stop_distance_bp - 18",
+    "authorize_when": "expected_value_bp strictly greater than 2bp",
+    "candidate_grid": false,
+    "same_authorized_events_replayed_at_round_trip_cost_bp": [12, 18, 24]
+  },
+  "account_contract": {
+    "initial_nav_usdt": 10000,
+    "risk_fraction": 0.01,
+    "notional_cap_multiple": 3.0,
+    "quantity": "min(NAV*risk_fraction/(stop_distance_fraction+round_trip_cost_fraction), NAV*notional_cap_multiple)/entry_price",
+    "one_global_slot": true,
+    "simultaneous_priority": "higher expected value, then same_cloid_three, then BTC, ETH, SOL, XRP, then event key",
+    "top_winner_counterfactual": "remove the largest positive 10 percent of 12bp event keys before slot arbitration and replay from initial NAV",
+    "funding": "not applied because every source window ends before 16:00 UTC and no position may survive its source boundary"
+  },
+  "confirmation_gate_all_required": {
+    "model_auc": ">=0.55",
+    "auc_lift_over_structure_baseline": ">=0.01",
+    "positive_brier_skill_over_structure_baseline": true,
+    "accepted_trades_at_18bp": ">=60",
+    "mean_net_trade_at_24bp": ">0",
+    "median_net_trade_at_24bp": ">0",
+    "total_return_at_24bp": ">0",
+    "top_10_percent_winner_removed_return_at_18bp": ">0",
+    "positive_confirmation_dates_at_18bp": ">=2/3",
+    "top_five_positive_pnl_share_at_18bp": "<=0.50",
+    "unresolved_trade_fraction": "<=0.10",
+    "geometric_sample_day_growth_at_24bp": ">=0.0025"
+  },
+  "validation_gate_all_required": {
+    "fixed_model_calibrator_and_decision_rule": true,
+    "accepted_trades_at_18bp": ">=30",
+    "mean_and_median_net_trade_at_24bp": ">0",
+    "total_return_at_24bp": ">0",
+    "top_10_percent_winner_removed_return_at_18bp": ">0",
+    "both_validation_dates_positive_at_18bp": true,
+    "top_five_positive_pnl_share_at_18bp": "<=0.50",
+    "unresolved_trade_fraction": "<=0.10"
+  },
+  "promotion_boundary": "A validation pass opens only a new exact Bybit BBO/depth/funding replay on the same 2025 events. This screen is not rank eligible and cannot open official 2024-2026 evaluation, risk/leverage search or orders.",
+  "hard_boundaries": {
+    "bybit_execution_opened": false,
+    "official_2024_2026_opened": false,
+    "rank_eligible": false,
+    "orders_submitted": false
+  }
+}
