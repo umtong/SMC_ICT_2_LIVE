@@ -1,0 +1,149 @@
+name: YT Trinity keyed transcript API probe
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-ytt-keyed-probe.yml
+      - control/yt-trinity-ytt-keyed-probe-trigger.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-ytt-keyed-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Register ephemeral key and probe target controls
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          result = {
+              "schema_version": 1,
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "tested_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "registration": {},
+              "videos": [],
+          }
+          key = ""
+          try:
+              request = urllib.request.Request(
+                  "https://api.youtubetotext.com/free/register",
+                  data=b"",
+                  method="POST",
+                  headers={"User-Agent": "SMC-ICT-2-LIVE/1.0", "Accept": "application/json"},
+              )
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  payload = json.loads(response.read())
+              key = str(payload.get("api_key") or "")
+              result["registration"] = {
+                  "ok": key.startswith("ytt_free_"),
+                  "tier": payload.get("tier"),
+                  "daily_fetch_cap": payload.get("daily_fetch_cap"),
+              }
+              if key:
+                  print(f"::add-mask::{key}")
+          except Exception as exc:
+              result["registration"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[-2000:]}
+
+          for channel, video_id in (
+              ("indicator_sensei_positive_control", "F6wDs1HRTSo"),
+              ("chartbro", "0h9lpMUBSlE"),
+              ("swipalnam", "-Tp2fhvVVGM"),
+              ("indicator_sensei", "2U0s_i07vMY"),
+          ):
+              row = {"channel": channel, "video_id": video_id}
+              try:
+                  request = urllib.request.Request(
+                      f"https://api.youtubetotext.com/full_transcript/{video_id}?meta=true",
+                      headers={
+                          "User-Agent": "SMC-ICT-2-LIVE/1.0",
+                          "Accept": "application/json",
+                          "X-API-Key": key,
+                      },
+                  )
+                  with urllib.request.urlopen(request, timeout=60) as response:
+                      raw = response.read()
+                      payload = json.loads(raw)
+                      row["http_status"] = int(response.status)
+                  transcript = payload.get("transcript") if isinstance(payload, dict) else None
+                  row.update({
+                      "segment_count": len(transcript) if isinstance(transcript, list) else 0,
+                      "character_count": sum(len(str(segment.get("text") or "")) for segment in transcript) if isinstance(transcript, list) else 0,
+                      "language_code": payload.get("language_code") if isinstance(payload, dict) else None,
+                      "source_type": payload.get("source_type") if isinstance(payload, dict) else None,
+                      "error": payload.get("error") if isinstance(payload, dict) else None,
+                      "reason": payload.get("reason") if isinstance(payload, dict) else None,
+                      "can_transcribe_with_ai": payload.get("canTranscribeWithAI") if isinstance(payload, dict) else None,
+                      "response_sha256": hashlib.sha256(raw).hexdigest(),
+                  })
+              except urllib.error.HTTPError as exc:
+                  raw = exc.read()
+                  try:
+                      payload = json.loads(raw)
+                  except Exception:
+                      payload = {"raw": raw.decode("utf-8", "replace")[:1000]}
+                  row.update({
+                      "http_status": int(exc.code),
+                      "segment_count": 0,
+                      "error": payload.get("error") if isinstance(payload, dict) else None,
+                      "reason": payload.get("reason") if isinstance(payload, dict) else None,
+                      "response_sha256": hashlib.sha256(raw).hexdigest(),
+                  })
+              except Exception as exc:
+                  row.update({"segment_count": 0, "exception": f"{type(exc).__name__}: {exc}"[-2000:]})
+              result["videos"].append(row)
+
+          result["positive_control_passed"] = any(
+              row["video_id"] == "F6wDs1HRTSo" and int(row.get("segment_count") or 0) >= 100
+              for row in result["videos"]
+          )
+          result["target_recovered_count"] = sum(
+              row["channel"] in {"chartbro", "swipalnam", "indicator_sensei"}
+              and int(row.get("segment_count") or 0) > 0
+              for row in result["videos"]
+          )
+          result["decision"] = "PASS" if result["positive_control_passed"] else "FAIL"
+          Path("research/yt_trinity_ml/YTT_KEYED_PROBE_POINTER.json").write_text(
+              json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - name: Persist non-secret probe pointer
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/YTT_KEYED_PROBE_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record keyed YTT transcript probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
