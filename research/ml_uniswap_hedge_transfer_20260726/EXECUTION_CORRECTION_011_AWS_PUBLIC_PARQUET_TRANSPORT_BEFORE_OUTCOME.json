@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-AWS-PUBLIC-PARQUET-011",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "status": "PRE_MARKET_OUTCOME_TRANSPORT_PROBE_ONLY",
+  "recorded_at": "2026-07-26T23:58:00+09:00",
+  "observed_problem": "Canonical keyless JSON-RPC correctly exposes signed Swap logs but historical block-boundary and per-log timestamp retrieval can dominate source acquisition. A full 2021-2023 history must not depend on millions of redundant block lookups when an independently maintained public log table already carries exact block timestamp, block hash, transaction hash and log index.",
+  "change": [
+    "Probe AWS Public Blockchain Data Ethereum logs Parquet on the same six frozen pre-2024 one-hour windows.",
+    "Read only the four factory-resolved WETH-USDC/USDT pool addresses and the exact canonical V3 Swap topic.",
+    "Decode the unchanged signed amount0 and amount1 ABI with the existing canonical decoder.",
+    "Record S3 object identities, sizes, filtered events, exact block hashes, timestamps and source hashes.",
+    "Require identity-by-identity and decoded-amount equality with the canonical RPC artifact before AWS may transport the full 2021-2023 history."
+  ],
+  "unchanged": [
+    "Ethereum mainnet, Uniswap V3 factory, WETH, USDC and USDT identities",
+    "four WETH-stable 0.05 and 0.30 percent pools",
+    "six frozen source windows and source-density gate",
+    "Swap ABI and signed amount0 amount1 interpretation",
+    "120-second information delay",
+    "event definition, model, features, labels, action equation and account logic",
+    "cost, target, stop, risk, leverage and sequential 2024H1 contract",
+    "no credentials and no orders"
+  ],
+  "source": {
+    "bucket": "s3://aws-public-blockchain/v1.0/eth/logs/",
+    "schema": "https://github.com/aws-solutions-library-samples/guidance-for-digital-assets-on-aws/blob/main/analytics/consumer/schema/eth.md",
+    "license_registry": "https://registry.opendata.aws/aws-public-blockchain/",
+    "role": "independent bulk transport candidate, never sole source authority before canonical cross-check",
+    "experimental_dataset_disclosure": true
+  },
+  "source_gate_result_observed_before_correction": false,
+  "market_outcome_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
