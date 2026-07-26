@@ -34,7 +34,7 @@ jobs:
           mkdir -p /tmp/ml-aave-liquidation-source
           cd "$GITHUB_WORKSPACE/research/ml_aave_liquidation_20260726"
           npm init -y >/dev/null
-          npm install --no-save '@aave-dao/aave-address-book@4.61.0'
+          npm install --save-exact '@aave-dao/aave-address-book@4.61.0'
           npm ls --all --json > /tmp/ml-aave-liquidation-source/NPM_DEPENDENCIES.json
           cp package-lock.json /tmp/ml-aave-liquidation-source/package-lock.json
           node export_addresses.cjs > /tmp/ml-aave-liquidation-source/ADDRESSES.json
