@@ -1,6 +1,12 @@
 name: Stablecoin corrected source and strict causal V3 economic decision
 
 on:
+  push:
+    branches:
+      - agent/r20-stablecoin-source-economic-snapshot-001
+    paths:
+      - '.github/workflows/ml-stablecoin-source-economic-strict-r21.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
   pull_request:
     branches: [main]
     paths:
@@ -37,6 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: agent/r20-stablecoin-source-economic-snapshot-001
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
@@ -107,6 +114,7 @@ jobs:
           if authorized:
               expected_schema='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
               expected_correction='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+              expected_response_policy='CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019'
               m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
               events=root/'EVENTS.jsonl'
               rows=[json.loads(x) for x in events.read_text().splitlines() if x.strip()]
@@ -116,6 +124,10 @@ jobs:
               assert r.get('source_correction_id')==expected_correction
               assert m.get('source_schema_id')==expected_schema
               assert m.get('source_correction_id')==expected_correction
+              assert r.get('transport_response_policy_correction')==expected_response_policy
+              assert m.get('transport_response_policy_correction')==expected_response_policy
+              assert r.get('status_zero_empty_policy')=='EXPLICIT_NO_RECORDS_ONLY'
+              assert r.get('unrecognized_status_zero_policy')=='FAIL_CLOSED_SOURCE_UNAVAILABLE'
               assert r.get('event_semantics',{}).get('ordinary_usdt_transfer_excluded') is True
               assert int(r['event_count'])>=120
               assert len(r['months_with_events'])>=24
