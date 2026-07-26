@@ -47,7 +47,8 @@ jobs:
           python -m pip install \
             'requests==2.32.3' \
             'eth-abi==5.1.0' \
-            'eth-utils==5.1.0'
+            'eth-utils==5.1.0' \
+            'eth-hash[pycryptodome]==0.7.1'
       - name: Compile and run outcome-sealed source gate
         run: |
           set -euo pipefail
