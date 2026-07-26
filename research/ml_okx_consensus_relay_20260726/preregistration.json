@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2012-ML-OKX-CONSENSUS-001",
+  "result_id": "RES-20260726-ML-OKX-CONSENSUS-001",
+  "engine_version": "ML-OKX-SPOT-SWAP-CONSENSUS-RELAY-V1",
+  "scientific_question": "Can completed same-direction OKX BTC-USDT spot and BTC-USDT-SWAP aggressive-flow displacement, reinforced by swap open-interest state, identify a still-uncompleted Bybit BTCUSDT delivery to frozen external liquidity with enough incremental probability quality and after-cost account expectancy?",
+  "smc_ict_translation": [
+    "The previous complete Bybit five-minute high and low are frozen external liquidity.",
+    "OKX spot and swap must complete displacement in the same direction with aligned aggressive flow while Bybit remains inside the frozen range.",
+    "This is three-market SMT non-confirmation: cash and swap have delivered but the Bybit account market has not.",
+    "One model may accept same-direction delivery or stay flat; it cannot invent reversal, another setup, target or stop."
+  ],
+  "sources": {
+    "okx_spot_exchange_id": "okex",
+    "okx_spot_symbol": "BTC-USDT",
+    "okx_swap_exchange_id": "okex-swap",
+    "okx_swap_symbol": "BTC-USDT-SWAP",
+    "bybit_exchange_id": "bybit",
+    "bybit_symbol": "BTCUSDT",
+    "data_types": ["trades", "quotes", "derivative_ticker"],
+    "availability_clock": "Tardis local_timestamp; row order is retained within each source file",
+    "first_day_monthly_public_only": true
+  },
+  "chronology": {
+    "train": ["2022-01-01", "2022-03-01", "2022-05-01"],
+    "calibration": ["2022-07-01"],
+    "untouched_confirmation": ["2022-09-01", "2022-11-01"],
+    "conditional_development": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "event": {
+    "state_interval_seconds": 1,
+    "prior_history_seconds": 900,
+    "minimum_each_okx_return_z": 2.0,
+    "minimum_each_okx_move_bps": 3.0,
+    "minimum_direction_aligned_aggressive_flow": 0.05,
+    "maximum_bybit_response_fraction": 0.75,
+    "minimum_bybit_response_fraction": -1.0,
+    "cooldown_seconds": 15,
+    "structure": "previous complete Bybit five-minute executable-mid high and low, available only after the bar completes",
+    "target_stop_distance_bps": [12.0, 250.0]
+  },
+  "features": [
+    "direction-aligned OKX spot return z-score",
+    "direction-aligned OKX swap return z-score",
+    "spot/swap consensus move basis points",
+    "direction-aligned spot aggressive-flow ratio",
+    "direction-aligned swap aggressive-flow ratio",
+    "direction-aligned spot top-quote pressure",
+    "direction-aligned swap top-quote pressure",
+    "direction-aligned spot-swap basis change",
+    "direction-aligned swap open-interest change",
+    "Bybit response fraction",
+    "frozen target distance",
+    "frozen stop distance"
+  ],
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "parameters": {
+      "loss": "log_loss",
+      "learning_rate": 0.05,
+      "max_iter": 180,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 50,
+      "l2_regularization": 2.0,
+      "early_stopping": false,
+      "random_state": 20260726
+    },
+    "calibration": "one isotonic map fit only on the chronological calibration date",
+    "baseline": "exact structural-distance first-passage probability stop_bps/(target_bps+stop_bps)",
+    "model_grid": false,
+    "feature_grid": false,
+    "threshold_grid": false,
+    "single_model_only": true
+  },
+  "decision": {
+    "label": "OKX-direction frozen Bybit external-liquidity boundary reached before the opposing boundary",
+    "primary_round_trip_cost_bps": 24.0,
+    "minimum_probability_edge_over_structure_baseline": 0.02,
+    "authorization": "positive expected net basis points and calibrated probability at least two percentage points above the structural baseline",
+    "actions": ["CONTINUATION", "FLAT"]
+  },
+  "execution": {
+    "entry_latencies_ms": [500, 1000],
+    "maximum_fresh_quote_delay_ms": 300,
+    "account_market": "Bybit BTCUSDT executable best bid/ask",
+    "waiting_barrier_touch": "candidate invalid",
+    "same_state_target_stop": "stop first",
+    "source_boundary": "full structural stop",
+    "elapsed_time_exit": false,
+    "global_pending_or_open_slots": 1
+  },
+  "account": {
+    "initial_nav_usdt": 10000.0,
+    "planned_loss_fraction": 0.01,
+    "notional_cap_multiple": 3.0,
+    "top_quote_participation": 0.05,
+    "round_trip_cost_replays_bps": [12.0, 18.0, 24.0],
+    "adverse_funding_reserve_bps_per_8h": 2.0,
+    "counterfactual_winner_removal": "remove ceil(10 percent) of positive 12bp event keys before complete chronological one-slot replay"
+  },
+  "fit_gate_all_required": {
+    "confirmation_rows": 200,
+    "minimum_auc_lift_over_distance": 0.01,
+    "positive_brier_skill": true,
+    "minimum_trades_each_latency_at_18bp": 30,
+    "positive_18bp_and_24bp_return_each_latency": true,
+    "positive_18bp_median_each_latency": true,
+    "minimum_18bp_profit_factor_each_latency": 1.1,
+    "minimum_positive_confirmation_dates_each_latency": 2,
+    "positive_18bp_winner_removed_return_each_latency": true,
+    "minimum_winner_removed_calendar_gdg_each_latency": 0.001,
+    "maximum_top_five_positive_pnl_share_each_latency": 0.4,
+    "no_bankruptcy": true
+  },
+  "failure_rule": "Any failed fit gate keeps development sealed and retires the exact information unit without model, feature, event, latency, target, stop, risk, leverage or sizing salvage.",
+  "ranking_role": "NONE_PRE2024_FATAL_SCREEN",
+  "orders_submitted": false
+}
