@@ -1,0 +1,125 @@
+name: Stablecoin source gate Windows dual transport
+
+on:
+  push:
+    branches: [agent/r13-ml-stablecoin-issuance-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-source-windows.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-stablecoin-source-windows.yml'
+      - 'research/ml_stablecoin_issuance_20260726/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-windows-source-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    strategy:
+      fail-fast: false
+      matrix:
+        transport: [rpc, blockscout]
+    runs-on: windows-latest
+    timeout-minutes: 240
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed source environment
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+      - name: Validate authoritative source code
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $r = 'research/ml_stablecoin_issuance_20260726'
+          $o = "research_runs/ml_stablecoin_issuance_20260726/windows_${{ matrix.transport }}"
+          New-Item -ItemType Directory -Force -Path $o | Out-Null
+          python -m py_compile `
+            "$r/source_gate.py" `
+            "$r/source_gate_authoritative.py" `
+            "$r/source_gate_blockscout.py" `
+            "$r/source_gate_blockscout_authoritative.py" `
+            "$r/test_source_gate.py"
+          $env:PYTHONPATH = $r
+          pytest -q "$r/test_source_gate.py" | Tee-Object -FilePath "$o/PYTEST.log"
+          if ('${{ matrix.transport }}' -eq 'rpc') {
+            python "$r/source_gate_authoritative.py" --self-test | Tee-Object -FilePath "$o/SELF_TEST.log"
+          } else {
+            python "$r/source_gate_blockscout_authoritative.py" --self-test | Tee-Object -FilePath "$o/SELF_TEST.log"
+          }
+          python -m json.tool "$r/EXECUTION_CORRECTION_008_WINDOWS_DUAL_TRANSPORT_BEFORE_OUTCOME.json" | Out-Null
+          python scripts/validate_project.py | Tee-Object -FilePath "$o/PROJECT_VALIDATION.log"
+      - name: Run outcome-sealed source transport
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $r = 'research/ml_stablecoin_issuance_20260726'
+          $o = "research_runs/ml_stablecoin_issuance_20260726/windows_${{ matrix.transport }}"
+          $env:PYTHONPATH = $r
+          if ('${{ matrix.transport }}' -eq 'rpc') {
+            $script = "$r/source_gate_authoritative.py"
+            $transport = 'TRANSPORT-20260726-ML-STABLECOIN-RPC-001'
+          } else {
+            $script = "$r/source_gate_blockscout_authoritative.py"
+            $transport = 'TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003'
+          }
+          python $script --output $o 2>&1 | Tee-Object -FilePath "$o/RUN.log"
+          $rc = $LASTEXITCODE
+          Set-Content -Path "$o/RUN_EXIT_CODE.txt" -Value $rc
+          if (-not (Test-Path "$o/SOURCE_GATE_RESULT.json")) {
+            python "$r/write_transport_failure.py" --output $o --transport $transport --exit-code $rc
+          }
+          @'
+          import json, pathlib, sys
+          path=pathlib.Path(sys.argv[1])
+          transport=sys.argv[2]
+          result=json.loads(path.read_text())
+          result['transport_id']=transport
+          path.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          '@ | python - "$o/SOURCE_GATE_RESULT.json" $transport
+          exit 0
+      - name: Verify outcome seal
+        shell: pwsh
+        run: |
+          $r = 'research/ml_stablecoin_issuance_20260726'
+          $o = "research_runs/ml_stablecoin_issuance_20260726/windows_${{ matrix.transport }}"
+          if ('${{ matrix.transport }}' -eq 'rpc') {
+            $transport = 'TRANSPORT-20260726-ML-STABLECOIN-RPC-001'
+          } else {
+            $transport = 'TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003'
+          }
+          python "$r/verify_source_result.py" "$o/SOURCE_GATE_RESULT.json" $transport
+      - name: Freeze source evidence hashes
+        if: always()
+        shell: pwsh
+        run: |
+          $o = "research_runs/ml_stablecoin_issuance_20260726/windows_${{ matrix.transport }}"
+          @'
+          import hashlib, pathlib, sys
+          root=pathlib.Path(sys.argv[1])
+          rows=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}\n")
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(rows))
+          '@ | python - $o
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-windows-${{ matrix.transport }}-${{ github.run_id }}
+          path: research_runs/ml_stablecoin_issuance_20260726/windows_${{ matrix.transport }}
+          if-no-files-found: error
+          retention-days: 30
