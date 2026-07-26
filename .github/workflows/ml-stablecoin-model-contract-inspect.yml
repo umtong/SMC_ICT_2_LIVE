@@ -6,6 +6,11 @@ on:
     paths:
       - '.github/workflows/ml-stablecoin-model-contract-inspect.yml'
       - 'research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py'
+  pull_request:
+    branches: [agent/r13-ml-stablecoin-issuance-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-model-contract-inspect.yml'
+      - 'research/ml_stablecoin_issuance_20260726/inspect_reusable_bybit_engine.py'
   workflow_dispatch:
 
 permissions:
@@ -37,10 +42,7 @@ jobs:
           assert data['market_data_read'] is False
           assert data['model_fit'] is False
           assert data['trade_or_pnl_opened'] is False
-          print('\n'.join(
-              f"{r['kind']} {r['name']}"
-              for r in data['records']
-          ))
+          print('\n'.join(f"{r['kind']} {r['name']}" for r in data['records']))
           PY
       - uses: actions/upload-artifact@v4
         with:
