@@ -7,6 +7,11 @@ on:
     paths:
       - "research/l2_cancel_refill_taker_20260726/**"
       - ".github/workflows/l2-cancel-refill-parallel-r11.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/l2_cancel_refill_taker_20260726/**"
+      - ".github/workflows/l2-cancel-refill-parallel-r11.yml"
   workflow_dispatch:
 
 permissions:
@@ -14,7 +19,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: l2-cancel-refill-parallel-r11-${{ github.ref }}
+  group: l2-cancel-refill-parallel-r11
   cancel-in-progress: true
 
 env:
