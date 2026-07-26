@@ -49,6 +49,7 @@ jobs:
           PYTHONPATH="$root" python "$root/source_gate.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json" >/dev/null
           python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
       - name: Run outcome-sealed source gate
         run: |
@@ -113,7 +114,7 @@ jobs:
           root=research/ml_stablecoin_issuance_20260726
           out=research_runs/ml_stablecoin_issuance_20260726/source_gate
           mkdir -p "$out/source"
-          cp "$root"/{WORK_CLAIM.json,preregistration.json,README.md,SOURCES.md,source_gate.py,test_source_gate.py} "$out/source/"
+          cp "$root"/{WORK_CLAIM.json,preregistration.json,AMENDMENT_001_FULL_PERIOD_SOURCE_BEFORE_OUTCOME.json,README.md,SOURCES.md,source_gate.py,test_source_gate.py} "$out/source/"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         if: always()
