@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-DONCHIAN-COMPLETE-5M-AGGREGATION-005",
+  "claim_id": "CLM-20260726-2139-DONCHIAN-2024H1-001",
+  "recorded_at": "2026-07-27T00:08:00+09:00",
+  "status": "PRE_RESULT_DATA_TRANSPORT_ONLY",
+  "observed_failure": {
+    "workflow_run": 30204424047,
+    "artifact_id": 8632788864,
+    "artifact_digest": "sha256:e3565cf2f9b96c29a9fb8adf0c87fbac552bdbbcd43e9b4a9062a9654f706b86",
+    "stage": "after source download and before strategy replay",
+    "error": "The official monthly 60-minute MT4 objects were not complete month grids; BTCUSDT alone was missing 1,928 required hours.",
+    "examples": [
+      "BTCUSDT December 2023 contained 200 rows instead of 744",
+      "BTCUSDT January 2024 contained 200 rows instead of 744",
+      "BTCUSDT February 2024 contained 400 rows instead of 696",
+      "ETHUSDT January 2024 contained 200 rows instead of 744",
+      "XRPUSDT February 2024 contained 200 rows instead of 696"
+    ]
+  },
+  "correction": {
+    "source": "Bybit official public MT4 five-minute monthly archives",
+    "method": "Require the exact complete UTC five-minute grid, reject any missing observation, and aggregate each group of twelve contiguous completed bars to one hourly bar.",
+    "output": "Write the same canonical monthly 60-minute CSV filenames consumed by the frozen evaluator.",
+    "no_imputation": true,
+    "api_price_fallback": false,
+    "funding_contract": "Unchanged: use official history when available, otherwise the pre-registered adverse one-basis-point-per-eight-hour reserve for both directions."
+  },
+  "unchanged": [
+    "2024H1 evaluation interval and December 2023 warm-up",
+    "completed 60-minute 96-hour Donchian breakout",
+    "next-hour-open entry",
+    "two-ATR20 protective stop",
+    "completed opposing 48-hour channel exit at the next hour open",
+    "one global BTCUSDT/ETHUSDT/SOLUSDT/XRPUSDT slot",
+    "0.5% planned structural-stop risk and 5x notional cap",
+    "12/18/24-basis-point account paths",
+    "funding fallback",
+    "winner-removal chronological rerouting",
+    "no elapsed-time liquidation and no forced half-year close",
+    "later half-years unopened",
+    "no credentials and no orders"
+  ],
+  "authority_before_correction": {
+    "incomplete_official_market_rows_downloaded": true,
+    "strategy_replay_started": false,
+    "trade_or_pnl_created": false,
+    "ranking_result_created": false,
+    "later_period_opened": false,
+    "orders_submitted": false
+  }
+}
