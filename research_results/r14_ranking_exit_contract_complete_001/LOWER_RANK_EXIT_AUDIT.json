@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "audit_id": "AUDIT-20260726-R14-LOWER-RANK-EXIT-CONTRACT-001",
+  "project_revision": 14,
+  "rule": "A position may exit only through strategy-defined market or state logic; a fixed maximum holding duration, timeout index or scheduled horizon close is prohibited.",
+  "removed": [
+    {"source_result_id": "RES-20260725-DYNAMIC-FACTOR-001", "evidence": "maximum_hold_bars=96 and default timeout-open exit", "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"},
+    {"source_result_id": "RES-20260725-ABS-FLOW-001", "evidence": "maximum_holding_minutes and scheduled horizon close", "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"},
+    {"source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001", "evidence": "candidate.hold, timeout_i and timeout exit", "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"},
+    {"source_result_id": "RES-20260726-DVOL-XSEC-001", "evidence": "Candidate.maximum_hold_bars", "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"},
+    {"source_result_id": "RES-20260725-ALPHA-HYP-001", "evidence": "durable status INVALID and selected specification hold=48", "contract_failure": "INVALID_RESULT_AND_FIXED_HOLD"},
+    {"source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001", "evidence": "best raw candidate hold_minutes=30; four trades and negative winner-removal path", "contract_failure": "PROHIBITED_ELAPSED_TIME_LIQUIDATION"}
+  ],
+  "retained_or_inserted": [
+    {"rank": 1, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate": "all-breakout", "exit_logic": "ATR stop or completed Donchian channel exit", "elapsed_time_liquidation": false},
+    {"rank": 2, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate": "after-loser", "exit_logic": "ATR stop or completed Donchian channel exit", "elapsed_time_liquidation": false},
+    {"rank": 3, "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001", "exit_logic": "one of two frozen structural liquidity destinations reaches first", "elapsed_time_liquidation": false},
+    {"rank": 4, "source_result_id": "RES-20260726-LIQUIDITY-MASS-001", "exit_logic": "structural pool stop and pre-existing liquidity-pool target", "elapsed_time_liquidation": false},
+    {"rank": 5, "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001", "exit_logic": "structural stop beyond sweep and opposing-liquidity target", "elapsed_time_liquidation": false},
+    {"rank": 6, "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001", "exit_logic": "stop beyond terminal raid and far Original-Consolidation target", "elapsed_time_liquidation": false},
+    {"rank": 7, "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001", "exit_logic": "basis closure, opposing liquidity, leader invalidation or structural stop", "elapsed_time_liquidation": false},
+    {"rank": 8, "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001", "exit_logic": "event-range stop or structural R target; unresolved paths cannot pass", "elapsed_time_liquidation": false}
+  ],
+  "authority": {"market_rows_opened": false, "strategy_rules_changed": false, "parameters_changed": false, "official_2024_2026_opened": false, "orders_submitted": false},
+  "created_at": "2026-07-26T21:08:00+09:00"
+}
