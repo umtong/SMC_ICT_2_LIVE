@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "status": "FROZEN_BEFORE_ANY_FIT_MODEL_DEVELOPMENT_PATH_OR_PNL",
+  "created_at": "2026-07-26T09:50:00+09:00",
+  "reason": "The original preregistration specified Binance execution and a maximum-life market exit. Both conflict with the project-wide fixed Bybit execution universe and the prohibition on arbitrary elapsed-time liquidation. No fit model, development score, simulated trade or PnL had been computed on the claim branch when this correction was frozen.",
+  "supersedes": [
+    "preregistration.json:data.market",
+    "preregistration.json:data.streams",
+    "preregistration.json:synthetic_entry_pair",
+    "preregistration.json:position_exit.time_exit",
+    "preregistration.json:candidate_grid.maximum_life_seconds",
+    "preregistration.json:candidate_grid.candidate_count"
+  ],
+  "corrected_market_contract": {
+    "execution_venue": "Bybit USDT linear perpetual futures",
+    "symbol": "BTCUSDT",
+    "provider": "Tardis public normalized first-day samples",
+    "required_streams": ["bybit quotes", "bybit trades"],
+    "external_venue_execution": false,
+    "binance_role": "none in V1; a later amendment may add an external hazard feature only after a non-overlap review, but no Binance price can be used as an execution fill",
+    "information_and_execution_clock": "Tardis local_timestamp at microsecond precision",
+    "known_source_attestation": "The SHA-identified 2023-07-01 Bybit BTCUSDT quotes and trades records from cross-venue source audit artifact 8621815467 are reused only for source identity and parser semantics. No cross-venue signal or outcome is reused."
+  },
+  "corrected_order_contract": {
+    "entry_pair": "Two independent equal-quantity Bybit conditional market-entry orders around the last fresh completed-bin bid and ask.",
+    "acknowledgment_latency_ms": 100,
+    "trigger_to_market_fill_latency_ms": 100,
+    "cancel_latency_profiles_ms": [100, 300],
+    "atomic_oco_assumed": false,
+    "same_bin_double_trigger": "Both adverse market fills are applied and the account is flattened.",
+    "global_slot": "One pending pair or one open Bybit position across the account."
+  },
+  "corrected_exit_contract": {
+    "profit_target": "Reduce-only last-price market trigger measured from actual entry fill.",
+    "protective_stop": "Reduce-only last-price market trigger measured from actual entry fill; stop wins same-bin ambiguity.",
+    "hazard_decay_reentry": "At completed five-second decisions after entry, exit only after two consecutive decisions whose model hazard score is below that model's fit-score median and whose fresh midpoint is back inside the original entry-trigger band.",
+    "elapsed_time_exit": null,
+    "sample_boundary": "No market exit is invented at the data boundary. If an accepted entry remains unresolved when the source day ends, that candidate account path is assigned terminal NAV zero and 100% drawdown as a fail-closed data-boundary outcome.",
+    "entry_guard_seconds_before_utc_day_end": 300
+  },
+  "corrected_candidate_grid": {
+    "model": ["logistic", "hgbt"],
+    "hazard_score_quantile": [0.95, 0.975, 0.99],
+    "entry_offset_bp": [2, 4, 6],
+    "target_bp": [15, 25, 40],
+    "stop_bp": [8, 12, 20],
+    "candidate_count": 162
+  },
+  "counterfactual_concentration_contract": "Exact top-10% positive-trade removal is run only for preliminary survivors. The removed decision keys are excluded before global slot competition and the account is replayed from initial NAV separately at 12bp and 18bp.",
+  "unchanged": [
+    "fit and development dates",
+    "hazard label definition",
+    "feature set",
+    "model hyperparameters",
+    "score quantiles",
+    "pending-order TTL",
+    "risk fraction",
+    "notional and participation caps",
+    "12/18/24bp explicit cost profiles",
+    "development gates except removal of maximum-life dimension",
+    "selection and 2026 seals",
+    "no credentials and no orders"
+  ],
+  "orders_permitted": false
+}
