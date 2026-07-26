@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-LIQUIDITY-DRAW-001",
+  "claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001",
+  "engine_version": "ML-LIQUIDITY-DRAW-FIRST-PASSAGE-V1",
+  "status": "HARD_VALID_ECONOMIC_FAIL",
+  "decision": "KILL_APPROACH_NO_THRESHOLD_SYMBOL_OR_SIDE_SALVAGE",
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "code_commit": "0900a631db03ed81b2db62388132efd6bd57039b",
+  "pull_request": 124,
+  "workflow_run_id": 30194348946,
+  "artifact": {
+    "id": 8629624480,
+    "name": "ml-liquidity-draw-r11-57d7e5511035cd5b5a89825cb96fd9828d59852f",
+    "sha256": "e986870c95f524a5c6a872d38534b5714111746f215096c722ff9ee62986a817",
+    "source_file_count": 24,
+    "development_source_file_count": 0
+  },
+  "scope": {
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "fit_year": 2022,
+    "development_year": 2023,
+    "development_opened": false,
+    "prohibited_years_opened": [],
+    "model": "HistGradientBoostingClassifier plus frozen isotonic calibration",
+    "baseline": "distance-only zero-drift first-passage probability",
+    "signal_rule": "calibrated probability exceeds exact 18 bp break-even probability by at least 0.05",
+    "global_slots": 1,
+    "elapsed_time_exit": false
+  },
+  "hard_validity": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "prediction": {
+    "confirmation_rows": 4025,
+    "model_auc": 0.6936557405890079,
+    "distance_baseline_auc": 0.7348654930127331,
+    "auc_lift": -0.041209752423725154,
+    "model_brier": 0.2244036136117951,
+    "distance_baseline_brier": 0.20879303993890497,
+    "brier_skill": -0.07476577608840773
+  },
+  "account_paths": {
+    "12_bps": {
+      "trade_count": 156,
+      "final_nav": 9478.853634310088,
+      "total_return": -0.05211463656899118,
+      "geometric_daily_growth": -0.0005815885149491606,
+      "maximum_drawdown": 0.12382567672835687,
+      "profit_factor": 0.8802630112239467,
+      "median_net_return_bps_on_notional": -52.44580810651839,
+      "positive_month_fraction": 0.3333333333333333,
+      "top10pct_winner_removed_return": -0.12385588087883315
+    },
+    "18_bps": {
+      "trade_count": 156,
+      "final_nav": 9080.709780963287,
+      "total_return": -0.09192902190367136,
+      "geometric_daily_growth": -0.0010476327375807948,
+      "maximum_drawdown": 0.13417899649775633,
+      "profit_factor": 0.7889243103326442,
+      "median_net_return_bps_on_notional": -58.43366707947021,
+      "positive_month_fraction": 0.3333333333333333,
+      "top10pct_winner_removed_return": -0.16468523620967968
+    },
+    "24_bps": {
+      "trade_count": 156,
+      "final_nav": 8758.179636289378,
+      "total_return": -0.12418203637106218,
+      "geometric_daily_growth": -0.0014402337546997046,
+      "maximum_drawdown": 0.14252972559801735,
+      "profit_factor": 0.713832451275947,
+      "median_net_return_bps_on_notional": -64.42152605242204,
+      "positive_month_fraction": 0.3333333333333333,
+      "top10pct_winner_removed_return": -0.1969464426153128
+    }
+  },
+  "gate_failures": [
+    "auc_lift_over_distance_at_least_0_01",
+    "positive_brier_skill_over_distance",
+    "positive_total_return_at_18bps",
+    "positive_median_trade_at_12bps",
+    "positive_top10pct_removed_return_at_12bps",
+    "at_least_two_of_three_positive_fit_months_at_18bps"
+  ],
+  "one_time_failure_diagnostic": {
+    "spearman_probability_advantage_vs_net_notional_return": -0.199643,
+    "spearman_expected_net_return_vs_realized_net_notional_return": -0.122666,
+    "btc_total_return_at_18bps": -0.071716,
+    "eth_total_return_at_18bps": -0.021774,
+    "long_total_return_at_18bps": -0.015059,
+    "short_total_return_at_18bps": -0.078046,
+    "interpretation": "Model confidence was not economically monotone and was inversely related to realized return. No threshold, symbol or side micro-optimization is authorized."
+  },
+  "next_research_direction": "Abandon candle-state nearest-pool prediction. Test causal cross-venue forced-flow propagation where an observable external liquidation or aggressive-flow shock precedes Bybit execution opportunity.",
+  "orders_submitted": false,
+  "live_permission_changed": false
+}
