@@ -1,0 +1,288 @@
+name: SMT continuation ML meta-label
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/smt_continuation_ml_meta_20260726/**"
+      - ".github/workflows/smt-continuation-ml-meta.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smt-continuation-ml-meta-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4" \
+            "scikit-learn==1.6.1" "joblib==1.4.2" "pytest==8.3.4"
+
+      - name: Reconstruct and validate immutable scientific sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          python "$root/reconstruct.py"
+          chmod +x "$root/prepare_parent_sources.sh"
+          "$root/prepare_parent_sources.sh" "$PWD" "$RUNNER_TEMP/smt-cont-parent"
+          python -m py_compile "$root/extract.py" "$root/train.py"
+          PYTHONPATH="$root:$RUNNER_TEMP/smt-cont-parent/acceptance:$RUNNER_TEMP/smt-cont-parent/base" \
+            python "$root/extract.py" --self-test
+          PYTHONPATH="$root" python "$root/train.py" self-test
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_001_CLEAN_SCORE_CALIBRATION_AND_CONFIRMATION_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_ALL_SUNDAYS_SAMPLE_BREADTH_BEFORE_OUTCOME.json" >/dev/null
+          python scripts/validate_project.py
+
+  extract_2022:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        date: ["2022-01-02", "2022-01-09", "2022-01-16", "2022-01-23", "2022-01-30", "2022-02-06", "2022-02-13", "2022-02-20", "2022-02-27", "2022-03-06", "2022-03-13", "2022-03-20", "2022-03-27", "2022-04-03", "2022-04-10", "2022-04-17", "2022-04-24", "2022-05-01", "2022-05-08", "2022-05-15", "2022-05-22", "2022-05-29", "2022-06-05", "2022-06-12", "2022-06-19", "2022-06-26", "2022-07-03", "2022-07-10", "2022-07-17", "2022-07-24", "2022-07-31", "2022-08-07", "2022-08-14", "2022-08-21", "2022-08-28", "2022-09-04", "2022-09-11", "2022-09-18", "2022-09-25", "2022-10-02", "2022-10-09", "2022-10-16", "2022-10-23", "2022-10-30", "2022-11-06", "2022-11-13", "2022-11-20", "2022-11-27", "2022-12-04", "2022-12-11", "2022-12-18", "2022-12-25"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install extractor environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Extract one frozen date
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          out=research_runs/smt_continuation_ml_meta_20260726/matrix/${{ matrix.date }}
+          python "$root/reconstruct.py"
+          chmod +x "$root/prepare_parent_sources.sh"
+          "$root/prepare_parent_sources.sh" "$PWD" "$RUNNER_TEMP/smt-cont-parent"
+          PYTHONPATH="$root:$RUNNER_TEMP/smt-cont-parent/acceptance:$RUNNER_TEMP/smt-cont-parent/base" \
+            python "$root/extract.py" \
+              --date "${{ matrix.date }}" \
+              --cache "$RUNNER_TEMP/bybit-cache" \
+              --output "$out" \
+              2>&1 | tee "$out/RUN.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-cont-matrix-${{ matrix.date }}
+          path: research_runs/smt_continuation_ml_meta_20260726/matrix/${{ matrix.date }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+  train_2022:
+    needs: extract_2022
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      survivor: ${{ steps.result.outputs.survivor }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen ML environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+
+      - name: Reconstruct trainer
+        run: |
+          set -euo pipefail
+          python research/smt_continuation_ml_meta_20260726/reconstruct.py
+          python -m py_compile research/smt_continuation_ml_meta_20260726/train.py
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smt-cont-matrix-2022-*
+          path: downloaded/2022
+          merge-multiple: true
+
+      - name: Fit, calibrate and test untouched 2022 confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          out=research_runs/smt_continuation_ml_meta_20260726/train_2022
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/train.py" train \
+            --input downloaded/2022 \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Publish conditional stage decision
+        id: result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path('research_runs/smt_continuation_ml_meta_20260726/train_2022')
+          freeze = json.loads((root / 'FREEZE.json').read_text()) if (root / 'FREEZE.json').exists() else {}
+          survivor = freeze.get('confirmation_survivor') is True
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"survivor={'true' if survivor else 'false'}\n")
+          print(json.dumps({'confirmation_survivor': survivor}, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-continuation-ml-train-${{ github.sha }}
+          path: research_runs/smt_continuation_ml_meta_20260726/train_2022
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  extract_2023:
+    needs: train_2022
+    if: needs.train_2022.outputs.survivor == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        date: ["2023-01-01", "2023-01-08", "2023-01-15", "2023-01-22", "2023-01-29", "2023-02-05", "2023-02-12", "2023-02-19", "2023-02-26", "2023-03-05", "2023-03-12", "2023-03-19", "2023-03-26", "2023-04-02", "2023-04-09", "2023-04-16", "2023-04-23", "2023-04-30", "2023-05-07", "2023-05-14", "2023-05-21", "2023-05-28", "2023-06-04", "2023-06-11", "2023-06-18", "2023-06-25", "2023-07-02", "2023-07-09", "2023-07-16", "2023-07-23", "2023-07-30", "2023-08-06", "2023-08-13", "2023-08-20", "2023-08-27"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install extractor environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Extract one conditionally opened development date
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          out=research_runs/smt_continuation_ml_meta_20260726/matrix/${{ matrix.date }}
+          python "$root/reconstruct.py"
+          chmod +x "$root/prepare_parent_sources.sh"
+          "$root/prepare_parent_sources.sh" "$PWD" "$RUNNER_TEMP/smt-cont-parent"
+          PYTHONPATH="$root:$RUNNER_TEMP/smt-cont-parent/acceptance:$RUNNER_TEMP/smt-cont-parent/base" \
+            python "$root/extract.py" \
+              --date "${{ matrix.date }}" \
+              --cache "$RUNNER_TEMP/bybit-cache" \
+              --output "$out" \
+              2>&1 | tee "$out/RUN.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-cont-matrix-${{ matrix.date }}
+          path: research_runs/smt_continuation_ml_meta_20260726/matrix/${{ matrix.date }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+  evaluate_2023:
+    needs: [train_2022, extract_2023]
+    if: always() && needs.train_2022.outputs.survivor == 'true' && needs.extract_2023.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frozen ML environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.1.3" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+
+      - name: Reconstruct evaluator
+        run: |
+          set -euo pipefail
+          python research/smt_continuation_ml_meta_20260726/reconstruct.py
+          python -m py_compile research/smt_continuation_ml_meta_20260726/train.py
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: smt-continuation-ml-train-${{ github.sha }}
+          path: downloaded/train
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smt-cont-matrix-2023-*
+          path: downloaded/2023
+          merge-multiple: true
+
+      - name: Evaluate untouched conditional 2023 development
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          out=research_runs/smt_continuation_ml_meta_20260726/development_2023
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/train.py" evaluate-development \
+            --input downloaded/2023 \
+            --bundle downloaded/train/MODEL_BUNDLE.joblib \
+            --freeze downloaded/train/FREEZE.json \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smt-continuation-ml-development-${{ github.sha }}
+          path: research_runs/smt_continuation_ml_meta_20260726/development_2023
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
