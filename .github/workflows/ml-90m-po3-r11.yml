@@ -51,20 +51,21 @@ jobs:
           mkdir -p "$OUT"
           {
             python scripts/validate_project.py
-            wc -c "$ROOT"/source_bundle.tar.gz.b64.part*
-            sha256sum "$ROOT"/source_bundle.tar.gz.b64.part*
-            python "$ROOT/reconstruct.py"
+            wc -c "$ROOT"/source_bundle_v2.tar.gz.b64.part*
+            sha256sum "$ROOT"/source_bundle_v2.tar.gz.b64.part*
+            python "$ROOT/reconstruct_v2.py"
             python -m py_compile "$RUNNER" "$TESTS"
             PYTHONPATH="$ROOT/reconstructed" pytest -q "$TESTS"
             PYTHONPATH="$ROOT/reconstructed" python "$RUNNER" self-test
             python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
             python -m json.tool "$ROOT/preregistration.json" >/dev/null
-            sha256sum "$RUNNER" "$TESTS" "$ROOT/reconstruct.py" "$ROOT/source_manifest.json" "$ROOT/preregistration.json" "$ROOT/WORK_CLAIM.json" "$ROOT/README.md" "$ROOT/SOURCES.md"
+            python -m json.tool "$ROOT/AMENDMENT_001_SOURCE_OHLC_GAPS.json" >/dev/null
+            sha256sum "$RUNNER" "$TESTS" "$ROOT/reconstruct_v2.py" "$ROOT/source_manifest_v2.json" "$ROOT/preregistration.json" "$ROOT/AMENDMENT_001_SOURCE_OHLC_GAPS.json" "$ROOT/WORK_CLAIM.json" "$ROOT/README.md" "$ROOT/SOURCES.md"
           } 2>&1 | tee "$OUT/validation.log"
       - uses: actions/cache@v4
         with:
           path: /tmp/ml-90m-po3-r11
-          key: ml-90m-po3-r11-${{ runner.os }}-${{ hashFiles('research/ml_90m_po3_20260726/preregistration.json', 'research/ml_90m_po3_20260726/source_manifest.json') }}
+          key: ml-90m-po3-r11-${{ runner.os }}-${{ hashFiles('research/ml_90m_po3_20260726/preregistration.json', 'research/ml_90m_po3_20260726/source_manifest_v2.json') }}
           restore-keys: |
             ml-90m-po3-r11-${{ runner.os }}-
       - name: Run frozen staged screen
