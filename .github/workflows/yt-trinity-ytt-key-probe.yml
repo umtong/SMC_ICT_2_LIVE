@@ -1,0 +1,111 @@
+name: YT Trinity authenticated caption probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/yt-trinity-caption-exec-001]
+    paths:
+      - control/yt-trinity-ytt-key-probe-trigger.json
+      - .github/workflows/yt-trinity-ytt-key-probe.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-ytt-key-probe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Register free key and probe positive control plus channel samples
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          base = 'https://api.youtubetotext.com'
+          headers = {'User-Agent': 'SMC-ICT-2-LIVE/1.0', 'Accept': 'application/json'}
+          register = urllib.request.Request(f'{base}/free/register', data=b'', method='POST', headers=headers)
+          with urllib.request.urlopen(register, timeout=45) as response:
+              registration = json.loads(response.read())
+          key = str(registration.get('api_key') or '')
+          if not key.startswith('ytt_free_'):
+              raise SystemExit(f'invalid registration: {registration}')
+          auth_headers = {**headers, 'X-API-Key': key}
+          videos = {
+              'known_positive_control': 'F6wDs1HRTSo',
+              'swipalnam_sample': 'UmEPMyzjQS8',
+              'chartbro_sample': 'DnGemQi1sOE',
+              'indicator_sensei_sample': '18U0aD4K21I',
+          }
+          rows = []
+          for index, (name, video_id) in enumerate(videos.items()):
+              if index:
+                  time.sleep(6.4)
+              request = urllib.request.Request(f'{base}/full_transcript/{video_id}?meta=true', headers=auth_headers)
+              try:
+                  with urllib.request.urlopen(request, timeout=50) as response:
+                      status = response.status
+                      payload = json.loads(response.read())
+              except urllib.error.HTTPError as exc:
+                  status = exc.code
+                  raw = exc.read()
+                  try: payload = json.loads(raw)
+                  except Exception: payload = {'raw': raw.decode('utf-8', 'replace')[:2000]}
+              transcript = payload.get('transcript') if isinstance(payload, dict) else None
+              rows.append({
+                  'name': name,
+                  'video_id': video_id,
+                  'status_code': status,
+                  'segment_count': len(transcript) if isinstance(transcript, list) else 0,
+                  'language_code': payload.get('language_code') if isinstance(payload, dict) else None,
+                  'source_type': payload.get('source_type') if isinstance(payload, dict) else None,
+                  'error': payload.get('error') if isinstance(payload, dict) else None,
+                  'reason': payload.get('reason') if isinstance(payload, dict) else None,
+                  'can_transcribe_with_ai': payload.get('canTranscribeWithAI') if isinstance(payload, dict) else None,
+                  'first_segments': transcript[:3] if isinstance(transcript, list) else [],
+              })
+          positive = next(row for row in rows if row['name'] == 'known_positive_control')
+          result = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'tier': registration.get('tier'),
+              'daily_fetch_cap': registration.get('daily_fetch_cap'),
+              'positive_control_pass': positive['segment_count'] >= 100,
+              'rows': rows,
+          }
+          path = Path('research/yt_trinity_ml/YTT_AUTHENTICATED_PROBE_POINTER.json')
+          path.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          if not result['positive_control_pass']:
+              raise SystemExit('known-positive caption control failed')
+          PY
+      - name: Persist probe pointer
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/YTT_AUTHENTICATED_PROBE_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record authenticated transcript probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
