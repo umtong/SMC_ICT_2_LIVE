@@ -1,0 +1,38 @@
+name: Export 90-minute PO3 source transport
+
+on:
+  push:
+    branches:
+      - agent/r11-ml-90m-po3-001
+    paths:
+      - "research/ml_90m_po3_20260726/**"
+      - ".github/workflows/ml-90m-po3-source-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-90m-po3-source-export-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory source transport
+        run: |
+          set -euo pipefail
+          find research/ml_90m_po3_20260726 -maxdepth 1 -type f -printf '%f %s\n' | sort | tee source_inventory.txt
+          sha256sum research/ml_90m_po3_20260726/* | sort > source_sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-90m-po3-source-transport-${{ github.sha }}
+          path: |
+            research/ml_90m_po3_20260726
+            source_inventory.txt
+            source_sha256.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
