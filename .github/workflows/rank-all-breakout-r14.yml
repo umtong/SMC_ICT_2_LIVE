@@ -8,13 +8,19 @@ on:
       - "research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py"
       - "research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json"
       - ".github/workflows/rank-all-breakout-r14.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/rank_contract_reconcile_20260726/apply_all_breakout_rank.py"
+      - "research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json"
+      - ".github/workflows/rank-all-breakout-r14.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: rank-all-breakout-r14
+  group: rank-all-breakout-r14-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -80,6 +86,7 @@ jobs:
             > "$out/R14_SHA256SUMS.txt"
 
       - name: Commit revision 14 state
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
           set -euo pipefail
