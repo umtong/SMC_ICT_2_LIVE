@@ -3,151 +3,223 @@ name: YT Trinity caption transport probe
 on:
   workflow_dispatch:
   push:
-    branches: [agent/r22-yt-trinity-ml-001]
+    branches:
+      - agent/r22-yt-trinity-ml-001
     paths:
-      - control/yt-trinity-caption-probe-trigger.json
+      - research/yt_trinity_ml/probe_caption_transports.py
       - .github/workflows/yt-trinity-caption-transport-probe.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-caption-transport-probe-${{ github.ref }}
-  cancel-in-progress: true
+  group: yt-trinity-caption-transport-probe-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   probe:
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        os: [ubuntu-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            profile: default
+            key: ubuntu-default
+          - os: ubuntu-latest
+            profile: default_impersonate
+            key: ubuntu-default-impersonate
+          - os: ubuntu-latest
+            profile: android_vr
+            key: ubuntu-android-vr
+          - os: ubuntu-latest
+            profile: web_embedded
+            key: ubuntu-web-embedded
+          - os: ubuntu-latest
+            profile: tv
+            key: ubuntu-tv
+          - os: ubuntu-latest
+            profile: tv_simply
+            key: ubuntu-tv-simply
+          - os: ubuntu-latest
+            profile: web_safari
+            key: ubuntu-web-safari
+          - os: ubuntu-latest
+            profile: mweb
+            key: ubuntu-mweb
+          - os: ubuntu-latest
+            profile: ios
+            key: ubuntu-ios
+          - os: ubuntu-latest
+            profile: direct
+            key: ubuntu-direct
+          - os: macos-latest
+            profile: default
+            key: macos-default
+          - os: macos-latest
+            profile: web_embedded
+            key: macos-web-embedded
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Install current caption transports
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade --pre "yt-dlp[default,curl-cffi]" requests youtube-transcript-api
+          python -m pip freeze | sort > dependency-freeze.txt
+          deno --version > deno-version.txt
+      - name: Probe representative failed videos from a clean runner
+        run: |
+          out="artifact/${{ matrix.key }}"
+          mkdir -p "$out"
+          python research/yt_trinity_ml/probe_caption_transports.py \
+            --profile "${{ matrix.profile }}" \
+            --between-video-seconds 8 \
+            --output "$out" \
+            | tee "$out/stdout.json"
+          cp dependency-freeze.txt deno-version.txt "$out/"
+      - name: Hash probe evidence
+        if: always()
+        run: |
+          out="artifact/${{ matrix.key }}"
+          if [[ -d "$out" ]]; then
+            (
+              cd "$out"
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - name: Upload isolated probe result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caption-transport-probe-${{ matrix.key }}-${{ github.sha }}
+          path: artifact/${{ matrix.key }}
+          if-no-files-found: error
+          retention-days: 30
+
+  merge:
+    needs: probe
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - name: Download all transport probes
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-      - name: Install current YouTube extraction stack
+          pattern: caption-transport-probe-*-${{ github.sha }}
+          path: artifact/downloads
+          merge-multiple: false
+      - name: Build combined decision evidence and pointer
+        env:
+          POINTER_PATH: research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_POINTER.json
         run: |
-          python -m pip install -q --upgrade pip
-          python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
-          python -m yt_dlp --version
-          node --version
-      - name: Probe public subtitle transports concurrently
-        shell: bash
-        run: |
-          mkdir -p artifact
+          mkdir -p artifact/combined
           python - <<'PY'
-          import concurrent.futures
+          import hashlib
           import json
           import os
-          import subprocess
-          import sys
           from pathlib import Path
 
-          videos = {
-              "swipalnam": "UmEPMyzjQS8",
-              "chartbro": "DnGemQi1sOE",
-              "indicator_sensei": "18U0aD4K21I",
-          }
-          profiles = {
-              "default_no_web": "youtube:player_client=default,-web,-web_safari;player_skip=webpage,configs",
-              "tv_simply": "youtube:player_client=tv_simply;player_skip=webpage,configs",
-              "tv": "youtube:player_client=tv;player_skip=webpage,configs",
-              "ios": "youtube:player_client=ios;player_skip=webpage,configs",
-              "android_vr": "youtube:player_client=android_vr;player_skip=webpage,configs",
-              "web_embedded": "youtube:player_client=web_embedded;player_skip=webpage,configs",
-          }
-
-          def run_one(item):
-              channel, video_id, profile, extractor_args = item
-              command = [
-                  sys.executable, "-m", "yt_dlp",
-                  "--dump-single-json", "--skip-download", "--ignore-no-formats-error", "--no-playlist",
-                  "--js-runtimes", "node", "--impersonate", "chrome",
-                  "--extractor-args", extractor_args,
-                  f"https://www.youtube.com/watch?v={video_id}",
+          paths = sorted(Path('artifact/downloads').rglob('probe.json'))
+          probes = []
+          profile_summaries = []
+          winners = []
+          for path in paths:
+              payload = json.loads(path.read_text(encoding='utf-8'))
+              probes.append(payload)
+              videos = payload.get('videos', [])
+              recovered = [
+                  {
+                      'channel_slug': row.get('channel_slug'),
+                      'video_id': row.get('video_id'),
+                      'segments': int((row.get('result') or {}).get('segments') or 0),
+                  }
+                  for row in videos
+                  if int((row.get('result') or {}).get('segments') or 0) > 0
               ]
-              try:
-                  completed = subprocess.run(command, text=True, capture_output=True, timeout=75)
-                  stdout, stderr, returncode = completed.stdout.strip(), completed.stderr.strip(), completed.returncode
-              except subprocess.TimeoutExpired as exc:
-                  stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
-                  stderr = ((exc.stderr or "") if isinstance(exc.stderr, str) else "") + "\nTIMEOUT"
-                  returncode = 124
-              payload = None
-              if stdout:
-                  try:
-                      payload = json.loads(stdout.splitlines()[-1])
-                  except Exception:
-                      pass
-              subtitles = (payload or {}).get("subtitles") or {}
-              automatic = (payload or {}).get("automatic_captions") or {}
-              return {
-                  "channel": channel,
-                  "video_id": video_id,
-                  "profile": profile,
-                  "returncode": returncode,
-                  "title": (payload or {}).get("title"),
-                  "subtitles": sorted(subtitles),
-                  "automatic_captions": sorted(automatic),
-                  "track_count": sum(len(v or []) for v in subtitles.values()) + sum(len(v or []) for v in automatic.values()),
-                  "stderr_tail": stderr[-3000:],
-                  "stdout_prefix": stdout[:300],
+              summary = {
+                  'profile': payload.get('profile'),
+                  'platform': (payload.get('runner') or {}).get('platform'),
+                  'recovered_video_count': len(recovered),
+                  'recovered': recovered,
+                  'payload_sha256': payload.get('payload_sha256'),
               }
+              profile_summaries.append(summary)
+              for row in recovered:
+                  winners.append({'profile': payload.get('profile'), 'platform': summary['platform'], **row})
 
-          work = [(channel, video_id, profile, args) for channel, video_id in videos.items() for profile, args in profiles.items()]
-          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-              rows = list(pool.map(run_one, work))
-          rows.sort(key=lambda row: (row["channel"], row["profile"]))
-          successful = [row for row in rows if row["track_count"] > 0]
-          result = {
-              "schema_version": 1,
-              "runner_os": os.environ["RUNNER_OS"],
-              "run_id": int(os.environ["GITHUB_RUN_ID"]),
-              "source_sha": os.environ["GITHUB_SHA"],
-              "success_count": len(successful),
-              "successful_profiles": successful,
-              "rows": rows,
+          failed_ids = {'0h9lpMUBSlE', '-Tp2fhvVVGM', '2U0s_i07vMY'}
+          failed_video_winners = [row for row in winners if row['video_id'] in failed_ids]
+          combined = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'probe_count': len(probes),
+              'profiles': profile_summaries,
+              'failed_video_winners': failed_video_winners,
+              'decision': 'TRANSPORT_RECOVERED' if failed_video_winners else 'NO_FAILED_VIDEO_RECOVERED',
+              'full_results': probes,
           }
-          Path("artifact/probe.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-          print(json.dumps({"success_count": len(successful), "successful_profiles": successful}, ensure_ascii=False, indent=2))
+          raw = (json.dumps(combined, ensure_ascii=False, indent=2, sort_keys=True) + '\n').encode('utf-8')
+          combined['combined_sha256_before_field'] = hashlib.sha256(raw).hexdigest()
+          combined_path = Path('artifact/combined/CAPTION_TRANSPORT_PROBE.json')
+          combined_path.write_text(json.dumps(combined, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+
+          pointer = {key: value for key, value in combined.items() if key != 'full_results'}
+          pointer['artifact_name'] = f"caption-transport-probe-combined-{os.environ['GITHUB_SHA']}"
+          pointer_path = Path(os.environ['POINTER_PATH'])
+          pointer_path.parent.mkdir(parents=True, exist_ok=True)
+          pointer_path.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True))
           PY
-      - uses: actions/upload-artifact@v4
+          (
+            cd artifact/combined
+            sha256sum CAPTION_TRANSPORT_PROBE.json > SHA256SUMS
+          )
+      - name: Upload combined transport matrix
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: yt-trinity-caption-transport-probe-${{ matrix.os }}-${{ github.sha }}
-          path: artifact
+          name: caption-transport-probe-combined-${{ github.sha }}
+          path: artifact/combined
           if-no-files-found: error
-          retention-days: 14
-      - name: Persist probe result on work branch
+          retention-days: 30
+      - name: Persist recoverable probe pointer
         if: always()
-        shell: bash
         run: |
-          if [[ ! -f artifact/probe.json ]]; then
-            exit 0
-          fi
-          target="research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_${RUNNER_OS}.json"
-          cp artifact/probe.json "$target"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$target"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git add research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_POINTER.json
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Record ${RUNNER_OS} caption transport probe ${GITHUB_RUN_ID}"
-          for attempt in 1 2 3 4; do
-            git pull --rebase origin "${GITHUB_REF_NAME}"
+          git commit -m "Record caption transport probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3; do
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then
-              exit 0
+              break
             fi
+            if [[ "$attempt" == "3" ]]; then
+              exit 1
+            fi
+            git pull --rebase origin "${GITHUB_REF_NAME}"
             sleep $((attempt * 2))
           done
-          exit 1
