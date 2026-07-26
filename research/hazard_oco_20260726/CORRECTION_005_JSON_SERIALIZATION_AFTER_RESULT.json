@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-HAZARD-OCO-JSON-SERIALIZATION-005",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "timing": "POST_RESULT_MECHANICAL_EVIDENCE_CORRECTION",
+  "observed_failure": "The frozen scientific run completed model fitting and all three fit account cells, wrote RESULT.json and diagnostics, then FIT_FULL_RESULTS.json failed because json.dumps could not encode a numpy.int64 scalar.",
+  "changed_surface": [
+    "JSON evidence serialization default for NumPy scalar/array and pathlib.Path values",
+    "deterministic reconstruction overlay after immutable original-source verification"
+  ],
+  "unchanged_surface": [
+    "market data",
+    "dates",
+    "features",
+    "model",
+    "label",
+    "score threshold",
+    "payoff cells",
+    "execution assumptions",
+    "costs",
+    "account sizing",
+    "gates",
+    "scientific metrics",
+    "stage seals"
+  ],
+  "promotion_effect": "NONE. The pre-correction scientific result was already negative in every 12/18/24bp cell; this correction can only persist and reproduce that result.",
+  "supersedes_partial_transport_commits": [
+    "18057d7b0150fd9127d17e1114239848a747fb5d",
+    "1e561822bbd8d8300d442634c06e3688b11c2dee"
+  ],
+  "immutable_original_output_sha256": "a64365b5e9e14f54a8e9bbe141344d5f6beca754d21dc039720123fad7be76d1",
+  "corrected_output_sha256": "377bde428aca5faea9de69686b22c50ca3f7cd006b5f2f3b84b615cb981068b1",
+  "corrected_output_bytes": 43732,
+  "orders_submitted": false,
+  "later_periods_opened": false
+}
