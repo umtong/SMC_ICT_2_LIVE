@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-STRICT-V3-VISIBLE-001",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:27:00+09:00",
+  "recorded_before_source_decision_or_market_outcome": true,
+  "observed_defect": "The visible causal V2 engine computed the latest completed feature row as entry_index minus one. When a finalized source event occurred inside a minute, that index was the still-forming event minute. The same future minute could also enter frozen high/low geometry. This violates the source-decision-second information boundary.",
+  "replacement": {
+    "source_sha": "3631cf01a2a2b91d690b81160e14ba033a298f75",
+    "strict_engine_sha": "209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+    "engine": "ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3",
+    "causal_correction": "CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002",
+    "rule": "Every market feature and structural boundary ends at the latest minute whose close time is no later than the finalized source timestamp. The next-minute open is realized execution only."
+  },
+  "outcome_state_before_correction": {
+    "source_pass_consumed": false,
+    "market_archive_opened": false,
+    "label_or_model_metric_opened": false,
+    "trade_or_pnl_opened": false,
+    "official_2024H1_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer source identity",
+    "12-block primary and 64-block stress information delays",
+    "one HGBT and one isotonic calibration rule",
+    "structural target and stop logic",
+    "12/18/24bp cost paths",
+    "one global BTC/ETH slot",
+    "prewritten risk/notional frontier",
+    "immediate official 2024H1 after a complete pre-2024 survivor"
+  ],
+  "scientific_contract_change": "hard-validity correction only; no outcome-conditioned tuning",
+  "orders_submitted": false
+}
