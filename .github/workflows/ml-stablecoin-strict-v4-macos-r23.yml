@@ -1,0 +1,112 @@
+name: Stablecoin strict causal V4 macOS authority
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/triggers/stablecoin_strict_v4_macos/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stablecoin-strict-v4-macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  decision:
+    runs-on: macos-14
+    timeout-minutes: 360
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      RUN_ROOT: ${{ runner.temp }}/stablecoin_strict_v4_macos
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frozen source and model environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5 \
+            numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1 pyarrow==18.1.0
+
+      - name: Validate macOS V4 carrier before network access
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/stablecoin_strict_v4_macos_runner.py
+          python scripts/stablecoin_strict_v4_macos_runner.py self-test
+          python -m json.tool \
+            research/execution/stablecoin_strict_v4_20260727/CORRECTION_004_SIMULTANEOUS_EVENT_AND_LIQUIDATION_DISTANCE_BEFORE_OUTCOME.json \
+            >/dev/null
+          python scripts/validate_project.py
+
+      - name: Run fail-closed source and strict V4 economic decision
+        run: |
+          set -euo pipefail
+          python scripts/stablecoin_strict_v4_macos_runner.py run \
+            2>&1 | tee "$RUNNER_TEMP/STABLECOIN_STRICT_V4_MACOS.log"
+
+      - name: Verify compact decision marker
+        if: always()
+        run: |
+          set -euo pipefail
+          marker="$RUN_ROOT/STABLECOIN_STRICT_V4_SUMMARY.json"
+          test -f "$marker"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          marker=Path(os.environ['RUN_ROOT'])/'STABLECOIN_STRICT_V4_SUMMARY.json'
+          result=json.loads(marker.read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
+          assert result['source_sha']=='73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539'
+          assert result['strict_sha']=='209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c'
+          assert result['account_correction']=='CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-EVENT-LIQUIDATION-DISTANCE-004'
+          assert result['source']['status'] in {
+              'PASS','FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE','SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE'
+          }
+          assert result['orders_submitted'] is False
+          assert result['official_2024h1_opened'] is False
+          if result['source']['status']=='PASS':
+              assert result['economic']['status'] in {
+                  'PRE2024_BELOW_GATE','PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1'
+              }
+          print('STABLECOIN_STRICT_V4_MACOS_DECISION',json.dumps(result,sort_keys=True))
+          PY
+
+      - name: Freeze portable evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/STABLECOIN_STRICT_V4_MACOS.log" "$RUN_ROOT/" 2>/dev/null || true
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ['RUN_ROOT'])
+          root.mkdir(parents=True,exist_ok=True)
+          rows=[]
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name!='SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n")
+          (root/'SHA256SUMS.txt').write_text(''.join(rows),encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-strict-v4-macos-${{ github.run_id }}
+          path: ${{ runner.temp }}/stablecoin_strict_v4_macos
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
