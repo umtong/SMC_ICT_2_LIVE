@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-STRICT-V4-MAIN-PUSH-SINGLE-RUN-006",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T01:16:07+09:00",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "observed_before_correction": {
+    "exact_path_pull_request_workflow_registered": false,
+    "source_result": false,
+    "market_archive_opened": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "mechanical_change": "Change the already-main-installed macOS strict V4 target from exact-path pull_request to exact-path main push. The separate orchestrator listens to stablecoin_strict_v4_orchestrator, so this path creates one target run and no dispatch duplicate.",
+  "target_workflow": ".github/workflows/ml-stablecoin-strict-v4-macos-r22.yml",
+  "target_trigger_path": "research/triggers/stablecoin_strict_v4_macos/**",
+  "scientific_changes": [],
+  "unchanged": [
+    "source directory and correction 019",
+    "strict completed-information base",
+    "simultaneous-event and actual fill-to-stop liquidation correction 004",
+    "features, HGBT, isotonic calibration, labels, target, stop and action rule",
+    "one global BTC/ETH slot",
+    "12/18/24bp paths and registered risk/notional frontier",
+    "immediate official 2024H1 only for a complete positive no-liquidation pre-2024 survivor",
+    "no credentials and no orders"
+  ],
+  "orders_submitted": false
+}
