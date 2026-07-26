@@ -1,9 +1,8 @@
 name: ML macro pre-positioned OCO 20260727
 
 on:
-  push:
-    branches:
-      - agent/r22-ml-macro-oco-takeover-001
+  pull_request:
+    branches: [main]
     paths:
       - research/ml_macro_oco_20260727/**
       - tests/test_ml_macro_oco_20260727.py
