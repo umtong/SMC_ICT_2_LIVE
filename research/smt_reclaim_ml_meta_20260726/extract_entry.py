@@ -4,6 +4,7 @@ import csv
 import gzip
 import hashlib
 import inspect
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -86,6 +87,7 @@ def inspect_source_compat(
 
 
 _ORIGINAL_AGGREGATE = engine.base.aggregate
+_REQUIRED_AGGREGATE_KEYS = frozenset({"mark", "trade_count"})
 
 
 def _source_symbol(target: Path, date: str) -> str:
@@ -99,12 +101,34 @@ def _source_symbol(target: Path, date: str) -> str:
     raise ValueError(f"cannot derive source symbol from {target}")
 
 
+def _normalize_aggregate_result(result):
+    if isinstance(result, Mapping) and _REQUIRED_AGGREGATE_KEYS.issubset(result):
+        return result
+    if isinstance(result, (tuple, list)):
+        matches = [
+            item
+            for item in result
+            if isinstance(item, Mapping)
+            and _REQUIRED_AGGREGATE_KEYS.issubset(item)
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        raise TypeError(
+            "shared aggregate returned a sequence without exactly one feature mapping; "
+            f"required keys={sorted(_REQUIRED_AGGREGATE_KEYS)}, matches={len(matches)}"
+        )
+    raise TypeError(
+        "shared aggregate returned an unsupported object: "
+        f"{type(result).__name__}"
+    )
+
+
 def aggregate_compat(target: Path, date: str):
     """Bind path, symbol and date to the shared aggregate function once.
 
-    The upstream helper changed its call signature, not its scientific
-    implementation. Argument binding is decided from the function signature
-    before invoking it, so no data path is executed speculatively or twice.
+    The upstream helper changed its call and return signatures, not its
+    scientific implementation. Argument binding is decided before invocation;
+    the produced feature mapping is then selected without altering any array.
     """
     path = Path(target)
     symbol = _source_symbol(path, date)
@@ -130,7 +154,7 @@ def aggregate_compat(target: Path, date: str):
 
     if not unresolved_required:
         signature.bind(**semantic_values)
-        return _ORIGINAL_AGGREGATE(**semantic_values)
+        return _normalize_aggregate_result(_ORIGINAL_AGGREGATE(**semantic_values))
 
     candidates = (
         (path, symbol, date),
@@ -146,7 +170,7 @@ def aggregate_compat(target: Path, date: str):
             signature.bind(*arguments)
         except TypeError:
             continue
-        return _ORIGINAL_AGGREGATE(*arguments)
+        return _normalize_aggregate_result(_ORIGINAL_AGGREGATE(*arguments))
 
     raise TypeError(
         "unsupported shared aggregate signature: "
