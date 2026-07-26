@@ -5,10 +5,12 @@ on:
     branches:
       - agent/r13-ml-hl-liquidation-001
     paths:
+      - 'research/ml_hl_liquidation_20260726/**'
       - '.github/workflows/ml-hl-liquidation-source-gate-macos-r13.yml'
   pull_request:
     branches: [main]
     paths:
+      - 'research/ml_hl_liquidation_20260726/**'
       - '.github/workflows/ml-hl-liquidation-source-gate-macos-r13.yml'
   workflow_dispatch:
 
@@ -52,6 +54,7 @@ jobs:
           python -m json.tool "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_004_MACOS_RETRIGGER_BEFORE_DATA.json" >/dev/null
           python -m py_compile "$ROOT/probe_hl_liquidations.py" "$ROOT/test_probe_hl_liquidations.py"
           PYTHONPATH="$ROOT" pytest -q "$ROOT/test_probe_hl_liquidations.py"
           PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" --self-test
@@ -105,6 +108,7 @@ jobs:
             "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" \
             "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" \
             "$ROOT/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_DATA.json" \
+            "$ROOT/EXECUTION_CORRECTION_004_MACOS_RETRIGGER_BEFORE_DATA.json" \
             "$ROOT/SOURCES.md" \
             "$ROOT/probe_hl_liquidations.py" \
             "$ROOT/test_probe_hl_liquidations.py" \
