@@ -22,7 +22,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-14]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,11 +40,12 @@ jobs:
           python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
           python -m yt_dlp --version
           node --version
-      - name: Probe public subtitle transports
+      - name: Probe public subtitle transports concurrently
         shell: bash
         run: |
           mkdir -p artifact
           python - <<'PY'
+          import concurrent.futures
           import json
           import os
           import subprocess
@@ -64,54 +65,48 @@ jobs:
               "android_vr": "youtube:player_client=android_vr;player_skip=webpage,configs",
               "web_embedded": "youtube:player_client=web_embedded;player_skip=webpage,configs",
           }
-          rows = []
-          for channel, video_id in videos.items():
-              for profile, extractor_args in profiles.items():
-                  command = [
-                      sys.executable,
-                      "-m",
-                      "yt_dlp",
-                      "--dump-single-json",
-                      "--skip-download",
-                      "--ignore-no-formats-error",
-                      "--no-playlist",
-                      "--js-runtimes",
-                      "node",
-                      "--impersonate",
-                      "chrome",
-                      "--extractor-args",
-                      extractor_args,
-                      f"https://www.youtube.com/watch?v={video_id}",
-                  ]
+
+          def run_one(item):
+              channel, video_id, profile, extractor_args = item
+              command = [
+                  sys.executable, "-m", "yt_dlp",
+                  "--dump-single-json", "--skip-download", "--ignore-no-formats-error", "--no-playlist",
+                  "--js-runtimes", "node", "--impersonate", "chrome",
+                  "--extractor-args", extractor_args,
+                  f"https://www.youtube.com/watch?v={video_id}",
+              ]
+              try:
+                  completed = subprocess.run(command, text=True, capture_output=True, timeout=75)
+                  stdout, stderr, returncode = completed.stdout.strip(), completed.stderr.strip(), completed.returncode
+              except subprocess.TimeoutExpired as exc:
+                  stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+                  stderr = ((exc.stderr or "") if isinstance(exc.stderr, str) else "") + "\nTIMEOUT"
+                  returncode = 124
+              payload = None
+              if stdout:
                   try:
-                      completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
-                      stdout = completed.stdout.strip()
-                      stderr = completed.stderr.strip()
-                      returncode = completed.returncode
-                  except subprocess.TimeoutExpired as exc:
-                      stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
-                      stderr = ((exc.stderr or "") if isinstance(exc.stderr, str) else "") + "\nTIMEOUT"
-                      returncode = 124
-                  payload = None
-                  if stdout:
-                      try:
-                          payload = json.loads(stdout.splitlines()[-1])
-                      except Exception:
-                          payload = None
-                  subtitles = (payload or {}).get("subtitles") or {}
-                  automatic = (payload or {}).get("automatic_captions") or {}
-                  rows.append({
-                      "channel": channel,
-                      "video_id": video_id,
-                      "profile": profile,
-                      "returncode": returncode,
-                      "title": (payload or {}).get("title"),
-                      "subtitles": sorted(subtitles),
-                      "automatic_captions": sorted(automatic),
-                      "track_count": sum(len(v or []) for v in subtitles.values()) + sum(len(v or []) for v in automatic.values()),
-                      "stderr_tail": stderr[-3000:],
-                      "stdout_prefix": stdout[:300],
-                  })
+                      payload = json.loads(stdout.splitlines()[-1])
+                  except Exception:
+                      pass
+              subtitles = (payload or {}).get("subtitles") or {}
+              automatic = (payload or {}).get("automatic_captions") or {}
+              return {
+                  "channel": channel,
+                  "video_id": video_id,
+                  "profile": profile,
+                  "returncode": returncode,
+                  "title": (payload or {}).get("title"),
+                  "subtitles": sorted(subtitles),
+                  "automatic_captions": sorted(automatic),
+                  "track_count": sum(len(v or []) for v in subtitles.values()) + sum(len(v or []) for v in automatic.values()),
+                  "stderr_tail": stderr[-3000:],
+                  "stdout_prefix": stdout[:300],
+              }
+
+          work = [(channel, video_id, profile, args) for channel, video_id in videos.items() for profile, args in profiles.items()]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+              rows = list(pool.map(run_one, work))
+          rows.sort(key=lambda row: (row["channel"], row["profile"]))
           successful = [row for row in rows if row["track_count"] > 0]
           result = {
               "schema_version": 1,
