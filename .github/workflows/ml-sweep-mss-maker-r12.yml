@@ -72,7 +72,8 @@ jobs:
           PYTHONPATH="$ROOT/reconstructed" pytest -q "$TESTS" 2>&1 | tee "$OUT/tests.log"
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/bundle_manifest.json" >/dev/null
-          test "$(sha256sum "$RUNNER" | cut -d' ' -f1)" = "01eb44c9764b0dc2eb86f371b06cd303ebf4f063dec5fe8c497b61bba25ca2cf"
+          python -m json.tool "$ROOT/IMPLEMENTATION_CORRECTION_001.json" >/dev/null
+          test "$(sha256sum "$RUNNER" | cut -d' ' -f1)" = "659a5a64c8acbd87a89d8f576c49d9ccfecc82191829599f971859c55306ce7c"
           test "$(sha256sum "$TESTS" | cut -d' ' -f1)" = "79f66f7ba4f2c0a701f299300651f497beef78d288657501301bf22d78e84051"
           python scripts/validate_project.py
 
@@ -140,6 +141,7 @@ jobs:
           sha256sum \
             "$ROOT/README.md" \
             "$ROOT/preregistration.json" \
+            "$ROOT/IMPLEMENTATION_CORRECTION_001.json" \
             "$ROOT/reconstruct.py" \
             "$ROOT/bundle_manifest.json" \
             "$ROOT"/source_bundle.tar.gz.b64.part* \
