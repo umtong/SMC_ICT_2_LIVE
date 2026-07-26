@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "study_id": "ICT_SILVER_BULLET_EXACT_WINDOW_V1",
+  "claim_id": "CLM-20260726-1620-SILVER-BULLET-001",
+  "registered_at": "2026-07-26T16:20:00+09:00",
+  "status": "PREREGISTERED_BEFORE_2022_2023_MARKET_OUTCOMES",
+  "objective": "Test whether the three historical New-York-local ICT Silver Bullet windows contain a repeatable after-cost sequence of frozen pre-window liquidity raid, completed reclaim and MSS, displacement FVG, decisive first retracement and delivery to opposing pre-window liquidity.",
+  "trader_explanation": {
+    "bullish": "During one of the fixed 03:00-04:00, 10:00-11:00 or 14:00-15:00 America/New_York hours, price raids frozen pre-window sell-side liquidity, reclaims it, then displaces through the last internal high and prints a bullish three-candle FVG. The first later interaction with the gap must accept the near edge or reclaim consequent encroachment. Entry is the next contiguous one-minute open, stop beyond the raid and target at frozen opposing buy-side liquidity.",
+    "bearish": "The exact mirror: buy-side raid, reclaim, bearish MSS/displacement FVG, decisive first retracement, next-open entry, stop beyond the raid and target at frozen sell-side liquidity."
+  },
+  "historical_concept_sources": [
+    {
+      "source_id": "video:ict:silver-bullet-time-based-model:2023-05-13",
+      "title": "2023 ICT Mentorship - ICT Silver Bullet Time Based Trading Model",
+      "published_at": "2023-05-13",
+      "role": "Defines the three New-York-local one-hour Silver Bullet clocks and the FVG-to-opposing-liquidity vocabulary. No reported performance is accepted."
+    }
+  ],
+  "distinction_from_prior_work": [
+    "The expired broad session-range claim used Asian/London/New-York range acceptance and produced no branch, PR or result; this study uses three exact New-York-local one-hour entry clocks and an in-window FVG lifecycle.",
+    "Unicorn required failed order-block breaker conversion and breaker/FVG overlap; this study requires neither.",
+    "OTE uses a percentage retracement of an impulse rather than a fixed one-hour FVG clock.",
+    "FVG-SMT and SMT-sweep are paired-market models; this is single-symbol time-price delivery.",
+    "Quarter-hour order flow uses first-ten-second imbalance and fixed-horizon diagnostics; this uses structural exits and no elapsed-time liquidation."
+  ],
+  "time_contract": {
+    "timezone": "America/New_York",
+    "dst_source": "IANA zoneinfo historical rules",
+    "windows": {
+      "london": ["03:00:00", "04:00:00"],
+      "ny_am": ["10:00:00", "11:00:00"],
+      "ny_pm": ["14:00:00", "15:00:00"]
+    },
+    "fixed_utc_offset_forbidden": true,
+    "setup_must_complete_inside_same_window": true,
+    "entry_may_be_next_contiguous_open_after_window_end_only_when_signal_bar_completed_before_window_end": true
+  },
+  "market_and_data": {
+    "venue": "Bybit",
+    "market": "USDT-linear perpetual public one-minute archives",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "fit": ["2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "development": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "sealed": ["2024-01-01T00:00:00Z", "2026-07-01T00:00:00Z"],
+    "development_download_condition": "At least one frozen fit candidate passes every fit gate.",
+    "missing_data": "Exact UTC one-minute grid; no forward fill, interpolation or compressed time. Pre-window and setup state require contiguous valid minutes. Post-entry source failure is terminal account loss rather than trade deletion."
+  },
+  "causal_definition": {
+    "pre_window_liquidity": "High and low of the immediately preceding 60 or 120 valid one-minute bars, frozen at window start.",
+    "raid": "Inside the selected Silver Bullet hour, wick trades strictly beyond one frozen boundary.",
+    "reclaim": "The same raid bar or one of the next three completed bars closes back inside the raided boundary.",
+    "mss": "A later completed displacement candle closes through the opposite internal level formed by the preceding five completed one-minute bars.",
+    "fvg": "Classic same-direction three-candle gap created by the displacement candle; minimum gap size is ATR-normalized.",
+    "first_interaction": "The first subsequent completed bar that intersects the FVG is decisive. It must close beyond the near edge or reclaim consequent encroachment according to the candidate. A failed or merely touched first interaction permanently invalidates the setup.",
+    "entry": "Next contiguous one-minute open after the accepted first-interaction bar.",
+    "stop": "Raid extreme plus or minus a frozen 0.05 ATR buffer.",
+    "target": "Opposing frozen pre-window liquidity, required to satisfy candidate minimum structural reward/risk before entry.",
+    "post_entry_exit": "Protective stop, opposing-liquidity target, completed FVG invalidation or source/stage failure only. Window-end and elapsed-time exits are prohibited.",
+    "ambiguity": "Adverse actual open for stop gaps; protective stop before target when both touch in the same bar; target no better than its frozen level."
+  },
+  "frozen_grid": {
+    "window_mode": ["all", "london", "ny_am", "ny_pm"],
+    "prewindow_minutes": [60, 120],
+    "reclaim_bars": [0, 3],
+    "minimum_displacement_body_atr": [0.6, 1.0],
+    "minimum_fvg_atr": [0.03, 0.08],
+    "entry_mode": ["near_edge_accept", "ce_reclaim"],
+    "minimum_reward_risk": [1.5, 2.5, 4.0],
+    "candidate_count": 384
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "global_pending_or_open_slots": 1,
+    "risk_fraction": 0.005,
+    "maximum_notional_leverage": 3.0,
+    "maximum_prior_60_minute_quote_turnover_participation": 0.001,
+    "minimum_notional": 5.0,
+    "round_trip_cost_bps": [12.0, 18.0, 24.0],
+    "funding_reserve_bps_per_crossed_8h_boundary": 1.0,
+    "daily_boundary": "00:00 UTC",
+    "growth_denominator": "all UTC calendar days in each evaluation year"
+  },
+  "fit_gate": {
+    "minimum_trades": 80,
+    "positive_total_return_at_12_18_24_bps": true,
+    "minimum_geometric_daily_growth_at_18bps": 0.00025,
+    "positive_2022_h1_and_h2_at_18bps": true,
+    "positive_median_trade_at_12bps": true,
+    "minimum_profit_factor_at_12bps": 1.10,
+    "maximum_drawdown_at_18bps": 0.20,
+    "maximum_top_five_positive_pnl_share_at_18bps": 0.40,
+    "maximum_single_symbol_positive_pnl_share_at_18bps": 0.75,
+    "positive_full_account_rerun_after_removing_largest_10pct_positive_trades_at_18bps": true,
+    "zero_unresolved_position": true,
+    "zero_terminal_account_loss": true
+  },
+  "development_gate": {
+    "all_fit_gates_remain_required": true,
+    "minimum_trades": 100,
+    "minimum_geometric_daily_growth_at_18bps": 0.0005,
+    "minimum_positive_day_fraction": 0.10,
+    "minimum_profit_factor_at_18bps": 1.20,
+    "maximum_drawdown_at_18bps": 0.15,
+    "maximum_top_five_positive_pnl_share_at_18bps": 0.35
+  },
+  "promotion_boundary": {
+    "rank_eligible": false,
+    "2024_open_condition": "A development survivor still requires separate preregistration for exact Bybit BBO/depth, actual funding and sequential 2024 evaluation.",
+    "2024_downloaded": false,
+    "2025_2026_opened": false,
+    "orders_submitted": false
+  },
+  "prohibitions": [
+    "No outcome-driven change to windows, DST handling, liquidity horizon, reclaim delay, displacement, FVG, first-touch acceptance, stop, target, cost, risk or leverage.",
+    "No favorable same-bar ordering, touch-only fill or missing-minute compression.",
+    "No window-end or elapsed-time forced liquidation.",
+    "No 2024-2026 data access in this screen.",
+    "No credentials, paper, testnet or live orders."
+  ]
+}
