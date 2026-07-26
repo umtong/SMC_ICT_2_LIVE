@@ -18,6 +18,13 @@ import cross_venue_pilot_v2 as v2
 import cross_venue_signals_v5d as signals_v5d
 
 OBSERVATION_WINDOWS_MS = (1000, 3000)
+REQUIRED_PREPARED_ATTRS = frozenset({
+    "_v5d_signal_common",
+    "_v5d_signal_observation",
+    "_v5d_basis_prepared",
+    "_v5d_first_quote_index_cache",
+    "_v5d_fast_exit_arrays",
+})
 
 
 def sha256_file(path: Path) -> str:
@@ -84,17 +91,10 @@ def prepare(day: str, output: Path, source_cache: Path) -> dict[str, Any]:
                 raise AssertionError(f"prepared frame row count changed for {day} {symbol}")
             if index_sha256(reloaded) != cache_summary["index_sha256"]:
                 raise AssertionError(f"prepared frame index changed for {day} {symbol}")
-            required_attrs = {
-                "_v5d_signal_common",
-                "_v5d_observation",
-                "_v5d_basis_prepared",
-                "_v5d_first_quote_index_cache",
-                "_v5d_fast_exit_arrays",
-            }
-            if not required_attrs.issubset(reloaded.attrs):
+            if not REQUIRED_PREPARED_ATTRS.issubset(reloaded.attrs):
                 raise AssertionError(
                     f"prepared frame lost causal caches for {day} {symbol}: "
-                    f"{sorted(required_attrs.difference(reloaded.attrs))}"
+                    f"{sorted(REQUIRED_PREPARED_ATTRS.difference(reloaded.attrs))}"
                 )
             source_records_by_symbol[symbol] = records
             frames[symbol] = {
@@ -167,6 +167,11 @@ def load_prepared(
             raise ValueError(f"prepared frame row count mismatch for {day} {symbol}")
         if index_sha256(frame) != record["index_sha256"]:
             raise ValueError(f"prepared frame index mismatch for {day} {symbol}")
+        if not REQUIRED_PREPARED_ATTRS.issubset(frame.attrs):
+            raise ValueError(
+                f"prepared frame is missing causal caches for {day} {symbol}: "
+                f"{sorted(REQUIRED_PREPARED_ATTRS.difference(frame.attrs))}"
+            )
         frames[symbol] = frame
     return frames, manifest
 
@@ -177,6 +182,8 @@ def self_test() -> None:
         index=pd.Index([100, 200], dtype="int64"),
     )
     frame.attrs["nested"] = {"array": [1, 2, 3]}
+    for name in REQUIRED_PREPARED_ATTRS:
+        frame.attrs[name] = {"sentinel": name}
     import tempfile
 
     with tempfile.TemporaryDirectory() as temporary:
@@ -189,6 +196,7 @@ def self_test() -> None:
         restored = pd.read_pickle(path, compression="gzip")
         assert restored.equals(frame)
         assert restored.attrs == frame.attrs
+        assert REQUIRED_PREPARED_ATTRS.issubset(restored.attrs)
         assert index_sha256(restored) == index_sha256(frame)
     print("V5D_PREPARED_FRAME_ROUNDTRIP_PASS")
 
