@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-WEEKLY-PROFILE-001",
+  "status": "PREREGISTERED_BEFORE_ANY_STRATEGY_OUTCOME",
+  "created_at": "2026-07-26T17:34:00+09:00",
+  "base_revision": 11,
+  "branch": "agent/r11-classic-weekly-profile-001",
+  "research_question": "Can a deterministic ICT Classic Buy/Sell Week lifecycle—early-week accumulation, next-day Judas raid, completed hourly CISD and later-week liquidity delivery—produce repeatable Bybit after-cost NAV growth?",
+  "smc_ict_explanation": "Monday or Monday-Tuesday creates the weekly accumulation range. The following manipulation day must sweep one extreme. A completed one-hour candle must reclaim the range and close through the open of the last opposite-colour hourly candle. Entry is the next five-minute open, stop is beyond the Judas extreme and target is opposite early-week liquidity or prior-week external liquidity.",
+  "distinct_scope": {
+    "primitive": "weekly calendar-time AMD lifecycle",
+    "not_used": [
+      "FVG, IFVG, BPR or OTE entry",
+      "SMT pair confirmation",
+      "fixed intraday killzone",
+      "machine-learning state classification",
+      "external-liquidity pool mass",
+      "arbitrary Friday or elapsed-time liquidation"
+    ]
+  },
+  "sources": [
+    "exchange:bybit:public-mt4-kline-archive",
+    "youtube:ict:s9bg8JF7rm8",
+    "youtube:ict:i8xt0EQDjNY"
+  ],
+  "markets": {
+    "venue": "Bybit",
+    "product": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "global_pending_or_open_slots": 1
+  },
+  "data_contract": {
+    "source": "Bybit public kline_for_metatrader4 monthly archives",
+    "native_bar": "5 minute",
+    "fit_period": "2022-01-01 through 2022-12-31",
+    "development_period": "2023-01-01 through 2023-12-31, downloaded only after fit survivors are frozen",
+    "sealed_periods": ["2024", "2025", "2026"],
+    "gap_contract": "Complete UTC five-minute grid; no accumulation range, hourly confirmation, entry or open position may bridge a missing bar. A position encountering a source gap receives its structural stop outcome."
+  },
+  "weekly_contract": {
+    "week_boundary": "Monday 00:00 UTC",
+    "accumulation": "the first one or two complete UTC calendar days, fixed by policy",
+    "manipulation": "the immediately following complete UTC calendar day only",
+    "sweep": "hourly high/low extends beyond the accumulation boundary by the policy ATR multiple",
+    "intrabar_ambiguity": "if the same completed hour sweeps both accumulation extremes, the week is rejected",
+    "cisd": "last opposite-colour completed hourly candle open, frozen strictly before the sweep",
+    "confirmation": "within three or six hours after the sweep, a completed hourly displacement reclaims the accumulation range and closes through CISD",
+    "entry": "the five-minute open exactly at the confirmation-hour close",
+    "stop": "actual Judas extreme plus 0.05 hourly ATR",
+    "target": "opposite accumulation boundary or prior-week external high/low, fixed by policy",
+    "position_exit": "structural stop, frozen target or source-gap structural-stop outcome only; no elapsed-time or Friday exit",
+    "period_boundary": "unresolved positions are marked and cannot pass the gate; they are never force-closed"
+  },
+  "candidate_grid": {
+    "accumulation_days": [1, 2],
+    "sweep_depth_atr60": [0.25, 0.50],
+    "maximum_confirmation_hours": [3, 6],
+    "minimum_displacement_atr60": [0.50, 1.00],
+    "target_mode": ["opposite_accumulation", "prior_week_external"],
+    "minimum_reward_risk": [2.0, 3.0],
+    "candidate_count": 64
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "planned_loss_fraction": 0.005,
+    "maximum_notional_multiple": 3.0,
+    "maximum_prior_bar_quote_volume_participation": 0.001,
+    "roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "identical_gross_candidates_across_costs": true,
+    "terminal_nav_at_or_below_zero": "-100% return and 100% drawdown"
+  },
+  "fit_gate": {
+    "minimum_completed_trades": 40,
+    "positive_total_return_at_bps": [12, 18, 24],
+    "positive_median_trade_at_12bps": true,
+    "minimum_profit_factor_at_12bps": 1.15,
+    "maximum_drawdown_at_12bps": 0.25,
+    "both_half_years_positive_at_12bps": true,
+    "maximum_top_five_positive_pnl_share_at_12bps": 0.35,
+    "positive_exact_top10_removed_return_at_18bps": true,
+    "open_position_count": 0
+  },
+  "development_rule": "Freeze at most six highest 18bps fit-growth survivors, recording IDs and the fit-grid hash before any 2023 download. Apply identical rules and gates.",
+  "promotion_boundary": "This discovery sequence cannot rank. Any development survivor requires a new actual-funding exact-BBO 2024-2026 sequential claim.",
+  "orders_permitted": false
+}
