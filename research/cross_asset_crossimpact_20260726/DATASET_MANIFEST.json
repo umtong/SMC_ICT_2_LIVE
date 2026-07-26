@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "dataset_id": "DS-BYBIT-BTC-SOLXRP-CROSSIMPACT-2023-R1",
+  "provider": "Bybit official public trading archive",
+  "market": "USDT linear perpetual futures",
+  "symbols": ["BTCUSDT", "SOLUSDT", "XRPUSDT"],
+  "timeframe": "event-time trades aggregated causally into 250ms, 1s and 5s leader/target buckets",
+  "fit_dates": ["2023-02-05", "2023-04-09", "2023-06-11"],
+  "development_dates": ["2023-08-13", "2023-10-15", "2023-12-10"],
+  "archive_count": 18,
+  "trade_rows": 5374585,
+  "compressed_bytes": 201569672,
+  "source_manifest_sha256": "311c8ece18fcd37a16013aff26a757c622b95a0d46c73de3ff0896932324c69c",
+  "source_manifest_file_sha256": "a7087b4230e4e3e6020941f80165a0a1754291af6c9332ca52a52805462f35a4",
+  "status": "VERIFIED_RESEARCH_ONLY",
+  "causal_availability": "A leader bucket is usable only after its fixed UTC bucket end. Shock thresholds and target beta are frozen from fit dates only. Target state uses the contemporaneous completed target bucket. Entry is the first target trade at least 100ms after the decision. No source gap, unfinished bucket or future trade is imputed.",
+  "later_periods_opened": false,
+  "raw_drive_url": "",
+  "evidence_drive_url": "https://drive.google.com/file/d/1lBI89mmYx57vBfySfoRKpRuKGysR9AsI/view",
+  "notes": "Raw archives remain reproducible from the official source URLs and exact SHA-256 inventory embedded in source_manifest.json. The compact evidence artifact retains the source manifest, fit contract, 237 development events, all 576 candidate results and exact implementation. This dependency is negative for the frozen directional payoff; reuse the dataset only for a materially different hypothesis such as movement hazard.",
+  "created_at": "2026-07-26T10:27:00+09:00"
+}
