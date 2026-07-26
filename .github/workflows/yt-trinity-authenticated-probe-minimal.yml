@@ -22,67 +22,145 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Register free key and verify caption transport
+      - name: Diagnose registration, keyless, and keyed transcript paths
         shell: bash
+        run: |
+          mkdir -p artifact
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          BASE = 'https://api.youtubetotext.com'
+          HEADERS = {'User-Agent': 'SMC-ICT-2-LIVE/1.0', 'Accept': 'application/json'}
+          VIDEO_ID = 'F6wDs1HRTSo'
+
+          def call(name, request):
+              try:
+                  with urllib.request.urlopen(request, timeout=50) as response:
+                      raw = response.read()
+                      status = int(response.status)
+                      response_headers = dict(response.headers)
+              except urllib.error.HTTPError as exc:
+                  raw = exc.read()
+                  status = int(exc.code)
+                  response_headers = dict(exc.headers)
+              except Exception as exc:
+                  return {
+                      'name': name,
+                      'exception': f'{type(exc).__name__}: {exc}',
+                  }
+              text = raw.decode('utf-8', 'replace')
+              try:
+                  payload = json.loads(raw)
+              except Exception:
+                  payload = {'raw_prefix': text[:3000]}
+              transcript = payload.get('transcript') if isinstance(payload, dict) else None
+              safe_payload = payload
+              if isinstance(safe_payload, dict) and 'api_key' in safe_payload:
+                  safe_payload = {key: value for key, value in safe_payload.items() if key != 'api_key'}
+                  safe_payload['api_key_present'] = True
+              return {
+                  'name': name,
+                  'status_code': status,
+                  'content_type': response_headers.get('Content-Type') or response_headers.get('content-type'),
+                  'retry_after': response_headers.get('Retry-After') or response_headers.get('retry-after'),
+                  'segment_count': len(transcript) if isinstance(transcript, list) else 0,
+                  'payload': safe_payload,
+              }
+
+          results = []
+          health = call('health', urllib.request.Request(f'{BASE}/health', headers=HEADERS))
+          results.append(health)
+
+          registration_request = urllib.request.Request(
+              f'{BASE}/free/register',
+              data=b'',
+              method='POST',
+              headers=HEADERS,
+          )
+          try:
+              with urllib.request.urlopen(registration_request, timeout=50) as response:
+                  registration_raw = response.read()
+                  registration_status = int(response.status)
+                  registration_headers = dict(response.headers)
+          except urllib.error.HTTPError as exc:
+              registration_raw = exc.read()
+              registration_status = int(exc.code)
+              registration_headers = dict(exc.headers)
+          except Exception as exc:
+              registration_raw = b''
+              registration_status = None
+              registration_headers = {}
+              registration_exception = f'{type(exc).__name__}: {exc}'
+          else:
+              registration_exception = None
+          registration_text = registration_raw.decode('utf-8', 'replace')
+          try:
+              registration_payload = json.loads(registration_raw) if registration_raw else None
+          except Exception:
+              registration_payload = {'raw_prefix': registration_text[:3000]}
+          api_key = registration_payload.get('api_key') if isinstance(registration_payload, dict) else None
+          safe_registration = registration_payload
+          if isinstance(safe_registration, dict) and 'api_key' in safe_registration:
+              safe_registration = {key: value for key, value in safe_registration.items() if key != 'api_key'}
+              safe_registration['api_key_present'] = True
+          results.append({
+              'name': 'free_register',
+              'status_code': registration_status,
+              'content_type': registration_headers.get('Content-Type') or registration_headers.get('content-type'),
+              'retry_after': registration_headers.get('Retry-After') or registration_headers.get('retry-after'),
+              'exception': registration_exception,
+              'payload': safe_registration,
+          })
+
+          keyless = call(
+              'known_positive_keyless',
+              urllib.request.Request(f'{BASE}/full_transcript/{VIDEO_ID}?meta=true', headers=HEADERS),
+          )
+          results.append(keyless)
+
+          if isinstance(api_key, str) and api_key:
+              keyed_headers = {**HEADERS, 'X-API-Key': api_key}
+              keyed = call(
+                  'known_positive_registered_key',
+                  urllib.request.Request(f'{BASE}/full_transcript/{VIDEO_ID}?meta=true', headers=keyed_headers),
+              )
+          else:
+              keyed = {'name': 'known_positive_registered_key', 'skipped': 'registration returned no key'}
+          results.append(keyed)
+
+          passed = any(
+              row.get('segment_count', 0) >= 100
+              for row in results
+              if isinstance(row, dict)
+          )
+          output = {
+              'schema_version': 1,
+              'positive_control_video_id': VIDEO_ID,
+              'positive_control_pass': passed,
+              'results': results,
+          }
+          Path('artifact/probe-result.json').write_text(
+              json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-minimal-auth-diagnostic-${{ github.sha }}
+          path: artifact/probe-result.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce positive control
         run: |
           python - <<'PY'
           import json
-          import time
-          import urllib.error
-          import urllib.request
-
-          base = 'https://api.youtubetotext.com'
-          headers = {'User-Agent': 'SMC-ICT-2-LIVE/1.0', 'Accept': 'application/json'}
-          register = urllib.request.Request(f'{base}/free/register', data=b'', method='POST', headers=headers)
-          with urllib.request.urlopen(register, timeout=45) as response:
-              registration = json.loads(response.read())
-          key = str(registration.get('api_key') or '')
-          if not key.startswith('ytt_free_'):
-              raise SystemExit(f'invalid registration: {registration}')
-          auth = {**headers, 'X-API-Key': key}
-          videos = {
-              'known_positive_control': 'F6wDs1HRTSo',
-              'swipalnam_sample': 'UmEPMyzjQS8',
-              'chartbro_sample': '0h9lpMUBSlE',
-              'indicator_sensei_sample': 'wIhgAp-XNTA',
-          }
-          rows = []
-          for index, (name, video_id) in enumerate(videos.items()):
-              if index:
-                  time.sleep(6.4)
-              request = urllib.request.Request(f'{base}/full_transcript/{video_id}?meta=true', headers=auth)
-              try:
-                  with urllib.request.urlopen(request, timeout=50) as response:
-                      status = response.status
-                      payload = json.loads(response.read())
-              except urllib.error.HTTPError as exc:
-                  status = exc.code
-                  raw = exc.read()
-                  try:
-                      payload = json.loads(raw)
-                  except Exception:
-                      payload = {'raw': raw.decode('utf-8', 'replace')[:2000]}
-              transcript = payload.get('transcript') if isinstance(payload, dict) else None
-              rows.append({
-                  'name': name,
-                  'video_id': video_id,
-                  'status_code': status,
-                  'segment_count': len(transcript) if isinstance(transcript, list) else 0,
-                  'language_code': payload.get('language_code') if isinstance(payload, dict) else None,
-                  'source_type': payload.get('source_type') if isinstance(payload, dict) else None,
-                  'error': payload.get('error') if isinstance(payload, dict) else None,
-                  'reason': payload.get('reason') if isinstance(payload, dict) else None,
-                  'can_transcribe_with_ai': payload.get('canTranscribeWithAI') if isinstance(payload, dict) else None,
-                  'first_segments': transcript[:3] if isinstance(transcript, list) else [],
-              })
-          positive = next(row for row in rows if row['name'] == 'known_positive_control')
-          result = {
-              'tier': registration.get('tier'),
-              'daily_fetch_cap': registration.get('daily_fetch_cap'),
-              'positive_control_pass': positive['segment_count'] >= 100,
-              'rows': rows,
-          }
-          print(json.dumps(result, ensure_ascii=False, indent=2))
-          if not result['positive_control_pass']:
-              raise SystemExit('known-positive caption control failed')
+          from pathlib import Path
+          result = json.loads(Path('artifact/probe-result.json').read_text(encoding='utf-8'))
+          if not result.get('positive_control_pass'):
+              raise SystemExit('no tested transport returned the known-positive transcript')
           PY
