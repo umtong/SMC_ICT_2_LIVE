@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-INTERMARKET-SMT-001",
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "worker_id": "gpt-5.6-pro-20260726-1740",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "strategy_explanation": [
+    "Completed USA 100 Technology and USA 500 displacement fixes risk direction.",
+    "Bybit BTCUSDT or ETHUSDT must still underreact between two already-confirmed external-liquidity pools.",
+    "One HGBT plus one frozen isotonic calibrator may accept continuation only in the external shock direction.",
+    "The shock-direction pool is target and the opposite frozen pool is stop; no elapsed-time liquidation is used."
+  ],
+  "prediction": {
+    "confirmation_rows": 2061,
+    "model_auc": 0.6886654114749949,
+    "distance_baseline_auc": 0.7209013018994059,
+    "risk_direction_auc": 0.5094606767459692,
+    "auc_lift_over_best_baseline": -0.032235890424410996,
+    "model_brier": 0.22735436522328953,
+    "distance_brier": 0.21459376097601748,
+    "brier_skill_over_distance": -0.05946400393578144
+  },
+  "account_paths": {
+    "12bps": {
+      "trades": 80,
+      "total_return": -0.047327330125157996,
+      "geometric_daily_growth": -0.00052686015718173,
+      "median_net_return_bps": -56.4831896784262,
+      "profit_factor": 0.8003766393717097,
+      "maximum_drawdown": 0.06263001235610355,
+      "positive_months": 0,
+      "winner_removed_return": -0.1266586770415783
+    },
+    "18bps": {
+      "trades": 80,
+      "total_return": -0.062475876901634586,
+      "geometric_daily_growth": -0.0007009801785601288,
+      "median_net_return_bps": -62.49652663315689,
+      "profit_factor": 0.7364746802565655,
+      "maximum_drawdown": 0.07041642837160256,
+      "positive_months": 0,
+      "winner_removed_return": -0.13790934470093053
+    },
+    "24bps": {
+      "trades": 80,
+      "total_return": -0.0755403925303384,
+      "geometric_daily_growth": -0.0008533956541754151,
+      "median_net_return_bps": -68.5098635878876,
+      "profit_factor": 0.6803800421141069,
+      "maximum_drawdown": 0.08059260057415885,
+      "positive_months": 0,
+      "winner_removed_return": -0.14824332485772684
+    }
+  },
+  "sample": {
+    "train_rows": 4173,
+    "calibration_rows": 3111,
+    "resolved_fit_rows": 9348,
+    "authorized_actions": 191,
+    "ambiguous_rows": 17,
+    "source_files": 48,
+    "development_2023_opened": false,
+    "official_2024_opened": false,
+    "official_2025_opened": false,
+    "official_2026_opened": false
+  },
+  "decision": "Retire the exact U.S.-equity-index shock to Bybit underreaction first-passage information unit. It reduced ranking and probability quality versus causal structural distance and lost at every cost, every fit month and after winner removal. Do not tune its features, model, shock threshold, lag threshold, structural pools, risk rate or leverage.",
+  "reproducibility": {
+    "result_generating_commit": "fe3380d3099c4d401e325337cbb52ac918346afb",
+    "pull_request": 143,
+    "workflow_run": 30198870993,
+    "artifact_id": 8631180883,
+    "artifact_digest": "sha256:54dcb83f961413330200f9eeaa55cdea6638f94e483f2225478b8837841985e3",
+    "evaluation_contract_sha256": "32228af7fe3e106a73c1a4d72e3f186ca38f496bae673002cdcd9f9c9573ec3e",
+    "source_manifest_sha256": "692e15e88f3256e273df51b5b28cac0a3459e1257ab003f49e78e37c9cb7f781",
+    "artifact_result_sha256": "ec050c17fff78d4b6aaf31f1a112d038f005f2bf020d9cd6175ee5e0214bd10e",
+    "model_contract_sha256": "4c90bc7aff3b8a99f38077b84bf752a746608319216a1955f1cfc671862f0f2f",
+    "fit_events_sha256": "61b38696acc51dcf3c84a25b75f4b50cd2d2b81d4ed5af68e9958afd52a90809",
+    "fit_trades_18bps_sha256": "383fd83d75b7cccc7e8821d1bc70efd99eef571f96f598a0a8865c43622c7680",
+    "dependency_fingerprint": "1ecaf9878c5f3f348468d97c860d85a3585df92f2e9cadaca7d3c1c781312986"
+  },
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "ranking_changed": false
+}
