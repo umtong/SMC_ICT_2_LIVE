@@ -1,6 +1,13 @@
 name: Canonical Bybit historical source probe
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/market_data/probe_bybit_history.py
+      - scripts/market_data/bybit_client.py
+      - scripts/market_data/bybit_fetch.py
+      - .github/workflows/canonical-bybit-source-probe.yml
   push:
     branches:
       - agent/r22-canonical-halfyear-market-data-001
@@ -12,7 +19,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: canonical-bybit-source-probe-${{ github.ref }}
+  group: canonical-bybit-source-probe-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
