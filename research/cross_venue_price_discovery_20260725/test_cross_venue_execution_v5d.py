@@ -132,6 +132,27 @@ def test_entry_quote_delayed_over_one_second_is_not_filled() -> None:
     assert trades == []
 
 
+def test_indexed_first_invalid_position_matches_reference_scan() -> None:
+    frame = execution_frame()
+    frame.loc[60_700, "bb_mid"] = np.nan
+    frame.loc[61_300, "bn_spread"] = 0.0
+    frame.loc[62_100, "bb_spread"] = np.inf
+
+    def reference(start: int, stop: int) -> int | None:
+        for position in range(max(start, 0), min(stop + 1, len(frame))):
+            if not failclosed_v5d._finite_state(frame.iloc[position]):
+                return position
+        return None
+
+    cases = [(0, len(frame) - 1), (5, 15), (8, 12), (14, 25), (25, 24)]
+    for start, stop in cases:
+        assert failclosed_v5d._first_invalid_position(frame, start, stop) == reference(start, stop)
+    first = failclosed_v5d._invalid_state_positions(frame)
+    second = failclosed_v5d._invalid_state_positions(frame)
+    assert first is second
+    assert first.flags.writeable is False
+
+
 def test_segmented_basis_history_does_not_cross_source_gap() -> None:
     index = np.arange(0, 100_000, v1.BUCKET_MS, dtype=np.int64)
     frame = pd.DataFrame(index=index)
