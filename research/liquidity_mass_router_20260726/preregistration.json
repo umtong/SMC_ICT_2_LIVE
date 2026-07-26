@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1704-LIQUIDITY-MASS-001",
+  "status": "PREREGISTERED_BEFORE_ANY_STRATEGY_OUTCOME",
+  "created_at": "2026-07-26T17:04:20+09:00",
+  "base_revision": 11,
+  "branch": "agent/r11-liquidity-mass-router-001",
+  "research_question": "Does the causal mass asymmetry of unresolved external-liquidity pools determine whether a just-consumed pool rejects toward opposite liquidity or cascades toward the next same-side pool strongly enough to grow a Bybit account after costs?",
+  "smc_ict_explanation": "Equal highs, equal lows and confirmed swing levels are treated as visible buy-side and sell-side liquidity pools. When a pool is swept, rejection means delivery toward the denser opposite pool; acceptance beyond the pool means stop-loss positive feedback may continue toward the next denser pool in the same direction.",
+  "distinct_scope": {
+    "primitive": "persistent unresolved-liquidity pool topology with touch, age, higher-timeframe and local-volume mass",
+    "modes": [
+      "sweep-and-reject reversal toward the nearest sufficiently denser opposite pool",
+      "accepted-sweep cascade toward the nearest sufficiently denser same-side pool"
+    ],
+    "excluded_dependencies": [
+      "ML nearest-pool first-passage direction model",
+      "previous-day/week FVG-OTE liquidity delivery",
+      "generic sweep/retest entry",
+      "round numbers",
+      "fixed sessions",
+      "atomic match topology",
+      "liquidation labels",
+      "L2 maker fills",
+      "cross-venue or cross-asset lead-lag"
+    ]
+  },
+  "sources": [
+    "exchange:bybit:public-mt4-kline-archive",
+    "paper:osler-currency-orders-technical-levels-2003",
+    "paper:osler-stop-loss-cascades-2005"
+  ],
+  "markets": {
+    "venue": "Bybit",
+    "product": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "global_pending_or_open_slots": 1
+  },
+  "data_contract": {
+    "source": "Bybit public kline_for_metatrader4 monthly archives",
+    "native_bar": "5 minute",
+    "fit_period": "2022-01-01 through 2022-12-31",
+    "development_period": "2023-01-01 through 2023-12-31, downloaded only after frozen fit survivors",
+    "sealed_periods": ["2024", "2025", "2026"],
+    "gap_contract": "Complete UTC 5-minute grid; every pool and feature state resets at a missing or invalid bar. A position encountering a gap receives the structural stop outcome."
+  },
+  "pool_contract": {
+    "5m_pivot_confirmation": "two or three completed bars to the right, selected by the policy",
+    "60m_pivot_confirmation": "two completed 60-minute bars to the right; mapped only after the confirmation close",
+    "cluster_tolerance": "0.10 current 5-minute ATR",
+    "touch_weight": "one for a 5-minute pivot and two for a confirmed 60-minute pivot",
+    "mass": "touch weight^1.25 × higher-timeframe participation × capped age visibility × normalized local pivot volume",
+    "consumption": "high trades at least 0.05 ATR above a buy-side pool or low trades at least 0.05 ATR below a sell-side pool",
+    "same_bar_both_sides": "no event is created because intrabar order is unknown; both consumed pools retire"
+  },
+  "event_contract": {
+    "rejection": "buy-side sweep closes bearish back below the pool or sell-side sweep closes bullish back above it",
+    "continuation": "pool sweep closes directionally beyond the pool with strong close location and minimum ATR body",
+    "target": "nearest unresolved pool in the routed direction that meets touch, age, distance and target-mass/swept-mass requirements",
+    "entry": "next valid 5-minute open",
+    "stop_rejection": "beyond the actual sweep extreme plus 0.05 ATR",
+    "stop_continuation": "behind the accepted pool and event extreme",
+    "same_bar_exit": "protective stop before target",
+    "position_exit": "structural stop, frozen liquidity-pool target or source-gap structural-stop outcome only; no elapsed-time exit",
+    "period_boundary": "open positions are marked and cannot pass the gate; they are never force-closed"
+  },
+  "candidate_grid": {
+    "pivot_span": [2, 3],
+    "minimum_touches": [2, 3],
+    "maximum_pool_age_hours": [24, 72],
+    "minimum_target_to_swept_mass_ratio": [1.5, 2.5],
+    "minimum_event_displacement_atr": [0.5, 1.0],
+    "mode": ["rejection", "continuation"],
+    "minimum_reward_risk": [2.0, 3.0],
+    "candidate_count": 128,
+    "maximum_target_distance": "40 ATR"
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "planned_loss_fraction": 0.005,
+    "maximum_notional_multiple": 3.0,
+    "maximum_prior_bar_quote_volume_participation": 0.001,
+    "roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "identical_gross_candidates_across_costs": true,
+    "terminal_nav_at_or_below_zero": "-100% return and 100% drawdown"
+  },
+  "fit_gate": {
+    "minimum_completed_trades": 40,
+    "positive_total_return_at_bps": [12, 18, 24],
+    "positive_median_trade_at_12bps": true,
+    "minimum_profit_factor_at_12bps": 1.15,
+    "maximum_drawdown_at_12bps": 0.25,
+    "both_half_years_positive_at_12bps": true,
+    "maximum_top_five_positive_pnl_share_at_12bps": 0.35,
+    "positive_exact_top10_removed_return_at_18bps": true,
+    "open_position_count": 0
+  },
+  "development_rule": "Freeze at most six highest 18bps fit-growth survivors, writing IDs and fit hash before any 2023 download. Apply the identical gate without rule changes.",
+  "promotion_boundary": "This discovery sequence cannot rank. A development survivor requires a new 2024-2026 sequential claim using exact Bybit BBO/depth and actual funding.",
+  "orders_permitted": false
+}
