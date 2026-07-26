@@ -55,3 +55,15 @@ def test_global_slot_and_winner_removal_are_event_key_based():
     assert len(selected) == 1
     stressed = module.winner_removed(module.pd.concat([events, duplicate], ignore_index=True), ("2022-01-01",), 24.0)
     assert stressed["removed_event_count"] in {0, 1}
+
+
+def test_stale_last_trade_cannot_be_a_raid():
+    module = load_module()
+    frame = module.synthetic_states()
+    frame["last_price_age_seconds"] = 10.0
+    events = module.extract_events(
+        {("2022-01-01", "BTCUSDT"): frame},
+        ("2022-01-01",),
+        {"BTCUSDT": {"fair_gap_abs_bps": 10.0, "last_mark_abs_bps": 10.0}},
+    )
+    assert events.empty
