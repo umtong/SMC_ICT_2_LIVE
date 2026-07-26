@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import lz4.frame
 
 import probe_hl_liquidations as probe
 
@@ -70,30 +67,37 @@ def test_payload_wrapper_finds_explicit_liquidation() -> None:
     assert found[0][0]["type"] == "liquidation"
 
 
-def test_lz4_jsonl_file_parses_explicit_liquidation(tmp_path: Path) -> None:
-    row = {
-        "local_time": "2025-10-06T00:00:00.250",
-        "block_time": "2025-10-06T00:00:00.100",
-        "block_number": 123,
-        "events": [liquidation_event()],
+def test_commit_pinned_parquet_query_is_frozen_to_exact_src_paths() -> None:
+    metadata = {
+        "siblings": [
+            {"rfilename": "state/checkpoint.json"},
+            {"rfilename": "data/universal.parquet", "size": 123},
+        ]
     }
-    path = tmp_path / "0.lz4"
-    with lz4.frame.open(path, mode="wb") as handle:
-        handle.write((json.dumps(row) + "\n").encode())
-
-    download = probe.DownloadResult(
-        path="misc_events_by_block/hourly/20251006/0.lz4",
-        status="DOWNLOADED",
-        bytes=path.stat().st_size,
-        sha256=probe.sha256_file(path),
-        http_status=200,
-        error=None,
-        local_path=str(path),
+    siblings = probe.find_parquet_siblings(metadata)
+    assert [item["rfilename"] for item in siblings] == [
+        "data/universal.parquet"
+    ]
+    url = probe.revision_url("abc123def456", "data/universal.parquet")
+    assert "abc123def456" in url
+    coverage_sql, event_sql = probe.build_queries(
+        [url], probe.candidate_paths()
     )
-    parsed = probe.parse_file(download)
-    assert parsed["status"] == "PARSED"
-    assert parsed["rows"] == 1
-    assert parsed["event_items"] == 1
-    assert len(parsed["liquidations"]) == 1
-    assert parsed["malformed_rows"] == []
-    assert parsed["malformed_liquidations"] == []
+    assert "GROUP BY _src" in coverage_sql
+    assert "trim(events) <> '[]'" in event_sql
+    assert "misc_events_by_block/hourly/20251006/0.lz4" in event_sql
+
+
+def test_parquet_event_row_parses_explicit_liquidation() -> None:
+    row = (
+        "2025-10-06 00:00:00.250",
+        "2025-10-06 00:00:00.100",
+        123,
+        json.dumps([liquidation_event()]),
+        "misc_events_by_block/hourly/20251006/0.lz4",
+    )
+    liquidations, malformed, row_error = probe.parse_event_row(row, 0)
+    assert row_error is None
+    assert malformed == []
+    assert len(liquidations) == 1
+    assert liquidations[0]["positions"][0]["forced_flow_side"] == "SELL"
