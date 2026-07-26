@@ -53,7 +53,7 @@ jobs:
           base=/tmp/abs-base/research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
           echo 'e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  '"$base" | sha256sum -c -
           cp "$base" "$root/reconstructed/research/absorption_flow_benchmark.py"
-      - name: Compile and run causal and exact-executor checks
+      - name: Compile and run causal and live-ranking checks
         run: |
           set -euo pipefail
           root=research/absorption_flow_benchmark_r7/reconstructed
@@ -76,13 +76,16 @@ jobs:
           assert result['ranking_candidate']['base']['trades']==184
           assert result['ranking_candidate']['stress_2x']['trades']==183
           assert result['ranking_decision']['rank']==2  # immutable historical revision-8 decision
-          assert ranking['revision']==14
+          assert ranking['revision']==16
           assert ranking['first_place']['source_result_id']=='RES-20260726-DONCHIAN-DEPENDENCE-001'
+          assert ranking['first_place']['sequential_evidence']['official_2024H1_opened'] is True
+          assert ranking['ranked_candidates'][2]['rank']==3
+          assert ranking['ranked_candidates'][2]['source_result_id']=='RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001'
           assert all(row['source_result_id']!='RES-20260725-ABS-FLOW-001' for row in ranking['ranked_candidates'])
           assert any(row.get('source_result_id')=='RES-20260725-ABS-FLOW-001' for row in ranking['unranked_results'])
           assert validation['status']=='PASS'
           assert not result['orders_submitted'] and not result['paper_or_live_started']
-          print('registered absorption result and revision-14 exit-contract ranking checks passed')
+          print('registered absorption result and revision-16 sequential ranking checks passed')
           PY
       - name: Validate repository contracts
         run: |
