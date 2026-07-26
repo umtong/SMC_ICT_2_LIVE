@@ -1,0 +1,186 @@
+{
+  "base_revision": 11,
+  "branch": "agent/r11-smt-fvg-displacement-001",
+  "causal_contract": {
+    "entry": "After FVG completion, a later completed bar must touch the FVG and close back beyond its midpoint in the trade direction; entry is the following 15-minute open.",
+    "external_liquidity": [
+      "previous_UTC_day_high_low",
+      "previous_ISO_week_high_low"
+    ],
+    "mss_fvg": "Within a frozen bar window, the opposite-direction displacement body closes through the frozen pivot and the completed three-candle sequence leaves a same-direction wick FVG.",
+    "one_global_slot": true,
+    "pivot": "A pivot with symmetric left/right strength becomes available only after the right-side bars have closed; the most recent available pivot at the sweep is frozen for MSS.",
+    "same_bar_exit": "Protective stop before target; adverse observed open for stop gaps.",
+    "smt": "Target wicks through its own corresponding external level and closes back inside while the directed reference never wicks through its own corresponding level on the same completed bar.",
+    "stop": "Sweep extreme plus or minus frozen ATR buffer.",
+    "target": "Opposing external liquidity from the same previous-day or previous-week range known at the sweep.",
+    "unresolved": "No forced period close; unresolved positions are recorded and cannot support a fit or development gate."
+  },
+  "claim_id": "CLM-20260726-SMT-FVG-001",
+  "conditional_decision": {
+    "if_survivor_exists": "Expand the frozen survivor across all remaining pre-2024 data and exact Bybit BBO/depth before opening official 2024.",
+    "if_zero_full_survivors": "Close the exact calendar-liquidity SMT-MSS-displacement-FVG-mitigation dependency and do not retune adjacent thresholds."
+  },
+  "cost_and_account_contract": {
+    "actual_historical_funding": true,
+    "conditional_risk_sweep_only_for_full_survivors": {
+      "leverage_cap": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "risk_fraction": [
+        0.005,
+        0.01,
+        0.02,
+        0.04,
+        0.08,
+        0.12
+      ]
+    },
+    "fatal_screen_metrics": "fixed one-notional compounded path",
+    "round_trip_cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "same_gross_path_replay": true
+  },
+  "data_contract": {
+    "category": "linear",
+    "development_period": [
+      "2023-01-01T00:00:00Z",
+      "2023-12-31T23:59:59Z"
+    ],
+    "directed_pairs": [
+      [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      [
+        "ETHUSDT",
+        "BTCUSDT"
+      ],
+      [
+        "SOLUSDT",
+        "XRPUSDT"
+      ],
+      [
+        "XRPUSDT",
+        "SOLUSDT"
+      ]
+    ],
+    "fit_period": [
+      "2022-01-01T00:00:00Z",
+      "2022-12-31T23:59:59Z"
+    ],
+    "funding_endpoint": "https://api.bybit.com/v5/market/funding/history",
+    "integrity": "Raw JSON-page payload hashes, normalized CSV hashes, row counts and continuity diagnostics are recorded.",
+    "interval_minutes": 15,
+    "kline_endpoint": "https://api.bybit.com/v5/market/kline",
+    "official_2024_2025_2026_opened": false,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "venue": "Bybit"
+  },
+  "development_gate": {
+    "mean_trade_at_18bp": "> 0",
+    "median_trade_at_12bp": "> 0",
+    "minimum_resolved_trades_at_18bp": 30,
+    "positive_quarter_fraction_at_18bp": ">= 3/4",
+    "top_10_percent_positive_removed_return_at_18bp": "> 0",
+    "top_five_positive_trade_share_at_18bp": "<= 50%",
+    "total_return_at_24bp": "> 0",
+    "unresolved_positions": 0
+  },
+  "fit_gate": {
+    "median_trade_at_12bp": "> 0",
+    "minimum_resolved_trades_at_18bp": 20,
+    "positive_half_year_fraction_at_18bp": "2/2",
+    "top_10_percent_positive_removed_return_at_18bp": "> 0",
+    "total_return_at_18bp": "> 0",
+    "unresolved_positions": 0
+  },
+  "frozen_candidate_grid": {
+    "candidate_count": 256,
+    "displacement_body_atr": [
+      0.8,
+      1.2
+    ],
+    "level_kind": [
+      "previous_day",
+      "previous_week"
+    ],
+    "minimum_fvg_atr": [
+      0.0,
+      0.03
+    ],
+    "mss_window_bars": [
+      3,
+      6
+    ],
+    "pivot_strength": [
+      2,
+      3
+    ],
+    "retest_window_bars": [
+      4,
+      8
+    ],
+    "stop_buffer_atr": [
+      0.0,
+      0.1
+    ],
+    "sweep_depth_atr": [
+      0.0,
+      0.05
+    ]
+  },
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "non_overlap": {
+    "active_microshock": "No sub-second trade-flow or leader-return shock is used.",
+    "active_session_range": "No Asian/London/New-York range or kill-zone rule is used.",
+    "prior_cross_asset_smt": "The reported 192-policy SMT study used generic rolling 12/48-bar boundaries and immediate next-open sweep reversal or breadth catch-up. This claim uses fixed calendar external liquidity, directed peer non-confirmation, confirmed causal pivot MSS, displacement FVG formation and mitigation/rejection before entry.",
+    "reported_sweep_models": "A sweep alone never triggers entry; MSS plus displacement FVG plus mitigation rejection are mandatory."
+  },
+  "objective": "Test whether pairwise SMT non-confirmation at fixed previous-day or previous-week external liquidity, followed by causal market-structure shift, displacement FVG and confirmed mitigation, produces repeatable after-cost Bybit USDT-perpetual reversal alpha.",
+  "prohibitions": [
+    "no 2024, 2025 or 2026 request",
+    "no pivot before its right-side confirmation closes",
+    "no entry on the sweep, MSS or FVG completion bar",
+    "no touch-equals-fill limit assumption",
+    "no elapsed-time forced exit",
+    "no live, paper or testnet orders",
+    "no rank promotion from this fatal screen"
+  ],
+  "provisional_result_id": "RES-20260726-SMT-FVG-FATAL-001",
+  "rank_eligibility": false,
+  "research_stage": "pre_2024_fit_development_fatal_screen",
+  "schema_version": 1,
+  "screen_id": "BYBIT-CALENDAR-SMT-DISPLACEMENT-FVG-FATAL-20260726-V1",
+  "source_concept_contract": {
+    "pre_cutoff_source": {
+      "id": "tradingview:uMi5os2q",
+      "published": "2022-12-04",
+      "role": "liquidity taken -> displacement through causal swing -> FVG -> seek opposing liquidity",
+      "type": "public_indicator_description"
+    },
+    "profitability_claimed_from_source": false
+  },
+  "trader_explanation": {
+    "name": "Calendar Liquidity SMT Displacement-FVG Reversal",
+    "sequence": [
+      "One correlated contract raids known buy-side or sell-side liquidity while its peer fails to confirm the raid.",
+      "The raiding contract closes back inside the external level.",
+      "A causal market-structure shift occurs through the last pivot known at the raid.",
+      "The shift has displacement and leaves a three-candle fair value gap.",
+      "Price mitigates the gap and rejects its consequent encroachment.",
+      "Enter next bar; stop beyond the raid; target the opposing external liquidity."
+    ]
+  }
+}
