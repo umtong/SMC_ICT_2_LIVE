@@ -99,9 +99,11 @@ jobs:
             "$root/preregistration.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
+            "$root/AUDIT_TRANSPORT_001.json" \
             "$root/reconstruct.py" \
             "$root/run_py.gz.b64.part00" \
             "$root/run_py.gz.b64.part01" \
+            "$root/run.py" \
             "$root/test_run.py" \
             > "$out/INPUT_SHA256SUMS.txt"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
@@ -110,7 +112,10 @@ jobs:
         if: always()
         with:
           name: ml-liquidity-draw-r11-${{ github.sha }}
-          path: research_runs/ml_liquidity_draw_20260726/r11
+          path: |
+            research_runs/ml_liquidity_draw_20260726/r11
+            research/ml_liquidity_draw_20260726/run.py
+            research/ml_liquidity_draw_20260726/AUDIT_TRANSPORT_001.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
