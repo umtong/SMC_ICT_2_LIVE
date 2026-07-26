@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1603-OTE-SWEEP-001",
+  "created_at": "2026-07-26T16:08:00+09:00",
+  "status": "FROZEN_BEFORE_ANY_OTE_STRATEGY_OUTCOME",
+  "details": {
+    "fixed_bars": "UTC-aligned non-overlapping 5s or 15s slots. Open/close are first/last actual trades and high/low are actual extrema. A bar with no trade is unavailable.",
+    "external_and_internal_levels": "Rolling max/min use the exact preceding fixed slots and are shifted one full bar before the raid. At least 80% of the requested slots must contain actual trades.",
+    "raid": "Sell-side raid: actual low is at least one observed tick below frozen external low and close is strictly back above it. Buy-side raid is symmetric. A bar raiding both sides is discarded.",
+    "mss": "Use the first later actual bar inside the frozen confirmation limit whose close is at least one observed tick through the opposite frozen internal level.",
+    "prior_volatility": "Standard deviation of exact adjacent-bar log returns over the prior 300 seconds, shifted before the raid; require at least 60% finite returns and 20 nonzero returns.",
+    "displacement_z": "Absolute log move from raid extreme to MSS close divided by prior bar-return volatility times square root of elapsed bars.",
+    "cumulative_flow": "Direction times sum(buy quote notional minus sell quote notional) divided by total quote notional from raid bar through MSS bar inclusive.",
+    "ote_price": "Bullish: MSS close minus retracement fraction times (MSS close minus raid low). Bearish: MSS close plus retracement fraction times (raid high minus MSS close).",
+    "pending_slot": "The OTE order occupies the single global slot from the first second after MSS completion until fill, structural invalidation, frozen-target invalidation, or source boundary. Setups activated while the slot is occupied are discarded.",
+    "trade_through": "Long limit fills only when an actual one-second low is at least one tick below OTE; short fills only when an actual high is at least one tick above OTE. Fill price is the frozen OTE limit.",
+    "pending_same_second_adversity": "If the structural stop is touched in the fill second, the order fills and stops. If target and OTE are both touched without stop, target is assumed to have occurred before fill and the setup is invalidated rather than awarded a same-second target.",
+    "post_fill_exit": "From the next second onward, structural stop wins a stop/target tie. No elapsed-time exit exists. An unresolved filled position at source boundary exits at the structural stop.",
+    "global_priority": "Earlier activation, then larger displacement z, deeper OTE fraction, larger frozen target-to-stop ratio, lexical setup id.",
+    "top_winner_removal": "Remove the largest ceiling(10%) positive 12bp filled setup ids from the initial account route, then rerun pending-order and position slot arbitration from the beginning."
+  },
+  "scientific_grid_changed": false,
+  "dates_changed": false,
+  "costs_changed": false,
+  "orders_submitted": false
+}
