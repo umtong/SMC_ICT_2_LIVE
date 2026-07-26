@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-SCHEMA-BOUND-BATCH-017",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "created_at": "2026-07-26T23:48:00+09:00",
+  "observed_problem": "The optimized batched timestamp runner called the shared Blockscout source_gate directly. Although importing the authoritative module corrected USDT Issue/Redeem queries, the resulting PASS artifact could omit source_schema_id, source_correction_id and event_semantics, and it did not preserve the correction records required by the frozen economic consumer.",
+  "outcome_state_before_correction": {
+    "market_outcome_opened": false,
+    "model_fitted": false,
+    "prediction_opened": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "correction": [
+    "Bind the authoritative token-specific wrapper back onto the shared Blockscout source_gate without recursion.",
+    "Run the batched exact-block timestamp transport through the authoritative wrapper.",
+    "Preserve the corrected source schema, event semantics, source code and pre-outcome correction records in the uploaded artifact.",
+    "Require a PASS artifact to contain the exact schema and correction identifiers before authorizing the economic model."
+  ],
+  "unchanged": [
+    "USDT Issue and Redeem event identities",
+    "USDC zero-address Transfer event identities",
+    "2021-01 through 2023-12 source months",
+    "block plus 12 primary and block plus 64 stress availability",
+    "minimum source density and token coverage gates",
+    "model, labels, market sources, account rules and official interval contract"
+  ],
+  "scientific_contract_unchanged": true,
+  "orders_submitted": false
+}
