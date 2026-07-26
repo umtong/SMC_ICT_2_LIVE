@@ -1,0 +1,98 @@
+{
+  "authority": {
+    "orders_submitted": false,
+    "paper_live_enabled": false,
+    "ranking_change_authorized": false
+  },
+  "claim_id": "CLM-20260726-1900-ML-SWEEP-MSS-MAKER-001",
+  "data": {
+    "availability_clock": "Tardis local_timestamp and completed 100-ms compact state decision_us",
+    "development_date": "2023-07-01",
+    "fit_date": "2022-07-01",
+    "official_2024_2026_prohibited": true,
+    "parent_artifact_id": 8626087323,
+    "parent_artifact_sha256": "90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1"
+  },
+  "economic_mechanism": [
+    "Freeze the prior completed 120-second external high and low.",
+    "Require exactly one liquidity raid and completed reclaim.",
+    "Require opposite displacement through the last causal opposing-candle open with aligned aggressive flow as MSS/CISD.",
+    "Rest one post-only order at 50% consequent encroachment of the raid-to-MSS displacement leg.",
+    "A single standardized multinomial logistic model predicts no full fill, fill then target, or fill then stop/boundary loss.",
+    "Authorize only positive expected net basis points at the fixed 12-bp primary cost."
+  ],
+  "execution": {
+    "costs_bps": [8, 12, 18],
+    "elapsed_time_exit": false,
+    "entry_latencies_ms": [100, 300],
+    "entry_level": "50% raid-to-MSS consequent encroachment",
+    "fill_rule": "full fill only",
+    "notional_cap_multiple": 3.0,
+    "order_notional_ceiling_usdt": 10000,
+    "planned_nav_risk": 0.01,
+    "post_only_marketability_rejected": true,
+    "queue_rule": "displayed same-price queue plus full research quantity must be consumed by actual opposing aggressive trades; cancellations never reduce queue ahead",
+    "stop": "one tick beyond completed raid extreme",
+    "target": "untouched opposite prior-120-second external liquidity",
+    "top_quote_participation": 0.1,
+    "unresolved_boundary": "full structural stop",
+    "winner_removal": "exclude top 10% positive 12-bp event keys before chronological rerouting"
+  },
+  "gate": {
+    "account_path_valid": true,
+    "both_latency_paths_required": true,
+    "boundary_loss_fraction_max": 0.1,
+    "minimum_full_fills": 20,
+    "positive_mean_12bp": true,
+    "positive_median_12bp": true,
+    "positive_total_return_18bp": true,
+    "positive_winner_removed_return_12bp": true,
+    "profit_factor_12bp_above": 1.0,
+    "top_five_positive_pnl_share_max": 0.5,
+    "winner_removed_sample_day_growth_min": 0.01
+  },
+  "implementation": {
+    "bundle_base64_sha256": "376339f47da9a6b54134288495e3e96a8cc9c6ea8c9578c05d2eb142a3fae832",
+    "bundle_gzip_sha256": "9d285770cb17a38cadf6de98926fcefd1914645aa8e932d2162bf437adeecd72",
+    "bundle_tar_sha256": "27673bff1b80593b38f31ae64bf4ec8816202a9baa637ec564394323a8ee4b99",
+    "run_py_sha256": "01eb44c9764b0dc2eb86f371b06cd303ebf4f063dec5fe8c497b61bba25ca2cf",
+    "test_run_py_sha256": "79f66f7ba4f2c0a701f299300651f497beef78d288657501301bf22d78e84051"
+  },
+  "issue_number": 144,
+  "model": {
+    "authorization": "event-specific expected net basis points strictly greater than zero at 12 bp; no probability threshold grid",
+    "class_weight": "balanced",
+    "classes": {
+      "0": "no full fill or structural cancel",
+      "1": "full fill then target",
+      "2": "full fill then stop or boundary loss"
+    },
+    "family": "standardized multinomial logistic regression",
+    "features": [
+      "sweep_depth_bps",
+      "mss_body_multiple",
+      "ce_distance_bps",
+      "stop_bps",
+      "target_bps",
+      "target_stop_ratio",
+      "signed_flow_1s",
+      "signed_depth_imbalance",
+      "signed_microprice_skew_bps",
+      "support_refill_ratio",
+      "opposing_cancel_ratio",
+      "volatility_30s_bps"
+    ],
+    "fixed_C": 1.0,
+    "model_count": 1
+  },
+  "objective": "Test one ML-routed SMC/ICT post-only path that changes the cost and entry-location structure rather than adding another directional strategy.",
+  "retirement": "Zero survivors retire the entire information unit without model, feature, event, CE, queue, cost, risk or leverage tuning.",
+  "schema_version": 1,
+  "study_id": "ML_SWEEP_MSS_CE_POST_ONLY_V1",
+  "universe": {
+    "execution_exchange": "Bybit",
+    "one_global_slot": true,
+    "product": "USDT linear perpetual",
+    "symbols": ["BTCUSDT"]
+  }
+}
