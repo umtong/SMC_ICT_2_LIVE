@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-L2-CANCEL-REFILL-FATAL-001",
+  "claim_id": "CLM-20260726-0946-L2-CANCEL-REFILL-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "FIT_BELOW_GATE",
+  "ranking_role": "FATAL_NEGATIVE_NOT_RANKED",
+  "qualification": "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE",
+  "engine_version": "L2_CANCEL_REFILL_TAKER_V1B_MEMORY_BOUNDED",
+  "code_commit": "117732fac2b81ba1387ead1ff946f13e5de4ed1e",
+  "workflow_run_id": 30182619734,
+  "workflow_artifact_id": 8626196096,
+  "workflow_artifact_sha256": "aa5d13069e3f423e28f5f875a83f82cb677bb38e13fb9d58564c4e055cbdb1c6",
+  "artifact_fingerprint": "787fdd44c53ed280b335360e3b3afe4ddf851366136e77c10c58b4b5489dc2dc",
+  "dependency_fingerprint": "bc5afdcde0a6ebba9ba84ffebf422b41060a83414209f4369cea0bc84efcc939",
+  "evaluation_contract_sha256": "0bf4b0b1f0cfb08a942323212a63e19586ab67594b1e9fd2bb35ae2194b11d5a",
+  "source_manifest_sha256": "c9a853c83897cee951f47cd3b74f4a8476859a4fa57cdbbe62aef89266e38897",
+  "summary_sha256": "5d0f9eed9ed8da227a9066734ee9e42a87014f7fb91becaaf3dcd799c8609ac0",
+  "candidate_results_sha256": "0c461d60eb3900ddb1c33e3eb3bfbde30c5b83cf3756a998dc1e66f1931c3049",
+  "data": {
+    "provider": "Tardis public downloadable first-day samples",
+    "exchange": "Bybit",
+    "market": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "types": ["quotes", "trades", "book_snapshot_5"],
+    "fit_dates": ["2023-03-01", "2023-05-01", "2023-07-01"],
+    "source_file_count": 18,
+    "fit_event_rows": 3705530,
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "frozen_screen": {
+    "candidate_count": 432,
+    "families": ["liquidity_pull_continuation", "pull_refill_failure_reversal"],
+    "decision_bucket_ms": 100,
+    "entry_latency_ms": [100, 250, 500],
+    "diagnostic_horizon_seconds": [1, 3, 10],
+    "additional_round_trip_cost_bps": [12, 18, 24],
+    "observed_bid_ask_crossing": true,
+    "order_notional_usdt": 10000,
+    "maximum_top_quote_participation": 0.25,
+    "one_global_slot": true
+  },
+  "aggregate_findings": {
+    "fit_survivor_count": 0,
+    "positive_mean_candidate_count_12bps": 0,
+    "positive_mean_candidate_count_18bps": 0,
+    "positive_mean_candidate_count_24bps": 0,
+    "candidate_trade_count_min": 197,
+    "candidate_trade_count_median": 1927.5,
+    "candidate_trade_count_max": 8281,
+    "gross_positive_mean_candidate_count": 98,
+    "maximum_gross_mean_bps_after_observed_spread": 0.327628951495587,
+    "best_continuation_gross_mean_bps": 0.327628951495587,
+    "best_reversal_gross_mean_bps": -0.16365995609925932
+  },
+  "best_fit": {
+    "config_id": "c288f018b59c3e445010",
+    "family": "continuation",
+    "cancel_quantile": 0.95,
+    "add_quantile": 0.9,
+    "flow_threshold": 0.2,
+    "move_limit_bp": 2.0,
+    "latency_ms": 100,
+    "horizon_s": 10,
+    "trade_count": 2469,
+    "symbol_counts": {"BTCUSDT": 1509, "ETHUSDT": 960},
+    "gross": {
+      "mean_bps": 0.3276289514955865,
+      "median_bps": 0.12251929938793182,
+      "profit_factor": 1.2750150534817304,
+      "btc_mean_bps": 0.43063063468510066,
+      "eth_mean_bps": 0.1657231807320689
+    },
+    "cost_12bps": {
+      "mean_bps": -11.672371048504413,
+      "median_bps": -11.877480700612068,
+      "profit_factor": 0.006992654915825399,
+      "top10_removed_mean_bps": -11.84572454098688,
+      "top5_positive_share": 0.6950329467841798,
+      "positive_fit_date_fraction": 0.0,
+      "diagnostic_fixed_notional_return": -2.88190841187574
+    },
+    "cost_24bps": {
+      "mean_bps": -23.672371048504413,
+      "median_bps": -23.877480700612068,
+      "profit_factor": 0.0013848158010349384,
+      "top10_removed_mean_bps": -23.753301462922064,
+      "top5_positive_share": 1.0,
+      "positive_fit_date_fraction": 0.0,
+      "diagnostic_fixed_notional_return": -5.8447084118757395
+    }
+  },
+  "decision": {
+    "development_opened": false,
+    "official_2024_2026_target_test_opened": false,
+    "official_target_met": false,
+    "rank_changed": false,
+    "live_permission_changed": false,
+    "orders_submitted": false,
+    "retirement_boundary": "Do not tune adjacent cancellation, replenishment, flow, move, latency or fixed-markout thresholds under the same public top-five Bybit information unit. Reopen only when the payoff or information source changes materially enough to overcome an approximately 12bp execution-cost deficit, such as a genuinely passive or internalized fill mechanism with independently demonstrated favorable post-fill markout, or a cross-instrument transfer signal with tens-of-bps gross displacement."
+  },
+  "known_limitations": [
+    "Public first-day samples are sparse and cannot certify a full-calendar Bybit account path.",
+    "Downloaded CSV exports omit exchange disconnect events.",
+    "Residual cancellation attribution is conservative within completed 100ms buckets but cannot recover exact intra-bucket order priority.",
+    "Diagnostic fixed horizons are not a final state-based exit and therefore the result is not rank eligible.",
+    "The fatal conclusion is nevertheless economically decisive because every one of 432 policies is negative even at the lowest 12bp stress and the maximum gross mean is only 0.328bp per trade."
+  ]
+}
