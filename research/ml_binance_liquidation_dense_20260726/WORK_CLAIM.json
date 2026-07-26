@@ -1,0 +1,33 @@
+{
+  "base_revision": 20,
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "github_branch": "agent/r11-ml-binance-liquidation-dense-001",
+  "lease_until": "2026-07-27T07:39:00+09:00",
+  "objective_fingerprint": "7f2d6c9ea1b5483f624d0d4a42ce0f1f7fb6d7c72bdff711eaed8761c65f40cb",
+  "permissions": {
+    "credentials": false,
+    "live_orders": false,
+    "paper_orders": false,
+    "testnet_orders": false
+  },
+  "resumed_at": "2026-07-26T23:39:00+09:00",
+  "schema_version": 1,
+  "scope": {
+    "chronology": {
+      "calibration": "2022-07-01 through 2022-12-31",
+      "conditional_development": "2023-07-01 through 2023-12-31",
+      "fit": "2021-01-01 through 2022-06-30",
+      "official_first_interval": "2024-01-01 through 2024-06-30, only after an unchanged pre-2024 survivor frozen by 2023-12-31",
+      "untouched_confirmation": "2023-01-01 through 2023-06-30"
+    },
+    "conditional_model": "Exactly one pooled HistGradientBoostingClassifier plus one frozen calibration rule predicts same-side continuation versus exhaustion toward already-confirmed external liquidity. One cost-adjusted LONG/SHORT/FLAT rule controls the one global Bybit slot.",
+    "execution": "Final execution venue is Bybit USDT-linear perpetuals. Fatal screen uses checksum-verified Binance price/OI/funding proxy only; a survivor must be reconstructed on exact Bybit BBO, mark, funding, latency, capacity and NAV before official 2024H1. Structural target/stop only; no elapsed-time liquidation.",
+    "information_unit": "Checksum-verified Binance Vision USD-M liquidationSnapshot records for BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT, used only after completed provider timestamps.",
+    "search_boundary": "No model family, feature subset, event-window, threshold, target, stop, symbol, side, risk or leverage grid before a robust positive base edge. After exact-Bybit pre-2024 survival, maximize geometric growth over the prewritten wide risk/capacity frontier without a 1% performance ceiling.",
+    "source_gate": "Enumerate the official S3 bucket for 2021-2023 monthly or daily archives, verify CHECKSUM files, parse fixed predeclared samples, and require continuous coverage, all four symbols, both liquidation sides and adequate event density."
+  },
+  "scope_fingerprint": "8a9712e37ec663adc37e02d54848eeb98aad39b74a70c687d997e8ec0635d25d",
+  "started_at": "2026-07-26T20:20:00+09:00",
+  "status": "RUNNING",
+  "worker_id": "gpt-5.6-pro-20260726-2020"
+}
