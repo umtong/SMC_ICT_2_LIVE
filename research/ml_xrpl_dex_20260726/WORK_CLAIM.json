@@ -7,18 +7,31 @@
   "lease_until": "2026-07-27T06:50:00+09:00",
   "notes": [
     "This claim is source-distinct and does not reuse existing low-return alpha conclusions.",
-    "Source gate is outcome sealed: no Bybit market data, labels, model fit, PnL, or 2024+ outcomes may be opened before it passes.",
-    "Open PR 242 may advance control revision independently; this claim is anchored to the current main commit and must rebase before any control-plane update."
+    "The outcome-sealed source gate completed in workflow run 30205051874 and artifact 8632819385.",
+    "Token identities passed, but the deployed XRPL.to OHLC endpoint ignored all frozen historical range syntaxes and returned current 2026 candles; zero returned candle belonged to a preregistered pre-2024 window.",
+    "No Bybit market data, label, model, PnL, official 2024/2026 outcome, credential or order was opened.",
+    "This is a historical-transport failure, not an economic strategy result. It creates no Result Registry row and no ranking change.",
+    "Reopen only with a materially different point-in-time historical transport whose date semantics are directly verified before outcome access."
   ],
   "objective": "Discover and causally validate a new ML alpha from completed XRP Ledger DEX inventory/price-discovery changes that lead Bybit XRPUSDT, using pre-2024 data for frozen system selection and opening 2024H1 only after source and development gates.",
   "objective_fingerprint": "0cab97d9ed1833b221f2d5d4e31fe87ca8aee540d51d483ffa0b2d4e40938475",
   "orders_submitted": false,
-  "pull_request": null,
+  "pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/248",
   "result_id": null,
   "schema_version": 1,
   "scope": "XRPL ledger-native DEX XRP versus pre-2024 established USD gateway IOUs (GateHub USD and Bitstamp USD), 15-minute completed-candle event clock, official Clio sample verification, XRPL.to immutable-response snapshots, Bybit XRPUSDT linear perpetual, one HGBT, structural first-passage exits, 24bp primary all-in cost; excludes hourly seasonality, generic price-only patterns, stablecoin issuance, Ethereum transfers, Hyperliquid liquidations, and all active claims.",
   "scope_fingerprint": "2181512a2814fc9c5afd497aaabe0137feee5e411729c5178a34cb4a5e7effe5",
+  "source_gate": {
+    "artifact_digest": "sha256:56a820fcc29a36da79644d6ebcb334764ecf34a12c2fe2a7daa82600922bd394",
+    "artifact_id": 8632819385,
+    "decision": "CLOSE_XRPL_DEX_SOURCE_ROUTE_BEFORE_MARKET_OUTCOMES",
+    "manifest_root": "bdebe5292534300c76c648f3aab3495d6cfd145a91041e4afec8416e5c1c6217",
+    "passed": false,
+    "result_sha256": "e9378c9be843705e7bf04da490946803f9678a01cec255ed2acf663e500d1deb",
+    "workflow_run": 30205051874
+  },
   "started_at": "2026-07-26T22:50:00+09:00",
-  "status": "RUNNING",
+  "status": "REPORTED",
+  "updated_at": "2026-07-26T23:02:24+09:00",
   "worker_id": "gpt-5.6-pro-20260726-2250"
 }
