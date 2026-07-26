@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-LIQ-SWEEP-RETEST-001",
+  "result_id": "RES-20260726-LIQ-SWEEP-RETEST-FATAL-001",
+  "engine_version": "LIQ_SWEEP_MSS_PASSIVE_RETEST_V1",
+  "hypothesis": "After an actual liquidation raid, reclaim, refill and MSS, passive mitigation at the raided liquidity level or the 50% sweep leg has superior after-cost expectancy to immediate taker entry, provided fill requires real trade-through and pending orders occupy the global slot.",
+  "smc_ict_mapping": {
+    "external_liquidity_and_confirmation": "unchanged causal event definition from CLM-20260726-LIQ-SWEEP-MSS-001",
+    "entry_location_1": "raided external-liquidity level",
+    "entry_location_2": "50% of the sweep-extreme-to-MSS-decision leg",
+    "order_type": "post-only resting limit after 100/300-ms acknowledgement",
+    "fill": "actual trade-through by 1/2 bp; touch is insufficient",
+    "invalidation": "actual sweep extreme plus max(one activation spread, 1 bp)",
+    "objectives": ["prior range equilibrium", "2R structural target"]
+  },
+  "data_contract": {
+    "provider": "Tardis public first-day monthly samples",
+    "exchange": "bybit",
+    "data_types": ["quotes", "trades", "liquidations"],
+    "availability_clock": "local_timestamp",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "fit_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "development_dates": ["2023-07-01", "2023-09-01", "2023-11-01"],
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "parameter_grid": {
+    "lookback_seconds": [300, 900],
+    "micro_pivot_seconds": [3, 10],
+    "minimum_sweep_bps": [2.0, 5.0],
+    "maximum_confirmation_seconds": [5, 10],
+    "minimum_opposite_flow_fraction": [0.0, 0.30],
+    "minimum_refill_ratio": [0.8, 1.2],
+    "acknowledgement_and_exit_latency_ms": [100, 300],
+    "entry_mode": ["liquidity_level", "half_leg"],
+    "queue_trade_through_bps": [1.0, 2.0],
+    "target_mode": ["equilibrium", "two_r"],
+    "candidate_count": 1024
+  },
+  "pending_order_contract": {
+    "activation": "first executable BBO at or after decision plus acknowledgement latency",
+    "post_only": "reject if marketable at activation",
+    "fill": "first actual trade penetrating the limit by configured queue bps",
+    "target_before_fill": "cancel pending order",
+    "session_boundary_unfilled": "cancel pending order",
+    "global_slot": "pending order occupies the only global slot until fill or cancellation",
+    "arbitrary_ttl": false
+  },
+  "position_contract": {
+    "stop": "sweep extreme plus max(one activation spread, 1 bp)",
+    "target": "equilibrium or 2R",
+    "same_trade_fill_and_stop": "fill first, then adverse stop",
+    "exit_execution": "adverse of barrier-trigger trade and first post-latency executable BBO",
+    "source_boundary": "full stop for unresolved position",
+    "forced_time_exit": false,
+    "additional_roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "funding_reserve_bps_per_crossed_boundary": 2.0,
+    "planned_nav_risk": 0.005
+  },
+  "fit_gate": {
+    "minimum_filled_trades_at_18bp": 20,
+    "positive_mean_and_median_at_24bp": true,
+    "positive_12bp_return_after_top_10pct_positive_event_exclusion_and_reroute": true,
+    "minimum_positive_dates_at_18bp": 2,
+    "maximum_top5_positive_share": 0.50,
+    "maximum_unresolved_fraction": 0.10,
+    "maximum_drawdown_at_18bp": 0.25
+  },
+  "development_gate": "same as fit gate",
+  "staging": {
+    "fit": "all 1,024 policies",
+    "development": "only up to twelve complete fit survivors frozen without changes",
+    "official_2024": "prohibited by this claim"
+  },
+  "top_trade_removal": "Largest 10% of positive 12-bp event keys are excluded before pending/global-slot routing and the account is rerun from initial NAV.",
+  "promotion_boundary": "Fatal screen only. A survivor requires unchanged-rule expansion across remaining pre-2024 samples with exact queue reconstruction and funding before 2024 can open.",
+  "implementation_sha256": "64de228aef9825c25a5194abb47cb87a67bd044e167efcc255a5513a61a43540",
+  "orders_submitted": false,
+  "created_at": "2026-07-26T16:33:00+09:00"
+}
