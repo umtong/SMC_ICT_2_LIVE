@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1807-ML-90M-PO3-001",
+  "provisional_result_id": "RES-20260726-ML-90M-PO3-001",
+  "status": "PREREGISTERED_BEFORE_ANY_STRATEGY_OUTCOME",
+  "created_at": "2026-07-26T18:07:38+09:00",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-ml-90m-po3-001",
+  "research_question": "Can one minimal supervised model route a fixed 90-minute accumulation-manipulation-distribution cycle strongly enough to materially close the realistic after-cost 1% daily NAV-growth gap?",
+  "smc_ict_explanation": "Each America/New_York-midnight-anchored 90-minute cycle is divided into three completed 30-minute thirds. The first freezes the accumulation box. The second must raid and reclaim exactly one box boundary. At the third-third open, a pooled model estimates whether price will deliver to the untouched accumulation boundary before invalidating beyond the actual manipulation extreme.",
+  "distinct_scope": {
+    "non_overlap": "The reported latent HMM PO3 model learned generic bar states and failed its frozen gate. This claim uses exogenous 90-minute boundaries, a supervised structural target-before-stop label and one regularized logistic model. It does not retune the HMM, fixed Silver Bullet windows, FVG/OTE acceptance, option flow, L2 hazard OCO, cross-venue or cross-asset models.",
+    "single_strategy": true,
+    "single_model": true,
+    "feature_count": 8,
+    "threshold_count": 3
+  },
+  "market_contract": {
+    "venue": "Bybit",
+    "market": "USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "source": "official Bybit public native five-minute monthly archives",
+    "global_pending_or_open_slots": 1,
+    "final_practical_execution_requirement": "Any survivor must retain the unchanged model and route under exact Bybit BBO/depth, actual funding and latency-aware fills before ranking or practical use."
+  },
+  "information_contract": {
+    "cycle_anchor": "America/New_York local midnight with historical DST",
+    "cycle_length_minutes": 90,
+    "third_length_minutes": 30,
+    "complete_cycle_requirement": "Exactly eighteen contiguous valid five-minute bars with positions 0 through 17. Spring-forward and fall-back malformed cycles are rejected rather than reconstructed.",
+    "decision_availability": "All six manipulation bars are completed; decision timestamp equals the next five-minute open.",
+    "entry": "exact next five-minute open",
+    "training": "calendar 2021 only",
+    "calibration": "calendar 2022; select at most one threshold",
+    "development": "calendar 2023 opens only after the full 2022 gate",
+    "sequential_evaluation": ["2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+    "walkforward_rule": "Before each half-year, refit the same model on resolved prior events only. The feature set, route, thresholds, sizing, costs and gates remain frozen.",
+    "future_label_rule": "Unresolved events at a fit cutoff are censored and excluded. Same-bar target/stop is a stop. Source gaps after entry receive the structural stop.",
+    "elapsed_time_exit": null
+  },
+  "event_contract": {
+    "accumulation": "first six completed bars freeze high, low, range and volume",
+    "manipulation": "next six completed bars must exceed exactly one boundary by max(1bp of price, 5% of box range) and finish back inside the box",
+    "side": "low sweep implies long; high sweep implies short",
+    "stop": "beyond the actual manipulation extreme by the same structural buffer",
+    "target": "untouched opposite accumulation boundary",
+    "minimum_reward_risk": 1.5,
+    "both_side_sweep": "excluded because intracycle order is not identifiable from five-minute bars",
+    "same_bar_ambiguity": "stop first",
+    "gap_stop": "adverse open when worse than the stop",
+    "source_boundary": "marked at the final valid market price for NAV and separately disqualifies the gate as unresolved"
+  },
+  "model_contract": {
+    "model_id": "FIXED_90M_SUPERVISED_PO3_LOGIT_V1",
+    "algorithm": "StandardScaler plus pooled LogisticRegression",
+    "regularization_C": 0.1,
+    "class_weight": "balanced",
+    "random_seed": 20260726,
+    "features": [
+      "sweep_depth_ratio",
+      "reclaim_strength",
+      "signed_manipulation_return",
+      "manipulation_efficiency",
+      "rejection_wick_fraction",
+      "volume_ratio",
+      "accumulation_range_ratio",
+      "signed_prior_6h_return"
+    ],
+    "label": "untouched accumulation boundary reached before structural raid stop",
+    "candidate_probability_thresholds": [0.55, 0.65, 0.75],
+    "tie_and_slot_score": "24bp cost-adjusted expected value, then probability, then stable symbol order",
+    "prohibited": [
+      "feature expansion",
+      "model family grid",
+      "ensembles",
+      "post-outcome threshold addition",
+      "risk or leverage rescue of negative expectancy"
+    ]
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "planned_loss_fraction": 0.02,
+    "maximum_notional_multiple": 10.0,
+    "participation_cap": "0.1% of prior completed five-minute quote volume",
+    "round_trip_cost_bps": [12, 18, 24],
+    "funding_proxy": "adverse 2bp for each crossed UTC eight-hour boundary in the initial OHLC screen",
+    "quantity_rule": "minimum of NAV-risk, 10x NAV notional and participation limits",
+    "daily_growth_denominator": "all UTC calendar days",
+    "top_trade_removal": "identify top positive events on the 18bp path, exclude their event keys before global slot competition and replay from initial NAV"
+  },
+  "calibration_gate": {
+    "minimum_24bp_completed_trades": 150,
+    "minimum_24bp_calendar_daily_growth": 0.0025,
+    "24bp_mean_and_median_positive": true,
+    "minimum_24bp_profit_factor": 1.15,
+    "both_half_years_positive": true,
+    "minimum_positive_months": 8,
+    "maximum_top_five_positive_pnl_share": 0.35,
+    "18bp_top10_removed_total_return_positive": true,
+    "unresolved_count": 0
+  },
+  "development_gate": {
+    "minimum_24bp_completed_trades": 200,
+    "minimum_24bp_calendar_daily_growth": 0.005,
+    "minimum_18bp_top10_removed_calendar_daily_growth": 0.0025,
+    "24bp_mean_and_median_positive": true,
+    "minimum_24bp_profit_factor": 1.2,
+    "both_half_years_positive": true,
+    "minimum_positive_months": 9,
+    "maximum_top_five_positive_pnl_share": 0.35,
+    "unresolved_count": 0
+  },
+  "promotion_boundary": {
+    "proxy_rank_eligible": false,
+    "sequential_result_required": true,
+    "exact_bybit_bbo_depth_required": true,
+    "actual_funding_required": true,
+    "orders_permitted": false,
+    "paper_live_permitted": false
+  }
+}
