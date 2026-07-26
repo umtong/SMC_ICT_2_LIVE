@@ -1,0 +1,124 @@
+name: ML Uniswap WETH-stable inventory source gate Windows
+
+on:
+  push:
+    branches:
+      - agent/r14-ml-uniswap-hedge-transfer-001
+    paths:
+      - 'research/ml_uniswap_hedge_transfer_20260726/**'
+      - '.github/workflows/ml-uniswap-swap-source-gate-windows-r14.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_uniswap_hedge_transfer_20260726/**'
+      - '.github/workflows/ml-uniswap-swap-source-gate-windows-r14.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-uniswap-source-gate-windows-r14-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source-gate-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install fixed source-gate environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'requests==2.32.4' \
+            'pytest==8.3.5'
+
+      - name: Compile and run frozen source tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          python -m py_compile \
+            "$root/probe_uniswap_swaps.py" \
+            "$root/run_source_gate_with_blockscout.py" \
+            "$root/test_probe_uniswap_swaps.py"
+          PYTHONPATH="$root" python -m pytest -q "$root/test_probe_uniswap_swaps.py"
+          python -m json.tool "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_004_WINDOWS_PARALLEL_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
+
+      - name: Run identical outcome-sealed source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_hedge_transfer_20260726/source-gate-windows
+          mkdir -p "$out"
+          PYTHONPATH="$root" python "$root/run_source_gate_with_blockscout.py" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Enforce frozen authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate-windows')
+          result=json.loads((root/'PROBE_RESULT.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
+          assert result['factory'].lower()=='0x1f98431c8ad98523631ae4a59f267346ea31f984'
+          assert result['swap_topic'].lower()=='0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67'
+          assert all(int(item['date'][:4]) <= 2023 for item in result['probe_windows'])
+          assert result['scientific_decision'] in {
+              'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE',
+              'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES',
+          }
+          serialized=json.dumps(result,sort_keys=True).lower()
+          for forbidden in ('account_nav','model_auc','trade_return','official_2024_opened','orders_submitted'):
+              assert forbidden not in serialized
+          print(json.dumps({
+              'selected_endpoint':result.get('endpoint_probe',{}).get('selected'),
+              'source_gate_pass':result['source_gate_pass'],
+              'decoded_logs':result.get('totals',{}).get('decoded_logs',0),
+              'decision':result['scientific_decision'],
+          },sort_keys=True))
+          PY
+          python scripts/validate_project.py
+
+      - name: Freeze hashes portably
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          out=Path('research_runs/ml_uniswap_hedge_transfer_20260726/source-gate-windows')
+          out.mkdir(parents=True,exist_ok=True)
+          rows=[]
+          for path in sorted(p for p in out.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}")
+          (out/'OUTPUT_SHA256SUMS.txt').write_text('\n'.join(rows)+'\n',encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-uniswap-source-gate-windows-r14-${{ github.run_id }}
+          path: research_runs/ml_uniswap_hedge_transfer_20260726/source-gate-windows
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
