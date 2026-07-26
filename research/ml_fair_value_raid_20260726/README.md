@@ -7,7 +7,7 @@ Issue: `#152`
 
 Bybit's completed mark price and index price define a frozen external fair-value pool. When the completed one-second last price leaves that pool far enough to qualify as a fit-period tail event, the move is treated as a quantitative liquidity raid.
 
-The next completed second is the earliest possible entry. One ML model reads only information already available at the decision: fair-value and last/mark gaps, premium response, short-horizon price response, open-interest creation or destruction, realized volatility, funding state and update age. It can make only one of three decisions:
+The next completed second is the earliest possible entry. A raid is eligible only when last, mark and index prices each changed within the prior three seconds; a fresh ticker message cannot disguise a stale last trade. One ML model reads only information already available at the decision: fair-value and last/mark gaps, premium response, field-specific price freshness, short-horizon price response, open-interest creation or destruction, realized volatility, funding state and update age. It can make only one of three decisions:
 
 1. **Rejected displacement:** fade back to the frozen fair-value pool.
 2. **Accepted displacement:** follow toward a fixed 150% extension.
