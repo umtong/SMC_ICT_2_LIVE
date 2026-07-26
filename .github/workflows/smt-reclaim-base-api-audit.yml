@@ -1,0 +1,106 @@
+name: SMT reclaim frozen base API audit
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-reclaim-ml-meta-001
+    paths:
+      - ".github/workflows/smt-reclaim-base-api-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smt-reclaim-base-api-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Reconstruct frozen shared source and record exact API
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit runtime
+          git fetch --depth=1 origin agent/r11-altlag-opportunity-001
+          git show FETCH_HEAD:research/bybit_altlag_opportunity_20260726/probe.py.zlib.b64 \
+            > runtime/base_probe.py.zlib.b64
+          python - <<'PY'
+          import base64
+          import hashlib
+          import inspect
+          import json
+          import pathlib
+          import sys
+          import zlib
+
+          root = pathlib.Path('runtime')
+          out = pathlib.Path('audit')
+          encoded = (root / 'base_probe.py.zlib.b64').read_text().strip()
+          source = zlib.decompress(base64.b64decode(encoded))
+          source_path = root / 'base_probe.py'
+          source_path.write_bytes(source)
+          sys.path.insert(0, str(root.resolve()))
+          import base_probe
+
+          names = [
+              '_download',
+              'inspect_source',
+              'aggregate',
+              'continuous_features',
+              'utc_start',
+          ]
+          sections = []
+          manifest = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260726-SMT-RECLAIM-ML-001',
+              'source_sha256': hashlib.sha256(source).hexdigest(),
+              'source_bytes': len(source),
+              'market_data_opened': False,
+              'model_fit_performed': False,
+              'pnl_computed': False,
+              'orders_submitted': False,
+              'symbols': {},
+          }
+          for name in names:
+              value = getattr(base_probe, name, None)
+              record = {'present': value is not None}
+              if value is not None:
+                  try:
+                      record['signature'] = str(inspect.signature(value))
+                  except (TypeError, ValueError):
+                      record['signature'] = None
+                  try:
+                      text = inspect.getsource(value)
+                  except (OSError, TypeError):
+                      text = '<source unavailable>'
+                  record['source_sha256'] = hashlib.sha256(text.encode()).hexdigest()
+                  sections.append(f'\n===== {name} {record["signature"]} =====\n{text}')
+              manifest['symbols'][name] = record
+
+          (out / 'API.txt').write_text(''.join(sections), encoding='utf-8')
+          (out / 'MANIFEST.json').write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          (out / 'base_probe.py').write_bytes(source)
+          print(json.dumps(manifest, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smt-reclaim-base-api-audit-${{ github.sha }}
+          path: audit
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
