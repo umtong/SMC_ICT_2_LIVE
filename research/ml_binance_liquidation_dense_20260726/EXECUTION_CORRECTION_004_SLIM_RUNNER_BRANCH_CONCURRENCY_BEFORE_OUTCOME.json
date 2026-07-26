@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-BINANCE-COINM-SLIM-BRANCH-CONCURRENCY-004",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "reason": "The SHA-scoped standard-runner workflow accumulated queued duplicate executions before any source row or economic outcome. Use the already-supported lightweight hosted runner and one branch-scoped cancel-in-progress group so only the latest unchanged source gate consumes capacity.",
+  "changes": [
+    "runs-on ubuntu-24.04 -> ubuntu-slim",
+    "concurrency group github.sha -> github.ref",
+    "cancel-in-progress false -> true"
+  ],
+  "scientific_constants_changed": false,
+  "source_symbols_changed": false,
+  "source_dates_changed": false,
+  "coverage_or_density_gate_changed": false,
+  "checksum_or_decode_rule_changed": false,
+  "model_feature_label_action_cost_risk_leverage_or_official_period_changed": false,
+  "market_outcome_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
