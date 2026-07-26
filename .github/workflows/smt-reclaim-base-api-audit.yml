@@ -6,13 +6,17 @@ on:
       - agent/r11-smt-reclaim-ml-meta-001
     paths:
       - ".github/workflows/smt-reclaim-base-api-audit.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/smt-reclaim-base-api-audit.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: smt-reclaim-base-api-audit-${{ github.ref }}
+  group: smt-reclaim-base-api-audit-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
