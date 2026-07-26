@@ -10,7 +10,7 @@ The workflow reuses only the compact causal state files produced by the hard-val
 - 2022 state SHA-256: `da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b`
 - 2023 state SHA-256: `8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f`
 
-The states were built from Tardis normalized Bybit `book_snapshot_5` and `trades`, with `local_timestamp` as the information-availability clock. This study groups only exact contiguous 500 ms states and creates a new causal segment after every missing state.
+The states were built from Tardis normalized Bybit `book_snapshot_5` and `trades`, with `local_timestamp` as the information-availability clock. PR #72 emits every completed **100 ms** state. This study groups only exact contiguous 100 ms states and creates a new causal segment after every missing state. The first run's 500 ms interpretation is invalidated by `amendment_001_source_frequency_correction.json`.
 
 ## SMC/ICT concept translation
 
