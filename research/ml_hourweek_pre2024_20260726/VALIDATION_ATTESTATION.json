@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "attestation_id": "VAL-20260726-ML-HOURWEEK-PRE2024-2024H1-001",
+  "result_id": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001",
+  "status": "PASS_CAUSAL_SEQUENTIAL_NEGATIVE_CONCLUSION",
+  "checks": [
+    "The base Ridge KEEP/SWITCH/FLAT state machine was reconstructed from immutable GitHub Actions artifact 8616632878.",
+    "All 720 session, side, asset and threshold routes were selected using 2023H2 only before 2024H1 predictions were generated.",
+    "The selected filter was frozen as all UTC hours, long-only, BTCUSDT/SOLUSDT/XRPUSDT and threshold multiplier 0.75.",
+    "The 2024H1 model and calibration threshold used only information available before 2024-01-01.",
+    "Entries occurred at the next hourly open and all symbols shared one global slot.",
+    "Exits were driven only by expected-edge disappearance or a superior eligible alternative; no elapsed-time liquidation existed.",
+    "The same chronological decisions were replayed at 12, 18 and 24 basis points with an adverse funding proxy.",
+    "Winner event keys were removed before candidate competition and the complete account was rerouted.",
+    "2024H2 through 2026H1 remained unopened.",
+    "No credential or order path was used."
+  ],
+  "evidence": {
+    "pre2024_candidate_count": 720,
+    "pre2024_formal_gate_count": 33,
+    "pre2024_selected_24bp_daily_growth": 0.005222978115636545,
+    "official_2024H1_24bp_daily_growth": -0.0004119477551317585,
+    "official_2024H1_24bp_total_return": -0.07224717909914913,
+    "official_2024H1_24bp_exact_winner_removed_return": -0.12016844183217013
+  },
+  "scope_boundary": "This validates the causal calculation and retirement of the exact hourweek/filter family. It does not validate exact Bybit execution or any later interval."
+}
