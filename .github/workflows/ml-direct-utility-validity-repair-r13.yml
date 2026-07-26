@@ -1,0 +1,133 @@
+name: Direct utility fixed-quantity validity replay
+
+on:
+  push:
+    branches:
+      - agent/r13-ml-direct-utility-validity-repair-001
+    paths:
+      - '.github/workflows/ml-direct-utility-validity-repair-r13.yml'
+      - 'research/ml_direct_utility_20260726/run.py.gz.b64'
+      - 'research/ml_direct_utility_20260726/source_manifest.json'
+      - 'research/ml_direct_utility_20260726/test_run.py'
+      - 'research/ml_direct_utility_20260726/VALIDITY_CORRECTION_009_FIXED_QUANTITY_GAP_STOP_SPLIT_BOUNDARY.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ml-direct-utility-validity-repair-r13.yml'
+      - 'research/ml_direct_utility_20260726/run.py.gz.b64'
+      - 'research/ml_direct_utility_20260726/source_manifest.json'
+      - 'research/ml_direct_utility_20260726/test_run.py'
+      - 'research/ml_direct_utility_20260726/VALIDITY_CORRECTION_009_FIXED_QUANTITY_GAP_STOP_SPLIT_BOUNDARY.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-direct-utility-validity-repair-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r13-ml-direct-utility-validity-repair-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.2.6 pandas==2.2.3 requests==2.32.4 scipy==1.15.3 \
+            scikit-learn==1.6.1 pytest==8.3.5
+      - name: Reconstruct and test fixed-quantity validity repair
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/validity-repair-r13
+          mkdir -p "$out/source"
+          python -m json.tool "$root/VALIDITY_CORRECTION_009_FIXED_QUANTITY_GAP_STOP_SPLIT_BOUNDARY.json" >/dev/null
+          python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/run.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
+          cp "$root/run.py" "$root/test_run.py" "$root/source_manifest.json" \
+            "$root/VALIDITY_CORRECTION_009_FIXED_QUANTITY_GAP_STOP_SPLIT_BOUNDARY.json" "$out/source/"
+          (cd "$out/source" && sha256sum * | sort > SOURCE_SHA256SUMS.txt)
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/ml-direct-utility-r13-validity-repair
+          key: ml-direct-utility-r13-validity-repair-${{ hashFiles('research/ml_direct_utility_20260726/source_manifest.json') }}
+      - name: Run corrected frozen pre-2024 replay
+        run: |
+          set -euo pipefail
+          root=research/ml_direct_utility_20260726
+          out=research_runs/ml_direct_utility_20260726/validity-repair-r13
+          PYTHONPATH="$root" python "$root/run.py" \
+            --output "$out" \
+            --cache /tmp/ml-direct-utility-r13-validity-repair \
+            2>&1 | tee "$out/RUN.log"
+      - name: Enforce validity and authority boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/ml_direct_utility_20260726/validity-repair-r13')
+          result=json.loads((root/'RESULT.json').read_text())
+          contract=json.loads((root/'MODEL_CONTRACT.json').read_text())
+          source=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          assert result['claim_id']=='CLM-20260726-2013-ML-DIRECT-UTILITY-001'
+          assert result['model_family_count']==1
+          assert result['hyperparameter_grid'] is False
+          assert result['one_global_slot'] is True
+          assert result['no_elapsed_time_liquidation'] is True
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          assert contract['one_model_family'] is True
+          assert contract['one_economic_decision_rule'] is True
+          assert contract['prohibited_years']==[2024,2025,2026]
+          coverage=[x for x in source['files'] if x.get('kind')=='assembled_hourly_grid']
+          assert len(coverage)==4
+          assert all(x['gap_policy']=='NO_IMPUTATION_RESET_ALL_CROSSING_HORIZONS' for x in coverage)
+          if not result['confirmation']['gate_passed']:
+              assert result['development'] is None
+              assert result['selected_risk_config'] is None
+          print(json.dumps({
+              'status':result['status'],
+              'confirmation_gate':result['confirmation']['gate_passed'],
+              'development_opened':result['development_opened'],
+              'selected_risk_config':result['selected_risk_config'],
+              'official_2024_2026_opened':result['official_2024_2026_opened'],
+              'decision':result['decision'],
+              'promotion_authority':'NONE_POST_OUTCOME_VALIDITY_REPAIR'
+          },sort_keys=True))
+          PY
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_direct_utility_20260726/validity-repair-r13
+          mkdir -p "$out"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-direct-utility-validity-repair-r13-${{ github.run_id }}
+          path: research_runs/ml_direct_utility_20260726/validity-repair-r13
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
