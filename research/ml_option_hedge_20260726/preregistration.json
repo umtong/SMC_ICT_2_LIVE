@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1732-ML-OPTION-HEDGE-001",
+  "result_id": "RES-20260726-ML-OPTION-HEDGE-001",
+  "engine_version": "ML-OPTION-HEDGE-LIQUIDITY-FIRST-PASSAGE-V1",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "scientific_question": "Do completed Deribit BTC/ETH option aggressor transactions contain delta-hedging or gamma-rebalancing information that predicts which frozen Bybit external-liquidity pool is reached first strongly enough to create positive after-cost account growth?",
+  "minimal_system": {
+    "model_family_count": 1,
+    "model_family": "HistGradientBoostingClassifier",
+    "calibration": "one frozen isotonic map",
+    "hyperparameter_candidate_count": 1,
+    "economic_decision_rule_count": 1,
+    "actions": ["LONG", "SHORT", "FLAT"],
+    "fixed_rule_families_removed": true,
+    "threshold_grid": false
+  },
+  "trader_explanation": [
+    "Confirmed prior 30-minute Bybit BBO extremes are the frozen external buy-side and sell-side liquidity pools.",
+    "Completed Deribit option transactions are converted into signed delta demand and dealer gamma inventory pressure using analytically reconstructed point-in-time Greeks.",
+    "The model predicts which frozen pool will be drawn first; it does not label FVG, order block, breaker, session or candle pattern entries.",
+    "Calibrated probability and the two structural distances define one exact cost-adjusted long, short or flat decision.",
+    "The selected pool is the target and the opposite pool is the stop; no elapsed-time exit is permitted."
+  ],
+  "data_contract": {
+    "signal": "Tardis Deribit normalized OPTIONS trades",
+    "execution_and_structure": "Tardis Bybit BTCUSDT/ETHUSDT normalized quotes",
+    "deribit_clock": "exchange timestamp and local row order within the Deribit capture",
+    "cross_provider_delay_seconds": 2,
+    "bybit_entry": "first Bybit BBO at or after completed-window end plus two seconds, no more than one second late",
+    "bybit_state": "completed 100ms executable BBO buckets",
+    "source_integrity": "full GZIP CRC, byte count, SHA-256, row count and local_timestamp monotonicity",
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "greek_contract": {
+    "instrument_scope": "BTC and ETH European options with 1 hour to 14 days remaining",
+    "spot": "last valid same-underlier Bybit BBO midpoint at or before the option trade, maximum age two seconds",
+    "premium": "Deribit base-asset premium multiplied by point-in-time spot",
+    "solver": "Black-Scholes zero-rate implied-volatility bisection from 1% to 500%",
+    "accepted_iv": "3% through 400%",
+    "features": ["signed delta demand USD", "dealer gamma inventory 1% USD", "gamma-realized interaction", "premium notional", "call-put balance", "near-expiry gamma share", "relative BTC/ETH option flow"]
+  },
+  "chronology": {
+    "training_dates": ["2022-01-01", "2022-03-01", "2022-05-01"],
+    "calibration_dates": ["2022-07-01"],
+    "confirmation_dates": ["2022-09-01", "2022-11-01"],
+    "conditional_development_dates": ["2023-01-01", "2023-03-01", "2023-05-01", "2023-07-01", "2023-09-01", "2023-11-01"],
+    "development_access": "only after every confirmation gate passes",
+    "official_2024_2025_2026_opened": false
+  },
+  "label_and_execution": {
+    "option_flow_window_seconds": 300,
+    "minimum_greek_valid_option_trades": 3,
+    "minimum_greek_coverage": 0.8,
+    "liquidity_pools": "maximum completed Bybit bid and minimum completed Bybit ask over the prior 30 minutes",
+    "range_width_bps": [15, 400],
+    "label": "which frozen pool is first touched after the actual entry boundary",
+    "same_100ms_bucket_both_touch": "AMBIGUOUS and stop-first in account replay",
+    "source_gap": "label unresolved; any authorized position pays the full structural stop",
+    "sample_boundary": "any authorized unresolved position pays the full structural stop",
+    "elapsed_time_exit": false,
+    "one_global_slot": true
+  },
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "learning_rate": 0.05,
+    "max_iter": 200,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 80,
+    "l2_regularization": 5.0,
+    "early_stopping": false,
+    "random_state": 20260726,
+    "calibration": "IsotonicRegression clipped to [0.01, 0.99]",
+    "baseline": "distance-only zero-drift first-passage probability"
+  },
+  "account": {
+    "initial_nav_usdt": 10000,
+    "planned_risk_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "entry_top_quote_participation": 0.05,
+    "observed_bid_ask": true,
+    "additional_round_trip_cost_bps": [12, 18, 24],
+    "funding": "adverse two-bp reserve for each crossed UTC 00:00/08:00/16:00 boundary",
+    "counterfactual_winner_removal": "remove the largest positive 10% event keys before global-slot routing and replay from initial NAV"
+  },
+  "confirmation_gate_all_required": {
+    "resolved_rows": ">=200",
+    "model_auc": ">=0.55",
+    "auc_lift_over_distance_baseline": ">=0.02",
+    "brier_skill_over_distance_baseline": ">0",
+    "trades_at_18bps": ">=20",
+    "total_return_at_18bps": ">0",
+    "total_return_at_24bps": ">0",
+    "median_trade_at_12bps": ">0",
+    "winner_removed_return_at_12bps": ">0",
+    "positive_confirmation_dates_at_18bps": "2/2",
+    "top_five_positive_pnl_share_at_18bps": "<=0.50"
+  },
+  "development_gate_all_required": {
+    "trades_at_18bps": ">=60",
+    "positive_total_return_at_12_18_24bps": true,
+    "median_trade_at_12bps": ">0",
+    "winner_removed_return_at_12bps": ">0",
+    "positive_development_dates_at_18bps": ">=4",
+    "top_five_positive_pnl_share_at_18bps": "<=0.50"
+  },
+  "conditional_decision": {
+    "zero_confirmation_survivors": "retire the exact option-flow information unit without model, feature, probability, range, risk or leverage tuning",
+    "development_survivor": "freeze the exact rule for broader continuous pre-2024 reconstruction and exact Bybit depth/funding validation before official 2024"
+  },
+  "authority": {
+    "rank_eligible": false,
+    "credentials": false,
+    "orders": false,
+    "live_permission_change": false
+  },
+  "implementation_sha256": "cfd0d7c72ebd71d0dc479341fab10fb427033535590260a9016bd85ed438bb4a",
+  "test_sha256": "4eb91fe8a64415e61336297c567b27a04708a0cd9d140f584dd87cbc02fa88b5"
+}
