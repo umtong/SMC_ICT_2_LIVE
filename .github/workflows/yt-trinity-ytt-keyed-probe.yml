@@ -1,6 +1,11 @@
 name: YT Trinity keyed transcript API probe
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-ytt-keyed-probe.yml
+      - control/yt-trinity-ytt-keyed-probe-trigger.json
   push:
     branches:
       - agent/r22-yt-trinity-ml-001
@@ -12,8 +17,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-ytt-keyed-probe-${{ github.ref }}
+  group: yt-trinity-ytt-keyed-probe-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+env:
+  TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   probe:
@@ -22,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -142,8 +150,8 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record keyed YTT transcript probe ${GITHUB_RUN_ID}"
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            git pull --rebase origin "${TARGET_BRANCH}"
+            if git push origin "HEAD:${TARGET_BRANCH}"; then exit 0; fi
             sleep $((attempt * 2))
           done
           exit 1
