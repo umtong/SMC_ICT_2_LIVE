@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "condition": "Execute only when RES-20260726-SMT-OVERREACTION-RECLAIM-001 has hard validity PASS and main_mss_survivor_count equal to zero.",
+  "economic_hypothesis": "A completed BTC displacement can create a beta-relative SOL/XRP external-liquidity overrun. After causal CISD/MSS confirmation, some overruns are genuine exhaustion and others are only pauses before continuation. A shallow cost-sensitive model using confirmation-time state may separate these cases strongly enough to trade the frozen equilibrium-reclaim path after 24 bp.",
+  "smc_ict_translation": {
+    "impulse": "completed BTC displacement with aligned aggressive flow and abnormal activity",
+    "liquidity_run": "SOL/XRP extends beyond its prior-only beta fair value",
+    "smt_divergence": "positive direction-adjusted follower-minus-beta residual of at least 12 bp",
+    "cisd_mss": "residual contracts to at most 80 percent of its event value while completed trailing one-second follower aggressor flow turns opposite",
+    "model_role": "classify genuine exhaustion/reclaim versus continuation through the liquidity pool",
+    "target": "residual remains at or below 25 percent of the event value for one completed second",
+    "invalidation": "residual expands to 150 percent, follower extends another 50 percent of the event gap, or BTC loses displacement origin"
+  },
+  "data_contract": {
+    "source": "Bybit public BTCUSDT, SOLUSDT and XRPUSDT USDT-linear trade archives",
+    "availability_clock": "completed exchange-timestamp 100 millisecond bins",
+    "fit_dates": [
+      "2022-01-09", "2022-03-13", "2022-05-08", "2022-07-10", "2022-09-11", "2022-11-13"
+    ],
+    "calibration_dates": [
+      "2022-02-13", "2022-04-10", "2022-06-12", "2022-08-14", "2022-10-09", "2022-12-11"
+    ],
+    "development_dates": [
+      "2023-01-08", "2023-02-12", "2023-03-12", "2023-04-09", "2023-05-14", "2023-06-11", "2023-07-09", "2023-08-13"
+    ],
+    "selection_evidence_dates": [
+      "2023-09-24", "2023-10-22", "2023-11-26", "2023-12-31"
+    ],
+    "date_rule": "fixed monthly Sunday partitions chosen before this ML outcome; no date may be substituted after access",
+    "official_2024_2026_prohibited": true
+  },
+  "frozen_event_contract": {
+    "btc_horizons_seconds": [1, 2, 5],
+    "btc_return_z_minimum": 3.0,
+    "btc_aggressor_alignment_minimum": 0.5,
+    "btc_activity_ratio_minimum": 2.0,
+    "target_to_btc_trade_count_ratio_30m_minimum": 1.0,
+    "target_to_btc_realized_volatility_ratio_15m_minimum": 1.5,
+    "target_overreaction_ratio_minimum": 1.25,
+    "target_aggressor_alignment_minimum": 0.5,
+    "minimum_residual_gap_basis_points": 12,
+    "mss_contraction_ratio_maximum": 0.8,
+    "mss_requires_opposite_one_second_flow": true,
+    "mss_minimum_one_second_trade_count": 3,
+    "event_rearm": "BTC displacement must remain at or below 25 percent for one completed second"
+  },
+  "features_available_at_confirmation_only": [
+    "btc_displacement_z",
+    "btc_activity_ratio",
+    "btc_aggressor_alignment",
+    "follower_aggressor_alignment_at_event",
+    "btc_horizon_seconds",
+    "frozen_beta",
+    "initial_residual_gap_bps",
+    "overreaction_ratio",
+    "target_to_btc_trade_count_ratio_30m",
+    "target_to_btc_realized_volatility_ratio_15m",
+    "mss_residual_contraction_ratio",
+    "milliseconds_event_to_mss",
+    "opposite_flow_strength_1s",
+    "opposite_flow_trade_count_1s",
+    "target_realized_volatility_10s",
+    "target_trade_count_1s",
+    "other_follower_residual_bps",
+    "utc_time_sine",
+    "utc_time_cosine",
+    "target_symbol"
+  ],
+  "models": [
+    {
+      "name": "sparse_logistic_control",
+      "definition": "median imputation, standardization and L2 logistic regression with class_weight balanced and C 0.2"
+    },
+    {
+      "name": "shallow_histogram_gradient_boosting",
+      "definition": "median imputation and histogram gradient boosting with max_depth 3, max_iter 100, learning_rate 0.05 and l2_regularization 1.0"
+    }
+  ],
+  "score_quantiles": [0.8, 0.9, 0.95],
+  "training_contract": {
+    "separate_models_by_execution_latency": true,
+    "execution_latencies_milliseconds": [100, 300],
+    "label": "frozen MSS trade net return positive after 24 bp",
+    "model_fit_uses": "fit dates only",
+    "score_threshold_and_model_pair_selection_uses": "calibration dates only",
+    "development_opens_only_after_calibration_pair_survivor": true,
+    "selection_evidence_opens_only_after_development_survivor": true,
+    "selection_evidence_cannot_change_model_or_threshold": true,
+    "objective": "minimum of the two latency-specific winner-removed account log-growth rates, not AUC"
+  },
+  "execution_and_account_contract": {
+    "entry_and_exit_latency_milliseconds": [100, 300],
+    "fresh_trade_max_delay_seconds": 1.0,
+    "one_global_slot": true,
+    "same_timestamp_reentry": false,
+    "roundtrip_cost_basis_points": 24,
+    "planned_nav_risk_per_trade": 0.01,
+    "notional_leverage_cap": 3.0,
+    "planned_stop_fraction_of_event_gap": 0.5,
+    "time_forced_exit": false,
+    "source_boundary": "full planned stop",
+    "same_bin_priority": "invalidation before target",
+    "winner_removal": "exclude the largest ceil(10 percent) positive 24-bp event keys and reroute chronologically"
+  },
+  "calibration_gate_each_latency": {
+    "minimum_trades": 20,
+    "positive_mean_net_trade": true,
+    "positive_median_net_trade": true,
+    "positive_winner_removed_total_return": true,
+    "positive_date_fraction_minimum": 0.5,
+    "top_five_positive_pnl_share_maximum": 0.5,
+    "unavailable_selected_events": 0
+  },
+  "development_and_selection_gate_each_latency": {
+    "minimum_trades": 20,
+    "positive_mean_net_trade": true,
+    "positive_median_net_trade": true,
+    "positive_winner_removed_total_return": true,
+    "positive_date_fraction_minimum": 0.5,
+    "top_five_positive_pnl_share_maximum": 0.4,
+    "unavailable_selected_events": 0,
+    "winner_removed_geometric_growth_per_sample_day_minimum": 0.01
+  },
+  "forbidden": [
+    "future MFE MAE or target result as model input",
+    "AUC-only selection",
+    "deep learning before shallow economic survival",
+    "changing the frozen event MSS target invalidation cost risk or leverage rules",
+    "opening any 2024-2026 source",
+    "adjacent threshold search after a zero-survivor result"
+  ],
+  "retirement_rule": "If the calibration-selected pair does not survive both latencies through development and fixed selection evidence, retire the complete BTC-to-alt overreaction-reclaim information unit.",
+  "orders_submitted": false
+}
