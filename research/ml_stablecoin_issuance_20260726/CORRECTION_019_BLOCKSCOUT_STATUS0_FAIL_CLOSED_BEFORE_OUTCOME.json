@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_SOURCE_DECISION_OR_MARKET_OUTCOME",
+  "recorded_before_source_decision_or_market_outcome": true,
+  "observed_problem": "The Etherscan-compatible Blockscout parser treated status=0 as an empty source interval when result was an empty list, null or an empty string, or when message merely contained the substring 'no'. The provider error token 'NOTOK' contains that substring, so rate-limit, timeout or query errors could be misclassified as zero issuance or redemption events and create false source scarcity.",
+  "change": [
+    "Accept an empty source interval only when message or result contains an explicit no-records phrase such as 'No records found' or 'No logs found'.",
+    "Classify explicit query-window or response-size failures separately and bisect only that range-limit class.",
+    "Fail closed on NOTOK, rate-limit, authentication, malformed-query and other unrecognized status=0 responses so the workflow records SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE rather than a false empty interval.",
+    "Exercise explicit-empty, NOTOK-empty-list, rate-limit and range-split cases in the pinned source runner self-test.",
+    "Bind this correction identifier and the explicit-no-records-only policy into the source result and manifest when a decision-ready source result is produced."
+  ],
+  "unchanged": [
+    "USDT Issue(uint256) and Redeem(uint256) event identities",
+    "USDC zero-address Transfer mint and burn identities",
+    "2021-01 through 2023-12 source months",
+    "12-block primary and 64-block stress availability",
+    "event identity, density gates and pre-2024 boundary",
+    "one HGBT economic engine, features, labels, costs, targets, stops, risk and notional search",
+    "immediate official 2024H1 rule after a frozen pre-2024 survivor",
+    "credential and order prohibition"
+  ],
+  "source_gate_result_observed_before_change": false,
+  "market_outcome_observed_before_change": false,
+  "model_metric_observed_before_change": false,
+  "trade_or_pnl_observed_before_change": false,
+  "official_2024_2026_observed_before_change": false,
+  "orders_submitted": false
+}
