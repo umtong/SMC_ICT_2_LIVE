@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "timing": "before any matrix download, model fit, score, trade path or PnL",
+  "corrections": [
+    {
+      "problem": "A frozen date with zero confirmed MSS rows produces an empty gzip CSV, which pandas raises as EmptyDataError.",
+      "correction": "Skip the empty matrix file while retaining the date in the fixed stage-date denominator."
+    },
+    {
+      "problem": "The initial evaluator derived the positive-date and growth denominator from dates represented by event rows.",
+      "correction": "Use every preregistered date in the stage, including zero-event and zero-trade dates, for breadth and geometric sample-day metrics."
+    },
+    {
+      "problem": "The first extraction volatility assignment used chained NumPy indexing.",
+      "correction": "Write valid return positions by explicit integer indices to remove assignment ambiguity."
+    }
+  ],
+  "unchanged": [
+    "dates and stage boundaries",
+    "event and MSS definitions",
+    "features",
+    "models and hyperparameters",
+    "score quantiles",
+    "execution latency and cost",
+    "target and invalidation",
+    "risk and leverage",
+    "global slot",
+    "winner-removal logic",
+    "economic gates"
+  ],
+  "outcome_observed_before_correction": false
+}
