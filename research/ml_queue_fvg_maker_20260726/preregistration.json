@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-ML-QUEUE-FVG-MAKER-001",
+  "result_id": "RES-20260726-ML-QUEUE-FVG-MAKER-001",
+  "status": "FROZEN_BEFORE_MARKET_OUTCOME",
+  "objective": "Test one explainable SMC sweep-MSS-FVG post-only path with one multinomial ML outcome model and exact queue-aware fills.",
+  "predecessor": {
+    "pull_request": 117,
+    "use": "source capability and exact raw source identities only",
+    "predecessor_pnl": false
+  },
+  "universe": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbol": "BTCUSDT",
+    "one_global_pending_or_open_slot": true
+  },
+  "chronology": {
+    "fit": ["2022-07-01"],
+    "untouched_development": ["2023-07-01"],
+    "2024_2026_prohibited": true
+  },
+  "event": {
+    "external_liquidity": "previous completed 60-second high or low",
+    "raid": "one-sided 1bp trade-through and completed one-second close back inside",
+    "mss": "opposite completed one-second displacement through the frozen previous-ten-second internal boundary with aligned aggressive flow",
+    "fvg": "completed three-one-second-bar imbalance in the MSS direction",
+    "entry_level": "one consequent-encroachment midpoint only",
+    "stop": "one tick beyond the completed raid-to-MSS extreme",
+    "target": "opposite external-liquidity boundary frozen at the raid",
+    "minimum_target_bps": 8.0,
+    "minimum_reward_to_risk": 1.2,
+    "elapsed_time_exit": false
+  },
+  "model": {
+    "family": "standardized multinomial logistic regression",
+    "classes": ["NO_FILL", "TARGET", "STOP"],
+    "features": [
+      "sweep_depth_bps",
+      "reclaim_fraction",
+      "displacement_body_bps",
+      "fvg_width_bps",
+      "target_bps",
+      "stop_bps",
+      "r_multiple",
+      "spread_bps",
+      "side_depth_imbalance",
+      "side_microprice_skew_bps",
+      "side_flow_3s",
+      "queue_ratio"
+    ],
+    "candidate_rule": "cost-adjusted expected value at 18bp strictly greater than zero",
+    "model_grid": false,
+    "feature_grid": false,
+    "probability_threshold_grid": false
+  },
+  "execution": {
+    "availability_clock": "local_timestamp",
+    "acknowledgement_latency_ms": 100,
+    "exit_latency_ms": 100,
+    "post_only_marketable_rejection": true,
+    "touch_is_fill": false,
+    "order_notional_usdt": 10000.0,
+    "queue_ahead_multiplier": 1.5,
+    "fill_rule": "opposing aggressive amount at or through the limit must consume queue multiplier times displayed queue plus full order quantity",
+    "partial_fill_credit": false,
+    "pending_cancellation": ["target before fill", "stop or structural invalidation before fill", "source boundary"],
+    "filled_exit": "structural barrier followed by adverse first executable BBO after 100ms",
+    "same_timestamp_rule": "adverse",
+    "costs_bps": [12.0, 18.0, 24.0]
+  },
+  "data": {
+    "fit_book_sha256": "7787c36c35a591c8fcf1bf629d8b82624ac61a6b970f09cdbcff01c9afb624b6",
+    "fit_trades_sha256": "fd1b225da124666f1411b53c4537aba721ce443f715737135b89316f81d0146f",
+    "development_book_sha256": "4ed34a4de337e276e8e58df96780bbb8868d1ead3b9c49839d295fe532aa2753",
+    "development_trades_sha256": "0707925b9320626560a5aa2ce89c78666b27266c92626fc6a6ff5236a0d5b301"
+  },
+  "development_gate": {
+    "minimum_full_fills_at_18bp": 40,
+    "positive_mean_and_median_at_24bp": true,
+    "profit_factor_above_one_at_24bp": true,
+    "positive_top10_winner_removed_return_at_18bp": true,
+    "positive_top10_winner_removed_return_at_24bp": true,
+    "maximum_boundary_stop_fraction": 0.10,
+    "minimum_winner_removed_sample_day_growth_at_24bp": 0.01
+  },
+  "authority": {
+    "rank_eligible": false,
+    "credentials": false,
+    "orders": false,
+    "live_permission_change": false
+  }
+}
