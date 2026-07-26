@@ -17,7 +17,7 @@ on:
       - ".github/workflows/smt-fvg-liquidity-sweep-r11.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: smt-fvg-liquidity-sweep-${{ github.ref }}
@@ -130,6 +130,7 @@ jobs:
       - name: Attach exact source and build evidence checksums
         if: always()
         run: |
+          mkdir -p artifacts/smt_fvg_liquidity_sweep
           cp research/smt_fvg_liquidity_sweep_20260726/run_screen.py artifacts/smt_fvg_liquidity_sweep/RUN_SCREEN.py
           cp research/smt_fvg_liquidity_sweep_20260726/run_screen.py.gz artifacts/smt_fvg_liquidity_sweep/RUN_SCREEN.py.gz
           cp research/smt_fvg_liquidity_sweep_20260726/reconstruct.py artifacts/smt_fvg_liquidity_sweep/RECONSTRUCT.py
@@ -171,3 +172,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
           compression-level: 0
+
+      - name: Persist compact result on research branch
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/agent/r11-smt-fvg-liquidity-sweep-001'
+        shell: bash
+        run: |
+          DEST=research_results/smt_fvg_liquidity_sweep_20260726
+          mkdir -p "$DEST"
+          for f in result_summary.json source_manifest.json candidate_results.csv fit_survivors.csv survivor_ledgers.csv run.log CI_SHA256SUMS.txt; do
+            if [ -f "artifacts/smt_fvg_liquidity_sweep/$f" ]; then
+              cp "artifacts/smt_fvg_liquidity_sweep/$f" "$DEST/$f"
+            fi
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research_results/smt_fvg_liquidity_sweep_20260726')
+          files = sorted(p.name for p in root.iterdir() if p.is_file())
+          (root / 'RUN_STATE.json').write_text(json.dumps({
+              'claim_id': 'CLM-20260726-1539-SMT-FVG-SWEEP-001',
+              'workflow_sha': '${{ github.sha }}',
+              'files': files,
+              'later_periods_opened': False,
+              'orders_submitted': False,
+          }, sort_keys=True, indent=2) + '\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Persist SMT-FVG execution evidence [skip smt-fvg]"
+          git push origin HEAD:agent/r11-smt-fvg-liquidity-sweep-001
