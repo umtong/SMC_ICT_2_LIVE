@@ -6,19 +6,14 @@ on:
     paths:
       - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
       - 'research/ml_stablecoin_issuance_20260726/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/ml-stablecoin-blockscout-macos-source.yml'
-      - 'research/ml_stablecoin_issuance_20260726/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: stablecoin-blockscout-authoritative-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: false
+  group: stablecoin-blockscout-authoritative
+  cancel-in-progress: true
 
 jobs:
   source:
