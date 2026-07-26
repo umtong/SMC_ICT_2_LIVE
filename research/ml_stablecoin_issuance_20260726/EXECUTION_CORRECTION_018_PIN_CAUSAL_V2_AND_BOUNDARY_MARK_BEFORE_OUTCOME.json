@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-PIN-CAUSAL-V2-BOUNDARY-MARK-018",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "PRE_SOURCE_DECISION_AND_PRE_MARKET_OUTCOME_EXECUTION_CORRECTION",
+  "recorded_at": "2026-07-27T00:08:00+09:00",
+  "execution_trigger_revision": 2,
+  "authoritative_execution_pr": 263,
+  "observed_problems": [
+    "The snapshot pinned economic commit 6cbff14ed8dd5ebba3b6b47bf6854bf090e4db2c. That engine reads completed-close return, volatility, efficiency and breadth values at the next-minute entry index and therefore includes the future close of the entry minute.",
+    "The pinned engine assigns the structural stop price when a path remains unresolved at a chronological partition boundary. This is a synthetic elapsed-time stop rather than a realistic boundary NAV mark.",
+    "The pinned engine still treats prediction-skill, median, PF, breadth and winner-removal diagnostics as pre-2024 opening vetoes, contrary to the already-recorded immediate-2024H1 amendment."
+  ],
+  "change": [
+    "Pin exact causal economic commit b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8 and execute run_causal.py rather than the superseded run.py entry point.",
+    "Use completed feature index entry_index minus one while leaving already-shifted prior-liquidity levels unchanged.",
+    "Mark an unresolved boundary position at the last completed close with hypothetical exit cost for NAV valuation; do not assert a strategy close or release it early inside the evaluated interval.",
+    "Use calendar-2023 positive 24bp total return and no liquidation or bankruptcy as the pre-2024 advancement requirements. All prediction, median, PF, breadth and winner-removal metrics remain reported diagnostics.",
+    "Use the amendment-004 risk and notional grids and select the highest positive 24bp no-liquidation growth path without a performance ceiling.",
+    "Resolve the temporary PR-263/PR-265 circular supersession by retaining PR 263 as the sole corrected combined source-and-economic execution."
+  ],
+  "unchanged": [
+    "canonical corrected USDT Issue/Redeem and USDC zero-address Transfer source identity",
+    "2021-2023 source period and 12/64-block availability",
+    "one HGBT and one isotonic map",
+    "feature meanings, first-passage target and structural stop",
+    "one global BTC/ETH slot",
+    "12/18/24bp costs",
+    "2023-12-31 information cutoff and immediate official 2024H1 handoff",
+    "no credentials or orders"
+  ],
+  "source_decision_observed_before_correction": false,
+  "market_archive_opened_before_correction": false,
+  "model_fitted_before_correction": false,
+  "trade_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
