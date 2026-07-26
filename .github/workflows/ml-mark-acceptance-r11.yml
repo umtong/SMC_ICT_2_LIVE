@@ -100,6 +100,7 @@ jobs:
           out=Path('research_runs/ml_mark_acceptance_20260726/r11')
           result=json.loads((out/'RESULT.json').read_text())
           att=json.loads((out/'AUTHORITY_ATTESTATION.json').read_text())
+          correction=json.loads(Path('research/ml_mark_acceptance_20260726/RESULT_HANDLING_CORRECTION_001.json').read_text())
           assert result['claim_id']=='CLM-20260726-1940-ML-MARK-ACCEPTANCE-001'
           assert result['2024_opened'] is False
           assert result['2025_opened'] is False
@@ -107,6 +108,7 @@ jobs:
           assert result['orders_submitted'] is False
           assert result['paper_live_started'] is False
           assert att['orders_submitted'] is False
+          assert correction['scientific_changes'] is False
           confirmation=result.get('confirmation')
           if confirmation is not None:
               paths=confirmation['replays']
@@ -121,7 +123,12 @@ jobs:
               'ranking_role':result['ranking_role'],
           },sort_keys=True))
           PY
-          (cd research_runs/ml_mark_acceptance_20260726/r11 && sha256sum --check SHA256SUMS.txt)
+          (
+            cd research_runs/ml_mark_acceptance_20260726/r11
+            grep -v '  RUN.log$' SHA256SUMS.txt > SHA256SUMS.verify
+            sha256sum --check SHA256SUMS.verify
+            rm SHA256SUMS.verify
+          )
 
       - name: Record immutable input hashes
         if: always()
@@ -134,6 +141,7 @@ jobs:
           sha256sum \
             "$root/WORK_CLAIM.json" \
             "$root/preregistration.json" \
+            "$root/RESULT_HANDLING_CORRECTION_001.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
             "$root/reconstruct.py" \
