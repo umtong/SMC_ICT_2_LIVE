@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-uniswap-source-gate-r14-${{ github.sha }}
-  cancel-in-progress: false
+  group: ml-uniswap-source-gate-r14-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   source-gate:
@@ -56,6 +56,7 @@ jobs:
           python -m json.tool "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" >/dev/null
 
       - name: Run outcome-sealed Ethereum source gate
@@ -83,8 +84,8 @@ jobs:
           assert isinstance(result['source_gate_pass'], bool)
           assert all(int(item['date'][:4]) <= 2023 for item in result['probe_windows'])
           assert result['forbidden_outcome_fields'] == [
-              'future_return', 'label', 'action', 'trade', 'pnl',
-              'model_metric', 'official_2024_2026'
+            'future_return', 'label', 'action', 'trade', 'pnl',
+            'model_metric', 'official_2024_2026'
           ]
           if result['source_gate_pass']:
               assert result['scientific_decision'] == 'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
@@ -93,16 +94,16 @@ jobs:
               assert result['scientific_decision'] == 'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES'
           serialized = json.dumps(result, sort_keys=True).lower()
           for forbidden_key in (
-              'future_return_value', 'first_passage_label_value', 'trade_return',
-              'account_nav', 'model_auc', 'official_2024_opened', 'orders_submitted'
+            'future_return_value', 'first_passage_label_value', 'trade_return',
+            'account_nav', 'model_auc', 'official_2024_opened', 'orders_submitted'
           ):
               assert forbidden_key not in serialized
           print(json.dumps({
-              'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
-              'source_gate_pass': result['source_gate_pass'],
-              'decision': result['scientific_decision'],
-              'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
-              'decode_errors': result.get('totals', {}).get('decode_error_count', 0),
+            'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
+            'source_gate_pass': result['source_gate_pass'],
+            'decision': result['scientific_decision'],
+            'decoded_logs': result.get('totals', {}).get('decoded_logs', 0),
+            'decode_errors': result.get('totals', {}).get('decode_error_count', 0),
           }, sort_keys=True))
           PY
 
@@ -124,6 +125,7 @@ jobs:
             "$root/EXECUTION_CORRECTION_001_SLIM_RUNNER_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" \
             "$root/EXECUTION_CORRECTION_003_BLOCKSCOUT_RPC_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_005_SINGLE_LINUX_AUTHORITY_BEFORE_OUTCOME.json" \
             "$root/AMENDMENT_002_SEQUENTIAL_2024H1_EVALUATION_BEFORE_OUTCOME.json" \
             "$root/probe_uniswap_swaps.py" \
             "$root/run_source_gate_with_blockscout.py" \
