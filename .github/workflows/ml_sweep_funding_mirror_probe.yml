@@ -35,6 +35,8 @@ jobs:
             requests==2.32.3
       - name: Inventory immutable Bybit mirror files
         run: python research/ml_sweep_crowding/inventory_hf_bybit_files.py
+      - name: Inspect all funding-mirror column semantics
+        run: python research/ml_sweep_crowding/inspect_hf_bybit_funding_columns.py
       - name: Probe immutable Bybit funding mirror revision
         run: python research/ml_sweep_crowding/probe_hf_bybit_funding.py
       - name: Publish immutable inventory and probe decision
@@ -45,6 +47,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             research/results/ml_sweep_crowding/hf_bybit_file_inventory.json \
+            research/results/ml_sweep_crowding/bybit_funding_column_inspection.json \
             research/results/ml_sweep_crowding/bybit_funding_mirror_probe.json
-          git commit -m "research: publish pinned Bybit funding mirror inventory"
+          git commit -m "research: publish Bybit funding mirror semantics"
           git push origin HEAD:${GITHUB_REF_NAME}
