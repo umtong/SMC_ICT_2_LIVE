@@ -39,13 +39,50 @@ jobs:
             "requests==2.32.4" \
             "pytest==8.3.4"
       - name: Reconstruct and validate the single model
+        shell: bash
         run: |
+          set -euo pipefail
           root=research/ml_option_hedge_20260726
-          python "$root/reconstruct.py"
-          python -m py_compile "$root/run.py" "$root/test_run.py"
-          PYTHONPATH="$root" pytest -q "$root/test_run.py"
-          PYTHONPATH="$root" python "$root/run.py" self-test
-          python scripts/validate_project.py
+          out=research_runs/ml_option_hedge_20260726/r12
+          mkdir -p "$out"
+          ROOT="$root" python - <<'PY' | tee "$out/TRANSPORT_DIAGNOSTIC.json"
+          import base64, gzip, hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ['ROOT'])
+          manifest=json.loads((root/'source_manifest.json').read_text())
+          record={'schema_version':1,'parts':{},'combined':{},'market_outcomes_read':False}
+          pieces=[]
+          for name in sorted(manifest['parts']):
+              payload=b''.join((root/name).read_bytes().split())
+              expected=manifest['parts'][name]
+              actual={'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}
+              actual['matches_expected']=(actual['bytes']==expected['bytes'] and actual['sha256']==expected['sha256'])
+              record['parts'][name]={'expected':expected,'actual':actual}
+              pieces.append(payload)
+          encoded=b''.join(pieces)
+          record['combined']['base64_bytes']=len(encoded)
+          record['combined']['base64_sha256']=hashlib.sha256(encoded).hexdigest()
+          record['combined']['base64_matches_expected']=(len(encoded)==manifest['base64_bytes'] and hashlib.sha256(encoded).hexdigest()==manifest['base64_sha256'])
+          try:
+              compressed=base64.b64decode(encoded,validate=True)
+              record['combined']['gzip_bytes']=len(compressed)
+              record['combined']['gzip_sha256']=hashlib.sha256(compressed).hexdigest()
+              record['combined']['gzip_matches_expected']=(len(compressed)==manifest['gzip_bytes'] and hashlib.sha256(compressed).hexdigest()==manifest['gzip_sha256'])
+              raw=gzip.decompress(compressed)
+              record['combined']['raw_bytes']=len(raw)
+              record['combined']['raw_sha256']=hashlib.sha256(raw).hexdigest()
+              record['combined']['raw_matches_expected']=(len(raw)==manifest['raw_bytes'] and hashlib.sha256(raw).hexdigest()==manifest['raw_sha256'])
+              compile(raw,str(root/'run.py'),'exec')
+              record['combined']['compile_pass']=True
+          except Exception as exc:
+              record['combined']['error']=f'{type(exc).__name__}: {exc}'
+          print(json.dumps(record,indent=2,sort_keys=True))
+          PY
+          python "$root/reconstruct.py" 2>&1 | tee "$out/RECONSTRUCT.log"
+          python -m py_compile "$root/run.py" "$root/test_run.py" 2>&1 | tee "$out/COMPILE.log"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py" 2>&1 | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python "$root/run.py" self-test 2>&1 | tee "$out/SELF_TEST.log"
+          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
       - uses: actions/cache@v4
@@ -56,11 +93,11 @@ jobs:
         run: |
           root=research/ml_option_hedge_20260726
           out=research_runs/ml_option_hedge_20260726/r12
-          rm -rf "$out"
-          mkdir -p "$out"
+          cache=/tmp/ml-option-hedge-r12
+          find "$out" -mindepth 1 -maxdepth 1 -type f ! -name 'TRANSPORT_DIAGNOSTIC.json' ! -name 'RECONSTRUCT.log' ! -name 'COMPILE.log' ! -name 'PYTEST.log' ! -name 'SELF_TEST.log' ! -name 'PROJECT_VALIDATION.log' -delete
           PYTHONPATH="$root" python "$root/run.py" run \
             --output "$out" \
-            --cache /tmp/ml-option-hedge-r12 \
+            --cache "$cache" \
             2>&1 | tee "$out/RUN.log"
       - name: Enforce stage and minimal-system boundaries
         run: |
@@ -96,6 +133,7 @@ jobs:
           sha256sum \
             "$root/preregistration.json" \
             "$root/WORK_CLAIM.json" \
+            "$root/AUDIT_TRANSPORT_001.json" \
             "$root/source_manifest.json" \
             "$root/reconstruct.py" \
             "$root/test_run.py" \
