@@ -3,7 +3,7 @@
 - Result ID: `RES-20260727-ML-SWEEP-CROWDING-001`
 - Claim: `CLM-20260727-0245-ML-SWEEP-CROWDING-001`
 - Status: **SOURCE_GATE_FAIL**
-- Contract SHA-256: `2677f51b0fce67e5550920796edc248f5119fa2dfddc0067cd38fef5e8b4de8a`
+- Contract SHA-256: `a4dd6d4f36a66cec87c18319d08a7b4aa5607a19600f7fe3174c779efcfce5c7`
 - Live orders: none
 
 ## Mechanism
@@ -12,7 +12,7 @@ A completed external-liquidity sweep creates two mutually exclusive candidates: 
 
 ## Pre-2024 decision
 
-No pre-2024 account result opened: `BTCUSDT official static Bybit 1m coverage 90.631254% below 99.500000% from first observed 2021-01-01T00:00:00+00:00`
+No pre-2024 account result opened: `ETHUSDT Binance metric clock coverage is below 90%`
 
 ## Causality and execution
 
