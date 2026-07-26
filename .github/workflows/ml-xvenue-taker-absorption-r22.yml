@@ -1,0 +1,249 @@
+name: ML cross-venue taker propagation absorption R22
+
+on:
+  push:
+    branches:
+      - agent/r22-ml-xvenue-taker-absorption-001
+    paths:
+      - "research/ml_xvenue_taker_absorption_20260727/**"
+      - ".github/workflows/ml-xvenue-taker-absorption-r22.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ml_xvenue_taker_absorption_20260727/**"
+      - ".github/workflows/ml-xvenue-taker-absorption-r22.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-xvenue-taker-r22-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: true
+      max-parallel: 12
+      matrix:
+        stage_date:
+          - {stage: train, date: "2022-07-01"}
+          - {stage: calibration, date: "2023-03-01"}
+          - {stage: confirmation, date: "2023-07-01"}
+        symbol: [BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT]
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen scientific environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.6.1"
+
+      - name: Validate frozen source
+        run: |
+          set -euo pipefail
+          root=research/ml_xvenue_taker_absorption_20260727
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/bundle_manifest.json" >/dev/null
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/reconstruct.py" "$root/run.py" "$root/audit.py"
+          python "$root/run.py" self-test
+          python scripts/validate_project.py
+
+      - name: Download one immutable pre-2024 symbol-date partition
+        env:
+          DATE: ${{ matrix.stage_date.date }}
+          SYMBOL: ${{ matrix.symbol }}
+        run: |
+          set -euo pipefail
+          y=${DATE:0:4}; m=${DATE:5:2}; d=${DATE:8:2}
+          data="$RUNNER_TEMP/xvenue_taker/$DATE"
+          mkdir -p "$data"
+          for spec in \
+            "binance-futures quotes binance-futures_${SYMBOL}_quotes.csv.gz" \
+            "binance-futures trades binance-futures_${SYMBOL}_trades.csv.gz" \
+            "bybit quotes bybit_${SYMBOL}_quotes.csv.gz" \
+            "bybit trades bybit_${SYMBOL}_trades.csv.gz"; do
+            read -r exchange dtype filename <<<"$spec"
+            curl -fL --retry 8 --retry-delay 4 --retry-all-errors \
+              "https://datasets.tardis.dev/v1/$exchange/$dtype/$y/$m/$d/${SYMBOL}.csv.gz" \
+              -o "$data/$filename"
+            gzip -t "$data/$filename"
+          done
+          test "$(find "$data" -type f -name '*.csv.gz' | wc -l)" = "4"
+          test -z "$(find "$data" -type f | grep -E '/2024-|/2025-|/2026-' || true)"
+
+      - name: Extract causal completed-state events
+        env:
+          STAGE: ${{ matrix.stage_date.stage }}
+          DATE: ${{ matrix.stage_date.date }}
+          SYMBOL: ${{ matrix.symbol }}
+        run: |
+          set -euo pipefail
+          root=research/ml_xvenue_taker_absorption_20260727
+          data="$RUNNER_TEMP/xvenue_taker/$DATE"
+          out="research_runs/ml_xvenue_taker_absorption_20260727/events/events_${STAGE}_${DATE}_${SYMBOL}.csv.gz"
+          mkdir -p "$(dirname "$out")"
+          python "$root/run.py" extract \
+            --data-root "$RUNNER_TEMP/xvenue_taker" \
+            --date "$DATE" \
+            --symbol "$SYMBOL" \
+            --stage "$STAGE" \
+            --output "$out" \
+            2>&1 | tee "${out%.csv.gz}.log"
+          gzip -t "$out"
+          rm -rf "$data"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xvenue-events-${{ matrix.stage_date.stage }}-${{ matrix.symbol }}
+          path: |
+            research_runs/ml_xvenue_taker_absorption_20260727/events/events_${{ matrix.stage_date.stage }}_${{ matrix.stage_date.date }}_${{ matrix.symbol }}.csv.gz
+            research_runs/ml_xvenue_taker_absorption_20260727/events/events_${{ matrix.stage_date.stage }}_${{ matrix.stage_date.date }}_${{ matrix.symbol }}.log
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  evaluate:
+    needs: extract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen scientific environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "numpy==2.1.3" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.6.1"
+
+      - name: Reconstruct and validate frozen scientific source
+        run: |
+          set -euo pipefail
+          root=research/ml_xvenue_taker_absorption_20260727
+          python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/bundle_manifest.json" >/dev/null
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/reconstruct.py" "$root/run.py" "$root/audit.py"
+          python "$root/run.py" self-test
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xvenue-events-*
+          path: research_runs/ml_xvenue_taker_absorption_20260727/events
+          merge-multiple: true
+
+      - name: Confirm complete immutable input set
+        run: |
+          set -euo pipefail
+          events=research_runs/ml_xvenue_taker_absorption_20260727/events
+          find "$events" -type f -maxdepth 1 -print | sort
+          test "$(find "$events" -maxdepth 1 -type f -name '*.csv.gz' | wc -l)" = "12"
+          test -z "$(find "$events" -type f | grep -E '/2024-|/2025-|/2026-' || true)"
+          find "$events" -maxdepth 1 -type f -name '*.csv.gz' -print0 | xargs -0 -n1 gzip -t
+
+      - name: Fit direct-payoff ML and run one global account slot
+        run: |
+          set -euo pipefail
+          root=research/ml_xvenue_taker_absorption_20260727
+          events=research_runs/ml_xvenue_taker_absorption_20260727/events
+          out=research_runs/ml_xvenue_taker_absorption_20260727/output
+          mkdir -p "$out"
+          python "$root/run.py" evaluate \
+            --events-root "$events" \
+            --output "$out" \
+            2>&1 | tee "$out/RUN.log"
+
+      - name: Independently audit causal and account invariants
+        run: |
+          set -euo pipefail
+          root=research/ml_xvenue_taker_absorption_20260727
+          runroot=research_runs/ml_xvenue_taker_absorption_20260727
+          out="$runroot/output"
+          python "$root/audit.py" \
+            --root "$out" \
+            --research-root "$root" \
+            --output "$out/AUDIT.json" \
+            2>&1 | tee "$out/AUDIT.log"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('research_runs/ml_xvenue_taker_absorption_20260727/output')
+          result=json.loads((out/'RESULT.json').read_text())
+          audit=json.loads((out/'AUDIT.json').read_text())
+          assert result['official_2024h1_opened'] is False
+          assert result['orders_submitted'] is False
+          assert result['contract']['order_latency_ms'] == 500
+          assert result['contract']['elapsed_time_exit'] is False
+          assert audit['status'] == 'PASS'
+          print(json.dumps({
+              'status': result['status'],
+              'decision': result['decision'],
+              'selected_margin_bps': result['selected_margin_bps'],
+              'confirmation_24bp_total_return': result['economic']['24']['total_return'],
+              'confirmation_24bp_trade_count': result['economic']['24']['trade_count'],
+              'audit': audit['status'],
+          }, sort_keys=True))
+          PY
+          find "$runroot" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/ALL_SHA256SUMS.txt"
+          sha256sum \
+            "$root/WORK_CLAIM.json" \
+            "$root/preregistration.json" \
+            "$root/README.md" \
+            "$root/bundle_manifest.json" \
+            "$root/reconstruct.py" \
+            "$root/run.py.gz.b64.part00" \
+            "$root/run.py.gz.b64.part01" \
+            "$root/run.py.gz.b64.part02" \
+            "$root/run.py.gz.b64.part03" \
+            "$root/run.py" \
+            "$root/audit.py" \
+            .github/workflows/ml-xvenue-taker-absorption-r22.yml \
+            > "$out/INPUT_SHA256SUMS.txt"
+          python scripts/validate_project.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-xvenue-taker-absorption-${{ github.sha }}
+          path: research_runs/ml_xvenue_taker_absorption_20260727
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
