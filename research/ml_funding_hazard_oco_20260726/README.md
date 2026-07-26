@@ -14,6 +14,7 @@ This is materially different from the retired funding-transfer rules, which pred
 ## Frozen research stage
 
 - Source: first day of each month from Tardis normalized Bybit `derivative_ticker` files.
+- Information availability: Tardis `local_timestamp` in original capture order. Exchange timestamps are diagnostic only and never reorder messages.
 - Symbols: `BTCUSDT`, `ETHUSDT`; one global pending/open slot.
 - Fit: 2020-2021. Calibration payoff means: 2022 H1. Untouched confirmation: 2022 H2.
 - 2023 opens only if every prewritten confirmation economic gate passes.
