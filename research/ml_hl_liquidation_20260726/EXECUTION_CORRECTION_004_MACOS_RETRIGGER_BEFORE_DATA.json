@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-HL-LIQUIDATION-MACOS-RETRIGGER-004",
+  "claim_id": "CLM-20260726-2058-ML-HL-LIQUIDATION-001",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "recorded_at": "2026-07-26T21:50:00+09:00",
+  "observed_problem": "The Linux and Windows source-gate jobs remained queued. The existing macOS workflow did not retrigger because its path filter matched only the workflow file and the latest source-only transport commits did not modify that path.",
+  "change": "Expand only the macOS workflow trigger paths to the frozen Hyperliquid source-gate directory and include this correction in validation and evidence hashing. The scientific source and decision contract are unchanged.",
+  "unchanged": [
+    "same immutable Hugging Face repository revision resolution",
+    "same 36 frozen _src identities across the same six dates and UTC hours",
+    "same commit-pinned consolidated Parquet predicate-pushdown transport",
+    "same explicit LedgerUpdate liquidation schema",
+    "same source-density, duplicate, malformed-row and target-coin gates",
+    "same prohibition on market price, future label, model metric, PnL, official 2026 and orders",
+    "same conditional HGBT, features, calibration, Bybit structure, costs, risk and structural exits"
+  ],
+  "hyperliquid_event_row_opened_before_change": false,
+  "market_outcome_opened_before_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
