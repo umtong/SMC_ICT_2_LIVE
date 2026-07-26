@@ -17,6 +17,14 @@ TRADE_BAR_RULES = {
     "4h": "4h",
     "1d": "1D",
 }
+TRADE_BAR_INTERVAL_MS = {
+    "1min": MS_MINUTE,
+    "5min": 5 * MS_MINUTE,
+    "15min": 15 * MS_MINUTE,
+    "1h": 60 * MS_MINUTE,
+    "4h": 4 * 60 * MS_MINUTE,
+    "1D": 24 * 60 * MS_MINUTE,
+}
 SEGMENTS: dict[str, tuple[str, str, str]] = {
     "PRE_2024_2020": ("2020-01-01T00:00:00Z", "2021-01-01T00:00:00Z", "PRE_2024"),
     "PRE_2024_2021": ("2021-01-01T00:00:00Z", "2022-01-01T00:00:00Z", "PRE_2024"),
@@ -102,6 +110,8 @@ def derive_trade_bars(base_1m: pd.DataFrame, rule: str) -> pd.DataFrame:
     missing = required.difference(base_1m.columns)
     if missing:
         raise ValueError(f"base 1m columns missing: {sorted(missing)}")
+    if rule not in TRADE_BAR_INTERVAL_MS:
+        raise ValueError(f"unsupported fixed trade-bar rule: {rule}")
     temp = base_1m.copy()
     temp.index = pd.to_datetime(temp["start_time_ms"], unit="ms", utc=True)
     grouped = temp.resample(rule, label="left", closed="left", origin="epoch")
@@ -119,8 +129,7 @@ def derive_trade_bars(base_1m: pd.DataFrame, rule: str) -> pd.DataFrame:
     out["is_complete"] = out["source_rows_observed"] == out["source_rows_total"]
     value_columns = ["open", "high", "low", "close", "volume", "turnover"]
     out.loc[~out["is_complete"], value_columns] = float("nan")
-    interval_ms = int(pd.Timedelta(rule).total_seconds() * 1000)
-    out["available_at_ms"] = out["start_time_ms"].astype("Int64") + interval_ms
+    out["available_at_ms"] = out["start_time_ms"].astype("Int64") + TRADE_BAR_INTERVAL_MS[rule]
     return out.reset_index(drop=True)
 
 
