@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-FUNDING-CASH-OI-001",
+  "claim_id": "CLM-20260726-1625-FUNDING-CASH-OI-001",
+  "worker_id": "gpt-5.6-pro-20260726-1625",
+  "study": "Actual funding cash-transfer notional multiplied by causal Bybit OI balance-sheet reaction",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NOT_RANK_ELIGIBLE_TARDIS_FIRSTDAY_PROXY_SCREEN",
+  "dependency_fingerprint": "3d5320459bb03beab0db1c4351bbe867ec0bca3bc366f57ee883524457cab73e",
+  "evaluation_contract_sha256": "d7c7b9851fe17bb1169b51133ee41d9a755f428b054c8bdcc38a9cba04dee191",
+  "scientific_implementation_sha256": "ef44113ddbc8c11f362bbc943269c99d62ea497e017ce725b4723b3c2de56688",
+  "producing_head": "808f1670f96e95e158a9b3e2f7d7d7de7e8e04b4",
+  "workflow_run_id": 30193211765,
+  "workflow_artifact_id": 8629269603,
+  "workflow_artifact_digest": "sha256:1e30f04ca30aaae48dc6140a0e64e2494981f59760b30da2286e369bf821fa6b",
+  "output_hashes": {
+    "result_json": "82747c1906d9aba4540afb6f2b4fb3c4b01c0f8c9770ec58f13e62fb77afe556",
+    "candidates_csv": "07165bb041b8a322ae3cedffa7ed131899de96ddf4b4f553543be4b11c2a66a3",
+    "events_gzip": "dce8005a3c3411b69a30abb52dab8065f63c21a460eab8ec2598d3505c6c7d1a",
+    "source_manifest": "6c10e0213dddba461b6f705e3864e7c5485939cc0faec9899ccd3aa5e697023b"
+  },
+  "data_contract": {
+    "source": "Tardis public normalized Bybit derivative_ticker monthly first-day samples",
+    "symbols_attempted": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "eligible_symbols": ["BTCUSDT", "ETHUSDT"],
+    "fit": "2022 monthly first days",
+    "development": "2023 monthly first days",
+    "availability_clock": "local_timestamp",
+    "source_files_passed": 96,
+    "source_files_total": 96,
+    "event_rows": 172,
+    "unique_fit_settlements": 41,
+    "unique_development_settlements": 45,
+    "later_periods": "2024-2026 sealed and code-prohibited"
+  },
+  "screen": {
+    "candidate_count": 512,
+    "gate_pass_count": 0,
+    "positive_candidate_counts": {"12bps": 0, "18bps": 0, "24bps": 0},
+    "active_development_cells": 176,
+    "adequately_sampled_cells": 0,
+    "maximum_development_trades": 5,
+    "maximum_mean_gross_markout_bps": 4.493740549937342
+  },
+  "family_summary": {
+    "payer_closure_cascade": {
+      "maximum_development_trades": 1,
+      "positive_candidates_18bps": 0,
+      "gate_pass_count": 0
+    },
+    "receiver_releverage_impulse": {
+      "maximum_development_trades": 5,
+      "positive_candidates_18bps": 0,
+      "gate_pass_count": 0
+    },
+    "prepaid_deleverage_reversal": {
+      "maximum_development_trades": 0,
+      "positive_candidates_18bps": 0,
+      "gate_pass_count": 0
+    }
+  },
+  "best_active_candidate": {
+    "candidate_id": "436ef250dd6e235eeeb9",
+    "family": "receiver_releverage_impulse",
+    "transfer_metric": "actual_notional",
+    "transfer_quantile": 0.5,
+    "oi_threshold": 1.0,
+    "price_threshold": 0.0,
+    "confirm_bars": 1,
+    "horizon_minutes": 15,
+    "fit_trades": 1,
+    "development_trades": 2,
+    "fit_mean_gross_markout_bps": -14.071522150517213,
+    "development_mean_gross_markout_bps": 4.493740549937342,
+    "development_total_return_12bps": -0.0015009014354373518,
+    "development_total_return_18bps": -0.002699640684303284,
+    "development_total_return_24bps": -0.003897659933169262,
+    "development_positive_months_18bps": 0,
+    "development_profit_factor_18bps": 0.0,
+    "development_return_after_top10_positive_removal_18bps": -0.002699640684303284
+  },
+  "smc_ict_mechanism": {
+    "liquidity_pressure": "Absolute settled funding rate multiplied by causally available OI and mark value.",
+    "liquidity_pool": "Payer-side inventory debited at settlement and receiver-side inventory credited at settlement.",
+    "displacement_and_run": "Post-settlement OI closure or expansion aligned with price displacement.",
+    "sweep_exhaustion": "Prepaid OI contraction and payer-direction move followed by extension, stalled post-settlement contraction and reclaim.",
+    "survivor_execution": "First causal retracement into the displacement imbalance/FVG at exact Bybit BBO and depth."
+  },
+  "causal_and_safety_checks": {
+    "source_hashes_recorded": true,
+    "local_arrival_clock_used": true,
+    "actual_transfer_notional_computed_causally": true,
+    "one_global_slot": true,
+    "same_exit_timestamp_reentry_prohibited": true,
+    "cost_replay_bps": [12, 18, 24],
+    "2024_opened": false,
+    "2025_or_2026_opened": false,
+    "orders_submitted": false
+  },
+  "ranking_decision": {
+    "ranking_changed": false,
+    "reason": "Zero candidate was positive at any cost level, no cell reached the minimum fit/development sample and the maximum active mean gross markout was only 4.494 bp."
+  },
+  "retirement_boundary": "Retire the exact funding cash-notional by OI-reaction thresholds. Do not tune adjacent transfer quantiles, OI thresholds, confirmation bars or horizons. Reopen only with continuous point-in-time data or a materially different balance-sheet source/payoff."
+}
