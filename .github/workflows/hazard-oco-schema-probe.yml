@@ -9,6 +9,12 @@ on:
       - research/hazard_oco_20260726/SOURCE_REUSE_V2.json
       - research/hazard_oco_20260726/SCHEMA_PROBE_CONTRACT.json
       - .github/workflows/hazard-oco-schema-probe.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/hazard_oco_20260726/**
+      - .github/workflows/hazard-oco-schema-probe.yml
   workflow_dispatch:
 
 permissions:
