@@ -13,7 +13,7 @@ Aave liquidations are actual protocol state transitions: a liquidator repays deb
 
 ## Phase 0 — outcome-sealed source gate
 
-The address source is pinned to official `aave-dao/aave-address-book` release `4.61.2`, commit `4ae19b95f84b077c28633ca1d0f9a6750a3ea1d4`. The canonical event signature is frozen as:
+The address source is pinned to official `aave-dao/aave-address-book` published release `4.61.0`, commit `67c777be17e782c2f961a44e085ec55b39e63639`. The canonical event signature is frozen as:
 
 ```solidity
 event LiquidationCall(
