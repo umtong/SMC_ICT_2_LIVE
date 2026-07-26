@@ -39,6 +39,7 @@ The 2023 partition cannot open unless the untouched 2022 confirmation simultaneo
 
 ```bash
 python -m pip install numpy==2.1.3 pandas==2.2.3 requests==2.32.4 scikit-learn==1.6.1 pytest==8.3.4
+python research/ml_mark_acceptance_20260726/reconstruct.py
 PYTHONPATH=research/ml_mark_acceptance_20260726 pytest -q research/ml_mark_acceptance_20260726/test_run.py
 PYTHONPATH=research/ml_mark_acceptance_20260726 python research/ml_mark_acceptance_20260726/run.py self-test
 PYTHONPATH=research/ml_mark_acceptance_20260726 python research/ml_mark_acceptance_20260726/run.py probe --cache /tmp/ml-mark-acceptance --output research_runs/ml_mark_acceptance_20260726/r11
