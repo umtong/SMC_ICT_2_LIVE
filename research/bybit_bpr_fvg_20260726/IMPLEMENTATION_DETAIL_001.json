@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1540-BPR-FVG-001",
+  "created_at": "2026-07-26T15:43:00+09:00",
+  "status": "FROZEN_BEFORE_ANY_BPR_STRATEGY_OUTCOME",
+  "details": {
+    "fvg_pairing": "For each qualifying second FVG, pair it with the most recent qualifying opposite-direction FVG inside the candidate maximum age. If more than one FVG has the same formation second, use the one with the largest overlap, then lexical event id.",
+    "external_liquidity_freeze": "The prior high and low are computed over the candidate lookback ending immediately before the 30-second sweep window. The sweep and target therefore cannot change after the second FVG forms.",
+    "retest": "The first completed actual-trade one-second bar touching BPR consequent encroachment and closing on the second-displacement side with registered directional flow is the only retest. If the structural stop or frozen target is touched first, the setup is invalid.",
+    "entry_missing_second": "If the immediately following UTC second has no actual trade, the setup is unavailable rather than filled at a later favorable print.",
+    "trade_return": "Gross return is direction times exit-minus-entry divided by entry. Each cost profile subtracts its full round-trip basis-point charge once.",
+    "unresolved_source_boundary": "Record a structural-stop exit at the frozen stop price and charge the full cost profile.",
+    "global_slot": "Route raw trades in causal entry-time order across BTC and ETH. Same-time candidates use larger displacement z, larger BPR overlap and lexical trade id. A new entry is allowed only strictly after the prior exit timestamp.",
+    "top_winner_removal": "Identify the largest ceiling(10 percent) positive 12bp trades from the initial global route by trade id, exclude those ids from the raw candidate trade set, and rerun global-slot routing from the beginning.",
+    "fit_selection_ties": "Use 24bp mean, 12bp counterfactual total return, positive symbol-date count and candidate id in that order."
+  },
+  "scientific_grid_changed": false,
+  "dates_changed": false,
+  "costs_changed": false,
+  "orders_submitted": false
+}
