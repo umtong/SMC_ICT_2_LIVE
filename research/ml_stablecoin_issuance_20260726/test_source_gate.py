@@ -5,10 +5,14 @@ import pytest
 from source_gate_authoritative import (
     CONTRACTS,
     FIXED_MONTHS,
+    ISSUE_TOPIC,
+    REDEEM_TOPIC,
     TRANSFER_TOPIC,
+    ZERO_ADDRESS,
     ZERO_TOPIC,
     Event,
     decode_log,
+    event_filter_topics,
     event_to_dict,
     first_block_at_or_after,
     month_bounds,
@@ -41,13 +45,7 @@ class FakeClient:
 
 def test_exact_2024_boundary_is_only_an_end_exclusive_lookup() -> None:
     boundary = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
-    # Block 100 is the first block at the end-exclusive 2024 boundary. The
-    # authoritative eligibility boundary must be 64 blocks earlier so every
-    # retained 2023 event can be observed under both the +12 and +64 block
-    # availability contracts without reading a 2024 block.
-    client = FakeClient(
-        {i: boundary - (100 - i) * 12 for i in range(101)}
-    )
+    client = FakeClient({i: boundary - (100 - i) * 12 for i in range(101)})
     assert first_block_at_or_after(client, boundary, 0, 100, {}) == 36
     with pytest.raises(ValueError):
         first_block_at_or_after(client, boundary + 1, 0, 100, {})
@@ -55,9 +53,7 @@ def test_exact_2024_boundary_is_only_an_end_exclusive_lookup() -> None:
 
 def test_ordinary_historical_boundary_is_not_shifted() -> None:
     boundary = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
-    client = FakeClient(
-        {i: boundary - (100 - i) * 12 for i in range(101)}
-    )
+    client = FakeClient({i: boundary - (100 - i) * 12 for i in range(101)})
     assert first_block_at_or_after(client, boundary - 120, 0, 100, {}) == 90
 
 
@@ -69,7 +65,7 @@ def test_month_bounds_never_open_2024() -> None:
         month_bounds("2024-01")
 
 
-def test_mint_decode_and_identity() -> None:
+def test_usdc_zero_address_transfer_mint_decode_and_identity() -> None:
     recipient = "1234567890abcdef1234567890abcdef12345678"
     log = {
         "address": CONTRACTS["USDC"]["address"],
@@ -81,7 +77,7 @@ def test_mint_decode_and_identity() -> None:
     }
     row = decode_log("USDC", "MINT", log)
     assert row["amount_usd"] == 50_000_000
-    assert row["from_address"] == "0x" + "0" * 40
+    assert row["from_address"] == ZERO_ADDRESS
     assert row["to_address"] == "0x" + recipient
     event = Event(
         token="USDC",
@@ -103,9 +99,52 @@ def test_mint_decode_and_identity() -> None:
     assert event_to_dict(event)["event_id"] == event.event_id
 
 
-def test_burn_filter_rejects_nonzero_to() -> None:
-    log = {
+def test_usdt_issue_and_redeem_are_canonical_supply_events() -> None:
+    issue = {
         "address": CONTRACTS["USDT"]["address"],
+        "topics": [ISSUE_TOPIC],
+        "data": hex(75_000_000 * 10**6),
+        "blockNumber": "0x20",
+        "transactionHash": "0x" + "56" * 32,
+        "logIndex": "0x1",
+    }
+    mint = decode_log("USDT", "MINT", issue)
+    assert mint["amount_usd"] == 75_000_000
+    assert mint["from_address"] == ZERO_ADDRESS
+    assert mint["to_address"] == CONTRACTS["USDT"]["address"].lower()
+
+    redeem = dict(issue)
+    redeem["topics"] = [REDEEM_TOPIC]
+    redeem["transactionHash"] = "0x" + "78" * 32
+    burn = decode_log("USDT", "BURN", redeem)
+    assert burn["amount_usd"] == 75_000_000
+    assert burn["from_address"] == CONTRACTS["USDT"]["address"].lower()
+    assert burn["to_address"] == ZERO_ADDRESS
+
+    assert event_filter_topics("USDT", "MINT") == [ISSUE_TOPIC]
+    assert event_filter_topics("USDT", "BURN") == [REDEEM_TOPIC]
+
+
+def test_ordinary_usdt_transfer_is_not_supply_issuance() -> None:
+    ordinary = {
+        "address": CONTRACTS["USDT"]["address"],
+        "topics": [
+            TRANSFER_TOPIC,
+            ZERO_TOPIC,
+            "0x" + "0" * 24 + "22" * 20,
+        ],
+        "data": hex(1_000_000 * 10**6),
+        "blockNumber": "0x10",
+        "transactionHash": "0x" + "34" * 32,
+        "logIndex": "0x0",
+    }
+    with pytest.raises(ValueError):
+        decode_log("USDT", "MINT", ordinary)
+
+
+def test_usdc_burn_filter_rejects_nonzero_to() -> None:
+    log = {
+        "address": CONTRACTS["USDC"]["address"],
         "topics": [
             TRANSFER_TOPIC,
             "0x" + "0" * 24 + "11" * 20,
@@ -113,11 +152,29 @@ def test_burn_filter_rejects_nonzero_to() -> None:
         ],
         "data": "0x1",
         "blockNumber": "0x10",
-        "transactionHash": "0x" + "34" * 32,
+        "transactionHash": "0x" + "90" * 32,
         "logIndex": "0x0",
     }
     with pytest.raises(ValueError):
-        decode_log("USDT", "BURN", log)
+        decode_log("USDC", "BURN", log)
+
+
+def test_usdt_supply_event_rejects_address_topics_and_zero_amount() -> None:
+    extra_topic = {
+        "address": CONTRACTS["USDT"]["address"],
+        "topics": [ISSUE_TOPIC, ZERO_TOPIC],
+        "data": "0x1",
+        "blockNumber": "0x10",
+        "transactionHash": "0x" + "aa" * 32,
+        "logIndex": "0x0",
+    }
+    with pytest.raises(ValueError):
+        decode_log("USDT", "MINT", extra_topic)
+    zero_amount = dict(extra_topic)
+    zero_amount["topics"] = [ISSUE_TOPIC]
+    zero_amount["data"] = "0x0"
+    with pytest.raises(ValueError):
+        decode_log("USDT", "MINT", zero_amount)
 
 
 def test_normalize_address_topic() -> None:
