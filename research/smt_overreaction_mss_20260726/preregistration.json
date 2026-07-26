@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-OVERREACTION-MSS-001",
+  "result_id": "RES-20260726-SMT-OVERREACTION-MSS-FATAL-001",
+  "engine_version": "SMT_OVERREACTION_MSS_V1",
+  "selection_evidence": {
+    "source_workflow_run": 30192128357,
+    "source_artifact_id": 8628934229,
+    "selection_statistic": "event opportunity count and date breadth only",
+    "selection_pnl_computed": false,
+    "selected_target": "SOLUSDT",
+    "observed_12bp_event_count": 115,
+    "observed_24bp_all_follower_count": 61,
+    "selection_dates": ["2023-12-03", "2023-12-10", "2023-12-17", "2023-12-24"]
+  },
+  "hypothesis": "When high-attention SOL overdelivers relative to a prior-only beta mapping of an abnormal BTC displacement, the excess residual has positive reversal expectancy only after residual compression, opposite SOL aggressive flow and a completed SOL micro-structure shift.",
+  "smc_ict_mapping": {
+    "leader_displacement": "completed abnormal BTC return with aligned BTC aggressive flow and activity",
+    "intermarket_smt_overextension": "SOL direction-adjusted move at least 1.25 times beta-implied BTC fair move plus 12/18/24 bp excess residual",
+    "attention_regime": "prior follower/BTC trade-count ratio at least 1 and prior follower/BTC realized-volatility ratio at least 1.5",
+    "mss_cisd": "excess residual compresses at least 25%, opposite SOL flow appears, and SOL breaks the opposite prior 1/3-second micro pivot",
+    "invalidation": "most adverse SOL extreme observed through the MSS decision plus 1 bp",
+    "objectives": ["current beta-implied fair value", "1.5R structural target"]
+  },
+  "data_contract": {
+    "provider": "Bybit public daily trade archives",
+    "availability_clock": "exchange trade timestamp",
+    "signal_symbol": "BTCUSDT",
+    "execution_symbol": "SOLUSDT",
+    "evaluation_dates": ["2023-12-25", "2023-12-27", "2023-12-29", "2023-12-31"],
+    "selection_dates_excluded": ["2023-12-03", "2023-12-10", "2023-12-17", "2023-12-24"],
+    "2024_opened": false,
+    "2025_opened": false,
+    "2026_opened": false
+  },
+  "fixed_signal": {
+    "btc_horizons_seconds": [1, 2, 5],
+    "btc_z_minimum": 3.0,
+    "btc_flow_alignment_minimum": 0.5,
+    "btc_activity_minimum": 2.0,
+    "SOL_overreaction_ratio_minimum": 1.25,
+    "SOL_flow_alignment_minimum": 0.5,
+    "prior_trade_ratio_minimum": 1.0,
+    "prior_volatility_ratio_minimum": 1.5,
+    "residual_gap_bps": [12.0, 18.0, 24.0],
+    "rearm": "BTC displacement must remain at or below 25% of the original shock for ten completed 100-ms bins"
+  },
+  "parameter_grid": {
+    "horizon_seconds": [1, 2, 5],
+    "residual_gap_floor_bps": [12.0, 18.0, 24.0],
+    "micro_pivot_seconds": [1, 3],
+    "maximum_confirmation_seconds": [1, 3],
+    "minimum_opposite_flow_fraction": [0.0, 0.30],
+    "latency_ms": [100, 300],
+    "target_mode": ["fair_value", "one_point_five_r"],
+    "candidate_count": 288
+  },
+  "execution_contract": {
+    "decision_information": "completed 100-ms states only",
+    "entry": "first actual SOL trade at or after completed MSS plus configured latency",
+    "stop": "causally observed overreaction extreme plus 1 bp",
+    "target": "beta-implied fair value or 1.5R",
+    "exit_execution": "adverse of the barrier-trigger trade and first post-latency trade for the closing side",
+    "same_trade_ambiguity": "stop first",
+    "global_slot": 1,
+    "source_boundary": "unresolved position receives the full stop",
+    "forced_time_exit": false,
+    "additional_roundtrip_cost_bps": [12.0, 18.0, 24.0],
+    "funding_reserve_bps_per_crossed_boundary": 2.0,
+    "planned_nav_risk": 0.005
+  },
+  "economic_gate": {
+    "minimum_trades_at_18bp": 20,
+    "positive_mean_and_median_at_24bp": true,
+    "positive_12bp_return_after_top_10pct_positive_event_exclusion_and_reroute": true,
+    "minimum_positive_dates_at_18bp": 3,
+    "maximum_top5_positive_share": 0.40,
+    "maximum_unresolved_fraction": 0.10,
+    "maximum_drawdown_at_18bp": 0.20
+  },
+  "top_trade_removal": "Identify the largest 10% of positive 12-bp event keys, exclude them before global-slot competition, and rerun the account from initial NAV.",
+  "promotion_boundary": "This four-day fatal PnL screen is not rank eligible. Any survivor must be expanded under the unchanged rule across broader pre-2024 dates with exact Bybit BBO/depth, funding and capacity before official 2024 can open.",
+  "implementation_sha256": "2efcf2fb17fe76462b67560c8b07416462b9e2f6e2cb851d1c64cdf0016775aa",
+  "orders_submitted": false,
+  "created_at": "2026-07-26T16:20:00+09:00"
+}
