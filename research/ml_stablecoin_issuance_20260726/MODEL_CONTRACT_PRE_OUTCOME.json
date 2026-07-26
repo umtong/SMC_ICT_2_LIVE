@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "contract_id": "MODEL-CONTRACT-20260726-ML-STABLECOIN-FIRST-PASSAGE-V1",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_outcome": true,
+  "model_source_blob_sha": "dee4d14b94b821171ab6ff70e60bca66e1cf512f",
+  "information_unit": "causally confirmed Ethereum USDT/USDC mint and burn events",
+  "markets": ["BTCUSDT", "ETHUSDT"],
+  "execution_market": "Bybit USDT linear perpetual",
+  "features": [
+    "log_event_usd_notional",
+    "mint_or_burn",
+    "usdt_or_usdc",
+    "prior_60m_same_direction_event_notional",
+    "prior_24h_net_issuance",
+    "event_block_gas_utilization_or_missing",
+    "prior_15m_return",
+    "prior_60m_realized_volatility",
+    "prior_60m_path_efficiency",
+    "distance_to_frozen_upper_60m_liquidity",
+    "distance_to_frozen_lower_60m_liquidity",
+    "btc_eth_completed_return_breadth"
+  ],
+  "model": {
+    "type": "HistGradientBoostingClassifier",
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 250,
+      "max_leaf_nodes": 31,
+      "min_samples_leaf": 80,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 20260726
+    },
+    "calibration": "one IsotonicRegression fit only on 2022H1 with out-of-bounds clipping"
+  },
+  "chronology": {
+    "train": "2021-01-01 through 2021-12-31",
+    "calibration": "2022-01-01 through 2022-06-30",
+    "untouched_confirmation": "2022-07-01 through 2022-12-31",
+    "conditional_development": "2023-01-01 through 2023-12-31",
+    "source_gap_rule": "no interpolation; an open path encountering a gap is charged the structural stop",
+    "partition_boundary_rule": "a label must resolve before its partition cutoff; an acted unresolved path is charged the structural stop"
+  },
+  "decision": {
+    "actions": ["LONG", "SHORT", "FLAT"],
+    "primary_cost_bps": 24,
+    "same_path_cost_bps": [12, 18, 24],
+    "equation": "choose the highest positive probability-weighted upper/lower first-passage return after primary cost",
+    "simultaneous_priority": "highest expected value, then BTCUSDT, then ETHUSDT",
+    "one_global_pending_or_open_slot": true
+  },
+  "exit": {
+    "target": "frozen pre-event upper liquidity for long or lower liquidity for short",
+    "stop": "opposite frozen liquidity",
+    "same_minute_ambiguity": "stop first",
+    "source_boundary": "structural stop",
+    "elapsed_time_liquidation": false
+  },
+  "confirmation_gate": {
+    "minimum_resolved_labels": 80,
+    "minimum_actions": 25,
+    "auc_lift_over_distance_baseline": 0.02,
+    "positive_brier_skill": true,
+    "positive_total_return_at_24bps": true,
+    "positive_median_trade_at_24bps": true,
+    "minimum_profit_factor_at_24bps": 1.2,
+    "positive_counterfactual_top10pct_winner_removed_return_at_24bps": true,
+    "both_confirmation_halves_positive_at_24bps": true
+  },
+  "base_sizing": {
+    "planned_risk_fraction": 0.005,
+    "notional_cap_nav_multiple": 3
+  },
+  "risk_search_only_after_positive_nonconcentrated_development": {
+    "risk_grid": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_cap_grid": [1, 2, 3, 5, 10, 20, 50, 100],
+    "selection": "maximum 24bp geometric daily growth among non-liquidated paths with positive counterfactual winner-removed return"
+  },
+  "prohibited_before_parent_source_pass": [
+    "Bybit market download",
+    "future label",
+    "model fit",
+    "trade or PnL",
+    "risk search",
+    "2024-2026 source or outcome",
+    "credentials",
+    "orders"
+  ]
+}
