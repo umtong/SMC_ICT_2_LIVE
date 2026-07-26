@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-WINDOWS-017",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_ANY_CORRECTED_SOURCE_GATE_DECISION_OR_MARKET_OUTCOME",
+  "observed_problem": "The authoritative corrected macOS source job was queued under time constraints. No corrected source decision, market row, label, model metric, trade or PnL existed.",
+  "change": [
+    "Run the identical corrected Blockscout source implementation on windows-2025 in parallel.",
+    "Use PowerShell only for orchestration and Python for source logic and evidence hashes.",
+    "Consume only the first decision-ready artifact; the other runner remains a reproduction."
+  ],
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address Transfer semantics",
+    "2021-01 through 2023-12 source period",
+    "block plus 12 and block plus 64 availability",
+    "source density and token breadth gates",
+    "one HGBT, calibration and action rule",
+    "risk and notional search",
+    "immediate 2024H1 after a positive pre-2024 survivor",
+    "no elapsed-time liquidation",
+    "no credentials or orders"
+  ],
+  "source_gate_decision_observed_before_change": false,
+  "market_outcome_observed_before_change": false,
+  "model_fitted_before_change": false,
+  "orders_submitted": false
+}
