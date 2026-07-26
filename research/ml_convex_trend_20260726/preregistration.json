@@ -1,0 +1,121 @@
+{
+  "claim_id": "CLM-20260726-1919-ML-CONVEX-TREND-001",
+  "engine_version": "ML-CONVEX-TREND-V1",
+  "objective": "Test whether one dense, causally completed balance-to-displacement ML state plus anti-martingale same-position additions can convert rare crypto trends into broad, after-cost NAV growth materially above the current first place without adding to losers.",
+  "market_scope": {
+    "execution_proxy": "Binance USD-M perpetual 5-minute OHLCV and taker-buy quote volume; a survivor requires later Bybit-native replay",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "global_pending_or_open_positions": 1,
+    "same_direction_additions_are_one_position": true
+  },
+  "chronology": {
+    "fit": [
+      "2023-01-01T00:00:00Z",
+      "2023-07-01T00:00:00Z"
+    ],
+    "calibration": [
+      "2023-07-01T00:00:00Z",
+      "2023-10-01T00:00:00Z"
+    ],
+    "untouched_confirmation": [
+      "2023-10-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "conditional_official_first_interval": [
+      "2024-01-01T00:00:00Z",
+      "2024-07-01T00:00:00Z"
+    ],
+    "label_must_resolve_before_partition_end": true,
+    "2024_open_condition": "every confirmation gate passes",
+    "2025_2026_initially_prohibited": true
+  },
+  "bar_contract": {
+    "source_bar_minutes": 5,
+    "decision_bar_minutes": 30,
+    "information_available": "only completed decision bars",
+    "entry": "next 30-minute open",
+    "same_bar_ambiguity": "protective stop first",
+    "source_boundary": "full active protective stop loss"
+  },
+  "single_event_definition": {
+    "balance_lookback_bars": 24,
+    "atr_fast_bars": 8,
+    "atr_slow_bars": 48,
+    "compression_max_ratio": 0.85,
+    "breakout": "completed close beyond the shifted 24-bar high or low",
+    "body_efficiency_min": 0.35,
+    "direction": "sign of the broken boundary",
+    "cooldown": "per-symbol candidate labels do not overlap; next candidate starts only after the prior label resolves"
+  },
+  "initial_invalidation_and_label": {
+    "stop": "breakout-bar opposite extreme plus 0.10 slow ATR adverse buffer",
+    "R": "absolute next-open entry to frozen stop distance",
+    "positive_label": "directional +2R is touched before the frozen -1R stop",
+    "negative_label": "the frozen stop is touched first",
+    "economic_entry_rule_at_cost": "calibrated p*2R - (1-p)*1R - initial round-trip cost in R must be positive"
+  },
+  "fixed_features": [
+    "fast_to_slow_ATR_compression",
+    "balance_width_over_slow_ATR",
+    "signed_breakout_distance_over_slow_ATR",
+    "signed_body_efficiency",
+    "log_quote_volume_over_prior_48_bar_median",
+    "signed_taker_buy_imbalance",
+    "signed_12_bar_path_efficiency",
+    "signed_distance_from_48_bar_EMA_over_slow_ATR",
+    "same_direction_four_asset_breadth",
+    "signed_BTC_2_hour_return",
+    "signed_asset_minus_BTC_2_hour_return",
+    "prior_24_bar_false_break_count"
+  ],
+  "model": {
+    "family": "one HistGradientBoostingClassifier",
+    "max_iter": 160,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 30,
+    "l2_regularization": 1.0,
+    "random_state": 20260726,
+    "calibration": "one isotonic map fitted only on the calibration partition",
+    "no_model_feature_threshold_grid": true
+  },
+  "payoff": {
+    "initial_risk_fraction": 0.005,
+    "maximum_notional_leverage": 5.0,
+    "unit_1": "enter once after positive calibrated structural EV",
+    "unit_2": "after a completed close at or beyond +1R, move the shared stop to initial entry and add one unit at the next open; size only the new unit to 0.5% current NAV risk to the shared stop",
+    "unit_3": "after a completed close at or beyond +2R, move the shared stop to +1R and add one unit at the next open; size only the new unit to 0.5% current NAV risk to the shared stop",
+    "never_add_to_loss": true,
+    "after_full_pyramid_trail": "shared stop ratchets with the shifted prior six completed 30-minute lows for long or highs for short, never loosens",
+    "exit": "all units exit only at the shared structural stop; no elapsed-time liquidation",
+    "baseline": "same ML-selected entries and stop ratchet but only unit 1"
+  },
+  "costs_bps_round_trip_per_unit": [
+    12,
+    18,
+    24
+  ],
+  "winner_removal": "remove the largest positive 10% of accepted confirmation event keys, then rerun global-slot arbitration and both payoff paths",
+  "confirmation_gates": {
+    "resolved_labels_min": 150,
+    "roc_auc_min": 0.55,
+    "positive_brier_skill_vs_confirmation_base_rate": true,
+    "accepted_trades_24bp_min": 50,
+    "pyramid_total_return_positive_18bp": true,
+    "pyramid_total_return_positive_24bp": true,
+    "pyramid_top10_removed_return_positive_24bp": true,
+    "pyramid_geometric_daily_growth_24bp_min": 0.001,
+    "positive_calendar_months_24bp_min": 2,
+    "pyramid_beats_unit1_total_and_winner_removed_24bp": true,
+    "maximum_drawdown_24bp_max": 0.25,
+    "liquidation": false
+  },
+  "decision_if_fail": "Retire this exact dense balance-displacement plus anti-martingale payoff. Do not tune adjacent lookbacks, compression, body, model, add levels, trail, risk or leverage.",
+  "decision_if_pass": "Freeze the 2023-fitted model and exact payoff, then open only 2024H1 as the first official causal interval with a separately added actual-funding and Bybit execution replay requirement before ranking.",
+  "orders_submitted": false
+}
