@@ -255,6 +255,7 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
             source_out=source_out,
             economic_out=economic_out,
             strict_v4_decision=None,
+            strict_v4_execution_error=None,
         )
 
     v4auth.write_json(publish_dir / "DECISION.json", decision)
@@ -308,8 +309,8 @@ def main() -> int:
             "official_2024_2026_opened": False,
             "orders_submitted": False,
         }
-        v4auth.write_json(args.publish_dir / "EXECUTION_FAILURE.json", failure)
-        v4auth.freeze_hashes(args.publish_dir)
+        v4auth.write_json(publish_dir / "EXECUTION_FAILURE.json", failure)
+        v4auth.freeze_hashes(publish_dir)
         print(json.dumps(failure, indent=2, sort_keys=True), file=sys.stderr)
         return 1
 
