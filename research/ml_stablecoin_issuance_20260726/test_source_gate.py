@@ -113,6 +113,11 @@ def test_usdt_issue_and_redeem_are_canonical_supply_events() -> None:
     assert mint["from_address"] == ZERO_ADDRESS
     assert mint["to_address"] == CONTRACTS["USDT"]["address"].lower()
 
+    padded_issue = dict(issue)
+    padded_issue["topics"] = [ISSUE_TOPIC, None, "", "0x"]
+    padded_mint = decode_log("USDT", "MINT", padded_issue)
+    assert padded_mint["amount_usd"] == 75_000_000
+
     redeem = dict(issue)
     redeem["topics"] = [REDEEM_TOPIC]
     redeem["transactionHash"] = "0x" + "78" * 32
@@ -159,7 +164,7 @@ def test_usdc_burn_filter_rejects_nonzero_to() -> None:
         decode_log("USDC", "BURN", log)
 
 
-def test_usdt_supply_event_rejects_address_topics_and_zero_amount() -> None:
+def test_usdt_supply_event_rejects_genuine_extra_topic_and_zero_amount() -> None:
     extra_topic = {
         "address": CONTRACTS["USDT"]["address"],
         "topics": [ISSUE_TOPIC, ZERO_TOPIC],
