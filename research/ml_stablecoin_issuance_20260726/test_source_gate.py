@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from source_gate import (
+from source_gate_authoritative import (
     CONTRACTS,
     FIXED_MONTHS,
     TRANSFER_TOPIC,
@@ -10,6 +10,7 @@ from source_gate import (
     Event,
     decode_log,
     event_to_dict,
+    first_block_at_or_after,
     month_bounds,
     normalize_address_topic,
 )
@@ -26,6 +27,24 @@ def test_full_source_months_are_complete_and_pre_2024() -> None:
         for month in range(1, 13)
     )
     assert FIXED_MONTHS == expected
+
+
+class FakeClient:
+    def __init__(self, timestamps: dict[int, int]) -> None:
+        self.timestamps = timestamps
+
+    def call(self, method: str, params: list[object]) -> dict[str, str]:
+        assert method == "eth_getBlockByNumber"
+        number = int(str(params[0]), 16)
+        return {"timestamp": hex(self.timestamps[number])}
+
+
+def test_exact_2024_boundary_is_only_an_end_exclusive_lookup() -> None:
+    boundary = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+    client = FakeClient({0: boundary - 24, 1: boundary - 12, 2: boundary})
+    assert first_block_at_or_after(client, boundary, 0, 2, {}) == 2
+    with pytest.raises(ValueError):
+        first_block_at_or_after(client, boundary + 1, 0, 2, {})
 
 
 def test_month_bounds_never_open_2024() -> None:
