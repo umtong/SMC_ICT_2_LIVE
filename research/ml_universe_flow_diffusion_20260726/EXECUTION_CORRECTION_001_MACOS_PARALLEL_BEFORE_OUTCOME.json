@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNIVERSE-FLOW-MACOS-001",
+  "claim_id": "CLM-20260726-2325-ML-UNIVERSE-FLOW-001",
+  "recorded_at": "2026-07-26T23:55:00+09:00",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY_PARALLEL_REPRODUCTION",
+  "trigger": "The registered ubuntu-24.04 workflow remained queued before setup and before any market row, model fit, account path or official 2024H1 outcome was opened. A second runner family is used to remove queue latency and provide an independent environment reproduction.",
+  "change": "Add a macOS 15 workflow that reconstructs the exact same SHA-pinned run.py and test_run.py, executes the same command, and enforces the same RESULT authority contract.",
+  "outcome_state_before_correction": {
+    "market_data_download_started": false,
+    "model_fitted": false,
+    "pre2024_account_result_observed": false,
+    "risk_or_notional_search_opened": false,
+    "official_2024h1_opened": false,
+    "orders_submitted": false
+  },
+  "unchanged": [
+    "source and test SHA-256",
+    "2021H1 universe selection",
+    "2021H2-2022 training",
+    "2023H1 calibration",
+    "2023H2 development and conditional sizing",
+    "24bp base gate",
+    "model features labels and calibration",
+    "direction target stop and no elapsed-time liquidation",
+    "one global slot and winner-removal rerouting",
+    "conditional immediate official 2024H1",
+    "no credentials or orders"
+  ],
+  "authority": "Either runner may produce the first decision-ready result. If both complete, RESULT.json and scientific ledgers must be compared; disagreement invalidates promotion until resolved."
+}
