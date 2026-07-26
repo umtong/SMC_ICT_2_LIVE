@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1925-ML-FAIR-VALUE-RAID-001",
+  "correction_id": "PRE_OUTCOME_TRANSPORT_CORRECTION_001",
+  "failed_workflow_run": 30198952061,
+  "timing": "before source reconstruction, Python compilation, causal self-test, market network access, event generation, model fit, score, action or PnL",
+  "failure": "The committed run.py.gz.b64 SHA-256 was 72d0026311a47047a14fc12ed53527358bdbeda497582116d85d3d77090ba9d6, while reconstruct.py retained a stale base64 transport SHA-256.",
+  "correction": "Replace only EXPECTED.base64_sha256 with the SHA-256 of the already-committed transport file. The expected gzip payload SHA-256 c842630e89cbc661f7e6200e7069c7e1fdc1bb17c597e2c92e6342f76fcaad51 and raw scientific source SHA-256 8cc765ecc379da4808599d95f91a5c44d3672483141d34d7781cf9c336fdc3c9 remain unchanged and are still enforced before execution.",
+  "outcome_access_before_correction": {
+    "source_reconstructed": false,
+    "market_data_opened": false,
+    "events_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "unchanged": [
+    "all source bytes",
+    "gzip and raw scientific source hashes",
+    "event threshold and fair-value geometry",
+    "features, model, calibration, EV rule, costs, risk and leverage",
+    "all chronology and sealed-year rules"
+  ],
+  "orders_submitted": false
+}
