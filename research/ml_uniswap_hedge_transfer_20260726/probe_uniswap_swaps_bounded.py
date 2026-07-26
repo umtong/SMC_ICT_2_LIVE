@@ -8,6 +8,10 @@ import probe_uniswap_swaps as base
 
 MAX_RPC_CALLS = 3_000
 MAX_WALL_SECONDS = 1_200.0
+# Blockscout documents a default unauthenticated limit of roughly 3 requests/second.
+# Keep every HTTP request below that rate and batch up to 40 block lookups per request.
+MIN_REQUEST_INTERVAL_SECONDS = 0.36
+BLOCK_TIMESTAMP_BATCH_SIZE = 40
 RANGE_ERROR_MARKERS = (
     "-32005",
     "query returned more than",
@@ -43,16 +47,145 @@ class BoundedRpcClient(base.RpcClient):
     def __init__(self, endpoint: str) -> None:
         super().__init__(endpoint)
         self.started_monotonic = time.monotonic()
+        self.next_request_monotonic = self.started_monotonic
 
-    def call(self, method: str, params: list[Any], *, attempts: int = 2) -> Any:
+    def _check_budget(self) -> None:
         if self.stats.calls >= MAX_RPC_CALLS:
             raise EndpointUnavailable(f"RPC call budget exceeded at {self.endpoint}")
         if time.monotonic() - self.started_monotonic >= MAX_WALL_SECONDS:
             raise EndpointUnavailable(f"RPC wall-time budget exceeded at {self.endpoint}")
+
+    def _pace(self) -> None:
+        self._check_budget()
+        now = time.monotonic()
+        delay = self.next_request_monotonic - now
+        if delay > 0:
+            time.sleep(delay)
+        self.next_request_monotonic = time.monotonic() + MIN_REQUEST_INTERVAL_SECONDS
+
+    def call(self, method: str, params: list[Any], *, attempts: int = 5) -> Any:
+        self._pace()
         try:
-            return super().call(method, params, attempts=min(int(attempts), 2))
+            return super().call(method, params, attempts=min(max(int(attempts), 1), 5))
         except Exception as exc:
             raise base.RpcError(str(exc)) from exc
+
+    def batch_block_timestamps(self, block_numbers: Iterable[int]) -> dict[int, int]:
+        numbers = tuple(dict.fromkeys(int(number) for number in block_numbers))
+        output: dict[int, int] = {}
+        for offset in range(0, len(numbers), BLOCK_TIMESTAMP_BATCH_SIZE):
+            chunk = numbers[offset : offset + BLOCK_TIMESTAMP_BATCH_SIZE]
+            ids: dict[int, int] = {}
+            payload: list[dict[str, Any]] = []
+            for number in chunk:
+                self.counter += 1
+                ids[self.counter] = number
+                payload.append(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self.counter,
+                        "method": "eth_getBlockByNumber",
+                        "params": [hex(number), False],
+                    }
+                )
+
+            last_error: Exception | None = None
+            for attempt in range(5):
+                self._pace()
+                self.stats.calls += 1
+                try:
+                    response = self.session.post(
+                        self.endpoint,
+                        json=payload,
+                        timeout=(15, 90),
+                    )
+                    if response.status_code == 429 or response.status_code >= 500:
+                        raise base.RpcError(
+                            f"HTTP {response.status_code}: {response.text[:300]}"
+                        )
+                    response.raise_for_status()
+                    body = response.json()
+                    if not isinstance(body, list):
+                        raise base.RpcError(
+                            f"batch eth_getBlockByNumber returned {type(body)!r}"
+                        )
+                    by_id = {int(item["id"]): item for item in body if "id" in item}
+                    for request_id, number in ids.items():
+                        item = by_id.get(request_id)
+                        if item is None:
+                            raise base.RpcError(
+                                f"missing batch response for block {number}"
+                            )
+                        if item.get("error") is not None:
+                            raise base.RpcError(
+                                json.dumps(item["error"], sort_keys=True)
+                            )
+                        block = item.get("result")
+                        if block is None:
+                            raise base.RpcError(f"missing block {number}")
+                        output[number] = base.hex_int(block["timestamp"])
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    self.stats.errors += 1
+                    if attempt + 1 >= 5:
+                        raise EndpointUnavailable(
+                            f"batch block timestamp lookup failed at "
+                            f"{self.endpoint}: {last_error!r}"
+                        ) from exc
+                    self.stats.retries += 1
+                    time.sleep(min(12.0, 1.5 * (2**attempt)))
+        return output
+
+
+class BatchedBlockLocator:
+    """Causal block lookup with binary-search singles and batched log timestamps."""
+
+    def __init__(self, rpc: BoundedRpcClient, latest_block: int) -> None:
+        self.rpc = rpc
+        self.latest_block = int(latest_block)
+        self.cache: dict[int, int] = {}
+
+    def _single_timestamp(self, block_number: int) -> int:
+        number = int(block_number)
+        if number not in self.cache:
+            block = self.rpc.call("eth_getBlockByNumber", [hex(number), False])
+            if block is None:
+                raise EndpointUnavailable(f"missing block {number}")
+            self.cache[number] = base.hex_int(block["timestamp"])
+        return self.cache[number]
+
+    def timestamp(self, block_number: int) -> int:
+        number = int(block_number)
+        if number not in self.cache:
+            batch_end = min(
+                self.latest_block,
+                number + BLOCK_TIMESTAMP_BATCH_SIZE - 1,
+            )
+            try:
+                self.cache.update(
+                    self.rpc.batch_block_timestamps(range(number, batch_end + 1))
+                )
+            except EndpointUnavailable:
+                # Preserve correctness when an endpoint does not support JSON-RPC
+                # batches. The paced single request is slower but remains causal.
+                return self._single_timestamp(number)
+        return self.cache[number]
+
+    def first_at_or_after(self, target_timestamp: int) -> int:
+        low = 0
+        high = self.latest_block
+        if self._single_timestamp(high) < target_timestamp:
+            raise EndpointUnavailable(
+                f"target {target_timestamp} after latest block timestamp"
+            )
+        while low < high:
+            midpoint = (low + high) // 2
+            if self._single_timestamp(midpoint) < target_timestamp:
+                low = midpoint + 1
+            else:
+                high = midpoint
+        return low
 
 
 def is_range_error(exc: BaseException) -> bool:
@@ -144,7 +277,7 @@ def choose_endpoint(
             ):
                 raise EndpointUnavailable("chain, bytecode, or canonical pool preflight failed")
 
-            locator = base.BlockLocator(rpc, latest)
+            locator = BatchedBlockLocator(rpc, latest)
             historical_block = locator.first_at_or_after(start_timestamp)
             historical = rpc.call("eth_getBlockByNumber", [hex(historical_block), False])
             if historical is None:
@@ -176,6 +309,8 @@ def choose_endpoint(
                     "passing_pools": passing,
                     "pools": pools,
                     "rpc_stats": vars(rpc.stats),
+                    "request_interval_seconds": MIN_REQUEST_INTERVAL_SECONDS,
+                    "block_timestamp_batch_size": BLOCK_TIMESTAMP_BATCH_SIZE,
                 }
             )
             attempts.append(item)
@@ -195,6 +330,7 @@ def choose_endpoint(
 
 # Mechanical transport-only patch. The base module resolves these globals at run time.
 base.RpcClient = BoundedRpcClient
+base.BlockLocator = BatchedBlockLocator
 base.get_logs_adaptive = get_logs_adaptive
 base.choose_endpoint = choose_endpoint
 
