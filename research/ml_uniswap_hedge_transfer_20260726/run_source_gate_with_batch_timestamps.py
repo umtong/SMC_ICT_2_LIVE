@@ -131,11 +131,11 @@ class PrefetchBlockLocator(bounded.base.BlockLocator):
         block_number = int(block_number)
         if block_number not in self.cache:
             start = max(0, block_number - 8)
-            candidates = range(start, start + BATCH_SIZE)
-            client = self.rpc
-            if not isinstance(client, PacedBatchRpcClient):
+            candidates = range(start, min(self.latest_block + 1, start + BATCH_SIZE))
+            batch_lookup = getattr(self.rpc, "block_timestamps", None)
+            if not callable(batch_lookup):
                 return super().timestamp(block_number)
-            self.cache.update(client.block_timestamps(candidates))
+            self.cache.update(batch_lookup(candidates))
         if block_number not in self.cache:
             raise bounded.base.RpcError(f"timestamp batch did not contain block {block_number}")
         return self.cache[block_number]
@@ -143,16 +143,25 @@ class PrefetchBlockLocator(bounded.base.BlockLocator):
 
 def self_test() -> None:
     class FakeRpc:
-        def block_timestamps(self, blocks: Iterable[int]) -> dict[int, int]:
-            return {int(block): int(block) * 12 for block in blocks}
+        def __init__(self) -> None:
+            self.requests: list[tuple[int, ...]] = []
 
+        def block_timestamps(self, blocks: Iterable[int]) -> dict[int, int]:
+            values = tuple(int(block) for block in blocks)
+            self.requests.append(values)
+            return {block: block * 12 for block in values}
+
+    rpc = FakeRpc()
     locator = object.__new__(PrefetchBlockLocator)
-    locator.rpc = FakeRpc()
+    locator.rpc = rpc
     locator.latest_block = 1000
     locator.cache = {}
     assert locator.timestamp(100) == 1200
     assert locator.timestamp(101) == 1212
     assert len(locator.cache) == BATCH_SIZE
+    assert len(rpc.requests) == 1
+    assert rpc.requests[0][0] == 92
+    assert rpc.requests[0][-1] == 131
 
 
 def main() -> int:
