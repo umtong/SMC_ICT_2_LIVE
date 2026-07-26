@@ -15,11 +15,18 @@ sys.path.insert(0, str(ENGINE_ROOT))
 import probe_hl_liquidations as engine  # noqa: E402
 
 REVISION_REF = "refs/convert/parquet"
-CORRECTION_PATH = (
+PARQUET_PATH = "default/train/0000.parquet"
+CORRECTION_004 = (
     REPO_ROOT
     / "sourcefix"
     / "ml_hl_liquidation_convert_ref_20260726"
     / "CORRECTION_004_CONVERT_PARQUET_REVISION_BEFORE_DATA.json"
+)
+CORRECTION_005 = (
+    REPO_ROOT
+    / "sourcefix"
+    / "ml_hl_liquidation_convert_ref_20260726"
+    / "CORRECTION_005_WRAPPER_SYMBOL_ALIGNMENT_BEFORE_DATA.json"
 )
 
 
@@ -27,16 +34,18 @@ def stable_json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def resolve_convert_parquet_revision() -> tuple[str, dict[str, object], bytes]:
-    correction = json.loads(CORRECTION_PATH.read_text(encoding="utf-8"))
-    assert correction["status"] == "PRE_OUTCOME_SOURCE_ONLY"
-    assert correction["hyperliquid_event_row_opened_before_correction"] is False
-    assert correction["market_outcome_opened_before_correction"] is False
+def resolve_convert_parquet_revision(_session: requests.Session) -> tuple[str, dict[str, object]]:
+    correction_004 = json.loads(CORRECTION_004.read_text(encoding="utf-8"))
+    correction_005 = json.loads(CORRECTION_005.read_text(encoding="utf-8"))
+    for correction in (correction_004, correction_005):
+        assert correction["status"] == "PRE_OUTCOME_SOURCE_ONLY"
+        assert correction["hyperliquid_event_row_opened_before_correction"] is False
+        assert correction["market_outcome_opened_before_correction"] is False
     encoded_ref = quote(REVISION_REF, safe="")
-    url = f"https://huggingface.co/api/datasets/{engine.REMOTE_DATASET}/revision/{encoded_ref}"
+    url = f"https://huggingface.co/api/datasets/{engine.REPOSITORY}/revision/{encoded_ref}"
     with requests.Session() as session:
-        session.headers["User-Agent"] = "SMC_ICT_2_LIVE-hl-liquidation-convert-ref/1.0"
-        response = session.get(url, timeout=120)
+        session.headers["User-Agent"] = "SMC_ICT_2_LIVE-hl-liquidation-convert-ref/2.0"
+        response = session.get(url, params={"blobs": "true"}, timeout=120)
         response.raise_for_status()
         metadata = response.json()
     if not isinstance(metadata, dict):
@@ -50,29 +59,47 @@ def resolve_convert_parquet_revision() -> tuple[str, dict[str, object], bytes]:
     matching = [
         item
         for item in siblings
-        if isinstance(item, dict) and str(item.get("rfilename")) == engine.REMOTE_PARQUET_PATH
+        if isinstance(item, dict) and str(item.get("rfilename")) == PARQUET_PATH
     ]
     if len(matching) != 1:
         raise RuntimeError(
-            f"expected one {engine.REMOTE_PARQUET_PATH} sibling in convert/parquet revision, found {len(matching)}"
+            f"expected one {PARQUET_PATH} sibling in convert/parquet revision, found {len(matching)}"
         )
     raw = stable_json(metadata).encode("utf-8")
     print(
         stable_json(
             {
-                "correction_id": correction["correction_id"],
+                "correction_ids": [
+                    correction_004["correction_id"],
+                    correction_005["correction_id"],
+                ],
                 "revision_ref": REVISION_REF,
                 "resolved_revision": resolved,
-                "parquet_path": engine.REMOTE_PARQUET_PATH,
+                "parquet_path": PARQUET_PATH,
                 "metadata_sha256": hashlib.sha256(raw).hexdigest(),
             }
         ),
         flush=True,
     )
-    return resolved, metadata, raw
+    return resolved, metadata
 
 
-engine._resolve_repo_revision = resolve_convert_parquet_revision
+def find_convert_parquet_sibling(metadata: dict[str, object]) -> list[dict[str, object]]:
+    siblings = metadata.get("siblings")
+    if not isinstance(siblings, list):
+        raise RuntimeError("convert/parquet revision metadata has no siblings list")
+    matching = [
+        item
+        for item in siblings
+        if isinstance(item, dict) and str(item.get("rfilename")) == PARQUET_PATH
+    ]
+    if len(matching) != 1:
+        raise RuntimeError(f"expected one {PARQUET_PATH} sibling, found {len(matching)}")
+    return matching
+
+
+engine.resolve_revision = resolve_convert_parquet_revision
+engine.find_parquet_siblings = find_convert_parquet_sibling
 
 
 if __name__ == "__main__":
