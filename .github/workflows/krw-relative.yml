@@ -1,0 +1,176 @@
+name: Execute Korean KRW relative-flow fatal screen
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "research/bybit_krw_relative_20260726/**"
+      - ".github/workflows/krw-relative.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: krw-relative-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  execute:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.2.6" "pandas==2.2.3" "requests==2.32.4"
+
+      - name: Restore public-data cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/krw-relative-cache
+          key: krw-relative-v1-${{ runner.os }}-${{ hashFiles('research/bybit_krw_relative_20260726/preregistration.json') }}
+          restore-keys: |
+            krw-relative-v1-${{ runner.os }}-
+
+      - name: Reconstruct and validate frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime research_runs/bybit_krw_relative_20260726
+          python - <<'PY'
+          import base64
+          import hashlib
+          import zlib
+          from pathlib import Path
+
+          encoded_path = Path("research/bybit_krw_relative_20260726/krw_relative.py.zlib.b64")
+          source = zlib.decompress(base64.b64decode(encoded_path.read_text().strip()))
+          observed = hashlib.sha256(source).hexdigest()
+          expected = "3dd9c0037adc68459acefe4c1d0a912f5e1832a48ebddf662d2bb80a514aaee1"
+          if observed != expected:
+              raise SystemExit(f"decompressed source SHA-256 mismatch: {observed} != {expected}")
+          Path("runtime/krw_relative.py").write_bytes(source)
+          print("decompressed source sha256", observed)
+          PY
+          python -m py_compile runtime/krw_relative.py
+          python runtime/krw_relative.py --self-test
+          python -m json.tool research/bybit_krw_relative_20260726/preregistration.json >/dev/null
+          python scripts/validate_project.py
+          sha256sum \
+            research/bybit_krw_relative_20260726/krw_relative.py.zlib.b64 \
+            research/bybit_krw_relative_20260726/preregistration.json \
+            runtime/krw_relative.py \
+            > research_runs/bybit_krw_relative_20260726/INPUT_SHA256SUMS.txt
+
+      - name: Run fixed pre-2024 causal screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          python runtime/krw_relative.py \
+            --output research_runs/bybit_krw_relative_20260726/result \
+            --cache "${RUNNER_TEMP}/krw-relative-cache" \
+            2>&1 | tee research_runs/bybit_krw_relative_20260726/run.log
+
+      - name: Enforce stage, causality, and execution boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("research_runs/bybit_krw_relative_20260726/result")
+          result = json.loads((root / "result.json").read_text())
+          source = json.loads((root / "source_manifest.json").read_text())
+
+          assert result["claim_id"] == "CLM-20260726-1616-KRW-RELATIVE-001"
+          assert result["policy_count"] == 192
+          assert result["fit_opened"] is True
+          assert result["2024_2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["credentials_used"] is False
+          assert result["rank_eligible"] is False
+          assert result["source_kind"] == "UPBIT_KRW_PRIMARY_PLUS_BINANCE_VISION_EXECUTION_PROXY"
+          assert result["hard_validity_status"] == "PASS_PROXY_NON_RANK_ELIGIBLE"
+          assert result["funding_mode"] == "CONSERVATIVE_FIXED_CHARGE"
+          assert source["2024_2026_opened"] is False
+          assert source["orders_submitted"] is False
+          assert source["credentials_used"] is False
+          assert source["data_end"] < source["sealed_start"]
+
+          if result["fit_gate_passed"]:
+              assert result["development_opened"] is True
+              assert result["development_metrics"] is not None
+              assert set(result["development_metrics"]) == {"12", "18", "24"}
+              if result["development_gate_passed"]:
+                  assert set(result["risk_ladder_18bp"]) == {"0.0100", "0.0200", "0.0400", "0.0800", "0.1200"}
+              else:
+                  assert result["risk_ladder_18bp"] is None
+          else:
+              assert result["development_opened"] is False
+              assert result["development_metrics"] is None
+              assert result["risk_ladder_18bp"] is None
+              assert result["economic_status"] == "FIT_FATAL_BELOW_GATE"
+
+          print(json.dumps({
+              "result_id": result["result_id"],
+              "fit_gate_passed": result["fit_gate_passed"],
+              "development_gate_passed": result["development_gate_passed"],
+              "economic_status": result["economic_status"],
+          }, sort_keys=True))
+          PY
+
+      - name: Record immutable output checksums
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research_runs/bybit_krw_relative_20260726
+          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > "$root/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bybit-krw-relative-${{ github.sha }}
+          path: research_runs/bybit_krw_relative_20260726
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Commit decision-ready output to claim branch
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=research/bybit_krw_relative_20260726/observed
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp -R research_runs/bybit_krw_relative_20260726/result "$target/result"
+          cp research_runs/bybit_krw_relative_20260726/INPUT_SHA256SUMS.txt "$target/INPUT_SHA256SUMS.txt"
+          cp research_runs/bybit_krw_relative_20260726/OUTPUT_SHA256SUMS.txt "$target/OUTPUT_SHA256SUMS.txt"
+          tail -n 500 research_runs/bybit_krw_relative_20260726/run.log > "$target/RUN_TAIL.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$target"
+          if git diff --cached --quiet; then
+            echo "Decision-ready output is unchanged."
+          else
+            git commit -m "Record KRW relative-flow fatal-screen result [skip ci]"
+            target_branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            git push origin "HEAD:${target_branch}"
+          fi
