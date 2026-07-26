@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-CME-GAP-ML-FIVE-FEATURE-003",
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "parent_amendments": [
+    "AMEND-20260726-CME-GAP-ML-CORE-001",
+    "AMEND-20260726-CME-GAP-ML-PURGE-002"
+  ],
+  "amended_at": "2026-07-26T17:41:00+09:00",
+  "trigger": {
+    "failed_workflow_run": 30194831998,
+    "failure_stage": "before model fitting and before any strategy PnL",
+    "observed_only": "The arbitrary 2021 Jan-Aug subset contained 39 causally resolved labels versus the frozen minimum of 40.",
+    "development_2022_opened": false,
+    "confirmation_2023_opened": false,
+    "strategy_metrics_opened": false
+  },
+  "simplification": {
+    "removed_arbitrary_in_year_split": true,
+    "training": "All causally resolved 2021 events, with every label resolved by 2021-12-31T23:59:59Z.",
+    "clean_out_of_sample": "2022-01-01 through 2022-12-31.",
+    "conditional_confirmation": "2023-01-01 through 2023-12-31 only when the unchanged 2022 gate passes.",
+    "minimum_training_labeled_events": 40,
+    "removed_features": [
+      "symbol_eth",
+      "gap_kind_nwog",
+      "response_body_efficiency",
+      "response_wick_support",
+      "log_volume_ratio",
+      "pretrend_in_gap_direction_atr"
+    ],
+    "retained_features": [
+      "gap_signed_atr",
+      "residual_in_gap_direction",
+      "response_in_gap_direction_atr",
+      "rebalance_progress",
+      "log_continuation_to_rebalance_distance"
+    ],
+    "feature_count": 5,
+    "reason": "Keep only the institutional gap magnitude/quality, the completed response, rebalancing progress and the structural payoff geometry. Do not add symbol, session, candle-decoration, volume or trend context."
+  },
+  "model_contract": {
+    "policy_count": 1,
+    "model_id": "CME_GAP_COMPETING_RISK_LOGIT_V1",
+    "model_type": "one shared standardized L2 logistic competing-risk classifier",
+    "C": 0.25,
+    "solver": "lbfgs",
+    "model_selection": "NONE",
+    "hyperparameter_grid": "NONE",
+    "probability_threshold_grid": "NONE",
+    "decision_cost_bps": 18.0,
+    "route": "Choose between mapped-prior-close rebalancing and known external-liquidity continuation only when structural expected value after 18 bp is positive."
+  },
+  "unchanged": [
+    "true CME NDOG/NWOG information unit",
+    "two completed 15-minute decision bars and next-open entry",
+    "two frozen structural destinations",
+    "one global BTCUSDT/ETHUSDT slot",
+    "actual funding and identical 12/18/24-bp path replay",
+    "stop-first ambiguity and adverse gap stops",
+    "no elapsed-time liquidation",
+    "development and confirmation gates",
+    "2024-2026 prohibition",
+    "proxy result is not rank eligible"
+  ],
+  "conditional_decision": {
+    "insufficient_full_2021_labels": "Close the information source before any 2022 PnL.",
+    "2022_failure": "Close the exact five-feature single-model dependency without 2023.",
+    "2022_pass": "Refit the identical five-feature model on all causally resolved 2021-2022 labels and open 2023 confirmation.",
+    "2023_pass": "Require exact CME contracts and exact Bybit BBO/depth, funding, sizing and NAV replay before official 2024."
+  },
+  "orders_submitted": false
+}
