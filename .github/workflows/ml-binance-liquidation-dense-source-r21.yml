@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-binance-liquidation-dense-source-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
+  group: ml-binance-liquidation-dense-source-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source-gate:
@@ -56,6 +56,8 @@ jobs:
           PYTHONPATH="$root" pytest -q "$root/test_source_gate.py" 2>&1 | tee "$out/PYTEST.log"
           PYTHONPATH="$root" python "$root/source_gate.py" --self-test 2>&1 | tee "$out/SELF_TEST.log"
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_001_COINM_SOURCE_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/EXECUTION_CORRECTION_002_SHA_SCOPED_NONCANCEL_BEFORE_OUTCOME.json" >/dev/null
 
       - name: Run official Binance Vision source gate
         shell: bash
@@ -138,6 +140,8 @@ jobs:
             "$root/WORK_CLAIM.json" \
             "$root/PREREGISTRATION.md" \
             "$root/SOURCE_MANIFEST.json" \
+            "$root/CORRECTION_001_COINM_SOURCE_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_002_SHA_SCOPED_NONCANCEL_BEFORE_OUTCOME.json" \
             "$root/reconstruct.py" \
             "$root/source_gate.py" \
             "$root/test_source_gate.py" \
@@ -147,6 +151,8 @@ jobs:
             "$root/WORK_CLAIM.json" \
             "$root/PREREGISTRATION.md" \
             "$root/SOURCE_MANIFEST.json" \
+            "$root/CORRECTION_001_COINM_SOURCE_BEFORE_OUTCOME.json" \
+            "$root/EXECUTION_CORRECTION_002_SHA_SCOPED_NONCANCEL_BEFORE_OUTCOME.json" \
             "$root/reconstruct.py" \
             "$root"/source_gate.py.gz.b64.part* \
             "$root/test_source_gate.py" \
