@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "study_id": "L2_CANCEL_REFILL_TAKER_V1_20260726",
+  "claim_id": "CLM-20260726-0946-L2-CANCEL-REFILL-001",
+  "objective": "Find a structurally different, high-capital-velocity Bybit USDT-perpetual alpha before opening any 2024 target interval.",
+  "data": {
+    "provider": "Tardis public first-day monthly normalized CSV samples",
+    "exchange": "bybit",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "types": ["quotes", "trades", "book_snapshot_5"],
+    "clock": "local_timestamp arrival order",
+    "fit_dates": ["2023-03-01", "2023-05-01", "2023-07-01"],
+    "development_dates": ["2023-09-01", "2023-11-01", "2023-12-01"],
+    "sealed": ["2024", "2025", "2026"]
+  },
+  "information_boundary": {
+    "decision": "after a completed 100ms bucket",
+    "features": "only quotes, top-five snapshots and trades whose local_timestamp is in or before the completed bucket",
+    "entry_latency_ms": [100, 250, 500],
+    "equal_timestamp": "no favorable ordering assumption"
+  },
+  "mechanisms": {
+    "continuation": "opposite-side residual cancellation plus same-side displayed refill, aligned recent aggressive flow and limited already-realized movement",
+    "reversal": "same-side liquidity pull followed by rapid same-side refill, recent directional recovery and exhaustion of the prior one-second flow"
+  },
+  "candidate_grid": {
+    "families": 2,
+    "cancel_quantiles": [0.95, 0.975, 0.99],
+    "add_quantiles": [0.75, 0.9],
+    "flow_thresholds": [0.0, 0.2],
+    "move_limits_bps": [2.0, 5.0],
+    "latency_ms": [100, 250, 500],
+    "diagnostic_horizons_seconds": [1, 3, 10],
+    "candidate_count": 432
+  },
+  "execution": {
+    "entry": "first Bybit quote at or after frozen latency; long crosses ask, short crosses bid",
+    "exit": "diagnostic fixed markouts only for fatal rejection; a survivor requires a new causal state-exit contract before rank eligibility",
+    "observed_spread": true,
+    "additional_round_trip_cost_bps": [12, 18, 24],
+    "order_notional_usdt": 10000,
+    "maximum_top_quote_participation": 0.25,
+    "one_global_position": true,
+    "orders_submitted": false
+  },
+  "fit_gate": {
+    "minimum_trades": 100,
+    "mean_18bps": ">0",
+    "mean_24bps": ">0",
+    "median_12bps": ">0",
+    "top10_removed_mean_18bps": ">0",
+    "top5_positive_share": "<=0.35",
+    "positive_fit_dates": "all",
+    "maximum_symbol_share": "<=0.90"
+  },
+  "promotion": {
+    "rank_eligible": false,
+    "survivor_requirement": "state-defined exit, broader pre-2024 replication, complete causal Bybit 2024-2026 account path, funding, risk sizing, marked NAV and latency/liquidity stress"
+  }
+}
