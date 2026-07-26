@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-STABLECOIN-SHA-SCOPED-007",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "timing": "BEFORE_ANY_DECODED_ISSUANCE_RESULT_OR_MARKET_OUTCOME",
+  "observed_problem": "Outcome-sealed source-gate runs were cancelled when later pre-outcome transport and boundary commits shared branch/PR concurrency with cancel-in-progress enabled. No mint/burn result, market row, label, model metric, trade or PnL existed.",
+  "change": [
+    "Scope both source workflow concurrency groups to immutable github.sha.",
+    "Disable cancel-in-progress so later metadata commits cannot terminate an already-running source gate."
+  ],
+  "unchanged": [
+    "all 36 pre-2024 UTC months",
+    "canonical USDT and USDC contracts and zero-address Transfer semantics",
+    "12-block primary and 64-block stress availability",
+    "event density and month-breadth gates",
+    "single conditional HGBT and account contract",
+    "sequential 2024H1 opening rule after complete pre-2024 freeze",
+    "credentials and order prohibition"
+  ],
+  "source_result_opened_before_change": false,
+  "market_outcomes_opened_before_change": false,
+  "orders_submitted": false
+}
