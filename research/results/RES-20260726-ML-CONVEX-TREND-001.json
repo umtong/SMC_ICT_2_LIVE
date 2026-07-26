@@ -1,0 +1,200 @@
+{
+  "accepted_event_counts_before_global_slot": {
+    "12": 92,
+    "18": 56,
+    "24": 37
+  },
+  "all_gates_pass": false,
+  "audit_sha256": "46ba5c1eaf0f2d5dd1805cbd834bf9ee53b3c20370a2de5c74d05c4c6fdfe758",
+  "claim_id": "CLM-20260726-1919-ML-CONVEX-TREND-001",
+  "decision": "KILL_EXACT_CONVEX_TREND_ROUTE_NO_ADJACENT_TUNING",
+  "economic": {
+    "12": {
+      "pyramid": {
+        "final_nav": 10004.675893753278,
+        "geometric_daily_growth": 5.081318230404364e-06,
+        "liquidation": false,
+        "maximum_drawdown": 0.10354824969436693,
+        "maximum_leverage_used": 2.668831803942478,
+        "median_account_return_bps": -50.00000000000004,
+        "positive_month_count": 2,
+        "profit_factor": 1.001765261085646,
+        "total_return": 0.00046758937532787037,
+        "trade_count": 68,
+        "unit_count_distribution": {"1": 47, "2": 4, "3": 17},
+        "win_rate": 0.19117647058823528
+      },
+      "unit1": {
+        "final_nav": 9709.8781154353,
+        "geometric_daily_growth": -0.0003199636186321797,
+        "liquidation": false,
+        "maximum_drawdown": 0.09283259995839299,
+        "maximum_leverage_used": 0.9461072563240267,
+        "median_account_return_bps": -50.00000000000004,
+        "positive_month_count": 2,
+        "profit_factor": 0.8755025451798859,
+        "total_return": -0.029012188456470023,
+        "trade_count": 68,
+        "unit_count_distribution": {"1": 68, "2": 0, "3": 0},
+        "win_rate": 0.25
+      }
+    },
+    "18": {
+      "pyramid": {
+        "final_nav": 9841.363469775997,
+        "geometric_daily_growth": -0.00017379823802476935,
+        "liquidation": false,
+        "maximum_drawdown": 0.10121314010704408,
+        "maximum_leverage_used": 1.5067202808391265,
+        "median_account_return_bps": -50.00000000000004,
+        "positive_month_count": 2,
+        "profit_factor": 0.9141685207576795,
+        "total_return": -0.015863653022400337,
+        "trade_count": 47,
+        "unit_count_distribution": {"1": 34, "2": 2, "3": 11},
+        "win_rate": 0.1702127659574468
+      },
+      "unit1": {
+        "final_nav": 9696.5316452715,
+        "geometric_daily_growth": -0.0003349094897323601,
+        "liquidation": false,
+        "maximum_drawdown": 0.09064923962392035,
+        "maximum_leverage_used": 0.6396143235122533,
+        "median_account_return_bps": -50.00000000000004,
+        "positive_month_count": 2,
+        "profit_factor": 0.8188782355164307,
+        "total_return": -0.030346835472849998,
+        "trade_count": 47,
+        "unit_count_distribution": {"1": 47, "2": 0, "3": 0},
+        "win_rate": 0.23404255319148937
+      }
+    },
+    "24": {
+      "pyramid": {
+        "final_nav": 8866.44208926277,
+        "geometric_daily_growth": -0.0013068789245738177,
+        "liquidation": false,
+        "maximum_drawdown": 0.11581484739557202,
+        "maximum_leverage_used": 1.1807723185367327,
+        "median_account_return_bps": -50.00000000000004,
+        "positive_month_count": 0,
+        "profit_factor": 0.1995103885905184,
+        "total_return": -0.11335579107372307,
+        "trade_count": 35,
+        "unit_count_distribution": {"1": 27, "2": 2, "3": 6},
+        "win_rate": 0.14285714285714285
+      },
+      "unit1": {
+        "final_nav": 9073.200077195188,
+        "geometric_daily_growth": -0.0010566160737517372,
+        "liquidation": false,
+        "maximum_drawdown": 0.09419931465176179,
+        "maximum_leverage_used": 0.4723370868271202,
+        "median_account_return_bps": -49.999999999998934,
+        "positive_month_count": 0,
+        "profit_factor": 0.29154683095605183,
+        "total_return": -0.09267999228048118,
+        "trade_count": 35,
+        "unit_count_distribution": {"1": 35, "2": 0, "3": 0},
+        "win_rate": 0.17142857142857143
+      }
+    }
+  },
+  "economic_status": "CONFIRMATION_BELOW_GATE",
+  "event_counts": {"calibration": 212, "confirmation": 261, "fit": 411},
+  "evidence_zip_sha256": "91b30f2241acefdff775024aeb04b50802b75cc84ea12dc2936b7176bd52cb68",
+  "full_result_sha256": "0cf07abcb78add32e796282f6c551f66c60aa99cae67ee9d8a8c6dbc2955b021",
+  "gates": {
+    "accepted_trades_24bp_min_50": false,
+    "maximum_drawdown_24bp_max_25pct": true,
+    "no_liquidation": true,
+    "positive_brier_skill": false,
+    "positive_calendar_months_24bp_min_2": false,
+    "pyramid_beats_unit1_total_24bp": false,
+    "pyramid_beats_unit1_winner_removed_24bp": false,
+    "pyramid_geometric_daily_growth_24bp_min_0_1pct": false,
+    "pyramid_top10_removed_return_positive_24bp": false,
+    "pyramid_total_return_positive_18bp": false,
+    "pyramid_total_return_positive_24bp": false,
+    "resolved_labels_min_150": true,
+    "roc_auc_min_0_55": false
+  },
+  "hard_validity_status": "PASS_INITIAL_CAUSAL_CONFIRMATION",
+  "known_weaknesses": [
+    "Binance USD-M OHLCV and taker-flow proxy only",
+    "actual Bybit funding and native execution were not opened because confirmation failed",
+    "negative out-of-sample model skill",
+    "pyramiding amplified rather than cured losses"
+  ],
+  "label_counts": {
+    "calibration": {"0": 137, "1": 75},
+    "confirmation": {"0": 185, "1": 76},
+    "fit": {"0": 299, "1": 112}
+  },
+  "model": {
+    "calibration_probability_max": 0.4329896907216495,
+    "calibration_probability_median": 0.3333333333333333,
+    "calibration_probability_min": 0.0,
+    "confirmation_auc": 0.513157894736842,
+    "confirmation_base_brier": 0.20639743984967926,
+    "confirmation_base_rate": 0.29118773946360155,
+    "confirmation_brier": 0.2184417625670372,
+    "confirmation_brier_skill": -0.058355000556837844,
+    "features": [
+      "atr_compression",
+      "balance_width_atr",
+      "breakout_distance_atr",
+      "body_efficiency",
+      "volume_surprise",
+      "taker_imbalance",
+      "path_efficiency_12",
+      "ema_distance_atr",
+      "cross_asset_breadth",
+      "btc_return_2h",
+      "asset_minus_btc_return_2h",
+      "prior_false_break_count"
+    ]
+  },
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "partitions": {
+    "calibration": ["2023-07-01T00:00:00Z", "2023-10-01T00:00:00Z"],
+    "fit": ["2023-01-01T00:00:00Z", "2023-07-01T00:00:00Z"],
+    "untouched_confirmation": ["2023-10-01T00:00:00Z", "2024-01-01T00:00:00Z"]
+  },
+  "preregistration_sha256": "f0e20d004078139de5552b8872c96a1649e2fa919dd890b62f438b7bfc60eea8",
+  "ranking_role": "NONE_PRE2024_CONFIRMATION",
+  "result_id": "RES-20260726-ML-CONVEX-TREND-001",
+  "runner_source_sha256": "15ffbd9ac15372297a994588fc7edd6b3b9b6c112c29a81c6016fb50aaf87d1a",
+  "source_artifact": {
+    "artifact_id": 8616632878,
+    "artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "workflow_run_id": 30147824722
+  },
+  "status": "CONFIRMATION_BELOW_GATE",
+  "summary": "One fixed HGBT plus isotonic calibration scored causal 30-minute balance-to-displacement events. Anti-martingale additions at completed +1R/+2R worsened the exact same ML-selected unit-one path. Confirmation model skill was near random and 2024-2026 remained sealed.",
+  "winner_removed_24bp": {
+    "excluded_event_keys": [
+      "327ec46dd760a4e4d5c7",
+      "88358e73e8fb444ff608",
+      "b8e4403e119342c4ba74",
+      "f8fb9cae39ef8ae884ce"
+    ],
+    "pyramid": {
+      "final_nav": 8622.098366621593,
+      "geometric_daily_growth": -0.0016101871243662247,
+      "maximum_drawdown": 0.13904715394010714,
+      "profit_factor": 0.010407454855982202,
+      "total_return": -0.13779016333784078,
+      "trade_count": 31
+    },
+    "unit1": {
+      "final_nav": 8798.801111935985,
+      "geometric_daily_growth": -0.0013900071533700098,
+      "maximum_drawdown": 0.12140264038712245,
+      "profit_factor": 0.06400428436291301,
+      "total_return": -0.12011988880640145,
+      "trade_count": 31
+    }
+  }
+}
