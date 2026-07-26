@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-UNISWAP-SHA-SCOPED-003",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "timing": "BEFORE_ANY_DECODED_SOURCE_RESULT_OR_MARKET_OUTCOME",
+  "observed_problem": "An outcome-sealed source-gate run was cancelled when a later pre-outcome metadata commit shared branch/PR concurrency with cancel-in-progress enabled. No decoded Swap count, ETH price, label, model metric, trade or PnL existed.",
+  "change": [
+    "Scope workflow concurrency to immutable github.sha.",
+    "Disable cancel-in-progress so later metadata commits cannot terminate an already-running source gate."
+  ],
+  "unchanged": [
+    "canonical factory, WETH, USDC and USDT identities",
+    "factory-resolved pools and fee tiers",
+    "six frozen pre-2024 one-hour windows",
+    "Swap ABI and source density gates",
+    "120-second information delay",
+    "conditional one-model chronology and account contract",
+    "2024H1 sequential opening rule after complete pre-2024 freeze",
+    "credentials and order prohibition"
+  ],
+  "source_result_opened_before_change": false,
+  "market_outcomes_opened_before_change": false,
+  "orders_submitted": false
+}
