@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-CAUSAL-VISIBLE-019",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:17:00+09:00",
+  "status": "PRE_OUTCOME_EXECUTION_ONLY",
+  "reason": "The existing visible ranking workflow still pinned rejected economic commit 6cbff14ed8dd5ebba3b6b47bf6854bf090e4db2c. Before any decision-ready source PASS or economic result, this correction pins the corrected causal engine and one exact source snapshot on latest main.",
+  "source_sha": "7bdf54c93607d6d71e8e9f35b66fd9c2c464e637",
+  "economic_sha": "b7f67a4e89c731b1d322a6e0ace86f41f32b7bc8",
+  "source_contract": {
+    "usdt_mint": "Issue(uint256)",
+    "usdt_burn": "Redeem(uint256)",
+    "usdc_mint_burn": "zero-address ERC20 Transfer",
+    "ordinary_usdt_transfer_excluded": true,
+    "availability_blocks": [12, 64],
+    "history": "2021-01-01 through 2023-12-31 only"
+  },
+  "economic_corrections": {
+    "features": "last completed minute before next-minute-open entry",
+    "stage_boundary": "mark to market without asserting a strategy exit",
+    "elapsed_time_liquidation": false,
+    "forced_boundary_close": false
+  },
+  "unchanged": [
+    "one HGBT model family and one calibration rule",
+    "BTCUSDT and ETHUSDT under one global slot",
+    "12/18/24bp paths",
+    "structural target and stop",
+    "risk/notional search only after positive robust base alpha",
+    "official 2024H1 opens immediately only for a pre-2024 survivor",
+    "no credentials or orders"
+  ],
+  "authority_before_correction": {
+    "source_decision_ready": false,
+    "market_outcome_opened": false,
+    "model_metric_opened": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  }
+}
