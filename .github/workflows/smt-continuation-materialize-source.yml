@@ -1,0 +1,52 @@
+name: SMT continuation materialize audited source
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-continuation-ml-meta-001
+    paths:
+      - ".github/workflows/smt-continuation-materialize-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: smt-continuation-materialize-source
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-smt-continuation-ml-meta-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reconstruct immutable source and verify hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/smt_continuation_ml_meta_20260726
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/extract.py" "$root/train.py"
+          sha256sum "$root/extract.py" "$root/train.py" > "$root/MATERIALIZED_SOURCE_SHA256SUMS.txt"
+      - name: Commit readable audited source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research/smt_continuation_ml_meta_20260726/extract.py \
+            research/smt_continuation_ml_meta_20260726/train.py \
+            research/smt_continuation_ml_meta_20260726/MATERIALIZED_SOURCE_SHA256SUMS.txt
+          if git diff --cached --quiet; then
+            echo "No materialization change"
+            exit 0
+          fi
+          git commit -m "Materialize hash-verified SMT continuation source"
+          git push origin HEAD:agent/r11-smt-continuation-ml-meta-001
