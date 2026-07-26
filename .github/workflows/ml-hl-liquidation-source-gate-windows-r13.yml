@@ -7,13 +7,18 @@ on:
     paths:
       - 'research/ml_hl_liquidation_20260726/**'
       - '.github/workflows/ml-hl-liquidation-source-gate-windows-r13.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_hl_liquidation_20260726/**'
+      - '.github/workflows/ml-hl-liquidation-source-gate-windows-r13.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ml-hl-liquidation-source-windows-r13-${{ github.ref }}
+  group: ml-hl-liquidation-source-windows-r13-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
