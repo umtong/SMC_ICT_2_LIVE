@@ -1,10 +1,11 @@
-schema_version = 5
+schema_version = 6
 
 [objective]
 metric = "account_nav_geometric_daily_growth"
 target = 0.01
-calendar = "trading_days"
+calendar = "all_utc_calendar_days"
 fees_and_execution_costs_included = true
+continuous_nav = true
 
 [hard_validity]
 causal_information_only = true
@@ -16,8 +17,11 @@ invalid_if_violated = true
 [ranking]
 definition = "ordered_hard_valid_strategy_or_portfolio_candidates"
 first_place_role = "current_result_closest_to_full_project_objective"
-primary_metric = "realistic_after_cost_geometric_daily_growth_gap_to_target"
+primary_metric = "maximum_sustainable_realistic_after_cost_geometric_daily_growth_and_account_multiple"
 primary_target = 0.01
+below_target_higher_growth_and_smaller_shortfall_preferred = true
+above_target_higher_sustainable_growth_preferred = true
+absolute_distance_to_target_is_not_minimized = true
 hard_invalid_candidates_excluded = true
 survival_qualified_candidate_cannot_be_outranked_by_forced_liquidation_raw_return = true
 first_place_target_attainment_required = false
@@ -66,7 +70,7 @@ required = [
 ]
 
 [stage.promising]
-entry_condition = "positive_after_basic_cost_with_sufficient_sample"
+entry_condition = "positive_after_basic_cost_with_sufficient_sample_or_high_information_value_structural_path"
 required = [
   "sequential_out_of_sample",
   "parameter_neighborhood",
@@ -83,6 +87,27 @@ required = [
   "top_1_5_10pct_trade_removal",
   "latency_partial_fill_liquidity_capacity_stress",
   "independent_replication_when_material",
+]
+
+[sequential_research]
+mode = "causal_half_year_research"
+official_start = "2024-01-01T00:00:00Z"
+official_end_exclusive = "2026-07-01T00:00:00Z"
+first_official_interval = "2024H1"
+nav_continuous_without_halfyear_reset = true
+all_utc_calendar_days_in_growth_metric = true
+promising_candidate_evaluated_without_oos_preservation_delay = true
+seen_interval_may_inform_next_research_decision = true
+modified_strategy_cannot_relabel_seen_interval_as_fresh_independent_oos = true
+structurally_distant_result_triggers_alpha_switch = true
+promising_result_advances_using_information_available_at_next_cutoff = true
+oos_principle_role = "distinguish_seen_research_evidence_from_unseen_independent_validation_not_block_evaluation"
+intervals = [
+  { id = "2024H1", start = "2024-01-01T00:00:00Z", end_exclusive = "2024-07-01T00:00:00Z", information_cutoff = "2023-12-31T23:59:59Z" },
+  { id = "2024H2", start = "2024-07-01T00:00:00Z", end_exclusive = "2025-01-01T00:00:00Z", information_cutoff = "2024-06-30T23:59:59Z" },
+  { id = "2025H1", start = "2025-01-01T00:00:00Z", end_exclusive = "2025-07-01T00:00:00Z", information_cutoff = "2024-12-31T23:59:59Z" },
+  { id = "2025H2", start = "2025-07-01T00:00:00Z", end_exclusive = "2026-01-01T00:00:00Z", information_cutoff = "2025-06-30T23:59:59Z" },
+  { id = "2026H1", start = "2026-01-01T00:00:00Z", end_exclusive = "2026-07-01T00:00:00Z", information_cutoff = "2025-12-31T23:59:59Z" },
 ]
 
 [account_quality]
