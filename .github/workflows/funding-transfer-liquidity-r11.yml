@@ -1,4 +1,4 @@
-name: Bybit exact funding-transfer liquidity fatal screen
+name: Bybit exact funding-transfer liquidity research
 
 on:
   push:
@@ -49,18 +49,30 @@ jobs:
             "requests==2.32.4" \
             "pytest==8.3.4"
 
-      - name: Compile, test and run causal self-test
+      - name: Compile and test frozen contracts
         run: |
           set -euo pipefail
           root=research/funding_transfer_liquidity_20260726
-          python -m py_compile "$root/run_screen.py" "$root/test_run_screen.py" "$root/probe_tardis_derivative_ticker.py"
-          python -m pytest -q "$root/test_run_screen.py"
+          python -m py_compile \
+            "$root/run_screen.py" \
+            "$root/test_run_screen.py" \
+            "$root/probe_tardis_derivative_ticker.py" \
+            "$root/run_tardis_sparse_screen.py" \
+            "$root/test_tardis_sparse_screen.py"
+          python -m pytest -q \
+            "$root/test_run_screen.py" \
+            "$root/test_tardis_sparse_screen.py"
           mkdir -p research_runs/funding_transfer_liquidity/self_test
           python "$root/run_screen.py" \
             --self-test \
-            --output research_runs/funding_transfer_liquidity/self_test \
-            --cache "$RUNNER_TEMP/funding-transfer-cache"
-          (cd research_runs/funding_transfer_liquidity/self_test && sha256sum --check SHA256SUMS.txt)
+            --output research_runs/funding_transfer_liquidity/self_test/api_contract \
+            --cache "$RUNNER_TEMP/funding-transfer-api-cache"
+          python "$root/run_tardis_sparse_screen.py" \
+            --self-test \
+            --output research_runs/funding_transfer_liquidity/self_test/tardis_sparse \
+            --cache "$RUNNER_TEMP/funding-transfer-tardis-cache"
+          (cd research_runs/funding_transfer_liquidity/self_test/api_contract && sha256sum --check SHA256SUMS.txt)
+          (cd research_runs/funding_transfer_liquidity/self_test/tardis_sparse && sha256sum --check SHA256SUMS.txt)
 
       - name: Run outcome-free Tardis derivative-ticker schema probe
         run: |
@@ -84,24 +96,24 @@ jobs:
           print(json.dumps(probe["field_summary"], sort_keys=True))
           PY
 
-      - name: Run frozen official pre-2024 API screen
+      - name: Run frozen Tardis monthly first-day sparse screen
         run: |
           set -euo pipefail
           root=research/funding_transfer_liquidity_20260726
-          mkdir -p research_runs/funding_transfer_liquidity/output
-          python "$root/run_screen.py" \
-            --output research_runs/funding_transfer_liquidity/output \
-            --cache "$RUNNER_TEMP/funding-transfer-cache" \
-            2>&1 | tee research_runs/funding_transfer_liquidity/screen.log
+          mkdir -p research_runs/funding_transfer_liquidity/tardis_sparse
+          python "$root/run_tardis_sparse_screen.py" \
+            --output research_runs/funding_transfer_liquidity/tardis_sparse \
+            --cache "$RUNNER_TEMP/funding-transfer-tardis-cache" \
+            2>&1 | tee research_runs/funding_transfer_liquidity/tardis_sparse.log
 
-      - name: Verify result safety and integrity
+      - name: Verify sparse result safety and integrity
         run: |
           set -euo pipefail
-          (cd research_runs/funding_transfer_liquidity/output && sha256sum --check SHA256SUMS.txt)
+          (cd research_runs/funding_transfer_liquidity/tardis_sparse && sha256sum --check SHA256SUMS.txt)
           python - <<'PY'
           import json
           from pathlib import Path
-          result = json.loads(Path("research_runs/funding_transfer_liquidity/output/RESULT.json").read_text())
+          result = json.loads(Path("research_runs/funding_transfer_liquidity/tardis_sparse/RESULT.json").read_text())
           assert result["candidate_count"] == 720
           assert result["2024_opened"] is False
           assert result["2025_or_2026_opened"] is False
@@ -113,9 +125,11 @@ jobs:
           }
           if result["status"] != "DATA_UNAVAILABLE":
               assert result["hard_validity_status"] == "PASS_INITIAL"
-              assert result["source_count"] == 12
+              assert result["source_count_total"] == 96
+              assert result["dependency_fingerprint"] == "ac4a68536463e12dc0fb897da7eca685964bf3f201a1c7cb8f71e8bb1be0db97"
           print(json.dumps({
               "status": result["status"],
+              "eligible_symbols": result.get("eligible_symbols"),
               "gate_pass_count": result.get("gate_pass_count"),
               "positive_candidate_counts": result.get("positive_candidate_counts"),
               "best_candidate": result.get("best_candidate"),
@@ -132,12 +146,17 @@ jobs:
             research/funding_transfer_liquidity_20260726/preregistration.json \
             research/funding_transfer_liquidity_20260726/AMENDMENT-001-SOURCE-TRANSPORT.json \
             research/funding_transfer_liquidity_20260726/AMENDMENT-002-TARDIS-SOURCE-PROBE.json \
+            research/funding_transfer_liquidity_20260726/AMENDMENT-003-TARDIS-SPARSE-SCREEN.json \
             research/funding_transfer_liquidity_20260726/README.md \
             research/funding_transfer_liquidity_20260726/run_screen.py \
             research/funding_transfer_liquidity_20260726/implementation.b64.part00 \
             research/funding_transfer_liquidity_20260726/implementation.b64.part01 \
             research/funding_transfer_liquidity_20260726/test_run_screen.py \
             research/funding_transfer_liquidity_20260726/probe_tardis_derivative_ticker.py \
+            research/funding_transfer_liquidity_20260726/run_tardis_sparse_screen.py \
+            research/funding_transfer_liquidity_20260726/tardis_sparse_impl.b64.part00 \
+            research/funding_transfer_liquidity_20260726/tardis_sparse_impl.b64.part01 \
+            research/funding_transfer_liquidity_20260726/test_tardis_sparse_screen.py \
             .github/workflows/funding-transfer-liquidity-r11.yml \
             > research_runs/funding_transfer_liquidity/INPUT_SHA256SUMS.txt
 
