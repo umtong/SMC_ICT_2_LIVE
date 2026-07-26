@@ -1,9 +1,8 @@
 name: Donchian official 2024H1 macOS parallel replay
 
 on:
-  push:
-    branches:
-      - agent/r15-donchian-validator-hook-001
+  pull_request:
+    branches: [main]
     paths:
       - '.github/workflows/donchian-2024h1-macos-parallel.yml'
       - 'research/donchian_2024h1_20260726/EXECUTION_CORRECTION_004_MACOS_PARALLEL_BEFORE_OUTCOME.json'
@@ -13,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: donchian-2024h1-macos-parallel-${{ github.sha }}
+  group: donchian-2024h1-macos-parallel-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: false
 
 jobs:
