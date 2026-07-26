@@ -7,6 +7,29 @@ from pathlib import Path
 
 import source_gate_blockscout as base
 
+OriginalBlockscoutClient = base.BlockscoutClient
+
+
+def eligible_boundary_block(block_number: int, timestamp: int, closest: str) -> int:
+    """Return the end-exclusive source block under the 64-block stress seal."""
+    if timestamp == base.auth.base.MAX_ALLOWED_TIMESTAMP and closest == "after":
+        if block_number < 64:
+            raise ValueError("invalid 2024 boundary block")
+        return block_number - 64
+    return block_number
+
+
+class BoundarySafeBlockscoutClient(OriginalBlockscoutClient):
+    def block_by_time(self, timestamp: int, closest: str) -> int:
+        observed = super().block_by_time(timestamp, closest)
+        return eligible_boundary_block(observed, timestamp, closest)
+
+
+# Preserve the original transport implementation while ensuring the last
+# included event can be confirmed under both +12 and +64 block rules before
+# the 2024 source boundary. The source module resolves this global at run time.
+base.BlockscoutClient = BoundarySafeBlockscoutClient
+
 source_gate = base.source_gate
 parse_int = base.parse_int
 parse_iso_timestamp = base.parse_iso_timestamp
@@ -22,6 +45,11 @@ def self_test() -> None:
         raise AssertionError("ISO timestamp parsing failed")
     if len(base.auth.FIXED_MONTHS) != 36:
         raise AssertionError("full 2021-2023 month contract missing")
+    boundary = base.auth.base.MAX_ALLOWED_TIMESTAMP
+    if eligible_boundary_block(18_000_000, boundary, "after") != 17_999_936:
+        raise AssertionError("64-block pre-2024 boundary was not applied")
+    if eligible_boundary_block(18_000_000, boundary - 1, "after") != 18_000_000:
+        raise AssertionError("non-boundary block was altered")
 
     fake = {
         "address": base.auth.CONTRACTS["USDT"]["address"],
@@ -41,7 +69,7 @@ def self_test() -> None:
         raise AssertionError(row["amount_usd"])
     if base.log_timestamp(fake) != expected:
         raise AssertionError("log timestamp parsing failed")
-    print("authoritative Blockscout source self-test passed")
+    print("authoritative boundary-safe Blockscout source self-test passed")
 
 
 def parse_args() -> argparse.Namespace:
