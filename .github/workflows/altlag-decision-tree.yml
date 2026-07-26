@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "research/bybit_altlag_decision_tree_20260726/**"
+      - "!research/bybit_altlag_decision_tree_20260726/observed/**"
       - ".github/workflows/altlag-decision-tree.yml"
   workflow_dispatch:
 
@@ -61,16 +62,16 @@ jobs:
           text=text.replace(old,new,1)
 
           old_acquire="""        status,payload,error=base._download(session,url,target)
-        if status!=200: raise RuntimeError(f'source unavailable {url}: {status} {error}')
-        rec=base.inspect_source(target,symbol,date,url,payload)
-        if not rec.timestamp_monotonic: raise RuntimeError(f'nonmonotonic {url}')
-        arrays[symbol]=base.aggregate(target,date); records.append(rec)
-"""
+          if status!=200: raise RuntimeError(f'source unavailable {url}: {status} {error}')
+          rec=base.inspect_source(target,symbol,date,url,payload)
+          if not rec.timestamp_monotonic: raise RuntimeError(f'nonmonotonic {url}')
+          arrays[symbol]=base.aggregate(target,date); records.append(rec)
+          """
           new_acquire="""        base._download(session,url,target)
-        day,rec=base.aggregate(target,symbol,date)
-        if not rec.timestamp_monotonic: raise RuntimeError(f'nonmonotonic {url}')
-        arrays[symbol]=day; records.append(rec)
-"""
+          day,rec=base.aggregate(target,symbol,date)
+          if not rec.timestamp_monotonic: raise RuntimeError(f'nonmonotonic {url}')
+          arrays[symbol]=day; records.append(rec)
+          """
           if old_acquire not in text:
               raise SystemExit('expected registered-base acquire interface mismatch not found')
           text=text.replace(old_acquire,new_acquire,1)
@@ -99,7 +100,7 @@ jobs:
           python scripts/validate_project.py
           sha256sum runtime/base_probe.py runtime/decision_tree.py research/bybit_altlag_decision_tree_20260726/preregistration.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_001.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_002.json > research_runs/bybit_altlag_decision_tree_20260726/INPUT_SHA256SUMS.txt
 
-      - name: Run fixed causal decision tree
+      - name: Run fixed causal decision tree after registered interface correction
         shell: bash
         run: |
           set -euo pipefail
