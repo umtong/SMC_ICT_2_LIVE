@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "PRE_OUTCOME_RUNTIME_CORRECTION_007_EXACT_FEATURE_ALIASES",
+  "timing": "after all three sources were downloaded and aggregated successfully, before any overreaction event, matrix row, model fit, score, action or PnL",
+  "failed_workflow_run": 30198446916,
+  "source_contract_audit": {
+    "workflow_run": 30198577188,
+    "artifact_id": 8630904496,
+    "artifact_digest": "sha256:f5a19749bf14a6625f83a306c46ac3a136db710ffadc3b6417b7e3c541c9d0bf",
+    "base_source_sha256": "5ecbfddf8443fd37b76514e30ab91028dda68e16a5e51eb63f7f76f0c073ad0f",
+    "rule_engine_sha256": "7a9c0dddb793a6943237344ced4b6b2ed4545493043a5c63c7a18692f0dd92f2",
+    "market_data_opened": false,
+    "model_fit_performed": false,
+    "pnl_computed": false
+  },
+  "audited_missing_keys": {
+    "under": "the exact existing underreaction numpy array",
+    "expected": "abs(beta * btc_return), the exact expression already computed inside the shared continuous_features function",
+    "leader_mark": "the original leader.mark numpy array"
+  },
+  "correction": "Wrap the unchanged shared continuous_features output, retain every returned key and array, and append only the three audited historical aliases required by the frozen parent rule engine.",
+  "invariants": [
+    "under and underreaction are the same numpy object",
+    "leader_mark and leader.mark are the same numpy object",
+    "expected uses no future value and depends only on the already-returned beta and btc_return arrays",
+    "no feature threshold, event definition, label, outcome, model, quantile, cost, risk or payoff changes",
+    "all 2023 and 2024-2026 sources remain unopened"
+  ],
+  "outcome_access_before_correction": {
+    "source_files_validated": true,
+    "aggregate_arrays_completed": true,
+    "overreaction_events_generated": false,
+    "matrix_rows_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false
+  },
+  "orders_submitted": false
+}
