@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-BINANCE-LIQ-COINM-CONTRACT-NOTIONAL-003",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_at": "2026-07-27T00:08:00+09:00",
+  "recorded_before_market_or_model_outcome": true,
+  "observed_before_correction": {
+    "source_gate_decision_observed": false,
+    "market_price_opened": false,
+    "future_label_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "problem": "Binance COIN-M liquidation quantity is a contract count, not a base-asset quantity. Multiplying liquidation price by quantity would create a dimensionally false USD notional and distort BTC-versus-ETH breadth and concentration features.",
+  "binding_rule": {
+    "raw_quantity_semantics": "contract_count",
+    "usd_notional": "contract_count * frozen exchangeInfo.contractSize",
+    "base_asset_quantity_diagnostic": "usd_notional / effective_price",
+    "contract_size_source": "Binance COIN-M /dapi/v1/exchangeInfo captured and hash-recorded before model fitting",
+    "prohibited_formula": "effective_price * contract_count",
+    "side_semantics": {
+      "SELL": "completed forced sell order from liquidated long inventory",
+      "BUY": "completed forced buy order from liquidated short inventory"
+    }
+  },
+  "unchanged": [
+    "COIN-M daily liquidationSnapshot source",
+    "BTCUSD_PERP and ETHUSD_PERP signal map",
+    "source chronology and information delay",
+    "one pooled HGBT and one calibration rule",
+    "structural target, stop and one global Bybit slot",
+    "12/18/24bp replay",
+    "no elapsed-time liquidation",
+    "2023-12-31 freeze and immediate official 2024H1",
+    "no credentials or orders"
+  ]
+}
