@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-ML-BINANCE-LIQ-SNAPSHOT-CENSORING-EXECUTED-FILL-004",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "recorded_at": "2026-07-27T00:24:00+09:00",
+  "timing": "BEFORE_ANY_DECISION_READY_SOURCE_PASS_MARKET_ROW_LABEL_MODEL_TRADE_OR_PNL",
+  "observed_before_correction": {
+    "decision_ready_source_pass": false,
+    "market_price_opened": false,
+    "future_label_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "authoritative_documentation": {
+    "liquidation_stream": "Binance COIN-M Liquidation Order Snapshot stream",
+    "sampling_rule": "For each symbol only the latest one liquidation order within each 1000ms interval is published; intervals without a liquidation publish nothing.",
+    "contract_size": "COIN-M exchangeInfo contractSize; quantity is a contract count."
+  },
+  "problems": [
+    "The public liquidationSnapshot archive is a censored one-per-symbol-per-second publication, not a complete liquidation ledger. Calling its sums total liquidation flow, total liquidation notional or market share would be false.",
+    "The parser previously fell back to original_quantity when both accumulated and last-filled quantity were zero, which could convert an unfilled liquidation order into fictitious executed forced flow.",
+    "The source workflow did not bind the pre-outcome COIN-M contract-notional correction into its validated and hashed input inventory."
+  ],
+  "binding_rules": {
+    "information_unit": "published forced-liquidation order snapshot state",
+    "coverage_interpretation": "censored lower-bound observation of forced activity; never complete exchange liquidation volume",
+    "feature_language": "all count, breadth, side-share, concentration and size features refer only to published executed snapshots",
+    "prohibited_inference": [
+      "total exchange liquidation volume",
+      "complete order count",
+      "cross-venue liquidation market share",
+      "absence of liquidations when no snapshot was published"
+    ],
+    "executed_contract_count": "accumulated_filled_quantity when positive, otherwise last_filled_quantity when positive; zero otherwise",
+    "original_quantity_fallback": false,
+    "zero_executed_rows": "retain only as source diagnostics; exclude from signal events and model rows",
+    "notional_normalization": "published executed contract count multiplied by separately hash-recorded exchangeInfo.contractSize; never price times contract count",
+    "side_semantics": {
+      "SELL": "published forced sell order, consistent with liquidated long inventory",
+      "BUY": "published forced buy order, consistent with liquidated short inventory"
+    },
+    "authority": "Only a source artifact generated from the current branch head containing corrections 003 and 004 may open the model stage. Earlier queued or completed artifacts are non-authoritative."
+  },
+  "unchanged": [
+    "BTCUSD_PERP and ETHUSD_PERP signal-only universe",
+    "Bybit BTCUSDT and ETHUSDT execution universe",
+    "fixed 2021-01-01 through 2023-12-31 chronology",
+    "one pooled HGBT and one isotonic calibration map",
+    "structural target, structural stop and one global slot",
+    "12, 18 and 24bp replay",
+    "risk and notional search only after positive base edge",
+    "immediate official 2024H1 after the pre-2024 system is frozen",
+    "no elapsed-time liquidation",
+    "no credentials and no orders"
+  ]
+}
