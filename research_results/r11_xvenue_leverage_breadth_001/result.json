@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-XVENUE-LEVERAGE-BREADTH-001",
+  "claim_id": "CLM-20260726-1047-XVENUE-LEVERAGE-BREADTH-001",
+  "worker_id": "gpt-5.6-pro-20260726-1047",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NOT_RANK_ELIGIBLE_SPARSE_PRE2024_FATAL_SCREEN",
+  "study": "Binance Futures–Bybit same-symbol cross-venue open-interest breadth and divergence",
+  "dependency_fingerprint": "2ca5c3f1ff0038bba73a07c5440ce09ff147e67b0fba7307d76d7711681c4a7f",
+  "evaluation_contract_sha256": "52dff3f80ea9e6a73cf448c3dfc25afa38054e51020248ed7166cc8dcfa8e716",
+  "implementation_sha256": "53980d59ac304cf5f992151e30480f876cfca61633c4a7c7b68af4c76c43e1ff",
+  "source_manifest_sha256": "93343fec146d3289276e58860694f38a0efd6d188bb381f4f9e532dc68bbc538",
+  "producing_commit": "12d1a6a7e4cf224ea4e5ff0ea828d477a7db92e0",
+  "workflow_run_id": 30183867967,
+  "workflow_artifact_id": 8626465316,
+  "workflow_artifact_digest": "sha256:f6c8420f40d884b1fcbfbf58894e45833d0b7df8e3ecfbae1ebdd75eec99ccb9",
+  "drive_evidence_id": "1Dr-UhGeEijdcItHBsGUILHi5E5mfTpaC",
+  "data_contract": {
+    "signal_venues": ["binance-futures", "bybit"],
+    "execution_venue": "bybit",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "source": "Tardis public first-day normalized trades, quotes and derivative_ticker",
+    "fit_dates": ["2023-01-01", "2023-03-01", "2023-05-01"],
+    "development_dates": ["2023-07-01", "2023-09-01", "2023-11-01"],
+    "source_file_count": 60,
+    "availability_clock": "local_timestamp within each same-region Binance/Bybit source",
+    "later_periods": "2024-2026 sealed"
+  },
+  "screen": {
+    "candidate_count": 1920,
+    "raw_event_counts": {"1s": 930, "2s": 1038, "5s": 940},
+    "gate_pass_count": 0,
+    "positive_candidate_count_12bps_development": 0,
+    "positive_candidate_count_18bps_development": 0,
+    "positive_candidate_count_24bps_development": 0,
+    "candidate_count_with_fit_and_development_minimum_sample": 768,
+    "family_opportunity": {
+      "binance_oi_lead_continuation": {
+        "maximum_selected_events": 548,
+        "maximum_accepted_trades": 540,
+        "candidate_count_with_fit_and_development_minimum_sample": 384
+      },
+      "bybit_specific_opening_trap": {
+        "maximum_selected_events": 484,
+        "maximum_accepted_trades": 479,
+        "candidate_count_with_fit_and_development_minimum_sample": 384
+      },
+      "common_opening_continuation": {
+        "maximum_selected_events": 13,
+        "maximum_accepted_trades": 13,
+        "candidate_count_with_fit_and_development_minimum_sample": 0
+      },
+      "common_closing_cascade": {
+        "maximum_selected_events": 0,
+        "candidate_count_with_fit_and_development_minimum_sample": 0
+      },
+      "common_closing_exhaustion": {
+        "maximum_selected_events": 0,
+        "candidate_count_with_fit_and_development_minimum_sample": 0
+      }
+    }
+  },
+  "best_sampled_candidate": {
+    "candidate_id": "c2c9c442aab4efc521f8",
+    "family": "binance_oi_lead_continuation",
+    "window_seconds": 2,
+    "oi_z": 2.5,
+    "flow_imbalance": 0.6,
+    "flow_size": 3.0,
+    "move_spreads": 4.0,
+    "venue_relation": 0.65,
+    "latency_ms": 500,
+    "target_r": 2.0,
+    "selected_events": 171,
+    "accepted_trades": 169,
+    "fit": {
+      "trades": 86,
+      "total_return_12bps": -0.0169101970852004,
+      "total_return_18bps": -0.0275282669940788,
+      "total_return_24bps": -0.0373104966973094,
+      "geometric_growth_per_sample_day_18bps": -0.0092616014478015,
+      "profit_factor_18bps": 0.00002663804684753316,
+      "median_account_return_bps_18bps": -1.6452039180725464,
+      "positive_sample_days_18bps": 0,
+      "return_after_top10_positive_removal_18bps": -0.0275289903290105,
+      "unresolved_share": 0.0232558139534883
+    },
+    "development": {
+      "trades": 83,
+      "total_return_12bps": -0.0234402940675996,
+      "total_return_18bps": -0.0352227426014003,
+      "total_return_24bps": -0.0464392897486266,
+      "geometric_growth_per_sample_day_18bps": -0.0118815257469553,
+      "profit_factor_18bps": 0.0025348282634378,
+      "median_account_return_bps_18bps": -1.6287893197586278,
+      "positive_sample_days_18bps": 0,
+      "return_after_top10_positive_removal_18bps": -0.0353122456710772,
+      "maximum_drawdown_18bps": 0.0352321898636004,
+      "unresolved_share": 0.0
+    }
+  },
+  "best_bybit_specific_trap": {
+    "candidate_id": "a1a4de8fec099090a33f",
+    "fit_trades_18bps": 95,
+    "fit_total_return_18bps": -0.0898572581244592,
+    "development_trades_18bps": 75,
+    "development_total_return_18bps": -0.0406315689245866,
+    "development_total_return_24bps": -0.0517609461248248,
+    "development_profit_factor_18bps": 0.0,
+    "development_positive_days_18bps": 0
+  },
+  "causal_and_execution_checks": {
+    "compiled": true,
+    "deterministic_tests_passed": 9,
+    "within_venue_prior_only_oi_scaling": true,
+    "cross_venue_oi_state_required_for_every_event": true,
+    "candidate_specific_threshold_transitions": true,
+    "historical_bybit_funding_applied": true,
+    "one_global_slot": true,
+    "same_timestamp_reentry_prohibited": true,
+    "bybit_bbo_freshness_limit_seconds": 1,
+    "adverse_stop_rebound": true,
+    "observed_spread_plus_cost_stress_bps": [12, 18, 24],
+    "orders_submitted": false
+  },
+  "ranking_decision": {
+    "ranking_changed": false,
+    "reason": "No candidate was positive in development at any tested cost. The two sufficiently sampled directional mechanisms were decisively negative in both fit and development, while common cross-venue OI states lacked opportunity breadth."
+  },
+  "retirement_boundary": "Close adjacent Binance–Bybit same-symbol OI-breadth/divergence, 1/2/5-second window, 100/500ms latency, 1R/2R target and threshold tuning under this dependency fingerprint. Reopen only with a materially different information source or payoff.",
+  "summary": "A hard-valid initial cross-venue screen aligned same-symbol Binance Futures and Bybit open-interest innovations with venue-specific aggressive flow across 1,920 frozen policies. Zero candidate was positive in development at 12, 18 or 24 bps. The best adequately sampled Binance-OI lead policy lost 2.75% in fit and 3.52% in development at 18 bps, with zero positive sample days, near-zero profit factor and negative top-trade-removal performance. Common closing breadth states produced no threshold-qualified opportunities. 2024-2026 remained sealed, no orders were submitted, the strategy ranking did not change and this exact dependency is retired."
+}
