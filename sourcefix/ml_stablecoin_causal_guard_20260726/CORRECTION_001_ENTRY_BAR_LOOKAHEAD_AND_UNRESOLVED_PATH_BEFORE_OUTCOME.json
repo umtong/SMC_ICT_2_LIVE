@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "execution_id": "EXEC-20260726-ML-STABLECOIN-ECONOMIC-001",
+  "correction_id": "CORRECTION-20260726-ML-STABLECOIN-ENTRY-BAR-CAUSALITY-001",
+  "recorded_at": "2026-07-26T23:59:00+09:00",
+  "recorded_before_source_pass_consumption": true,
+  "recorded_before_market_download": true,
+  "recorded_before_label_computation": true,
+  "recorded_before_model_fit": true,
+  "recorded_before_trade_or_pnl": true,
+  "recorded_before_official_2024h1": true,
+  "problem": {
+    "entry": "the next exact one-minute open after the finalized on-chain decision",
+    "leak": "prior_15m_return, prior_60m_realized_volatility, prior_60m_path_efficiency and their BTC/ETH breadth derivative were indexed at the entry minute and therefore included that minute's not-yet-completed close",
+    "additional_contract_violation": "a selected target/stop path unresolved at a chronological stage boundary was represented as a synthetic full stop at the boundary even though elapsed-time liquidation is prohibited"
+  },
+  "frozen_fix": {
+    "feature_shift": "shift only ret15, vol60 and path-efficiency arrays by one completed bar; prior 60-minute high/low arrays were already shifted and remain unchanged",
+    "entry_target_stop": "unchanged",
+    "model_family_hyperparameters": "unchanged",
+    "calibration": "unchanged",
+    "costs": "unchanged",
+    "risk_grid": "unchanged",
+    "unresolved_selected_path": "fatal invalidation of the stage; the synthetic boundary stop may not authorize a survivor",
+    "rerun_authority": "only the guarded workflow may consume the current-head source PASS"
+  },
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024h1_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
