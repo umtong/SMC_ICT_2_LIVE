@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 11,
+  "revision": 12,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260726-R11",
+  "ranking_id": "STRATEGY-RANKING-20260726-R12",
   "ranking_rule": {
     "eligibility": "hard_valid_strategy_or_portfolio_result",
     "primary_objective": "minimum_distance_to_full_project_objective",
@@ -105,6 +105,15 @@
     },
     {
       "rank": 4,
+      "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001",
+      "candidate_label": "exhaustion_reversal 0c0b773a5be4eab4",
+      "geometric_daily_growth": 0.0000358316,
+      "target_gap": 0.0099641684,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "PROVISIONAL_SPARSE_FIRST_DAY_MONTHLY_DEVELOPMENT_WITH_FIT_SIGN_REVERSAL"
+    },
+    {
+      "rank": 5,
       "source_result_id": "RES-20260726-DVOL-XSEC-001",
       "candidate_label": "LOW_VRP_RESIDUAL_CONTINUATION 1b4ec83c59bb98660c23",
       "geometric_daily_growth": 3.400166161160456e-05,
@@ -113,7 +122,7 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT"
     },
     {
-      "rank": 5,
+      "rank": 6,
       "source_result_id": "RES-20260725-ALPHA-HYP-001",
       "candidate_label": "high_resistance_sweep c232ae43b7a1401d",
       "geometric_daily_growth": 2.45553331665e-05,
@@ -122,7 +131,7 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 6,
+      "rank": 7,
       "source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
       "candidate_label": "fragmented_flow_reversal 95f3b144d5a291abc61c",
       "geometric_daily_growth": 2.053283367287051e-05,
@@ -131,7 +140,7 @@
       "comparison_status": "PROVISIONAL_FOUR_TRADES_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT"
     },
     {
-      "rank": 7,
+      "rank": 8,
       "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
       "candidate_label": "balance_to_imbalance best nonzero specification",
       "geometric_daily_growth": -0.000719,
@@ -140,7 +149,7 @@
       "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT"
     },
     {
-      "rank": 8,
+      "rank": 9,
       "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
       "candidate_label": "leader-shock underreaction best recorded configuration",
       "geometric_daily_growth": -0.01483,
@@ -157,6 +166,18 @@
     {
       "source_result_id": "result-20260725-002-funding-settlement-invalid",
       "reason": "No normalized account-level geometric daily-growth metric is recorded for ranking."
+    },
+    {
+      "source_result_id": "RES-20260725-XSEC-FUNDING-CROWDING-001",
+      "reason": "The recorded 10-symbol cross-sectional account is outside the fixed four-symbol tradable universe and is not normalized into the project strategy ranking."
+    },
+    {
+      "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001",
+      "reason": "The positive path is explicitly a non-rank-eligible Binance execution proxy rather than a Bybit account result."
+    },
+    {
+      "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001",
+      "reason": "The result is explicitly registered as a non-rank-eligible pre-2024 discovery screen."
     }
   ],
   "component_rankings": [
@@ -168,10 +189,12 @@
       "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag by +0.200 bp in development, +0.199 bp in validation and +0.149 bp in confirmation, while remaining unsuitable as a standalone strategy."
     }
   ],
-  "updated_at": "2026-07-26T02:29:00+09:00",
+  "updated_at": "2026-07-26T20:00:23+09:00",
   "reconciliation_notes": [
-    "Inserted hard-valid RES-20260726-FLOW-IMPACT-EFFICIENCY-001 at provisional rank 6 by raw after-cost daily-growth target proximity.",
-    "The four-trade candidate failed sample, concentration, top-trade-removal and half-year gates; no later stage opened and adjacent threshold tuning is retired.",
-    "First place and its qualification, economic failure and deployability status are unchanged."
+    "Inserted hard-valid RES-20260726-LIQUIDATION-REFILL-001 at provisional rank 4 by its 18-bp full-calendar development geometric daily growth of 0.00358316%.",
+    "The inserted candidate is extremely low confidence: 19 development trades, only eight active sample days, fit return -7.3546%, top-10%-winner-removal return -0.00783646%, and no validation or 2024-2026 opening.",
+    "Shifted the former ranks 4-8 to ranks 5-9 without changing their recorded metrics.",
+    "Explicitly retained out-of-scope, proxy and non-rank-eligible positive screens outside the strategy ranking rather than silently discarding them.",
+    "First place and its qualification stage, economic failure and deployment status are unchanged."
   ]
 }
