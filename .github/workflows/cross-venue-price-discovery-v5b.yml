@@ -6,13 +6,135 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: cross-venue-exact-arrival-v5d-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  ROOT: research/cross_venue_price_discovery_20260725
+  RUNROOT: research_runs/cross_venue_price_discovery_20260725/exact_arrival_v5d_parallel
+  PYTHONHASHSEED: "0"
+  PYTHONUNBUFFERED: "1"
+  PYTHONFAULTHANDLER: "1"
+
 jobs:
-  authoritative-v5d:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
+
+      - name: Validate unchanged scientific engine and parallel wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            "$ROOT/cross_venue_pilot.py" \
+            "$ROOT/cross_venue_pilot_v2.py" \
+            "$ROOT/cross_venue_development_v2.py" \
+            "$ROOT/source_probe_v2.py" \
+            "$ROOT/cross_venue_execution_v5.py" \
+            "$ROOT/cross_venue_signals_v5b.py" \
+            "$ROOT/cross_venue_execution_v5b.py" \
+            "$ROOT/cross_venue_pilot_v5.py" \
+            "$ROOT/cross_venue_development_v5.py" \
+            "$ROOT/cross_venue_execution_v5c.py" \
+            "$ROOT/cross_venue_pilot_v5c.py" \
+            "$ROOT/cross_venue_development_v5c.py" \
+            "$ROOT/cross_venue_signals_v5d.py" \
+            "$ROOT/cross_venue_basis_v5d.py" \
+            "$ROOT/cross_venue_execution_v5d.py" \
+            "$ROOT/cross_venue_failclosed_v5d.py" \
+            "$ROOT/cross_venue_performance_v5d.py" \
+            "$ROOT/cross_venue_pilot_cache_v5d.py" \
+            "$ROOT/cross_venue_pilot_v5d.py" \
+            "$ROOT/cross_venue_counterfactual_v5d.py" \
+            "$ROOT/cross_venue_development_v5d.py" \
+            "$ROOT/cross_venue_pilot_v5e_day.py" \
+            "$ROOT/cross_venue_pilot_v5e_aggregate.py"
+          PYTHONPATH="$ROOT" pytest -q \
+            "$ROOT/test_cross_venue_execution_v5.py" \
+            "$ROOT/test_cross_venue_execution_v5b.py" \
+            "$ROOT/test_cross_venue_development_v5b.py" \
+            "$ROOT/test_cross_venue_execution_v5c.py" \
+            "$ROOT/test_cross_venue_development_v5c.py" \
+            "$ROOT/test_cross_venue_execution_v5d.py" \
+            "$ROOT/test_cross_venue_development_v5d.py" \
+            "$ROOT/test_cross_venue_performance_v5d.py" \
+            "$ROOT/test_cross_venue_pilot_cache_v5d.py"
+          PYTHONPATH="$ROOT" python "$ROOT/source_probe_v2.py" --self-test --output /tmp/xvenue-v5d-probe-self-test
+          PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_aggregate.py" self-test
+          python scripts/validate_project.py
+
+  pilot-day:
+    needs: validate
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        day: ["2022-01-01", "2022-07-01", "2023-01-01", "2023-07-01"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixed environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/xvenue-v5d-${{ matrix.day }}
+          key: xvenue-v5d-${{ matrix.day }}-${{ hashFiles('research/cross_venue_price_discovery_20260725/*.py', 'research/cross_venue_price_discovery_20260725/*.md') }}
+
+      - name: Replay one frozen date with the exact V5D engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNROOT/pilot_shards/${{ matrix.day }}"
+          cache="${RUNNER_TEMP}/xvenue-v5d-${{ matrix.day }}"
+          rm -rf "$out"
+          mkdir -p "$out"
+          PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_day.py" \
+            --day "${{ matrix.day }}" \
+            --output "$out" \
+            --cache "$cache" \
+            2>&1 | tee "$out/run.log"
+          find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cross-venue-v5d-pilot-${{ matrix.day }}-${{ github.sha }}
+          path: ${{ env.RUNROOT }}/pilot_shards/${{ matrix.day }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+  aggregate-and-develop:
+    needs: [validate, pilot-day]
     runs-on: ubuntu-latest
     timeout-minutes: 340
     steps:
@@ -25,32 +147,138 @@ jobs:
           python-version: "3.11"
 
       - name: Install fixed environment
-        shell: bash
         run: |
           set -euo pipefail
           python -m pip install --upgrade "pip==25.1.1"
-          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
+          python -m pip install "numpy==2.1.3" "pandas==2.2.3" "requests==2.32.4"
 
-      - name: Run authoritative V5D contract
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cross-venue-v5d-pilot-*-${{ github.sha }}
+          path: ${{ env.RUNROOT }}/pilot_parts
+          merge-multiple: false
+
+      - name: Aggregate exact ledgers and conditionally open development
         shell: bash
         run: |
           set -euo pipefail
-          bash research/cross_venue_price_discovery_20260725/run_v5d_ci.sh
+          pilot="$RUNROOT/pilot"
+          development="$RUNROOT/development"
+          cache="${RUNNER_TEMP}/xvenue-v5d-development"
+          rm -rf "$pilot" "$development"
+          mkdir -p "$pilot" "$development"
+          PYTHONPATH="$ROOT" python "$ROOT/cross_venue_pilot_v5e_aggregate.py" run \
+            --input-root "$RUNROOT/pilot_parts" \
+            --output "$pilot" \
+            2>&1 | tee "$pilot/aggregate.log"
+
+          fatal=$(python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNROOT"])
+          result = json.loads((root / "pilot" / "PILOT_RESULT.json").read_text())
+          print(int(result.get("fatal_edge_pass_count", 0)))
+          PY
+          )
+
+          if [[ "$fatal" -gt 0 ]]; then
+            PYTHONPATH="$ROOT" python "$ROOT/cross_venue_development_v5d.py" \
+              --pilot-dir "$pilot" \
+              --output "$development" \
+              --cache "$cache" \
+              2>&1 | tee "$development/run.log"
+          else
+            python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNROOT"])
+          payload = {
+              "schema_version": 1,
+              "claim_id": "CLM-20260725-1850-XVENUE-001",
+              "stage": "DEVELOPMENT_NOT_OPENED_V5D_PILOT_BELOW_GATE",
+              "causal_engine_version": "5D",
+              "development_opened": False,
+              "development_gate_pass_count": 0,
+              "selection_opened": False,
+              "confirmation_opened": False,
+              "2026_opened": False,
+              "orders_submitted": False,
+              "ranking_eligible": False,
+          }
+          path = root / "development" / "DEVELOPMENT_RESULT.json"
+          path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+          PY
+          fi
+
+          python - <<'PY'
+          import json, os, platform, sys
+          from pathlib import Path
+          import numpy, pandas, requests
+          root = Path(os.environ["RUNROOT"])
+          pilot = json.loads((root / "pilot" / "PILOT_RESULT.json").read_text())
+          development = json.loads((root / "development" / "DEVELOPMENT_RESULT.json").read_text())
+          payload = {
+              "schema_version": 1,
+              "claim_id": "CLM-20260725-1850-XVENUE-001",
+              "stage": development["stage"],
+              "causal_version": 5,
+              "causal_engine_version": "5D",
+              "pilot_fatal_edge_pass_count": int(pilot.get("fatal_edge_pass_count", 0)),
+              "development_opened": bool(development.get("development_opened", False)),
+              "development_gate_pass_count": int(development.get("development_gate_pass_count", 0)),
+              "selection_opened": False,
+              "confirmation_opened": False,
+              "2026_opened": False,
+              "orders_submitted": False,
+              "paper_live_started": False,
+              "ranking_eligible": False,
+              "earlier_engine_outputs_admissible": False,
+              "parallelization_contract": pilot.get("parallelization_contract"),
+              "counterfactual_top10_contract": development.get("counterfactual_top10_contract"),
+              "source_continuity_contract": pilot.get("source_continuity_contract"),
+              "execution_gap_contract": pilot.get("execution_gap_contract"),
+              "exit_floor_contract": pilot.get("exit_floor_contract"),
+              "drawdown_contract": pilot.get("drawdown_contract"),
+              "performance_contract": pilot.get("performance_contract"),
+          }
+          (root / "V5D_SEQUENTIAL_RESULT.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n"
+          )
+          environment = {
+              "python": sys.version,
+              "platform": platform.platform(),
+              "numpy": numpy.__version__,
+              "pandas": pandas.__version__,
+              "requests": requests.__version__,
+              "credentials_used": False,
+              "orders_submitted": False,
+              "paper_live_started": False,
+              "selection_opened": False,
+              "confirmation_opened": False,
+              "2026_opened": False,
+              "causal_engine_version": "5D",
+              "performance_contract": "disjoint-date parallel replay followed by exact gross-ledger aggregation",
+          }
+          (root / "environment.json").write_text(
+              json.dumps(environment, indent=2, sort_keys=True) + "\n"
+          )
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          PY
 
       - name: Record immutable output checksums
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          root=research_runs/cross_venue_price_discovery_20260725/exact_arrival_v5d
-          mkdir -p "$root"
-          find "$root" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$root/OUTPUT_SHA256SUMS.txt"
+          mkdir -p "$RUNROOT"
+          find "$RUNROOT" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
+            | sort -z | xargs -0 -r sha256sum > "$RUNROOT/OUTPUT_SHA256SUMS.txt"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cross-venue-price-discovery-exact-arrival-v5d-${{ github.sha }}
-          path: research_runs/cross_venue_price_discovery_20260725/exact_arrival_v5d
+          name: cross-venue-price-discovery-exact-arrival-v5d-parallel-${{ github.sha }}
+          path: ${{ env.RUNROOT }}
           if-no-files-found: error
           retention-days: 14
           compression-level: 6
