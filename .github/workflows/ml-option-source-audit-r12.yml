@@ -1,0 +1,45 @@
+name: Extract ML option source for amendment audit
+
+on:
+  push:
+    branches:
+      - agent/r12-ml-option-hedge-001
+    paths:
+      - "research/ml_option_hedge_20260726/**"
+      - ".github/workflows/ml-option-source-audit-r12.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ml-option-source-audit-r12-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Reconstruct exact source
+        run: |
+          set -euo pipefail
+          root=research/ml_option_hedge_20260726
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/run.py"
+          sha256sum "$root/run.py" > "$root/RUN_PY_SHA256.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-option-source-${{ github.sha }}
+          path: |
+            research/ml_option_hedge_20260726/run.py
+            research/ml_option_hedge_20260726/RUN_PY_SHA256.txt
+            research/ml_option_hedge_20260726/source_manifest.json
+            research/ml_option_hedge_20260726/AMENDMENT-002-SAMPLE-COVERAGE.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
