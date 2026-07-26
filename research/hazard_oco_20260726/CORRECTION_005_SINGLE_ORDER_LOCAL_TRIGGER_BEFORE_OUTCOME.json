@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "correction_id": "COR-20260726-HAZARD-LOCAL-TRIGGER-005",
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T18:49:20+09:00",
+  "timing": "Committed after workflow 30196723484 failed during deterministic source reconstruction and before any registered compact state, raw trigger stream, future hazard label, model fit, score, simulated entry, trade path or PnL was opened by the V2 runner.",
+  "hard_scope_defect": "The V2 entry contract represented a buy-stop and a sell-stop as two simultaneously live exchange entry orders. The fixed project scope permits at most one unfilled new-entry order or open position across the entire account, so the V2 economic output would be hard-invalid even if its workflow ran.",
+  "correction": {
+    "signal_state": "One local, non-order monitoring state reserves the global strategy slot after a frozen hazard score.",
+    "direction_selection": "Exact raw Bybit trade local_timestamp order determines the first 4bp upper or lower crossing.",
+    "exchange_entry": "Only after that first crossing does the engine submit or simulate one marketable order in the revealed direction.",
+    "same_timestamp_ambiguity": "If the same exchange-local timestamp contains crossings of both thresholds, no order is sent and the event is rejected.",
+    "execution_stress": "The removed 100/300ms opposite-order cancellation dimension is replaced by one-order trigger-to-fill latency paths of 100ms and 300ms.",
+    "maximum_entry_orders": 1,
+    "resting_entry_orders": 0
+  },
+  "unchanged_scientific_dependencies": {
+    "model": "one fixed HistGradientBoostingClassifier",
+    "features": [
+      "spread_bps",
+      "abs_microprice_skew_bps",
+      "abs_depth_imbalance_5",
+      "total_cancel_ratio",
+      "total_refill_ratio",
+      "abs_flow_1s",
+      "update_intensity_1s",
+      "volatility_30s_bps"
+    ],
+    "label": "40bp absolute executable-mid first passage within 30 seconds after 100ms activation",
+    "threshold": "99th percentile of the frozen 2022 calibration scores",
+    "entry_offset_bp": 4,
+    "payoff_cells": ["T40_S20", "T60_S25", "T80_S30"],
+    "risk_fraction": 0.01,
+    "notional_cap_multiple": 3.0,
+    "participation_cap": "0.1% of prior three-second raw traded quote notional",
+    "cost_profiles_bp": [12, 18, 24],
+    "fit_date": "2022-07-01",
+    "conditional_development_date": "2023-07-01",
+    "prohibited_years": [2024, 2025, 2026]
+  },
+  "invalidated_or_superseded_runs": [30195621030, 30195779140, 30195957956, 30196723484],
+  "scientific_outcome_observed": false,
+  "orders_permitted": false
+}
