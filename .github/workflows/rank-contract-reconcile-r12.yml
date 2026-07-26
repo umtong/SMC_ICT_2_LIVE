@@ -1,103 +1,86 @@
-name: Rank contract reconciliation audit
+name: Rank contract reconciliation compatibility check
 
 on:
   push:
     branches:
       - agent/r12-rank-contract-reconcile-001
+      - agent/r14-donchian-all-ranking-001
     paths:
       - "research/rank_contract_reconcile_20260726/**"
+      - "research_results/rank_contract_reconcile_20260726/**"
+      - "control/ranking.json"
+      - "control/current-state.md"
       - ".github/workflows/rank-contract-reconcile-r12.yml"
   pull_request:
     branches: [main]
     paths:
       - "research/rank_contract_reconcile_20260726/**"
+      - "research_results/rank_contract_reconcile_20260726/**"
+      - "control/ranking.json"
+      - "control/current-state.md"
       - ".github/workflows/rank-contract-reconcile-r12.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: rank-contract-reconcile-r12-${{ github.event.pull_request.number || github.ref }}
+  group: rank-contract-reconcile-compat-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  audit:
+  verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/r12-rank-contract-reconcile-001
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Materialize immutable Donchian result without opening market data
+      - name: Verify immutable reconciliation evidence and active state
         shell: bash
         run: |
           set -euo pipefail
-          root=research/rank_contract_reconcile_20260726
-          python -m json.tool "$root/CORRECTION_001_FETCH_DONCHIAN_RESULT_NO_MARKET.json" >/dev/null
-          donchian_commit=53434193d5612fe40c998618b6f74e5368ecaedf
-          donchian_path=research/donchian_trade_dependence_20260726/results/result.json
-          git fetch --no-tags --depth=1 origin "$donchian_commit"
-          mkdir -p "$(dirname "$donchian_path")"
-          git show "$donchian_commit:$donchian_path" > "$donchian_path"
-          test "$(git hash-object "$donchian_path")" = "31453a4b313412549f9d78a505d1329d4528436a"
-          python -m json.tool "$donchian_path" >/dev/null
-
-      - name: Reconstruct immutable evidence and audit ranking contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          python research/rank_contract_reconcile_20260726/audit.py \
-            2>&1 | tee /tmp/rank-contract-audit.log
-          python -m json.tool \
-            research_results/rank_contract_reconcile_20260726/AUDIT.json >/dev/null
+          python -m json.tool control/ranking.json >/dev/null
+          python -m json.tool research_results/rank_contract_reconcile_20260726/RESULT.json >/dev/null
+          python -m json.tool research_results/rank_contract_reconcile_20260726/DECISION.json >/dev/null
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('research_results/rank_contract_reconcile_20260726/AUDIT.json')
-          r=json.loads(p.read_text())
-          assert r['authority']['market_data_opened'] is False
-          assert r['authority']['strategy_replayed'] is False
-          assert r['authority']['orders_submitted'] is False
-          assert r['state_exit_source_audit']['contains_maximum_hold_bars'] is True
-          assert r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'] > 0
+
+          ranking=json.loads(Path('control/ranking.json').read_text())
+          result=json.loads(Path('research_results/rank_contract_reconcile_20260726/RESULT.json').read_text())
+          decision=json.loads(Path('research_results/rank_contract_reconcile_20260726/DECISION.json').read_text())
+          state=Path('control/current-state.md').read_text()
+
+          assert ranking['revision'] >= 13
+          assert result['authority']['market_data_opened'] is False
+          assert result['authority']['strategy_replayed'] is False
+          assert result['authority']['orders_submitted'] is False
+          assert result['historical_first_place_audit']['current_contract_status']=='HARD_INVALID_FOR_ACTIVE_RANKING'
+          assert decision['former_first']['invalidation']=='PROHIBITED_ELAPSED_TIME_LIQUIDATION'
+          assert 'Rank does not determine research priority' in state
+
+          if ranking['revision'] >= 14:
+              repro=Path('research_results/rank_contract_reconcile_20260726/INDEPENDENT_REPRODUCTION_ALL_BREAKOUT.json')
+              correction=Path('research_results/rank_contract_reconcile_20260726/RANKING_CORRECTION_002.json')
+              assert repro.exists() and correction.exists()
+              reproduced=json.loads(repro.read_text())
+              assert ranking['first_place']['first_place_id']=='FIRST-20260726-DONCHIAN-ALL-A70626D9'
+              assert abs(ranking['first_place']['metrics']['geometric_daily_growth']-reproduced['paths']['24bps']['geometric_daily_growth'])<1e-15
+              assert ranking['ranked_candidates'][1]['rank']==2
+          else:
+              assert ranking['first_place']['source_result_id']=='RES-20260726-DONCHIAN-DEPENDENCE-001'
+
           print(json.dumps({
-            'current_first': r['current_first_place']['first_place_id'],
-            'contains_maximum_hold_bars': r['state_exit_source_audit']['contains_maximum_hold_bars'],
-            'challenger_growth_delta': r['higher_recorded_growth_challenger']['growth_delta_vs_current_first_base_cost'],
-          }, sort_keys=True))
+              'revision':ranking['revision'],
+              'first_place':ranking['first_place']['first_place_id'],
+              'market_data_opened':result['authority']['market_data_opened'],
+              'orders_submitted':result['authority']['orders_submitted'],
+          },sort_keys=True))
           PY
           python scripts/validate_project.py
-
-      - name: Commit immutable audit evidence
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            research_results/rank_contract_reconcile_20260726 \
-            research/rank_contract_reconcile_20260726/CORRECTION_001_FETCH_DONCHIAN_RESULT_NO_MARKET.json
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "Record ranking-contract audit [skip ci]"
-          git push origin HEAD:agent/r12-rank-contract-reconcile-001
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rank-contract-reconcile-r12-${{ github.sha }}
-          path: |
-            research_results/rank_contract_reconcile_20260726
-            /tmp/rank-contract-audit.log
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 6
