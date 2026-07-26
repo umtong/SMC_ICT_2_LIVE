@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "validation_id": "VAL-20260726-ML-DIRECT-UTILITY-001",
+  "result_id": "RES-20260726-ML-DIRECT-UTILITY-001",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "status": "PASS_NEGATIVE_RESULT_REPRODUCIBILITY",
+  "validated_scope": [
+    "exact compressed-source reconstruction",
+    "Python compilation",
+    "six deterministic causal and account tests",
+    "synthetic self-test",
+    "expected UTC hourly grid retained without imputation",
+    "all features and labels crossing a missing hour invalidated",
+    "one pooled model and no hyperparameter grid",
+    "one global KEEP SWITCH FLAT slot",
+    "rolling causal structural stop and no elapsed-time liquidation",
+    "12 18 24bp identical signal paths",
+    "development unopened after confirmation failure",
+    "risk and leverage search unopened after confirmation failure",
+    "2024 2025 2026 mechanically unopened",
+    "no credentials or orders"
+  ],
+  "independent_numeric_checks": {
+    "train_rows": 24612,
+    "calibration_rows": 17664,
+    "confirmation_rows": 17376,
+    "calibration_scale": 0.0,
+    "prediction_standard_deviation_bp": 0.0,
+    "mae_skill": -0.00038082013693263583,
+    "rmse_skill": -0.00013393078421009008,
+    "trade_counts_12_18_24bp": [0, 0, 0],
+    "confirmation_gate_passed": false,
+    "development_opened": false,
+    "selected_risk_config": null
+  },
+  "source_gap_checks": {
+    "policy": "NO_IMPUTATION_RESET_ALL_CROSSING_HORIZONS",
+    "BTCUSDT_missing_rows": 544,
+    "ETHUSDT_missing_rows": 344,
+    "SOLUSDT_missing_rows": 483,
+    "XRPUSDT_missing_rows": 163
+  },
+  "workflow": {
+    "run_id": 30201775655,
+    "conclusion": "success",
+    "artifact_id": 8631893147,
+    "artifact_digest": "sha256:ac4141ad10478f93725f563e65c808131ff1e4da310d0d77b0422d9958ca9b33"
+  },
+  "artifact_hashes": {
+    "RESULT.json": "fdb6f39ee1ef7b7c91c998dbd58b2b79c31a22712a991442a961f3d4823f16e5",
+    "MODEL_FIT.json": "7d711628e943a126b6fbc840ed314755b90f738d80eed99d9ecb387551ed631e",
+    "CONFIRMATION.json": "d6974177b3eb8361b374db34ff99ba32d4dca566143c4412c2749358a1cfaa5c",
+    "MODEL_CONTRACT.json": "28509fa23a7a4f71200d6249d2106ef8da9276887b41ce8e657463ab881993e0",
+    "SOURCE_MANIFEST.json": "af4325457cf35c7dcb99c261dedc6687749e8d80d20bb0b606062a6559af03d4",
+    "run.py": "3b48d134f68e656dbb111716c334a654655ebaa1de763fc660177a0c0029ac3a",
+    "test_run.py": "e46a6b67346f8f5e9a3b7a82dca5a01e8a2c58dd79f7a5e93d836ca0808acf0a"
+  },
+  "authority": "PASS validates the hard-valid negative conclusion and stage boundaries. It does not validate profitability, ranking or deployment.",
+  "created_at": "2026-07-26T21:24:56+09:00"
+}
