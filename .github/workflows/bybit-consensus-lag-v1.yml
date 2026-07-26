@@ -45,7 +45,10 @@ jobs:
       - name: Validate project and causal engine
         run: |
           set -o pipefail
-          mkdir -p "$OUT"
+          mkdir -p "$OUT/source_transport"
+          cp research/bybit_consensus_lag_v1/run.py.gz.b64 "$OUT/source_transport/"
+          cp research/bybit_consensus_lag_v1/run.py.gz.b64.part01 "$OUT/source_transport/"
+          sha256sum "$OUT"/source_transport/* > "$OUT/source_transport/SHA256SUMS.txt"
           (
             set -e
             python scripts/validate_project.py
