@@ -1,0 +1,119 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260726-0240-QHOUR-001",
+  "planned_result_id": "RES-20260726-ML-QHOUR-STRUCTURAL-FATAL-001",
+  "status": "AMENDED_BEFORE_ANY_STRATEGY_OR_PNL_COMPUTATION",
+  "amended_at": "2026-07-26T23:23:00+09:00",
+  "base_revision": 19,
+  "parent_source_audit": {
+    "pull_request": 53,
+    "head_commit": "1525f49ffbd602eccdbf0fec681b376293f080aa",
+    "workflow_run": 30168691325,
+    "outcome": "OFFICIAL_SOURCE_PROBE_PASSED_WITHOUT_STRATEGY_OR_PNL"
+  },
+  "amendment_reason": "The expired revision-11 claim completed only a source audit. Before any strategy outcome was computed, the fixed holding-period and parameter-grid design was replaced by one ML structural first-passage policy so exits are strategy-defined rather than elapsed-time liquidations and research effort is concentrated on one falsifiable information unit.",
+  "research_question": "At UTC quarter-hour boundaries, does the interaction of completed ten-second aggressive flow, completed price response and strictly prior Binance USD-M open-interest state predict a structural target before a structural stop strongly enough to survive 24 bp, one global slot, funding, capacity and winner-removal stress?",
+  "markets": {
+    "research_source": "Binance USD-M perpetual futures official archives",
+    "final_execution_venue_if_promoted": "Bybit USDT linear perpetual futures",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "global_positions": 1
+  },
+  "information_contract": {
+    "event_clock": "UTC exchange transaction time",
+    "quarter_hour_windows": "minutes 00, 15, 30 and 45; completed [start,start+10s)",
+    "matched_controls": "minutes 07, 22, 37 and 52 with identical rules",
+    "decision_availability": "event start plus 10 seconds",
+    "entry": "next exact one-minute contract open, never an intra-window price",
+    "metrics": "latest official metrics row strictly earlier than event start; 15-minute OI change uses only earlier rows",
+    "price_features": "only completed contract minutes strictly before event start",
+    "missing_data": "no forward fill across signal, entry, target, stop, funding or mark gaps",
+    "same_minute_order": "adverse stop before target",
+    "elapsed_time_liquidation": false
+  },
+  "source_contract": {
+    "archives": [
+      "daily aggTrades",
+      "daily 1m klines",
+      "daily 1m markPriceKlines",
+      "daily metrics",
+      "monthly fundingRate"
+    ],
+    "integrity": "Every used ZIP must match its adjacent official CHECKSUM.",
+    "resolution_tail": "Three later calendar days are loaded only to resolve a pre-frozen target or stop; unresolved selected paths fail the gate and are never force-closed.",
+    "capacity": "position notional at most 0.1 percent of the immediately preceding completed one-minute quote volume"
+  },
+  "event_and_path_rules": {
+    "flow_direction": "sign of completed ten-second aggressive quote-notional imbalance",
+    "candidate_routes": [
+      "continuation in flow direction with stop at the pre-event 15-minute opposite extreme",
+      "reversal opposite flow with stop beyond the completed ten-second event extreme"
+    ],
+    "target": "pre-known four-hour directional external extreme",
+    "minimum_geometry": "target distance 30-2000 bp, stop distance 5-1000 bp and reward/risk at least 0.50",
+    "label": "target-first versus stop-or-unresolved; unresolved is a conservative non-target label",
+    "execution": "marketable next-minute proxy; exact Bybit BBO remains mandatory before rank eligibility"
+  },
+  "ml_contract": {
+    "model": "one pooled HistGradientBoostingClassifier",
+    "calibration": "one isotonic map fit only on the calibration date",
+    "features": "completed flow, response efficiency, prior returns/volatility/taker flow, strictly prior OI/positioning, path geometry, symbol, mode, phase and UTC hour",
+    "train_dates": [
+      "2022-01-01",
+      "2022-03-01",
+      "2022-05-01"
+    ],
+    "calibration_dates": [
+      "2022-07-01"
+    ],
+    "confirmation_dates": [
+      "2022-09-01",
+      "2022-11-01"
+    ],
+    "decision": "take only the highest expected-edge candidate when calibrated expected target/stop utility exceeds 18 bp cost by at least 5 bp",
+    "model_or_threshold_grid": false
+  },
+  "account_contract": {
+    "initial_nav": 10000.0,
+    "planned_loss_fraction": 0.01,
+    "maximum_leverage": 5.0,
+    "maximum_prior_minute_quote_volume_participation": 0.001,
+    "global_slot": 1,
+    "roundtrip_cost_bps": [
+      12.0,
+      18.0,
+      24.0
+    ],
+    "funding": "recorded rate and causal official mark",
+    "gap_risk": "adverse open beyond stop is realized at the open"
+  },
+  "fatal_gate": {
+    "confirmation_auc_minimum": 0.52,
+    "positive_brier_skill": true,
+    "minimum_completed_trades_at_24bp": 20,
+    "positive_return_at_12bp_and_24bp": true,
+    "zero_selected_unresolved_paths": true,
+    "positive_after_exact_top_10_percent_of_all_trades_winner_removal": true,
+    "positive_confirmation_date_fraction_minimum": 0.5,
+    "quarter_hour_return_must_exceed_matched_control": true,
+    "maximum_drawdown": 0.35,
+    "maximum_top_five_positive_pnl_share": 0.65,
+    "no_terminal_loss": true
+  },
+  "promotion_boundaries": {
+    "fatal_screen_can_rank": false,
+    "2022_secondary_confirmation_opened": false,
+    "2023_opened": false,
+    "2024_opened": false,
+    "2025_2026_opened": false,
+    "bybit_native_replay_required_for_rank": true,
+    "credentials_used": false,
+    "orders_submitted": false,
+    "live_permission": false
+  }
+}
