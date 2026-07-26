@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-SMT-RECLAIM-ML-001",
+  "correction_id": "PRE_OUTCOME_RUNTIME_CORRECTION_003_AGGREGATE_SIGNATURE",
+  "timing": "after source download and identity inspection, before any confirmation-time matrix row, model fit, score, action or PnL",
+  "failed_workflow_run": 30197399356,
+  "failure": "The frozen extractor called aggregate(path, date), while the current shared base_probe aggregate function requires one additional source-identity argument.",
+  "correction": "At runtime inspect the shared aggregate signature and bind the already-known path, symbol and date by parameter semantics. The wrapper calls the shared function exactly once after successful argument binding and changes no aggregation mathematics.",
+  "outcome_access": {
+    "matrix_rows_generated": false,
+    "model_fitted": false,
+    "scores_generated": false,
+    "strategy_actions_generated": false,
+    "pnl_generated": false,
+    "2023_opened": false,
+    "2024_2026_opened": false
+  },
+  "unchanged": [
+    "all source bytes, symbols and frozen dates",
+    "shared aggregation implementation and 100ms information clock",
+    "overreaction and MSS definitions",
+    "features, labels, outcomes, models and score quantiles",
+    "100ms/300ms execution, 24bp cost, structural target and invalidation",
+    "risk, notional cap, global slot, winner removal and economic gates"
+  ],
+  "orders_submitted": false
+}
