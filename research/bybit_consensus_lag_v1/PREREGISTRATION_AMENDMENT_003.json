@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMD-20260726-BYBIT-CONSENSUS-LAG-003",
+  "claim_id": "CLM-20260726-0616-BYBIT-CONSENSUS-LAG-001",
+  "reason": "The first V1C transport upload changed exactly one base64 character at zero-based offset 3980 in part00. The other 14,259 characters and all three other fragment hashes matched the locally frozen transport. Validation stopped before source reconstruction, market data access or corrected candidate PnL.",
+  "corrected_pnl_observed_before_amendment": false,
+  "checked_in_part": "run_v1c.py.gz.b64.part00",
+  "observed_part_bytes": 4000,
+  "observed_part_sha256": "14c9946a4f71e0ab77e8e2131261694e92233039ae33d5f69a23c6c7a0e2ae8f",
+  "repair": {
+    "zero_based_offset": 3980,
+    "observed_ascii": "9",
+    "frozen_ascii": "d",
+    "repaired_part_sha256": "f9927adad66a35d3268a0ebd6ba6ad678327f0e3e986873a4871332600349385"
+  },
+  "validity_contract": "reconstruct.py may apply this exact one-byte transport repair only when the complete observed part matches the bound bad hash, length and character. It must then verify every fragment, the combined base64, gzip and raw source hashes from AMD-002 before writing run.py. No economic code, parameter, date, cost, gate or result interpretation changes."
+}
