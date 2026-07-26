@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-CME-GAP-CACHE-TIMESTAMP-005",
+  "claim_id": "CLM-20260726-1638-CME-OPENING-GAP-001",
+  "amended_at": "2026-07-26T18:05:00+09:00",
+  "trigger": {
+    "previous_successful_result_run": 30195160649,
+    "previous_result_summary_sha256": "be9c84cae4782cfa4a6314f5d9d0cc1b698ffa31ac1750bb409faa38b77cfb86",
+    "failed_reproduction_run": 30195645437,
+    "failure": "A cached funding CSV was read with an object/string timestamp index, causing a TypeError when compared with a UTC Timestamp.",
+    "failure_before_new_result_summary": true
+  },
+  "correction": {
+    "scope": "data-cache deserialization only",
+    "rule": "After loading each cached funding series, convert its index with pandas.to_datetime(..., utc=True, errors='raise'), sort it, require uniqueness and preserve every rate value unchanged.",
+    "economic_logic_changed": false,
+    "features_changed": false,
+    "model_changed": false,
+    "routing_changed": false,
+    "cost_or_funding_values_changed": false,
+    "dates_or_stage_boundaries_changed": false
+  },
+  "reproduction_requirement": {
+    "rerun_same_frozen_contract": true,
+    "expected_output_hashes": {
+      "development_2022_opportunities.csv": "15322303d88b3a72430d552511fb9e703bb4a84ec9346b1fce202b11abf106ff",
+      "development_result.json": "867d2fed39b680eabdc56352779ba8d3f38f84c7cbd2b9f644979cb6566df668",
+      "result_summary.json": "be9c84cae4782cfa4a6314f5d9d0cc1b698ffa31ac1750bb409faa38b77cfb86",
+      "source_manifest.json": "2a68c20d2f32d718b7a5e8ff65374675d6643c5bb1984bee6c7af08906a7f7b7",
+      "training_2021_opportunities.csv": "8bdde18ce0dd2189316de38dfdd5ffdb8333b41890e3a3904aef8442083f8f73",
+      "training_model.json": "2945579f54e6cd9361465cd9075afb72134356a9e74a59261d1b7993a2412974"
+    },
+    "acceptance": "All six scientific output hashes must equal the previous fresh-source successful run."
+  },
+  "orders_submitted": false
+}
