@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-STABLECOIN-FINAL-HEAD-009",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_market_outcome": true,
+  "reason": "SHA-scoped non-cancelling source runs protected intermediate commits but retained redundant queued executions. Only the fully corrected final head has decision value.",
+  "change": "Use one fixed concurrency group per RPC, Blockscout and Windows-dual workflow with cancel-in-progress enabled. The final workflow-specific commit cancels every older run in that transport and leaves one authoritative final-head run.",
+  "operational_freeze": "No further commit may be added to the source branch until the final-head source result is consumed or a fatal code error is proven from its logs.",
+  "unchanged_science": true,
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
