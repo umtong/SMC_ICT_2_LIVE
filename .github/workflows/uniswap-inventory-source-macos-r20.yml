@@ -1,0 +1,151 @@
+name: Uniswap WETH-stable inventory source gate macOS
+
+on:
+  push:
+    branches:
+      - agent/r20-uniswap-source-macos-transport-001
+    paths:
+      - "research/uniswap_inventory_relay_20260726/**"
+      - ".github/workflows/uniswap-inventory-source-macos-r20.yml"
+  pull_request:
+    branches:
+      - agent/r20-ml-uniswap-inventory-relay-001
+    paths:
+      - "research/uniswap_inventory_relay_20260726/**"
+      - ".github/workflows/uniswap-inventory-source-macos-r20.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: uniswap-inventory-source-macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source-gate:
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      NUMEXPR_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install frozen source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade "pip==25.1.1"
+          python -m pip install \
+            "pandas==2.2.3" \
+            "pyarrow==18.1.0" \
+            "requests==2.32.4" \
+            "pytest==8.3.4"
+
+      - name: Compile and test identical frozen source contract
+        run: |
+          set -euo pipefail
+          root=research/uniswap_inventory_relay_20260726
+          python -m json.tool "$root/EXECUTION_CORRECTION_003_MACOS_PARALLEL_SOURCE_RUNNER_BEFORE_OUTCOME.json" >/dev/null
+          python -m py_compile \
+            "$root/source_gate.py" \
+            "$root/source_gate_launcher.py" \
+            "$root/test_source_gate.py" \
+            "$root/test_source_gate_launcher.py"
+          PYTHONPATH="$root" python -m pytest -q \
+            "$root/test_source_gate.py" \
+            "$root/test_source_gate_launcher.py"
+          python "$root/source_gate_launcher.py" --verify-only
+          python -m json.tool "$root/preregistration.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json" >/dev/null
+
+      - name: Run outcome-sealed immutable source gate
+        run: |
+          set -euo pipefail
+          root=research/uniswap_inventory_relay_20260726
+          rm -rf research_runs/uniswap_inventory_macos "$RUNNER_TEMP/uniswap-inventory-cache"
+          mkdir -p research_runs/uniswap_inventory_macos/source
+          python "$root/source_gate_launcher.py" \
+            --output research_runs/uniswap_inventory_macos/source \
+            --cache "$RUNNER_TEMP/uniswap-inventory-cache" \
+            2>&1 | tee research_runs/uniswap_inventory_macos/source.log
+
+      - name: Verify source decision and immutable hashes
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('research_runs/uniswap_inventory_macos/source')
+          for line in (root / 'SHA256SUMS.txt').read_text().splitlines():
+              expected, name = line.split(None, 1)
+              path = root / name.strip().lstrip('*')
+              actual = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert actual == expected, (path, actual, expected)
+
+          result = json.loads((root / 'SOURCE_GATE.json').read_text())
+          assert result['status'] == 'SOURCE_GATE_PASS'
+          assert result['decision'] == 'OPEN_FROZEN_PRE2024_MODEL_STAGE'
+          assert result['uniswap']['rows'] >= 6_000_000
+          assert result['ethereum_blocks']['min_block'] <= result['uniswap']['min_block']
+          assert result['ethereum_blocks']['max_block'] >= result['uniswap']['max_block']
+          assert len(result['bybit_probe']) == 3
+          assert all(int(item['year']) <= 2023 for item in result['bybit_probe'])
+          assert result['outcome_market_data_opened'] is False
+          assert result['model_fitted'] is False
+          assert result['strategy_pnl_opened'] is False
+          assert result['2024_strategy_outcome_opened'] is False
+          assert result['orders_submitted'] is False
+          print(json.dumps({
+              'status': result['status'],
+              'uniswap_rows': result['uniswap']['rows'],
+              'block_files': result['ethereum_blocks']['file_count'],
+              'bybit_probe_years': [item['year'] for item in result['bybit_probe']],
+          }, sort_keys=True))
+          PY
+          python scripts/validate_project.py || true
+
+      - name: Freeze evidence identities
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p research_runs/uniswap_inventory_macos
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          paths = [
+              Path('research/uniswap_inventory_relay_20260726/README.md'),
+              Path('research/uniswap_inventory_relay_20260726/preregistration.json'),
+              Path('research/uniswap_inventory_relay_20260726/AMENDMENT_001_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json'),
+              Path('research/uniswap_inventory_relay_20260726/CORRECTION_002_REMOVE_PREMATURE_2024_BYBIT_PROBE_BEFORE_OUTCOME.json'),
+              Path('research/uniswap_inventory_relay_20260726/EXECUTION_CORRECTION_003_MACOS_PARALLEL_SOURCE_RUNNER_BEFORE_OUTCOME.json'),
+              Path('research/uniswap_inventory_relay_20260726/source_gate.py'),
+              Path('research/uniswap_inventory_relay_20260726/source_gate_launcher.py'),
+              Path('research/uniswap_inventory_relay_20260726/test_source_gate.py'),
+              Path('research/uniswap_inventory_relay_20260726/test_source_gate_launcher.py'),
+              Path('.github/workflows/uniswap-inventory-source-macos-r20.yml'),
+          ]
+          rows = [f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}" for path in paths]
+          Path('research_runs/uniswap_inventory_macos/INPUT_SHA256SUMS.txt').write_text('\n'.join(rows) + '\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uniswap-inventory-source-macos-${{ github.sha }}
+          path: research_runs/uniswap_inventory_macos
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
