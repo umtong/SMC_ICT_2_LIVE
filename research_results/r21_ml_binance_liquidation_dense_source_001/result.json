@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001",
+  "claim_id": "CLM-20260726-2020-ML-BINANCE-LIQ-DENSE-001",
+  "worker_id": "gpt-5.6-pro-20260726-2020",
+  "status": "SOURCE_COVERAGE_FAIL",
+  "hard_validity_status": "PASS_OUTCOME_SEALED_OFFICIAL_LISTING",
+  "economic_status": "NOT_OPENED",
+  "ranking_role": "NONE_SOURCE_FAILURE",
+  "summary": "Official Binance Vision S3 ListObjectsV2 evidence proves that COIN-M daily liquidationSnapshot history for both BTCUSD_PERP and ETHUSD_PERP begins on 2023-06-25, not 2021-01-01. Within the frozen 2021-2023 source interval, BTC has 187 archive dates and ETH has 186, only 17.0776% and 16.9863% of the required 1,095 UTC dates versus the preregistered 80% minimum. The source gate therefore fails before any market price, label, model, action, trade, PnL, risk/leverage search or official 2024H1 account is opened. The exact continuous-2021-to-2023 COIN-M liquidationSnapshot dependency is retired without threshold, feature, model, risk or leverage rescue.",
+  "source_contract": {
+    "provider": "Binance Vision official S3 listing",
+    "dataset": "COIN-M daily liquidationSnapshot",
+    "requested_start": "2021-01-01",
+    "requested_end": "2023-12-31",
+    "requested_utc_dates": 1095,
+    "minimum_date_coverage": 0.8,
+    "checksum_pair_required": true,
+    "listing_queries": {
+      "BTCUSD_PERP": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?list-type=2&prefix=data%2Ffutures%2Fcm%2Fdaily%2FliquidationSnapshot%2FBTCUSD_PERP%2F&max-keys=1000",
+      "ETHUSD_PERP": "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision?list-type=2&prefix=data%2Ffutures%2Fcm%2Fdaily%2FliquidationSnapshot%2FETHUSD_PERP%2F&max-keys=1000"
+    }
+  },
+  "observed": {
+    "BTCUSD_PERP": {
+      "total_keys": 944,
+      "zip_archives": 472,
+      "checksum_keys": 472,
+      "first_archive_date": "2023-06-25",
+      "last_archive_date": "2024-10-14",
+      "archive_dates_2021": 0,
+      "archive_dates_2022": 0,
+      "archive_dates_2023": 187,
+      "requested_period_date_coverage": 0.17077625570776256,
+      "coverage_gate_passed": false
+    },
+    "ETHUSD_PERP": {
+      "total_keys": 948,
+      "zip_archives": 474,
+      "checksum_keys": 474,
+      "first_archive_date": "2023-06-25",
+      "last_archive_date": "2024-10-14",
+      "archive_dates_2021": 0,
+      "archive_dates_2022": 0,
+      "archive_dates_2023": 186,
+      "requested_period_date_coverage": 0.16986301369863013,
+      "coverage_gate_passed": false
+    }
+  },
+  "decision": "RETIRE_EXACT_CONTINUOUS_COINM_LIQUIDATION_SNAPSHOT_ROUTE",
+  "model_fitted": false,
+  "market_prices_opened": false,
+  "labels_opened": false,
+  "actions_opened": false,
+  "strategy_pnl_opened": false,
+  "risk_leverage_search_opened": false,
+  "official_2024H1_account_opened": false,
+  "opened_periods": [],
+  "unopened_periods": ["pre2024_model", "2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+  "orders_submitted": false,
+  "paper_live_started": false,
+  "source_branch_head_before_result": "fad4ef4e420be471672b85e6559e2bfaa16cbd54",
+  "evaluation_contract_sha256": "51d16088230234806dfd349f90d1b15bca84891fea3a4605fc42c85ee56d9e9a",
+  "artifact_fingerprint": "634fbcf26ea367679ea5252b2a97a964dc2024fdcde80ea772f5c4ad85953fed",
+  "dependency_fingerprint": "fddb56f85a13774eb3a1f72200f8b3217ad470c05fca0478430cc5830a30cc60",
+  "evidence_acquired_at": "2026-07-26T23:58:00+09:00"
+}
