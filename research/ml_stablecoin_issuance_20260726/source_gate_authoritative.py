@@ -2,10 +2,19 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 import source_gate as base
+
+
+# Canonical Ethereum event identities. USDT's verified TetherToken contract does
+# not emit zero-address ERC20 Transfer logs from issue() or redeem().
+ISSUE_TOPIC = "0xcb8241adb0c3fdb35b70c24ce35c5eb0c17af7431c99f827d44a445ca624176a"
+REDEEM_TOPIC = "0x702d5967f45f6513a38ffc42d6ba9bf230bd40e8f53b16363c7eb4fd2deb9a44"
+ZERO_ADDRESS = "0x" + "0" * 40
+ORIGINAL_DECODE_LOG = base.decode_log
 
 
 def eligibility_safe_boundary(block_number: int, target_timestamp: int) -> int:
@@ -24,13 +33,7 @@ def first_block_at_or_after(
     high: int,
     cache: dict[int, int],
 ) -> int:
-    """Locate a permitted source boundary without requesting 2024 data.
-
-    Exactly 2024-01-01 00:00 UTC is allowed only to locate the end-exclusive
-    chain boundary. The returned eligibility boundary is shifted back 64
-    blocks, so every included event has both +12 and +64 confirmations strictly
-    before 2024. Any timestamp after the boundary remains prohibited.
-    """
+    """Locate a permitted source boundary without requesting post-boundary data."""
     if target_timestamp > base.MAX_ALLOWED_TIMESTAMP:
         raise ValueError("timestamps after the 2024 boundary are prohibited")
     if base.block_timestamp(client, low, cache) >= target_timestamp:
@@ -46,16 +49,77 @@ def first_block_at_or_after(
     return eligibility_safe_boundary(high, target_timestamp)
 
 
-# Patch only the pre-outcome boundary helper while preserving all base
-# transport, decoding, identity, density and outcome-seal logic.
+def event_filter_topics(token: str, direction: str) -> list[Any]:
+    """Return the token-specific canonical supply-event filter."""
+    if token == "USDT":
+        if direction == "MINT":
+            return [ISSUE_TOPIC]
+        if direction == "BURN":
+            return [REDEEM_TOPIC]
+        raise ValueError(direction)
+    if token == "USDC":
+        if direction == "MINT":
+            return [base.TRANSFER_TOPIC, base.ZERO_TOPIC]
+        if direction == "BURN":
+            return [base.TRANSFER_TOPIC, None, base.ZERO_TOPIC]
+        raise ValueError(direction)
+    raise ValueError(f"unsupported token {token}")
+
+
+def decode_log(token: str, direction: str, log: dict[str, Any]) -> dict[str, Any]:
+    """Decode canonical USDT Issue/Redeem or USDC zero-address Transfer."""
+    contract = str(log["address"]).lower()
+    expected = base.CONTRACTS[token]["address"].lower()
+    if contract != expected:
+        raise ValueError(f"contract mismatch {contract} != {expected}")
+
+    if token == "USDC":
+        return ORIGINAL_DECODE_LOG(token, direction, log)
+    if token != "USDT":
+        raise ValueError(f"unsupported token {token}")
+
+    topics = log.get("topics") or []
+    expected_topic = ISSUE_TOPIC if direction == "MINT" else REDEEM_TOPIC if direction == "BURN" else None
+    if expected_topic is None:
+        raise ValueError(direction)
+    if not topics or str(topics[0]).lower() != expected_topic:
+        raise ValueError(f"USDT {direction} event topic mismatch")
+    # Issue/Redeem carry only a non-indexed uint256 amount. Reject any attempt
+    # to reinterpret an ordinary Transfer as a supply event.
+    if len(topics) != 1:
+        raise ValueError("USDT Issue/Redeem must contain only topic0")
+    amount_raw = int(log.get("data", "0x0"), 16)
+    if amount_raw <= 0:
+        raise ValueError("USDT supply-event amount must be positive")
+
+    return {
+        "token": token,
+        "direction": direction,
+        "contract": contract,
+        "block_number": int(log["blockNumber"], 16),
+        "tx_hash": str(log["transactionHash"]).lower(),
+        "log_index": int(log["logIndex"], 16),
+        "amount_raw": amount_raw,
+        "amount_usd": amount_raw / (10 ** int(base.CONTRACTS[token]["decimals"])),
+        # Tether Issue/Redeem do not expose the owner address in indexed
+        # parameters. Contract-address sentinels preserve signed supply flow
+        # without inventing a recipient or burner identity.
+        "from_address": ZERO_ADDRESS if direction == "MINT" else contract,
+        "to_address": contract if direction == "MINT" else ZERO_ADDRESS,
+    }
+
+
+# Patch the authority helpers used by the Blockscout transport. The original
+# generic RPC source routine remains intentionally unused because its internal
+# filter loop predates token-specific event schemas.
 base.first_block_at_or_after = first_block_at_or_after
+base.decode_log = decode_log
 
 CONTRACTS = base.CONTRACTS
 FIXED_MONTHS = base.FIXED_MONTHS
 TRANSFER_TOPIC = base.TRANSFER_TOPIC
 ZERO_TOPIC = base.ZERO_TOPIC
 Event = base.Event
-decode_log = base.decode_log
 event_to_dict = base.event_to_dict
 month_bounds = base.month_bounds
 normalize_address_topic = base.normalize_address_topic
@@ -66,12 +130,14 @@ def source_gate(
     endpoints: Iterable[str] = base.DEFAULT_ENDPOINTS,
     fixed_months: Iterable[str] = FIXED_MONTHS,
 ) -> dict[str, Any]:
-    return base.source_gate(output, endpoints=endpoints, fixed_months=tuple(fixed_months))
+    del output, endpoints, fixed_months
+    raise RuntimeError(
+        "generic RPC source transport is disabled after the token-specific "
+        "USDT Issue/Redeem correction; use source_gate_blockscout_authoritative.py"
+    )
 
 
 def self_test() -> None:
-    base.self_test()
-
     class FakeClient:
         def __init__(self, timestamps: dict[int, int]) -> None:
             self.timestamps = timestamps
@@ -95,7 +161,43 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("post-2024 timestamp was not rejected")
-    print("authoritative pre-2024 confirmation-boundary self-test passed")
+
+    issue = {
+        "address": CONTRACTS["USDT"]["address"],
+        "topics": [ISSUE_TOPIC],
+        "data": hex(125_000_000 * 10**6),
+        "blockNumber": "0x10",
+        "transactionHash": "0x" + "ab" * 32,
+        "logIndex": "0x2",
+    }
+    issue_row = decode_log("USDT", "MINT", issue)
+    if issue_row["amount_usd"] != 125_000_000 or issue_row["from_address"] != ZERO_ADDRESS:
+        raise AssertionError(issue_row)
+
+    redeem = dict(issue)
+    redeem["topics"] = [REDEEM_TOPIC]
+    redeem["transactionHash"] = "0x" + "cd" * 32
+    redeem_row = decode_log("USDT", "BURN", redeem)
+    if redeem_row["amount_usd"] != 125_000_000 or redeem_row["to_address"] != ZERO_ADDRESS:
+        raise AssertionError(redeem_row)
+
+    ordinary_transfer = dict(issue)
+    ordinary_transfer["topics"] = [
+        TRANSFER_TOPIC,
+        ZERO_TOPIC,
+        "0x" + "0" * 24 + "12" * 20,
+    ]
+    try:
+        decode_log("USDT", "MINT", ordinary_transfer)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ordinary USDT Transfer was accepted as issuance")
+
+    expected = int(datetime(2023, 7, 3, 20, 9, 59, tzinfo=timezone.utc).timestamp())
+    if expected != 1_688_414_999:
+        raise AssertionError(expected)
+    print("authoritative token-specific source self-test passed")
 
 
 def parse_args() -> argparse.Namespace:
@@ -113,8 +215,7 @@ def main() -> int:
         return 0
     if args.output is None:
         raise SystemExit("--output is required")
-    endpoints = tuple(args.endpoint) if args.endpoint else base.DEFAULT_ENDPOINTS
-    result = source_gate(args.output, endpoints=endpoints)
+    result = source_gate(args.output, endpoints=tuple(args.endpoint) if args.endpoint else base.DEFAULT_ENDPOINTS)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["status"] == "PASS" else 2
 
