@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-DONCHIAN-2024H1-EXPLICIT-VALIDATOR-004",
+  "claim_id": "CLM-20260726-2139-DONCHIAN-2024H1-001",
+  "timing": "BEFORE_ANY_SUCCESSFUL_2024H1_STRATEGY_RESULT",
+  "observed_failure": "The optional hook was invoked at scripts.common import time. Its internal pytest subprocess imported scripts.common again before the result marker existed, creating recursive evaluator invocation and failing the project-validation step before an authoritative account result was produced.",
+  "correction": [
+    "Restore scripts/common.py to the canonical side-effect-free implementation.",
+    "Call the unchanged evaluator once as an explicit established-validation workflow step.",
+    "Always upload the hook log, compact marker and immutable result directory whether the evaluator succeeds or fails."
+  ],
+  "unchanged": [
+    "Donchian signal, entry and structural exits",
+    "official 2024H1 period and December 2023 warm-up",
+    "one global slot, 0.5 percent planned risk and 5x notional cap",
+    "12, 18 and 24 basis-point paths and adverse funding fallback",
+    "winner-removal rerouting",
+    "2024H2 through 2026H1 unopened",
+    "no credential and no order authority"
+  ],
+  "authoritative_2024h1_result_before_correction": false,
+  "orders_submitted": false
+}
