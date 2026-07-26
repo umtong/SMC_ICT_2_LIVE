@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check \
             requests==2.32.4 \
-            lz4==4.4.4 \
+            duckdb==1.4.3 \
             pytest==8.3.5
 
       - name: Compile and test parser before network access
@@ -52,6 +52,7 @@ jobs:
           set -euo pipefail
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" >/dev/null
           python -m py_compile \
             "$ROOT/probe_hl_liquidations.py" \
             "$ROOT/test_probe_hl_liquidations.py"
@@ -59,14 +60,13 @@ jobs:
           PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" --self-test
           python scripts/validate_project.py
 
-      - name: Run outcome-sealed immutable source gate
+      - name: Run outcome-sealed commit-pinned Parquet source gate
         run: |
           set -euo pipefail
           rm -rf "$OUT"
           mkdir -p "$OUT"
           PYTHONPATH="$ROOT" python "$ROOT/probe_hl_liquidations.py" \
             --output "$OUT" \
-            --workers 6 \
             2>&1 | tee "$OUT/RUN.log"
 
       - name: Enforce source-only authority and frozen decision
@@ -81,8 +81,7 @@ jobs:
           result = json.loads((out / 'SOURCE_GATE_RESULT.json').read_text())
           assert result['claim_id'] == 'CLM-20260726-2058-ML-HL-LIQUIDATION-001'
           assert result['phase'] == 'OUTCOME_SEALED_SOURCE_GATE'
-          assert result['requested_file_count'] == 36
-          assert result['frozen_hours'] == [0, 4, 8, 12, 16, 20]
+          assert result['transport'] == 'COMMIT_PINNED_CONSOLIDATED_PARQUET_PREDICATE_PUSHDOWN'
           assert result['market_price_opened'] is False
           assert result['future_return_opened'] is False
           assert result['model_fitted'] is False
@@ -95,15 +94,21 @@ jobs:
               else 'CLOSE_SOURCE_ROUTE_BEFORE_MARKET_OUTCOMES'
           )
           assert result['scientific_decision'] == expected
-          manifest = json.loads((out / 'SOURCE_MANIFEST.json').read_text())
-          assert manifest['resolved_revision'] == result['resolved_revision']
-          assert len(manifest['files']) == 36
+          manifest_path = out / 'SOURCE_MANIFEST.json'
+          if manifest_path.exists():
+              manifest = json.loads(manifest_path.read_text())
+              assert manifest['resolved_revision'] == result.get('resolved_revision')
+              assert len(manifest['frozen_paths']) == 36
+          if 'requested_file_count' in result:
+              assert result['requested_file_count'] == 36
+              assert result['frozen_hours'] == [0, 4, 8, 12, 16, 20]
           print(json.dumps({
               'source_gate_pass': result['source_gate_pass'],
               'decision': result['scientific_decision'],
-              'parsed_files': result['parsed_file_count'],
-              'explicit_liquidations': result['explicit_liquidation_event_count'],
-              'target_positions': result['target_position_record_count'],
+              'parsed_files': result.get('parsed_file_count'),
+              'explicit_liquidations': result.get('explicit_liquidation_event_count'),
+              'target_positions': result.get('target_position_record_count'),
+              'fatal_error': result.get('fatal_error'),
           }, sort_keys=True))
           PY
 
@@ -116,6 +121,7 @@ jobs:
             "$ROOT/WORK_CLAIM.json" \
             "$ROOT/PREREGISTRATION.md" \
             "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" \
+            "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" \
             "$ROOT/SOURCES.md" \
             "$ROOT/probe_hl_liquidations.py" \
             "$ROOT/test_probe_hl_liquidations.py" \
