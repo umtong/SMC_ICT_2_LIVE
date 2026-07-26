@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1049-METAORDER-SLICE-001",
+  "issue": 79,
+  "screen_id": "METAORDER-SLICE-FATAL-SCREEN-20260726-V1",
+  "provisional_result_id": "RES-20260726-METAORDER-SLICE-001",
+  "base_revision": 11,
+  "base_commit": "419f7a589431fd62f58fbb5612893d9f39cdbe36",
+  "branch": "agent/r11-metaorder-slice-001",
+  "research_stage": "sparse_pre_2024_fatal_alpha_screen",
+  "rank_eligibility": false,
+  "objective": "Test whether causally inferred unfinished parent-order slicing predicts the next same-side child packet and leaves repeatable after-cost residual markout large enough to justify exact quote/depth reconstruction before any official 2024 opening.",
+  "historical_information_cutoff": "2023-12-31T23:59:59Z",
+  "economic_mechanism": {
+    "parent_order": "A large trading intention split into repeated child orders to limit immediate market impact.",
+    "observable_state": "Completed public-trade packets with jointly regular same-side timing and size, high side purity, sufficient sequence notional and non-exhausted directional response.",
+    "prediction": "After the required completed packets, at least one additional same-side child packet and residual price pressure arrive after the decision timestamp.",
+    "ict_translation": "Algorithmic institutional execution creates displacement and imbalance; the sequence state determines whether the parent order is still active. A surviving next stage enters only on the first causal retracement into the sequence displacement and invalidates on sequence cessation or opposing structural break."
+  },
+  "non_overlap": [
+    "Generic event-tape pace/control without timing-and-size repetition is excluded.",
+    "Fixed UTC quarter-hour or other wall-clock phase features are excluded.",
+    "L2 cancellation/refill, maker queues, OI, liquidation, cross-venue, wallet identity, options, premium, VWAP and completed-bar momentum are excluded."
+  ],
+  "data_contract": {
+    "venue": "Bybit",
+    "market": "USDT linear perpetual public historical trades",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "base_url": "https://public.bybit.com/trading",
+    "fit_dates": ["2023-01-15", "2023-03-19", "2023-05-21"],
+    "development_dates": ["2023-07-16", "2023-09-17", "2023-11-19"],
+    "later_periods_opened": false,
+    "required_fields": ["timestamp", "side", "size", "price"],
+    "integrity": "Downloaded gzip bytes, decompressed row count and SHA-256 are recorded."
+  },
+  "causal_packet_contract": {
+    "packet_definition": "Consecutive trades sharing exchange timestamp, side and price are consolidated by summed size/notional. A packet is closed and becomes observable only when the next distinct trade is read.",
+    "sequence_direction": "The sign of the dominant completed packet side in the causal sequence.",
+    "sequence_history_packets": [4, 6, 8],
+    "side_purity_minimum": [0.75, 0.9],
+    "timing_mad_to_median_maximum": [0.25, 0.5],
+    "log_size_mad_maximum": [0.25, 0.5],
+    "fit_sequence_notional_quantiles": [0.75, 0.9],
+    "fit_directional_efficiency_quantiles": [0.5, 0.75],
+    "period_estimation": "Median interval is estimated only from completed packets in the current sequence; no fixed clock period or time-of-day input is allowed.",
+    "entry_latency_ms": 100,
+    "entry_mark": "First observed trade at or after decision timestamp plus latency.",
+    "markout_horizons_seconds": [10, 30, 60, 120, 300],
+    "next_slice_label": "The first qualifying future packet inside two causal median sequence intervals, capped at 60 seconds; success requires the same side before an opposite-side qualifying packet.",
+    "one_global_slot": "Enforced independently for each candidate and markout horizon across BTCUSDT and ETHUSDT.",
+    "candidate_count": 480
+  },
+  "cost_and_execution_screen": {
+    "all_in_round_trip_cost_bps": [12, 18, 24],
+    "same_gross_path_replay": true,
+    "historical_bbo_replay": false,
+    "funding": "Not separately modeled over 10-300 second fatal-screen horizons.",
+    "qualification": "Sparse markout screen only. Any survivor requires exact BBO/depth, first-retracement execution, structural exits, risk sizing, funding and continuous NAV replay before rank eligibility."
+  },
+  "development_gate": {
+    "minimum_accepted_trades_at_18bp": 80,
+    "next_slice_precision": ">= 0.60",
+    "next_slice_lift_vs_matched_symbol_gap_bucket_baseline": ">= 1.10",
+    "mean_net_markout_at_18bp": "> 0",
+    "median_net_markout_at_12bp": "> 0",
+    "total_return_at_24bp": "> 0",
+    "top_10_percent_positive_removed_return_at_18bp": "> 0",
+    "positive_symbol_date_fraction_at_18bp": ">= 4/6",
+    "top_five_positive_trade_share_at_18bp": "<= 0.40"
+  },
+  "conditional_next_stage": {
+    "if_zero_survivors": "Register reusable hard-valid negative evidence for this dependency, keep 2024-2026 sealed and move to a structurally different information/payoff source.",
+    "if_one_or_more_survivors": "Expand 2023 reconstruction, then freeze one family for exact-quote/depth first-retracement execution and sequential 2024 evaluation without tuning on 2024."
+  },
+  "prohibitions": [
+    "No 2024, 2025 or 2026 source opening in this workflow.",
+    "No same-packet, same-trade or pre-decision fill.",
+    "No parameter change after development outcomes are read.",
+    "No favorable missing-price fill.",
+    "No live credentials or orders.",
+    "No cumulative-ranking promotion from this sparse screen."
+  ]
+}
