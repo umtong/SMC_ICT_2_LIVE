@@ -1,225 +1,104 @@
 {
-  "component_rankings": [
-    {
-      "component": "execution_routing",
-      "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER",
-      "rank": 1,
-      "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag while remaining unsuitable as a standalone strategy.",
-      "source_result_id": "RES-20260725-1510-L1-EXEC-001"
-    }
-  ],
+  "schema_version": 1,
+  "revision": 14,
+  "status": "ACTIVE",
+  "ranking_id": "STRATEGY-RANKING-20260726-R14",
+  "ranking_rule": {
+    "eligibility": "hard_valid_or_preliminary_causal_strategy_or_portfolio_compatible_with_current_fixed_project_contract",
+    "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
+    "primary_metric": "realistic_after_cost_geometric_daily_growth",
+    "survival_constraint": "a candidate with forced liquidation, irrecoverable account damage, or a prohibited elapsed-time liquidation cannot rank",
+    "secondary_criteria": ["maximum_drawdown_and_recovery", "liquidation_and_tail_loss", "profit_concentration_and_top_trade_removal", "effective_independent_trade_count", "execution_and_cost_robustness", "capital_efficiency", "validation_and_comparison_confidence"],
+    "incomplete_normalization": "provisional_rank_with_disclosed_confidence",
+    "rank_does_not_determine_work_priority": true
+  },
   "first_place": {
-    "candidate_type": "STRATEGY",
-    "comparison_confidence": "VERY_LOW",
+    "rank": 1,
     "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
-    "known_weaknesses": [
-      "The compact result preserved comparator growth but not its complete trade ledger, maximum drawdown, profit factor or concentration fields.",
-      "Binance USD-M price proxy rather than Bybit execution replay.",
-      "Historical funding was omitted.",
-      "The completed-bar approximation does not reproduce original stop-order tick triggering.",
-      "No 2024 or later interval was opened.",
-      "The surrounding Donchian family is dominated by rare large winners.",
-      "This is a non-ML baseline and cannot satisfy the final system's ML requirement.",
-      "Daily growth remains far below the 1% target."
-    ],
+    "candidate_type": "STRATEGY",
+    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/61",
+    "qualification_stage": "PRELIMINARY_CAUSAL_BINANCE_PROXY",
+    "target_status": "NOT_MET",
+    "selection_reason": "The all-breakout route is the highest recorded current-exit-contract-compatible path. Its independently reproduced account grows 0.0900854% per UTC calendar day at 12bp and 0.0700189% at 24bp. It remains provisional because the execution venue is a Binance proxy, funding and exact Bybit BBO/depth are absent, 2024+ is unopened, and winner removal destroys the path.",
+    "comparison_confidence": "VERY_LOW",
+    "ml_requirement_status": "NOT_MET_NON_ML_BASELINE",
     "metrics": {
-      "actual_funding_included": false,
-      "base_cost_bps": 12,
-      "bybit_execution_replayed": false,
       "candidate_id": "a70626d9e484285f2cb4|all",
       "family": "donchian_all_breakout_60m_entry96_exit48",
+      "base_cost_bps": 12,
       "geometric_daily_growth": 0.0009008544402622221,
-      "geometric_daily_growth_at_24bps": 0.0007001887213879954,
-      "maximum_drawdown": null,
-      "median_account_return_bps": null,
-      "profit_factor": null,
-      "target_fraction": 0.09008544402622221,
-      "target_fraction_at_24bps": 0.07001887213879954,
-      "target_gap": 0.009099145559737778,
-      "target_gap_at_24bps": 0.009299811278612004,
       "target_geometric_daily_growth": 0.01,
+      "target_gap": 0.009099145559737778,
+      "target_fraction": 0.09008544402622221,
       "target_multiple_required": 11.100571377733324,
-      "target_multiple_required_at_24bps": 14.281863790070096,
-      "top10pct_removed_return": null,
-      "top5_positive_share": null,
-      "total_return": null,
-      "trade_count": null
+      "total_return": 0.3891108327238735,
+      "trade_count": 99,
+      "profit_factor": 1.7959502897284196,
+      "maximum_drawdown": 0.09719355993771106,
+      "median_account_return_bps": -50.0,
+      "mean_account_return_bps": 37.788790303744776,
+      "win_rate": 0.20202020202020202,
+      "top5_positive_share": 0.6510987302541201,
+      "top10pct_removed_return": -0.26287077897662825,
+      "h1_return": 0.28279567322635857,
+      "h2_return": 0.08287770353178847,
+      "median_holding_hours": 19.0,
+      "maximum_leverage_used": 0.8746582981355856,
+      "channel_exit_count": 25,
+      "stop_exit_count": 74,
+      "geometric_daily_growth_at_18bps": 0.0007941372483304399,
+      "total_return_at_18bps": 0.33608682555253844,
+      "geometric_daily_growth_at_24bps": 0.0007001887213879954,
+      "total_return_at_24bps": 0.2910804833980871,
+      "profit_factor_at_24bps": 1.6274490829640196,
+      "maximum_drawdown_at_24bps": 0.09855424618390096,
+      "top5_positive_share_at_24bps": 0.642218924348059,
+      "top10pct_removed_return_at_24bps": -0.2694691324532831,
+      "actual_funding_included": false,
+      "bybit_execution_replayed": false,
+      "elapsed_time_liquidation": false
     },
-    "ml_requirement_status": "NOT_MET_NON_ML_BASELINE",
-    "qualification_stage": "PRELIMINARY_CAUSAL_BINANCE_PROXY",
-    "rank": 1,
-    "selection_reason": "The former first place is removed because its immutable implementation uses a prohibited eight-hour elapsed-time liquidation. Among paths audited against the current exit contract, the Donchian all-breakout comparator has the highest recorded after-cost geometric daily growth: 0.0900854% at 12 bp and 0.0700189% at 24 bp. Missing risk and concentration fields force very-low confidence rather than silent exclusion.",
-    "sequential_evidence": {
-      "2026_opened": false,
-      "confirmation_2025_opened": false,
-      "development_gate_pass_count": 0,
-      "development_period": "2023",
-      "selection_2024_opened": false
-    },
-    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/61",
-    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-    "target_status": "NOT_MET"
+    "sequential_evidence": {"development_period": "2023", "development_gate_pass_count": 0, "selection_2024_opened": false, "confirmation_2025_opened": false, "2026_opened": false},
+    "known_weaknesses": [
+      "Binance USD-M completed bars are a proxy rather than exact Bybit execution.",
+      "Historical funding was omitted.",
+      "Completed 60-minute bars do not reproduce tick-level stop-order triggering.",
+      "The median trade is -50bp and only 20.2% of trades win.",
+      "The five largest winners provide about 65% of positive PnL.",
+      "Removing the largest positive 10% of event keys changes the 12bp return to -26.29% and the 24bp return to -26.95%.",
+      "No 2024 or later sequential interval was opened.",
+      "This is a non-ML benchmark and cannot satisfy the final system requirement.",
+      "Daily growth remains far below the 1% reference."
+    ]
   },
   "ranked_candidates": [
-    {
-      "candidate_label": "Donchian all-breakout comparator 60m/96/48 a70626d9e484285f2cb4",
-      "comparison_confidence": "VERY_LOW",
-      "comparison_status": "PROVISIONAL_COMPARATOR_GROWTH_RECORDED_RISK_FIELDS_INCOMPLETE_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS",
-      "geometric_daily_growth": 0.0009008544402622221,
-      "geometric_daily_growth_at_24bps": 0.0007001887213879954,
-      "rank": 1,
-      "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-      "target_gap": 0.009099145559737778
-    },
-    {
-      "candidate_label": "Donchian after-loser 60m/96/48/240 a70626d9e484285f2cb4",
-      "comparison_confidence": "VERY_LOW",
-      "comparison_status": "PROVISIONAL_FULL_METRICS_12BPS_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS",
-      "geometric_daily_growth": 0.0008299955525170599,
-      "geometric_daily_growth_at_24bps": 0.0006318446194384375,
-      "rank": 2,
-      "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-      "target_gap": 0.00917000444748294
-    },
-    {
-      "candidate_label": "aligned_continuation 33034b092ffd271a",
-      "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
-      "geometric_daily_growth": 0.00022797677403052496,
-      "rank": 3,
-      "source_result_id": "RES-20260725-ABS-FLOW-001",
-      "target_gap": 0.009772023225969475
-    },
-    {
-      "candidate_label": "perp_overshoot_reversal 191444bb0a4348e2a52b",
-      "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
-      "geometric_daily_growth": 0.0001189762570252828,
-      "rank": 4,
-      "source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001",
-      "target_gap": 0.009881023742974717
-    },
-    {
-      "candidate_label": "exhaustion_reversal 0c0b773a5be4eab4",
-      "comparison_confidence": "VERY_LOW",
-      "comparison_status": "PROVISIONAL_SPARSE_FIRST_DAY_MONTHLY_DEVELOPMENT_WITH_FIT_SIGN_REVERSAL",
-      "geometric_daily_growth": 0.0000358316,
-      "rank": 5,
-      "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001",
-      "target_gap": 0.0099641684
-    },
-    {
-      "candidate_label": "LOW_VRP_RESIDUAL_CONTINUATION 1b4ec83c59bb98660c23",
-      "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
-      "geometric_daily_growth": 0.00003400166161160456,
-      "rank": 6,
-      "source_result_id": "RES-20260726-DVOL-XSEC-001",
-      "target_gap": 0.009965998338388396
-    },
-    {
-      "candidate_label": "high_resistance_sweep c232ae43b7a1401d",
-      "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT",
-      "geometric_daily_growth": 0.0000245553331665,
-      "rank": 7,
-      "source_result_id": "RES-20260725-ALPHA-HYP-001",
-      "target_gap": 0.0099754446668335
-    },
-    {
-      "candidate_label": "fragmented_flow_reversal 95f3b144d5a291abc61c",
-      "comparison_confidence": "VERY_LOW",
-      "comparison_status": "PROVISIONAL_FOUR_TRADES_DIFFERENT_WINDOW_MARKET_AND_EXECUTION_CONTRACT_EXIT_CONTRACT_REAUDIT_PENDING",
-      "geometric_daily_growth": 0.00002053283367287051,
-      "rank": 8,
-      "source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001",
-      "target_gap": 0.00997946716632713
-    },
-    {
-      "candidate_label": "balance_to_imbalance best nonzero specification",
-      "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT",
-      "geometric_daily_growth": -0.000719,
-      "rank": 9,
-      "source_result_id": "RES-20260725-CAUSAL-ALPHA-WAVE1-001",
-      "target_gap": 0.010719
-    },
-    {
-      "candidate_label": "leader-shock underreaction best recorded configuration",
-      "comparison_confidence": "LOW",
-      "comparison_status": "PROVISIONAL_DIFFERENT_WINDOW_AND_COST_CONTRACT",
-      "geometric_daily_growth": -0.01483,
-      "rank": 10,
-      "source_result_id": "RES-20260725-CROSS-ASSET-LEADLAG-001",
-      "target_gap": 0.02483
-    }
+    {"rank": 1, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian all-breakout 60m/96/48 a70626d9e484285f2cb4", "geometric_daily_growth": 0.0009008544402622221, "geometric_daily_growth_at_24bps": 0.0007001887213879954, "target_gap": 0.009099145559737778, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_FULL_REPRODUCTION_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS_WINNER_CONCENTRATED"},
+    {"rank": 2, "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian after-loser 60m/96/48/240 a70626d9e484285f2cb4", "geometric_daily_growth": 0.0008299955525170599, "geometric_daily_growth_at_24bps": 0.0006318446194384375, "target_gap": 0.00917000444748294, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BINANCE_PROXY_NO_FUNDING_NO_BYBIT_OOS_WINNER_CONCENTRATED"},
+    {"rank": 3, "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001", "candidate_label": "CME gap competing-risk ML da1b9e2861d6b396b81e", "geometric_daily_growth": 0.00045942506559409766, "geometric_daily_growth_at_24bps": 0.0003348504650920563, "target_gap": 0.009540574934405903, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_YAHOO_CME_BINANCE_EXECUTION_PROXY_2022_ONLY_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"},
+    {"rank": 4, "source_result_id": "RES-20260726-LIQUIDITY-MASS-001", "candidate_label": "Bybit liquidity-mass rejection 142f8501fcc7874fd6d2", "geometric_daily_growth": 0.0001185504610022094, "target_gap": 0.00988144953899779, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"},
+    {"rank": 5, "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001", "candidate_label": "08:00 option-settlement SMT 951df185862595e1", "geometric_daily_growth": 0.00009955592268640068, "target_gap": 0.0099004440773136, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BINANCE_EXECUTION_PROXY_18BPS_12_TRADES_PRE2024_FIT_ONLY"},
+    {"rank": 6, "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001", "candidate_label": "Bybit MMXM lifecycle 80d3e98612ce67650e4c", "geometric_daily_growth": 0.00005750578742594239, "target_gap": 0.009942494212574058, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_BYBIT_NATIVE_PRE2024_FIT_ONLY_NEGATIVE_MEDIAN_SECOND_HALF_LOSS"},
+    {"rank": 7, "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001", "candidate_label": "KRW-relative regional SMT reversal 297bb96ecbf036bb", "geometric_daily_growth": 0.000048748293338896076, "geometric_daily_growth_at_24bps": 0.000030592830872144816, "target_gap": 0.009951251706661104, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_UPBIT_PRIMARY_BINANCE_EXECUTION_PROXY_TWO_TRADES_WINNER_REMOVAL_NEGATIVE"},
+    {"rank": 8, "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001", "candidate_label": "liquidation exhaustion reversal 0c0b773a5be4eab4", "geometric_daily_growth": 0.0000358316, "target_gap": 0.0099641684, "comparison_confidence": "VERY_LOW", "comparison_status": "PROVISIONAL_SPARSE_FIRST_DAY_MONTHLY_DEVELOPMENT_FIT_SIGN_REVERSAL_WINNER_REMOVAL_NEGATIVE"}
   ],
-  "ranking_id": "STRATEGY-RANKING-20260726-R13",
-  "ranking_rule": {
-    "eligibility": "hard_valid_strategy_or_portfolio_result_compatible_with_current_fixed_project_contract",
-    "incomplete_normalization": "provisional_rank_with_disclosed_confidence",
-    "primary_metric": "realistic_after_cost_geometric_daily_growth_gap_to_0.01",
-    "primary_objective": "maximum sustainable realistic_after_cost_geometric_daily_growth while satisfying survival and recoverability",
-    "rank_does_not_determine_work_priority": true,
-    "secondary_criteria": [
-      "maximum_drawdown_and_recovery",
-      "liquidation_and_tail_loss",
-      "profit_concentration_and_top_trade_removal",
-      "effective_independent_trade_count",
-      "execution_and_cost_robustness",
-      "capital_efficiency",
-      "validation_and_comparison_confidence"
-    ],
-    "survival_constraint": "a candidate with forced liquidation, irrecoverable account damage, or a prohibited elapsed-time liquidation cannot rank"
-  },
-  "reconciliation_notes": [
-    "Removed the former first place because immutable state_exit.py uses maximum_hold_bars=96 and defaults surviving trades to the timeout open, prohibited by the current project contract.",
-    "Promoted the Donchian all-breakout comparator because it has the highest recorded growth among current-exit-contract-audited paths: 0.0900854% daily at 12 bp and 0.0700189% at 24 bp.",
-    "Inserted the fully recorded after-loser path at rank 2: 0.0829996% daily at 12 bp and 0.0631845% at 24 bp, but -26.31% after top-10% winner removal at 24 bp.",
-    "All-breakout risk and concentration fields were not preserved in the compact result; the candidate is ranked with VERY_LOW confidence rather than suppressed.",
-    "The new first is non-ML, a Binance proxy, lacks historical funding and Bybit OOS, and remains far below the target; it is a benchmark, not a protected research path.",
-    "Target status and live-order permission remain unchanged."
-  ],
-  "revision": 13,
-  "schema_version": 1,
-  "status": "ACTIVE",
   "unranked_results": [
-    {
-      "reason": "Removed from the current-contract ranking. Immutable verified state_exit.py contains maximum_hold_bars; the ranked candidate uses 96 five-minute bars and exits surviving trades at the timeout open. This is a prohibited eight-hour elapsed-time liquidation. Historical evidence remains recorded and may be reconsidered only through a separately frozen strategy-defined-exit formulation.",
-      "source_evidence": {
-        "artifact_digest": "sha256:d1677e1bb776dfe6d52db913d4a689b6bfd95a5bad648b1b8e92c7846ef7ad20",
-        "artifact_id": 8620014408,
-        "path": "state_exit.py",
-        "relevant_lines": [
-          "44-48",
-          "62-74",
-          "126-142",
-          "146-190"
-        ],
-        "sha256": "7ed8ebda8e8744f4dcefb6405b5576582fe682b03ad586fc8576e89cf80eedb0"
-      },
-      "source_result_id": "RES-20260725-DYNAMIC-FACTOR-001"
-    },
-    {
-      "reason": "No normalized account-level geometric daily-growth metric is recorded for ranking.",
-      "source_result_id": "result-20260725-001-btc-oi-crossasset-invalid"
-    },
-    {
-      "reason": "No normalized account-level geometric daily-growth metric is recorded for ranking.",
-      "source_result_id": "result-20260725-002-funding-settlement-invalid"
-    },
-    {
-      "reason": "The recorded 10-symbol cross-sectional account is outside the fixed four-symbol tradable universe and is not normalized into the project strategy ranking.",
-      "source_result_id": "RES-20260725-XSEC-FUNDING-CROWDING-001"
-    },
-    {
-      "reason": "The positive path is explicitly a non-rank-eligible Binance execution proxy rather than a Bybit account result.",
-      "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001"
-    },
-    {
-      "reason": "The result is explicitly registered as a non-rank-eligible pre-2024 discovery screen.",
-      "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001"
-    }
+    {"source_result_id": "RES-20260725-DYNAMIC-FACTOR-001", "reason": "Removed: maximum_hold_bars=96 defaults surviving positions to an eight-hour timeout open, a prohibited elapsed-time liquidation."},
+    {"source_result_id": "RES-20260725-ABS-FLOW-001", "reason": "Removed: maximum_holding_minutes precommits a horizon and the executor closes surviving positions at the scheduled maximum time."},
+    {"source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001", "reason": "Removed: candidate.hold defines timeout_i and surviving positions exit with reason timeout."},
+    {"source_result_id": "RES-20260726-DVOL-XSEC-001", "reason": "Removed: Candidate.maximum_hold_bars is a fixed elapsed-time liquidation."},
+    {"source_result_id": "RES-20260725-ALPHA-HYP-001", "reason": "Removed: durable result status is INVALID and the positive specification contains hold=48."},
+    {"source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001", "reason": "Removed: the four-trade best raw path uses hold_minutes=30 and becomes negative after winner removal."},
+    {"source_result_id": "RES-20260725-XSEC-FUNDING-CROWDING-001", "reason": "Outside the fixed four-symbol traded universe; no normalized BTC/ETH/SOL/XRP-only account path exists."},
+    {"source_result_id": "RES-20260726-MARK-INDEX-RAID-ML-001", "reason": "One sparse sample-day trade is not a normalized full-calendar account growth path; the model was inferior to structural distance and the trade disappears under winner removal."},
+    {"source_result_id": "source_only_and_hard_invalid_results", "reason": "Source-only probes, hard-invalid outputs and non-tradable oracles have no ranking account path."}
   ],
-  "updated_at": "2026-07-26T20:47:00+09:00"
+  "component_rankings": [{"component": "execution_routing", "rank": 1, "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER", "source_result_id": "RES-20260725-1510-L1-EXEC-001", "reason": "The 50%-queue, 3-second-TTL routing gate improved modeled five-second execution drag while remaining unsuitable as a standalone strategy."}],
+  "reconciliation_notes": [
+    "Reproduced the Donchian all-breakout account from the registered immutable 2023 snapshot and restored its complete 12/18/24bp metrics.",
+    "Removed five lower-ranked legacy paths that use fixed hold bars, maximum holding minutes or timeout exits, plus one INVALID hold-based result.",
+    "Inserted current-contract-compatible structural-exit candidates even when their local result record labeled the screen non-rank-eligible; incomplete execution comparisons are disclosed through VERY_LOW confidence rather than suppressed.",
+    "Rank does not imply economic-gate passage, deployment permission, research priority or protection."
+  ],
+  "updated_at": "2026-07-26T21:08:00+09:00"
 }

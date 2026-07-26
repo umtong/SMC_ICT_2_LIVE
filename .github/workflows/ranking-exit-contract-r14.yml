@@ -1,0 +1,64 @@
+name: Ranking exit-contract reconciliation R14
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'control/ranking.json'
+      - 'control/current-state.md'
+      - 'schemas/ranking.schema.json'
+      - 'research_results/r14_ranking_exit_contract_complete_001/**'
+      - '.github/workflows/ranking-exit-contract-r14.yml'
+      - '.github/workflows/absorption-flow-benchmark-r7.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install verification dependencies
+        run: python -m pip install --disable-pip-version-check 'jsonschema==4.25.1' 'pytest==8.3.4'
+      - name: Validate revision 14 ranking and evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import validate
+
+          ranking = json.loads(Path('control/ranking.json').read_text())
+          schema = json.loads(Path('schemas/ranking.schema.json').read_text())
+          state = Path('control/current-state.md').read_text()
+          repro = json.loads(Path('research_results/r14_ranking_exit_contract_complete_001/FIRST_PLACE_REPRODUCTION.json').read_text())
+          audit = json.loads(Path('research_results/r14_ranking_exit_contract_complete_001/LOWER_RANK_EXIT_AUDIT.json').read_text())
+          result = json.loads(Path('research_results/r14_ranking_exit_contract_complete_001/RESULT.json').read_text())
+
+          validate(ranking, schema)
+          assert ranking['revision'] == 14
+          assert '- revision: 14' in state
+          assert 'Rank does not determine research priority.' in state
+          assert ranking['first_place']['source_result_id'] == 'RES-20260726-DONCHIAN-DEPENDENCE-001'
+          assert ranking['first_place']['metrics']['trade_count'] == 99
+          assert abs(ranking['first_place']['metrics']['geometric_daily_growth'] - repro['paths']['12bps']['geometric_daily_growth']) < 1e-15
+          assert abs(ranking['first_place']['metrics']['geometric_daily_growth_at_24bps'] - repro['paths']['24bps']['geometric_daily_growth']) < 1e-15
+          assert [row['rank'] for row in ranking['ranked_candidates']] == list(range(1, 9))
+          assert [row['target_gap'] for row in ranking['ranked_candidates']] == sorted(row['target_gap'] for row in ranking['ranked_candidates'])
+          removed = {'RES-20260725-DYNAMIC-FACTOR-001','RES-20260725-ABS-FLOW-001','RES-20260726-SPOT-PERP-LEADERSHIP-001','RES-20260726-DVOL-XSEC-001','RES-20260725-ALPHA-HYP-001','RES-20260726-FLOW-IMPACT-EFFICIENCY-001'}
+          assert {row['source_result_id'] for row in audit['removed']} == removed
+          assert not any(row['source_result_id'] in removed for row in ranking['ranked_candidates'])
+          assert result['ranked_candidate_count'] == 8
+          assert result['removed_for_elapsed_time_or_invalid_count'] == 6
+          assert result['orders_submitted'] is False
+          print('R14_RANKING_EXIT_CONTRACT_RECONCILIATION_PASS')
+          PY
+      - name: Validate project and repository tests
+        run: |
+          python scripts/validate_project.py
+          python -m pytest -q
