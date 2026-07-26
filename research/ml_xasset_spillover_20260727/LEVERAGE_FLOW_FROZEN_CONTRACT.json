@@ -1,9 +1,21 @@
 {
   "claim_id": "CLM-20260727-0328-ML-LEVERAGE-FLOW-001",
   "contract_frozen_at": "2026-07-27T03:38:00+09:00",
+  "contract_integrity_revision_at": "2026-07-27T03:52:00+09:00",
+  "integrity_revision_scope": [
+    "preserve provider-missing OI cells as NaN",
+    "preserve provider-missing five-minute grid rows as NaN",
+    "remove future exit-resolution filtering from stage execution",
+    "mark unresolved stage-boundary exposure to realistic liquidation value",
+    "correct feature-importance output to LightGBM gain"
+  ],
   "data_opened_when_frozen": {
     "2023_metrics_schema_only": true,
-    "2023_metrics_outcomes": false,
+    "2023_metrics_source_integrity_defects_only": [
+      "BTCUSDT 2023-04-10 contained at least one invalid OI cell",
+      "BTCUSDT 2023-09-12 contained 285 rather than 288 source rows"
+    ],
+    "2023_metrics_feature_or_label_outcomes": false,
     "2024_or_later_market_outcomes": false
   },
   "source": {
@@ -11,6 +23,7 @@
     "metrics_dataset_id": "BINANCE_USDM_4ASSET_5M_METRICS_2023_R1",
     "metrics_archive": "official Binance Vision USD-M daily metrics",
     "metrics_delay_ms": 300000,
+    "missing_value_rule": "missing grid rows, missing cells, and non-positive OI remain NaN; never future-fill or interpolate; affected current/lagged states cannot form events",
     "entry_rule": "first completed one-minute bar at delayed availability; fixed 500 ms latency; entry at decision_idx+2 open"
   },
   "split": {
@@ -18,7 +31,8 @@
     "calibration": "2023-06-01/2023-07-01",
     "development": "2023-07-01/2023-10-01",
     "confirmation": "2023-10-01/2024-01-01",
-    "boundary_embargo_days": 7
+    "boundary_embargo_days": 7,
+    "boundary_execution_rule": "entry eligibility never depends on future target/stop resolution; a still-open position is NAV-marked at the last stage price less estimated exit cost and is not force-closed"
   },
   "event": {
     "minimum_abs_price_z5": 1.5,
@@ -57,12 +71,21 @@
   },
   "open_2024H1_gate": {
     "both_development_and_confirmation_positive_after_cost": true,
-    "minimum_trades_each": 20,
+    "minimum_completed_trades_each": 20,
     "minimum_weaker_interval_geometric_daily_growth": 0.0015
   },
+  "frozen_code_bundle": {
+    "path": "research/ml_xasset_spillover_20260727/leverage_flow_bundle",
+    "decoded_archive_sha256": "4cb48f08ad1d03f22d11c7b02b8e6fe11398f1c88c4248b0eb89898bf4aebcd0",
+    "bundle_manifest": "BUNDLE_MANIFEST.json"
+  },
   "frozen_local_artifact_hashes": {
-    "evaluate_leverage_flow.py": "7d6e58fe12b38f24e2a4ddcdf76c999c3fc6f797d0f90b3cc6bdc688073bfcbc",
+    "evaluate_leverage_flow.py": "233c56d05fd97374239e3020a4c3cb384ffb815d5845123e288c764e2f1ac7a0",
     "xasset_base.py": "367468c72c59014e68875882188edf7aa48da30859ed8b1c6631d25f4f36e300",
-    "test_leverage_flow.py": "6ffae4e2a819bc54f05460dcce34ccba7d78ca722cd8329f0efbfb719c677e7f"
+    "test_leverage_flow.py": "cbb26f5f97ff43d666acf248379702d1133507c509b856f3587735b5de483469"
+  },
+  "frozen_test_status": {
+    "passed": 6,
+    "failed": 0
   }
 }
