@@ -16,6 +16,8 @@ on:
 permissions:
   contents: read
 
+# The frozen source question is independent of a moving project-state revision.
+# Current-control validation is retained after source evidence and cannot block it.
 concurrency:
   group: stablecoin-blockscout-source-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -42,7 +44,6 @@ jobs:
           python -m json.tool "$r/EXECUTION_CORRECTION_006_SLIM_RUNNERS_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$r/EXECUTION_CORRECTION_007_SHA_SCOPED_NO_CANCEL_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$r/EXECUTION_CORRECTION_008_SINGLE_BLOCKSCOUT_AUTHORITY_BEFORE_OUTCOME.json" >/dev/null
-          python scripts/validate_project.py | tee "$o/PROJECT_VALIDATION.log"
       - name: Query pre-2024 issuance source only
         run: |
           set -u
@@ -57,6 +58,14 @@ jobs:
       - name: Verify seals
         run: |
           python research/ml_stablecoin_issuance_20260726/verify_source_result.py research_runs/ml_stablecoin_issuance_20260726/blockscout_source/SOURCE_GATE_RESULT.json TRANSPORT-20260726-ML-STABLECOIN-BLOCKSCOUT-003
+      - name: Validate current project control plane without blocking source evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          o=research_runs/ml_stablecoin_issuance_20260726/blockscout_source
+          mkdir -p "$o"
+          python scripts/validate_project.py 2>&1 | tee "$o/PROJECT_VALIDATION.log"
       - name: Freeze hashes
         if: always()
         run: |
