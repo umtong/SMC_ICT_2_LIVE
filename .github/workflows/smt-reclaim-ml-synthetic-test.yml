@@ -1,0 +1,67 @@
+name: SMT reclaim ML synthetic staged test
+
+on:
+  push:
+    branches:
+      - agent/r11-smt-reclaim-ml-meta-001
+    paths:
+      - "research/smt_reclaim_ml_meta_20260726/test_synthetic_pipeline.py"
+      - "research/smt_reclaim_ml_meta_20260726/train.py"
+      - "research/smt_reclaim_ml_meta_20260726/train_entry.py"
+      - ".github/workflows/smt-reclaim-ml-synthetic-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: smt-reclaim-ml-synthetic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-staged-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          python -m pip install --disable-pip-version-check \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "joblib==1.4.2"
+      - name: Execute complete no-market staged pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime research_results/r11_smt_reclaim_ml_meta_001
+          cp research/smt_reclaim_ml_meta_20260726/train.py runtime/train.py
+          cp research/smt_reclaim_ml_meta_20260726/train_entry.py runtime/train_entry.py
+          cp research/smt_reclaim_ml_meta_20260726/test_synthetic_pipeline.py runtime/test_synthetic_pipeline.py
+          python -m py_compile runtime/*.py
+          PYTHONPATH=runtime python runtime/test_synthetic_pipeline.py \
+            | tee research_results/r11_smt_reclaim_ml_meta_001/SYNTHETIC_TEST.log
+          python - <<'PY'
+          import hashlib,json,pathlib
+          log=pathlib.Path('research_results/r11_smt_reclaim_ml_meta_001/SYNTHETIC_TEST.log')
+          result={
+            'schema_version':1,
+            'claim_id':'CLM-20260726-SMT-RECLAIM-ML-001',
+            'status':'PASS',
+            'test':'complete fit-calibration-development-selection-finalize path on synthetic data',
+            'market_data_opened':False,
+            'pnl_claimed':False,
+            'official_2024_2026_opened':False,
+            'sha256':hashlib.sha256(log.read_bytes()).hexdigest(),
+          }
+          pathlib.Path('research_results/r11_smt_reclaim_ml_meta_001/SYNTHETIC_TEST.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          PY
+      - name: Commit synthetic test attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research_results/r11_smt_reclaim_ml_meta_001/SYNTHETIC_TEST.*
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record SMT reclaim ML synthetic test [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
