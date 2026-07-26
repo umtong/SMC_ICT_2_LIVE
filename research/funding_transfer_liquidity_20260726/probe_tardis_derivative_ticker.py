@@ -90,11 +90,11 @@ def main() -> int:
             for field in FIELD_CANDIDATES
         },
         "first_rows": first_rows,
-        "strategy_outcomes_read": false,
-        "candidate_pnl_computed": false,
-        "orders_submitted": false,
-        "2024_opened": false,
-        "2025_or_2026_opened": false,
+        "strategy_outcomes_read": False,
+        "candidate_pnl_computed": False,
+        "orders_submitted": False,
+        "2024_opened": False,
+        "2025_or_2026_opened": False,
     }
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "PROBE.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
