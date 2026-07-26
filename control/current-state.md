@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 15
+- revision: 16
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9E484`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
@@ -74,27 +74,33 @@ ML path-continuity first passage is retired as `RES-20260726-ML-PATH-CONTINUITY-
 
 OKX spot-swap consensus/OI relay is retired as `RES-20260726-ML-OKX-CONSENSUS-001`: 116 train, 67 calibration and only 8 untouched confirmation events, with zero events on the second confirmation date; no model or PnL stage opened.
 
+Four-asset direct after-cost utility regression is retired as `RES-20260726-ML-DIRECT-UTILITY-001`: 24,612 training rows, 17,664 calibration rows and 17,376 untouched confirmation rows. The frozen non-negative calibration scale was `0.0`, confirmation MAE/RMSE skill was negative, and the global account policy authorized zero trades even at 12 bps. No development or risk/leverage search opened.
+
 ## Active high-information ML work
 
-- four-asset direct after-cost utility regression with one turnover-aware `KEEP / SWITCH / FLAT` account policy, gap-safe no-imputation handling and a development hurdle above the current 24-bp first place;
-- Aave V2/V3 `LiquidationCall` forced-flow source gate and conditional ETH first-passage ML screen.
+The next alpha family is external forced flow and inventory transfer, not another completed-price setup. Three source gates are already frozen and must be consumed rather than expanded:
 
-These are the only active primary alpha paths in this state. They are prioritized because they can either optimize the full permitted account directly or introduce external forced flow before Bybit delivery.
+1. Hyperliquid finalized account liquidations with signed coin positions and liquidated account state; one pooled four-asset HGBT may open only after the source gate.
+2. Aave V2/V3 `LiquidationCall` collateral/debt transfer logs; one ETH first-passage HGBT may open only after the source gate.
+3. Uniswap V3 WETH-stable pool balance transfers; one ETH hedge-relay HGBT may open only after the source gate.
+
+Hyperliquid has first research priority because it directly supplies signed, asset-specific forced inventory across all four permitted contracts. Aave is the forced-debt backup; Uniswap is the non-liquidation inventory-transfer comparison. No further source family should be opened until these gates are decided.
 
 ## Current blockers
 
 The first two ranks collapse when large winners are removed. CME gap is also winner- and Q4-concentrated. The remaining positive paths are sparse or regime-unstable. No candidate has survived realistic sequential 2024-2026 Bybit execution, funding, winner removal and regime changes, and the leading route is not a deployable ML system.
 
-GitHub execution capacity and historical public-source transport have delayed the two active ML decisions, but neither scientific contract is being loosened.
+The direct account model produced no positive calibrated utility. The unresolved bottleneck is therefore access to point-in-time forced inventory that can lead Bybit delivery by more than full execution cost.
 
 ## Current objective
 
-Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the direct-utility and Aave paths; insert any superior hard-valid account result immediately and retire either dependency immediately if it fails.
+Maximize realistic after-cost account growth and search for a materially stronger information source/payoff. Do not tune or protect the Donchian benchmark. Finish the three already-frozen external-flow source gates in priority order; open a model only for a source pass, insert any superior hard-valid account result immediately and retire any failed dependency immediately.
 
 ## Next exact action
 
-1. Complete the authoritative gap-safe direct-utility run. If development exceeds `0.07001887213879954%` geometric daily growth at 24 bps after winner removal, insert it into the cumulative rank immediately; otherwise retire the exact information unit.
-2. Complete the compressed Aave source gate. A pass opens exactly the frozen pre-2024 ETH ML screen; a failure retires the source before market outcomes.
-3. If both fail, open one materially new point-in-time inventory-transfer source rather than another completed-bar parameter family.
+1. Consume the Hyperliquid liquidation source gate. A pass opens exactly its frozen October-December 2025 model screen; a failure retires the source before Bybit outcomes.
+2. Consume the compressed Aave source gate. A pass opens exactly the frozen pre-2024 ETH screen; a failure retires it before market outcomes.
+3. Consume the Uniswap inventory-transfer source gate as the independent non-liquidation comparison.
+4. Do not create another pattern, model family or threshold grid while these three decisions remain open.
 
-Updated: 2026-07-26 21:25 KST
+Updated: 2026-07-26 21:35 KST
