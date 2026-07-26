@@ -1,0 +1,128 @@
+{
+  "account": {
+    "cost_paths_round_trip_bps": [
+      12,
+      18,
+      24
+    ],
+    "global_slot_count": 1,
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 3.0,
+    "planned_risk_fraction": 0.01,
+    "same_state_ambiguity": "stop first",
+    "source_gap_or_day_boundary": "structural stop",
+    "top_quote_participation": 0.05,
+    "top_winner_counterfactual": "remove largest positive 10 percent of 500ms/12bp event keys, then reroute all paths"
+  },
+  "authority": {
+    "credentials": false,
+    "orders": false,
+    "paper_live": false,
+    "rank_eligible": false
+  },
+  "claim_id": "CLM-20260726-1935-ML-COINBASE-SPOT-001",
+  "data": {
+    "calibration_dates": [
+      "2022-07-01"
+    ],
+    "conditional_development_dates": [
+      "2023-01-01",
+      "2023-03-01",
+      "2023-05-01"
+    ],
+    "confirmation_dates": [
+      "2022-09-01",
+      "2022-11-01"
+    ],
+    "execution_data_types": [
+      "quotes"
+    ],
+    "execution_exchange": "bybit",
+    "execution_product": "BTCUSDT USDT-linear perpetual",
+    "information_clock": "Tardis local_timestamp",
+    "mandatory_stress_delay_ms": 1000,
+    "primary_relay_delay_ms": 500,
+    "prohibited_years": [
+      2024,
+      2025,
+      2026
+    ],
+    "signal_data_types": [
+      "trades"
+    ],
+    "signal_exchange": "coinbase",
+    "signal_product": "BTCUSD spot",
+    "train_dates": [
+      "2022-01-01",
+      "2022-03-01",
+      "2022-05-01"
+    ]
+  },
+  "engine_version": "ML-COINBASE-SPOT-TO-BYBIT-FIRST-PASSAGE-V1",
+  "event": {
+    "bybit_structure": "previous complete 15-minute high, low and equilibrium",
+    "event_cooldown_seconds": 30,
+    "flow_normalization_lookback_seconds": 900,
+    "long_geometry": "equilibrium < entry < prior high; target prior high; stop equilibrium",
+    "maximum_stop_distance_bp": 100,
+    "minimum_stop_distance_bp": 6,
+    "minimum_target_distance_bp": 36,
+    "normalization_min_periods": 300,
+    "spot_flow_min_usd_1s": 75000,
+    "spot_flow_relative_multiple": 3.0,
+    "spot_return_min_bp_1s": 1.5,
+    "spot_return_relative_multiple": 3.0,
+    "short_geometry": "prior low < entry < equilibrium; target prior low; stop equilibrium",
+    "time_exit": false,
+    "underreaction_min_bp": 0.75,
+    "underreaction_relative_multiple": 1.5
+  },
+  "fit_capability_minimums": {
+    "both_classes_in_every_partition": true,
+    "calibration_resolved_rows": 80,
+    "confirmation_resolved_rows": 150,
+    "train_resolved_rows": 300
+  },
+  "fit_gate_all_required": {
+    "500ms_and_1000ms_18bp_winner_removed_return": ">0",
+    "500ms_and_1000ms_24bp_mean_median_pf_return": "all positive and PF > 1",
+    "500ms_and_1000ms_24bp_trades": ">=40",
+    "500ms_and_1000ms_24bp_winner_removed_growth_per_sample_day": ">=1%",
+    "500ms_and_1000ms_confirmation_dates": "both positive",
+    "500ms_and_1000ms_top_five_share": "<=0.50",
+    "auc_lift_over_distance_baseline": ">=0.02",
+    "authorized_actions": ">=50",
+    "brier_skill_over_distance_baseline": ">0",
+    "confirmation_rows": ">=150",
+    "model_auc": ">=0.55"
+  },
+  "hypothesis": "A completed Coinbase BTCUSD aggressive-flow displacement contains directional information before Bybit BTCUSDT perpetual completes the same delivery.",
+  "model": {
+    "calibration": "single isotonic regression map",
+    "family": "HistGradientBoostingClassifier",
+    "feature_grid": false,
+    "features": [
+      "spot_flow_1_norm",
+      "spot_flow_5_norm",
+      "spot_ret_1_norm",
+      "spot_ret_5_norm",
+      "bybit_ret_1_dir_bp",
+      "underreaction_norm",
+      "spot_impact_efficiency",
+      "spot_premium_dir_z",
+      "range_progress",
+      "target_to_stop_log"
+    ],
+    "l2_regularization": 5.0,
+    "learning_rate": 0.05,
+    "max_iter": 120,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 30,
+    "minimum_expected_net_bp_24": 5.0,
+    "minimum_probability_advantage_over_24bp_breakeven": 0.05,
+    "model_grid": false,
+    "probability_grid": false,
+    "random_state": 0
+  },
+  "schema_version": 1
+}
