@@ -1,6 +1,6 @@
 # FVG-Mitigation SMT Continuation fatal screen
 
-This claim converts an ICT/SMC idea into a causal, reproducible Bybit test.
+This claim converts an ICT/SMC idea into a causal, reproducible fatal screen whose final execution venue remains Bybit.
 
 ## Trader explanation
 
@@ -19,26 +19,30 @@ The reported cross-asset SMT study used generic rolling 12/48-bar highs and lows
 
 It also does not overlap the active Unicorn model: there is no external liquidity raid, pivot MSS, order block, breaker conversion, or breaker–FVG overlap.
 
-## Frozen stage
+## Frozen stage and source amendment
 
-- Bybit `BTCUSDT`, `ETHUSDT`, `SOLUSDT`, `XRPUSDT`
-- 15-minute completed klines
-- 2022 fit; 2023 development
-- 256 frozen candidates
-- actual historical funding
-- one global position
-- identical 12/18/24 bp round-trip cost replay
-- no forced elapsed-time exit
-- 2024–2026 mechanically prohibited
-- no credentials or orders
+The first GitHub Actions run reconstructed and validated the strategy implementation, then both Bybit public REST hosts returned a country-level CloudFront 403 before any market row was opened. `amendment_001_source_proxy_after_geo_block.json` therefore changes only the initial data source:
+
+- official Binance USD-M 15-minute and funding archives are used as a checksum-verified fatal-screen proxy;
+- symbols remain `BTCUSDT`, `ETHUSDT`, `SOLUSDT`, `XRPUSDT`;
+- 2022 is fit and 2023 is development;
+- all 256 candidates, signal rules, exits, gates, one-global-slot rule and 12/18/24 bp replay remain unchanged;
+- no forced elapsed-time exit;
+- 2024–2026 remain mechanically prohibited;
+- no credentials or orders.
+
+A proxy survivor cannot rank or open 2024. It must first be replayed with exact Bybit BBO/depth, funding, execution and NAV under a new frozen contract.
 
 ## Reproduction
 
 ```bash
+python research/fvg_smt_mitigation_20260726/reconstruct.py
 python research/fvg_smt_mitigation_20260726/run_screen.py self-test
-python research/fvg_smt_mitigation_20260726/run_screen.py run \
+cd research/fvg_smt_mitigation_20260726
+python proxy_source.py self-test
+python proxy_source.py run \
   --cache /tmp/bybit-fvg-smt \
-  --output artifacts/fvg_smt
+  --output ../../artifacts/fvg_smt
 ```
 
-This is a fatal alpha screen and is not rank eligible. A survivor still requires broader pre-2024 replication and exact Bybit BBO/depth execution before official 2024 can be opened.
+This is a fatal alpha screen and is not rank eligible. A zero-survivor result closes only this exact synchronized-FVG/asymmetric-mitigation dependency under the proxy; a survivor requires exact Bybit validation before any strategy promotion.
