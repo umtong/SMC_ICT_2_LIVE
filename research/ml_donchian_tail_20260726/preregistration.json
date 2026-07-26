@@ -1,0 +1,169 @@
+{
+  "action": {
+    "rule": "At simultaneous entry time accept only the event with highest calibrated predicted after-24bp R when positive; otherwise remain flat",
+    "same_events_replayed_at_bps": [
+      12,
+      18,
+      24
+    ],
+    "threshold_grid": false
+  },
+  "base_account": {
+    "initial_nav": 10000.0,
+    "notional_cap": 5.0,
+    "risk_fraction": 0.005
+  },
+  "claim_id": "CLM-20260726-2122-ML-DONCHIAN-TAIL-001",
+  "conditional_2024h1_gate": {
+    "both_halves_positive": true,
+    "growth_must_exceed_current_rank_one": true,
+    "nav_positive": true,
+    "winner_removed_return_positive": true
+  },
+  "conditional_risk_search": {
+    "cap_grid": [
+      1,
+      2,
+      3,
+      5,
+      8,
+      12,
+      20,
+      50,
+      100
+    ],
+    "notional_caps": [
+      1,
+      2,
+      3,
+      5,
+      8,
+      12,
+      20,
+      50,
+      100
+    ],
+    "objective": "maximum 24bp geometric daily growth among non-ruined paths",
+    "opens_only_after_alpha_gate": true,
+    "risk_fractions": [
+      0.005,
+      0.01,
+      0.02,
+      0.04,
+      0.08,
+      0.12,
+      0.2,
+      0.3,
+      0.45,
+      0.6
+    ],
+    "selection_period": "2022H2 calibration only"
+  },
+  "confirmation_alpha_gate": {
+    "accepted_trades_min": 40,
+    "both_halves_positive": true,
+    "growth_above_exact_same_data_all_breakout_baseline": true,
+    "model_spearman_min": 0.05,
+    "nav_positive": true,
+    "positive_median_trade": true,
+    "positive_total_return": true,
+    "profit_factor_min": 1.2,
+    "top10pct_winner_removed_return_positive": true,
+    "top5_positive_pnl_share_max": 0.45
+  },
+  "data": {
+    "base_url": "https://public.bybit.com/kline_for_metatrader4",
+    "funding": "Fixed adverse reserve of 1bp per 8 hours because exact historical funding is absent from this archive",
+    "gap_policy": "No imputation; incomplete hours are invalid and every rolling feature resets across the gap",
+    "source": "Bybit official MT4 5m monthly archives"
+  },
+  "decision": {
+    "fail": "RETIRE_EXACT_INFORMATION_UNIT",
+    "pass": "PROMOTE_TO_EXACT_EXECUTION_AND_RANK_COMPARISON"
+  },
+  "features": [
+    "symbol_code",
+    "side",
+    "breakout_strength_atr",
+    "channel_width_atr",
+    "opposite_distance_atr",
+    "atr_pct",
+    "compression_ratio",
+    "signed_ret_1h",
+    "signed_ret_4h",
+    "signed_ret_24h",
+    "signed_efficiency_24h",
+    "signed_trend_distance_atr",
+    "volume_z20",
+    "cross_asset_breadth",
+    "same_side_breakout_count",
+    "signed_btc_ret24",
+    "signed_eth_ret24",
+    "utc_hour_sin",
+    "utc_hour_cos"
+  ],
+  "fixed_market": {
+    "global_pending_open_slots": 1,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "venue": "Bybit USDT linear perpetual"
+  },
+  "fixed_structure": {
+    "atr_lookback_hours": 20,
+    "elapsed_time_liquidation": false,
+    "entry": "next valid 60m open after completed breakout close",
+    "entry_lookback_hours": 96,
+    "exit": "adverse gap/ATR stop or next valid open after completed opposing-channel close",
+    "exit_channel_hours": 48,
+    "stop_atr": 2.0,
+    "timeframe": "completed 60m"
+  },
+  "model": {
+    "calibration": "one non-negative scalar fitted on 2022H2 and clipped to [0,1.5]",
+    "family": "HistGradientBoostingRegressor",
+    "feature_grid": false,
+    "l2_regularization": 2.0,
+    "learning_rate": 0.04,
+    "max_iter": 250,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 30,
+    "model_grid": false,
+    "random_state": 20260726,
+    "target": "fixed structural trade after-24bp R plus adverse funding reserve"
+  },
+  "objective": "Turn the current highest-growth but negatively centered Donchian baseline into a repeatable positive-median, low-concentration ML strategy and then search risk/leverage broadly enough to challenge and exceed the current rank-one growth.",
+  "prohibitions": {
+    "no_adjacent_tuning_after_result": true,
+    "official_2025_2026": true,
+    "orders": true
+  },
+  "rank_challenge": {
+    "current_rank_one_24bp_geometric_daily_growth": 0.0007001887213879954,
+    "selected_risk_2023_growth_must_exceed": true,
+    "winner_removed_return_must_be_positive": true
+  },
+  "schema_version": 1,
+  "chronology": {
+    "calibration": [
+      "2022-07-01",
+      "2023-01-01"
+    ],
+    "conditional_validation": [
+      "2024-01-01",
+      "2024-07-01"
+    ],
+    "historical_confirmation": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "note": "2023 is chronological OOS for the model but not sealed research evidence because the structural baseline and its concentration problem were discovered from 2023. 2024H1 opens only after every pre-2024 gate passes.",
+    "train": [
+      "2021-01-01",
+      "2022-07-01"
+    ]
+  }
+}
