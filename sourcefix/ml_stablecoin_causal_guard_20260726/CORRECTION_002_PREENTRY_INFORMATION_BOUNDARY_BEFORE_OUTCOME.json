@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "execution_id": "EXEC-20260726-ML-STABLECOIN-ECONOMIC-001",
+  "correction_id": "CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002",
+  "recorded_at": "2026-07-27T00:12:00+09:00",
+  "recorded_before_source_pass_consumption": true,
+  "recorded_before_market_download": true,
+  "recorded_before_label_computation": true,
+  "recorded_before_model_fit": true,
+  "recorded_before_trade_or_pnl": true,
+  "recorded_before_official_2024h1": true,
+  "supersedes_incomplete_aspects_of": [
+    "CORRECTION-20260726-ML-STABLECOIN-ENTRY-BAR-CAUSALITY-001",
+    "CORRECTION-20260726-ML-STABLECOIN-CAUSAL-FEATURE-BOUNDARY-MARK-006"
+  ],
+  "problem": {
+    "source_decision_clock": "the finalized event can become available at any second within a UTC minute",
+    "entry_clock": "the next exact one-minute open after source availability",
+    "remaining_leak": "the intermediate causal engine treated the minute immediately preceding entry as completed and used its high, low and close, even though that bar is still forming when a mid-minute source event becomes available; it also used the future entry open for liquidity distances and row eligibility",
+    "consequence": "model probability, LONG/SHORT/FLAT utility and candidate availability could depend on information not available when the order must be frozen"
+  },
+  "frozen_fix": {
+    "completed_bar_cutoff": "latest bar with open_time plus 60000 milliseconds less than or equal to source decision time",
+    "price_features": "return, volatility, path efficiency, breadth and 60-minute liquidity pools end at that completed-bar cutoff",
+    "decision_reference_price": "last completed close at the cutoff",
+    "target_stop_geometry": "distance and utility use the decision reference price, never the future entry open",
+    "entry_price": "next-minute open remains only the realized execution proxy",
+    "entry_gap": "a preselected setup whose realized entry opens outside the frozen target-stop band is recorded as a zero-gross cost-only invalidation; no alternative candidate is selected using that future gap",
+    "model_hyperparameters": "unchanged",
+    "calibration": "unchanged",
+    "source_schema": "unchanged",
+    "costs": "unchanged",
+    "risk_grid": "unchanged",
+    "stage_boundary": "open positions are NAV-marked, not strategy-closed"
+  },
+  "market_outcome_opened": false,
+  "model_fit": false,
+  "trade_or_pnl_opened": false,
+  "official_2024h1_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
