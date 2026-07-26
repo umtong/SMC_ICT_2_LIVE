@@ -2,9 +2,10 @@
 """Build a checksum-verified 2023 Binance USD-M five-minute metrics snapshot.
 
 Only daily archives before 2024 are accepted. Every source observation receives
-an explicit `available_time_ms = create_time + 5 minutes` field so downstream
+an explicit ``available_time_ms = create_time + 5 minutes`` field so downstream
 research cannot use an OI snapshot before one full reported interval has passed.
-Provider-missing numeric cells remain NaN; they are never future-filled.
+Provider-missing rows and numeric cells remain NaN; they are never future-filled
+or interpolated.
 """
 from __future__ import annotations
 
@@ -39,6 +40,7 @@ EXPECTED_HEADER = (
 )
 STEP_MS = 300_000
 DELAY_MS = 300_000
+ROWS_PER_DAY = 288
 CUTOFF_MS = 1_704_067_200_000  # 2024-01-01T00:00:00Z, exclusive source time
 
 
@@ -51,11 +53,13 @@ class SourceRecord:
     bytes: int
     sha256: str
     expected_sha256: str
-    rows: int
+    source_rows: int
+    expected_rows: int
+    missing_grid_rows: int
     invalid_oi_rows: int
     invalid_ratio_cells: int
-    first_create_time_ms: int
-    last_create_time_ms: int
+    first_source_create_time_ms: int
+    last_source_create_time_ms: int
 
 
 def sha256_bytes(payload: bytes) -> str:
@@ -178,20 +182,34 @@ def parse_archive(
                 parse_float(row[7]),
             ]
         )
-    if len(rows) != 288:
-        raise RuntimeError(f"{url}: expected 288 five-minute rows, found {len(rows)}")
-    array = np.asarray(rows, dtype=np.float64)
-    times = array[:, 0].astype(np.int64)
+    if not rows:
+        raise RuntimeError(f"{url}: no source rows")
+    if len(rows) > ROWS_PER_DAY:
+        raise RuntimeError(f"{url}: more than {ROWS_PER_DAY} source rows: {len(rows)}")
+
+    source = np.asarray(rows, dtype=np.float64)
+    source_times = source[:, 0].astype(np.int64)
+    if np.any(np.diff(source_times) <= 0):
+        raise RuntimeError(f"{url}: source timestamps are duplicated or not increasing")
     expected_first = int(
         datetime.fromisoformat(day).replace(tzinfo=timezone.utc).timestamp() * 1000
     )
-    if times[0] != expected_first or times[-1] != expected_first + 287 * STEP_MS:
-        raise RuntimeError(f"{url}: daily boundary mismatch")
-    if np.any(np.diff(times) != STEP_MS):
-        raise RuntimeError(f"{url}: non-exact five-minute grid")
-    if np.any(times >= CUTOFF_MS):
+    expected_times = expected_first + np.arange(ROWS_PER_DAY, dtype=np.int64) * STEP_MS
+    offsets = source_times - expected_first
+    if np.any(offsets < 0) or np.any(offsets >= ROWS_PER_DAY * STEP_MS):
+        raise RuntimeError(f"{url}: source timestamp outside UTC day")
+    if np.any(offsets % STEP_MS != 0):
+        raise RuntimeError(f"{url}: source timestamp is off the five-minute grid")
+    positions = (offsets // STEP_MS).astype(np.int64)
+    if len(np.unique(positions)) != len(positions):
+        raise RuntimeError(f"{url}: duplicate five-minute grid positions")
+    if np.any(source_times >= CUTOFF_MS):
         raise RuntimeError(f"{url}: post-cutoff source observation")
 
+    # Preserve provider omissions explicitly. No nearby value is copied into the gap.
+    array = np.full((ROWS_PER_DAY, 7), np.nan, dtype=np.float64)
+    array[:, 0] = expected_times.astype(np.float64)
+    array[positions, 1:] = source[:, 1:]
     invalid_oi = ~np.all(np.isfinite(array[:, 1:3]), axis=1)
     invalid_ratio_cells = int(np.size(array[:, 3:]) - np.isfinite(array[:, 3:]).sum())
     record = SourceRecord(
@@ -202,11 +220,13 @@ def parse_archive(
         bytes=len(payload),
         sha256=actual_sha,
         expected_sha256=expected_sha,
-        rows=len(array),
+        source_rows=len(source),
+        expected_rows=ROWS_PER_DAY,
+        missing_grid_rows=ROWS_PER_DAY - len(source),
         invalid_oi_rows=int(invalid_oi.sum()),
         invalid_ratio_cells=invalid_ratio_cells,
-        first_create_time_ms=int(times[0]),
-        last_create_time_ms=int(times[-1]),
+        first_source_create_time_ms=int(source_times[0]),
+        last_source_create_time_ms=int(source_times[-1]),
     )
     return record, array
 
@@ -250,9 +270,9 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
         "source_information_cutoff": "2023-12-31T23:59:59.999Z",
         "causal_delay_ms": DELAY_MS,
         "missing_value_contract": (
-            "Provider-missing or non-positive OI cells are preserved as NaN. They are never "
-            "future-filled or interpolated; downstream event formation requires finite current "
-            "and lagged OI and therefore skips only affected states."
+            "Provider-missing grid rows, missing cells, and non-positive OI cells are preserved "
+            "as NaN. They are never future-filled or interpolated; downstream event formation "
+            "requires finite current and lagged OI and skips only affected states."
         ),
         "causal_contract": (
             "Each metrics row is unusable until create_time + one complete reported "
@@ -280,8 +300,6 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
             raise RuntimeError(f"{symbol}: source count {len(parts)} != {len(days)}")
         records = [item[0] for item in parts]
         array = np.vstack([item[1] for item in parts])
-        order = np.argsort(array[:, 0], kind="stable")
-        array = array[order]
         times = array[:, 0].astype(np.int64)
         if np.any(np.diff(times) != STEP_MS):
             bad = np.flatnonzero(np.diff(times) != STEP_MS)
@@ -311,6 +329,8 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
                 "symbol": symbol,
                 "path": path.name,
                 "rows": int(len(times)),
+                "source_rows": int(sum(record.source_rows for record in records)),
+                "missing_grid_rows": int(sum(record.missing_grid_rows for record in records)),
                 "valid_oi_rows": int(valid_oi.sum()),
                 "invalid_oi_rows": int((~valid_oi).sum()),
                 "valid_oi_fraction": float(valid_oi.mean()),
@@ -340,6 +360,9 @@ def build(out_dir: Path, days: Iterable[str], workers: int, timeout: int) -> Non
                 "symbols": list(SYMBOLS),
                 "daily_archives": len(tasks),
                 "rows_per_symbol": int(0 if reference_times is None else len(reference_times)),
+                "missing_grid_rows": {
+                    item["symbol"]: item["missing_grid_rows"] for item in manifest["snapshots"]
+                },
                 "invalid_oi_rows": {
                     item["symbol"]: item["invalid_oi_rows"] for item in manifest["snapshots"]
                 },
