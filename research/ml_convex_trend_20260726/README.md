@@ -30,9 +30,12 @@ The convex additions worsened both the ordinary and winner-removed paths. The ex
 
 ## Reproduce
 
-The workflow downloads immutable-source artifact `8616632878` from run `30147824722`, verifies the pre-registration hash inside the runner, executes the 2023-only screen, independently audits metrics and chronology, and uploads the evidence bundle. Until that source artifact expires, it can also be run locally:
+The workflow downloads immutable-source artifact `8616632878` from run `30147824722`, installs the byte-compatible Python 3.13 scientific stack recorded in `requirements-lock.txt`, verifies the pre-registration hash inside the runner, executes the 2023-only screen, independently audits metrics and chronology, and uploads the evidence bundle. The frozen runtime is NumPy 2.3.5, pandas 2.2.3, SciPy 1.17.0 and scikit-learn 1.8.0.
+
+Until the source artifact expires, the screen can also be run locally:
 
 ```bash
+python -m pip install -r research/ml_convex_trend_20260726/requirements-lock.txt
 python research/ml_convex_trend_20260726/run.py \
   --snapshot source/snapshot \
   --out research/ml_convex_trend_20260726/observed
