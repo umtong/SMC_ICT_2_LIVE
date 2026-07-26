@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-ML-STABLECOIN-VALIDATOR-TRANSPORT-FAIL-CLOSED-002",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-27T00:49:00+09:00",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "defect": "The pinned source process can terminate with exit code 1 on an uncaught network/provider exception before SOURCE_GATE_RESULT.json exists. The validator helper accepted only exit codes 0 and 2, so it would abort before invoking the already-frozen transport-failure writer.",
+  "correction": "For the one source command carrying --output only, accept exit code 1 as a transport failure, then require the existing write_transport_failure.py path to materialize the outcome-sealed source result. All tests, schema checks and economic authorization remain unchanged.",
+  "unchanged": [
+    "USDT Issue/Redeem and USDC zero-address source identity",
+    "Blockscout explicit status=0 fail-closed semantics",
+    "12 and 64 block availability",
+    "source coverage gates",
+    "strict causal V3 economic engine",
+    "market data opens only after source PASS",
+    "one global slot, costs, structural exits and risk frontier",
+    "immediate official 2024H1 only for a complete pre-2024 survivor"
+  ],
+  "source_or_market_outcome_observed_before_correction": false,
+  "model_fitted_before_correction": false,
+  "orders_submitted": false
+}
