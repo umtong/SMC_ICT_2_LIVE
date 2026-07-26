@@ -89,7 +89,7 @@ def _run_optional_strict_stablecoin_hook() -> None:
     )
     if not trigger.exists():
         return
-    helper = ROOT / "scripts" / "stablecoin_strict_v3_validation_hook.py"
+    helper = ROOT / "scripts" / "stablecoin_strict_v3_validation_hook_failclosed.py"
     subprocess.run([sys.executable, str(helper)], cwd=ROOT, check=True)
 
 
