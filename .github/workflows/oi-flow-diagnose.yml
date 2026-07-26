@@ -1,0 +1,33 @@
+name: OI-flow bundle diagnostic
+
+on:
+  push:
+    branches:
+      - agent/r11-oi-flow-decomposition-001
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and inspect bundle before checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/research/oi_flow_decomposition_20260726"
+          mkdir -p /tmp/oi
+          for name in run_screen.py implementation.b64.part00 implementation.b64.part01 implementation.b64.part02 test_run_screen.py; do
+            curl --fail --location --silent --show-error "$base/$name" --output "/tmp/oi/$name"
+          done
+          wc -c /tmp/oi/*
+          sha256sum /tmp/oi/*
+          cd /tmp/oi
+          python3 - <<'PY'
+          import run_screen as r
+          print("bundle_import=PASS")
+          print("implementation_sha256=" + r.BUNDLED_IMPLEMENTATION_SHA256)
+          print("candidate_count=" + str(len(r.candidate_grid())))
+          PY
