@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 15
+- revision: 16
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-DONCHIAN-ALL-A70626D9E484`
 - first-place stage: `PRELIMINARY_CAUSAL_BINANCE_PROXY`
@@ -55,10 +55,11 @@ Failed candidates receive no adjacent feature, threshold, calibration, stop, ris
 
 ## Active high-information ML work
 
+- Hyperliquid finalized-account liquidation source gate, PR #191: explicit signed forced inventory and liquidated account state across BTC, ETH, SOL and XRP, followed conditionally by one frozen pooled four-asset HGBT.
 - Stablecoin issuance/destruction source gate, PR #189: actual Ethereum USDT/USDC mint and burn events, followed conditionally by one frozen BTC/ETH first-passage HGBT.
 - Uniswap WETH-stable inventory-transfer source gate, PR #190: actual WETH/USDC/USDT pool inventory deltas, followed conditionally by one frozen ETH hedge-relay HGBT.
 
-These sources are prioritized because they observe external inventory creation or completed inventory transfer before potential Bybit delivery. They are not extensions of Donchian or completed-bar setup grids.
+Hyperliquid has first priority because it supplies signed, asset-specific forced flow for all permitted contracts. Stablecoin issuance measures external inventory creation; Uniswap measures completed ETH inventory transfer. These are distinct point-in-time sources, not Donchian extensions or completed-bar setup grids. No fourth source family opens until these gates are decided.
 
 ## Current blockers
 
@@ -66,13 +67,14 @@ The first two ranks collapse when large winners are removed. CME gap is also win
 
 ## Current objective
 
-Maximize realistic after-cost account growth and replace the benchmark with a materially stronger ML information source or payoff. Do not tune or protect the Donchian benchmark. Consume each source gate immediately: a pass opens the frozen economic screen; a failure closes the route without polishing it.
+Maximize realistic after-cost account growth and replace the benchmark with a materially stronger ML information source or payoff. Do not tune or protect the Donchian benchmark. Consume each frozen source gate immediately: a pass opens its one fixed economic screen; a failure closes the route without polishing it.
 
 ## Next exact action
 
-1. Finish the Uniswap WETH-stable inventory-transfer source gate; on pass run the frozen conditional ML screen immediately, on failure close the source route.
+1. Finish the Hyperliquid finalized-liquidation source gate; on pass run the frozen four-asset forced-flow ML screen immediately, on failure close the source route.
 2. Finish the full-chronology stablecoin issuance/burn source gate under the same pass-or-close rule.
-3. Insert any superior hard-valid account path into the cumulative ranking immediately.
-4. If both external-inventory routes fail, select a materially different forced-flow source rather than returning to completed-bar parameter families.
+3. Finish the Uniswap WETH-stable inventory-transfer source gate; on pass run the frozen ETH hedge-relay ML screen, on failure close it.
+4. Insert any superior hard-valid account path into the cumulative ranking immediately.
+5. If all three external-inventory routes fail, select one materially different forced-flow source rather than returning to completed-bar parameter families.
 
-Updated: 2026-07-26 21:40 KST
+Updated: 2026-07-26 21:50 KST
