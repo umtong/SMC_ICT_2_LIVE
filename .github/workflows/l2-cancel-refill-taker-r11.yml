@@ -50,10 +50,11 @@ jobs:
           python research/l2_cancel_refill_taker_20260726/run.py self-test
           python -m json.tool research/l2_cancel_refill_taker_20260726/WORK_CLAIM.json >/dev/null
           python -m json.tool research/l2_cancel_refill_taker_20260726/preregistration.json >/dev/null
+          python -m json.tool research/l2_cancel_refill_taker_20260726/PREREGISTRATION_AMENDMENT_001.json >/dev/null
       - uses: actions/cache@v4
         with:
           path: /tmp/l2-cancel-refill-taker-r11
-          key: l2-cancel-refill-taker-r11-${{ runner.os }}-${{ hashFiles('research/l2_cancel_refill_taker_20260726/preregistration.json') }}
+          key: l2-cancel-refill-taker-r11-${{ runner.os }}-${{ hashFiles('research/l2_cancel_refill_taker_20260726/preregistration.json', 'research/l2_cancel_refill_taker_20260726/PREREGISTRATION_AMENDMENT_001.json') }}
           restore-keys: |
             l2-cancel-refill-taker-r11-${{ runner.os }}-
       - name: Run frozen pre-2024 fatal screen
@@ -78,7 +79,7 @@ jobs:
               raise SystemExit("missing summary.json")
           s = json.loads(p.read_text())
           assert s["hard_validity"] == "PASS"
-          assert s["engine_version"] == "L2_CANCEL_REFILL_TAKER_V1"
+          assert s["engine_version"] == "L2_CANCEL_REFILL_TAKER_V1B_MEMORY_BOUNDED"
           assert s["candidate_count"] == 432
           assert s["2024_opened"] is False and s["2025_opened"] is False and s["2026_opened"] is False
           assert s["orders_submitted"] is False and s["paper_live_enabled"] is False
