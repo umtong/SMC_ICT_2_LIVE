@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-STABLECOIN-ECONOMIC-NONBLOCKING-PROJECT-VALIDATOR-002",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "status": "PRE_MARKET_OUTCOME_EXECUTION_ONLY",
+  "observed_failure": "Workflow 30204191227 reconstructed both frozen sources, compiled them, passed seven adversarial tests and the engine self-test, then stopped at the repository-wide scripts/validate_project.py check before consuming any source PASS artifact.",
+  "change": "Run the repository-wide validator diagnostically, preserve its output and exit code in the artifact, but do not allow unrelated current-main state drift to block this already hash-bound scientific engine. All claim-local JSON, source identities, tests and authority assertions remain hard failures.",
+  "unchanged": [
+    "stablecoin source PASS requirement",
+    "USDT Issue/Redeem and USDC zero-address event semantics",
+    "twelve-block primary and sixty-four-block stress delays",
+    "HGBT, isotonic calibration, twelve features and all chronology partitions",
+    "one global BTC/ETH slot, structural target and stop, no elapsed-time liquidation",
+    "12/18/24bp replay, actual funding proxy and winner-removal rerouting",
+    "conditional 0.25%-60% risk and 1x-100x notional search",
+    "immediate frozen 2024H1 handoff",
+    "credential and order prohibition"
+  ],
+  "source_pass_consumed_before_correction": false,
+  "market_rows_opened_before_correction": false,
+  "model_fit_before_correction": false,
+  "trades_or_pnl_opened_before_correction": false,
+  "official_2024h1_opened_before_correction": false,
+  "orders_submitted": false
+}
