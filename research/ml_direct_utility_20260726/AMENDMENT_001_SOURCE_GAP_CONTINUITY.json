@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMEND-20260726-DIRECT-UTILITY-SOURCE-GAP-001",
+  "claim_id": "CLM-20260726-2013-ML-DIRECT-UTILITY-001",
+  "recorded_at": "2026-07-26T20:45:00+09:00",
+  "pre_outcome_status": {
+    "model_fitted": false,
+    "prediction_metrics_opened": false,
+    "actions_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false
+  },
+  "observed_terminal_condition": "The original source loader stopped after detecting 544 missing BTCUSDT hourly bars. No model or economic result existed.",
+  "causal_correction": [
+    "Retain the complete expected UTC hourly grid and mark missing OHLC rows invalid; never interpolate or forward-fill them.",
+    "Require all four tradable symbols to be simultaneously valid for every cross-asset feature and account decision.",
+    "Reset rolling features after every invalid hour and prohibit labels unless decision, entry and exit remain in the same contiguous segment.",
+    "If an already-open position reaches a segment break, close it at the adverse of its causal structural stop and zero price PnL, then charge exit cost; missing data can never create a favorable exit.",
+    "Reconcile the development promotion benchmark to 0.07001887213879954% geometric daily growth at 24bp, the stronger already-recorded Donchian all-breakout comparator."
+  ],
+  "unchanged": [
+    "four-symbol universe",
+    "all chronology partitions",
+    "eighteen model features",
+    "HistGradientBoostingRegressor family and parameters",
+    "calibration rule",
+    "next-hour target",
+    "keep/switch/flat utility equation",
+    "12/18/24bp cost paths",
+    "funding reserve",
+    "rolling-24h structural stop",
+    "confirmation gates",
+    "conditional risk and leverage search",
+    "winner-removal rerouting",
+    "2024-2026 prohibition",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used_to_choose_correction": false,
+  "orders_submitted": false
+}
