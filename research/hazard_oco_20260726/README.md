@@ -7,9 +7,9 @@ This study changes the payoff structure rather than trying another ordinary dire
 ## Causal contract
 
 - Tardis `local_timestamp` is the sole information and execution clock.
-- Features use completed 100 ms bins and end strictly before each five-second decision.
+- Features use completed 100 ms bins and end strictly before each five-second decision; the preceding 60 seconds must have complete fresh midpoint coverage.
 - Market-entry acknowledgement, trigger-to-fill and exit-fill latency are each explicit.
-- Same-bin dual entry triggers become a full adverse round trip.
+- Same-bin dual entry triggers become a full adverse round trip, and same-side retriggers cannot hide a later opposite trigger before cancellation becomes effective.
 - Stop wins target ambiguity.
 - No elapsed-time position liquidation exists. Positions leave only through target, stop or the preregistered hazard-decay/re-entry state rule.
 - An unresolved accepted position at the source boundary is not deleted or marked favorably; the candidate account is assigned terminal loss.
