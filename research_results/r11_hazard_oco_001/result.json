@@ -1,0 +1,180 @@
+{
+  "artifact_fingerprint": "4c7341fdfcbc590087988cef55f36416cf610d4b478cf19d9f663f0bbdab0a26",
+  "artifacts": [
+    {
+      "artifact_id": 8629035251,
+      "role": "primary_hard_invalid_run",
+      "sha256": "d83ac4e8d9702c746c3e9122b1c2167350c7d820a2b3469a660b18d12d50a473",
+      "workflow_run_id": 30191806181
+    },
+    {
+      "artifact_id": 8629014906,
+      "role": "post_outcome_boundary_accounting_diagnostic",
+      "sha256": "16db53fecdc65a7d52f5dc1109e6c14f24df1cd51d75d79ce9bb105135d86dfb",
+      "workflow_run_id": 30191806180
+    }
+  ],
+  "claim_id": "CLM-20260726-0248-HAZARD-OCO-001",
+  "code_commit": "53cbb3e5ffe4fbbf9e5cbf9a553b9753747038c9",
+  "created_at": "2026-07-26T16:28:00+09:00",
+  "dataset_ids": [
+    "DS-TARDIS-BYBIT-BTCUSDT-QUOTES-TRADES-FIRSTDAY-202301-202407-R1"
+  ],
+  "dependency_fingerprint": "14d0999e476005d5639aeaca8ca0075dd2b8b933a603575ee4168f3e1b6cdea4",
+  "economic_status": "DIAGNOSTIC_BELOW_GATE",
+  "evaluation_contract_sha256": "PR70_PREREG_PLUS_AMENDMENTS_002_003_004",
+  "hard_validity_status": "PRIMARY_HARD_INVALID_BOUNDARY_ACCOUNTING",
+  "known_weaknesses": [
+    "Primary economic output is hard-invalid due to boundary/no-fill accounting.",
+    "The accounting correction was developed after primary outcomes and is not a clean holdout.",
+    "The diagnostic best policy has only 31 trades and fails the 100-trade gate.",
+    "Its median trade is negative at every cost profile.",
+    "Its top-five positive-PnL share is 100%.",
+    "It is not positive on both development days.",
+    "Observed-sample-day growth cannot be interpreted as full-calendar project growth.",
+    "Third-party sparse first-day samples cannot certify capacity or deployment."
+  ],
+  "metrics": {
+    "model_fit_diagnostics": {
+      "hgbt": {
+        "average_precision": 0.25901146990205226,
+        "fit_rows": 10198,
+        "positive_count": 14,
+        "positive_fraction": 0.0013728181996469895,
+        "roc_auc": 0.9944941645157671
+      },
+      "logistic": {
+        "average_precision": 0.005972897861052339,
+        "fit_rows": 10198,
+        "positive_count": 14,
+        "positive_fraction": 0.0013728181996469895,
+        "roc_auc": 0.883935585231736
+      }
+    },
+    "post_outcome_accounting_diagnostic": {
+      "best_policy": {
+        "12bps": {
+          "maximum_drawdown": 0.003407,
+          "median_trade_bp": -0.0792053,
+          "observed_sample_day_geometric_growth": 0.0016585754587587,
+          "profit_factor": 5.922274,
+          "top_five_positive_pnl_share": 1.0,
+          "total_return": 0.0033199017900698
+        },
+        "18bps": {
+          "maximum_drawdown": 0.004079,
+          "median_trade_bp": -0.0984273,
+          "observed_sample_day_geometric_growth": 0.0007854032574898,
+          "profit_factor": 2.810481,
+          "top_five_positive_pnl_share": 1.0,
+          "total_return": 0.0015714233732566
+        },
+        "24bps": {
+          "maximum_drawdown": 0.004327,
+          "median_trade_bp": -0.1176504,
+          "observed_sample_day_geometric_growth": 2.3630288573466835e-05,
+          "profit_factor": 1.044429,
+          "top_five_positive_pnl_share": 1.0,
+          "total_return": 4.726113553732425e-05
+        },
+        "both_days_positive": false,
+        "cancel_latency_profiles_ms": [
+          100,
+          300
+        ],
+        "candidate_id": "ec542dbf4a07d9324afa",
+        "double_trigger_fraction": 0.0,
+        "entry_offset_bp": 2.0,
+        "model": "hgbt",
+        "score_quantile": 0.95,
+        "stop_bp": 12.0,
+        "target_bp": 25.0,
+        "trade_count": 31
+      },
+      "both_development_days_positive_rows": {
+        "12bps": 0,
+        "18bps": 0,
+        "24bps": 0
+      },
+      "candidate_count": 162,
+      "development_gate_pass_count": 0,
+      "grid_rows_with_cost_and_cancel_profiles": 972,
+      "positive_candidates_with_at_least_100_trades": {
+        "12bps": 0,
+        "18bps": 0,
+        "24bps": 0
+      },
+      "positive_median_rows": {
+        "12bps": 4,
+        "18bps": 0,
+        "24bps": 0
+      },
+      "positive_total_return_rows": {
+        "12bps": 40,
+        "18bps": 28,
+        "24bps": 2
+      },
+      "positive_unique_candidates": {
+        "12bps": 20,
+        "18bps": 14,
+        "24bps": 1
+      },
+      "preliminary_pass_count": 0,
+      "status": "NOT_CLEAN_HOLDOUT",
+      "terminal_account_loss_rows": 0,
+      "trade_count_range": [
+        6,
+        172
+      ]
+    },
+    "primary_clean_run": {
+      "all_grid_paths_terminal_account_loss": true,
+      "candidate_count": 162,
+      "development_gate_pass_count": 0,
+      "economic_interpretation_valid": false,
+      "grid_rows_with_cost_and_cancel_profiles": 972,
+      "invalidation": "A trigger without a qualifying executable entry quote could be treated as an accepted unresolved position and receive terminal NAV zero; the clean result therefore cannot distinguish no-fill from account loss.",
+      "maximum_recorded_trade_count": 17
+    }
+  },
+  "orders_submitted": false,
+  "output_hashes": {
+    "diagnostic_DEVELOPMENT_GRID.csv": "3f75f20325764076370dd3f16df82a7130928deec16e195e094bc143843913e1",
+    "diagnostic_DEVELOPMENT_RESULT.json": "5ef2545ece62a5a406658de9159d25bf1be23a8d358e1140f1e6f7ed93b6d45b",
+    "diagnostic_FIT_MODEL_DIAGNOSTICS.json": "02300c6581f1ea808083a990f3e9888575010136c2cf269353eefc93fe2a3a1d",
+    "diagnostic_PATCH_ATTESTATION.json": "e55dc9074332104e6e68fb27e2331834f4b5b997fc61f4f4caf7d97f974d0b5d",
+    "diagnostic_SOURCE_MANIFEST.json": "5ec89744e895e56c0a83b79cce93210b3b33a1346c42cb66249aa2136aafc34b",
+    "primary_DEVELOPMENT_GRID.csv": "0ba8f6bd6c5dde1696f32615de7bde076e5b2d00afb2c3591571625cd111e628",
+    "primary_DEVELOPMENT_RESULT.json": "7c56db9a17e2a04603f5c825ccef720177def17c16dab18d82f62dafb3a0d561",
+    "primary_FIT_MODEL_DIAGNOSTICS.json": "4c7daa250c0e1fe09d63980289fdef4a2f1ef07a9f1c73918edcf98b0e908280",
+    "primary_SOURCE_MANIFEST.json": "7c41ccb3436a0234cb16d27ce60e0d9086fba9f280bed562a784ad2579e490d1"
+  },
+  "paper_live_enabled": false,
+  "ranking_role": "NONE_POST_OUTCOME_DIAGNOSTIC",
+  "result_id": "RES-20260726-HAZARD-OCO-DIAGNOSTIC-001",
+  "sealed_2026_opened": false,
+  "selection_opened": false,
+  "source_ids": [
+    "tardis:bybit:quotes:first-day-2023-2024",
+    "tardis:bybit:trades:first-day-2023-2024"
+  ],
+  "status": "INVALID_PRIMARY_WITH_POST_OUTCOME_DIAGNOSTIC_BELOW_GATE",
+  "strategy_explanation": {
+    "economic_mechanism": "The payoff can be positive only when post-trigger continuation exceeds observed spread, market-order costs, trigger/fill delay and double-trigger whipsaw losses.",
+    "smc_ict": "Estimate only whether liquidity expansion is imminent, not its direction. After a compressed state, place independent stop-market-style entries above buy-side liquidity and below sell-side liquidity. The realized displacement selects direction. The opposite entry remains live through modeled non-atomic cancellation; same-bin or delayed double triggers flatten adversely. Exit only by structural target, stop or precommitted hazard-decay/re-entry state."
+  },
+  "summary": "The clean primary Bybit BTCUSDT movement-hazard two-sided OCO run is hard-invalid for economic interpretation because it assigned terminal NAV zero to trigger paths that never obtained an executable entry quote, conflating an unfilled order with an accepted open position. A post-outcome accounting-only diagnostic preserved dates, features, models, 162 policies, costs and market rules while treating missing entry quotes as no fill and unresolved accepted entries as full planned stop plus frozen cost. The diagnostic produced zero gate survivors. At 24bp only one unique policy was positive, duplicated across 100/300ms cancel profiles: 31 trades, +0.004726% total, +0.002363% per observed sample day, negative median trade, 100% top-five winner concentration and not both development days positive. No 2025 selection or 2026 source opened.",
+  "validity_lineage": {
+    "diagnostic_changes": [
+      "No executable entry quote means no fill.",
+      "An accepted unresolved entry is charged full planned stop plus frozen cost.",
+      "Dates, signals, thresholds, candidates and market rules are unchanged."
+    ],
+    "diagnostic_engine_version": "BYBIT_HAZARD_OCO_V1_BOUNDARY_ACCOUNTING_DIAGNOSTIC",
+    "diagnostic_patched_source_sha256": "d65a27341a9da1167a35b8ef1b0e88066f72646e29f162d2a0fca0eebb566eb3",
+    "diagnostic_status": "POST_OUTCOME_ACCOUNTING_DIAGNOSTIC_NOT_CLEAN_HOLDOUT",
+    "primary_engine_version": "BYBIT_HAZARD_OCO_V1",
+    "primary_source_sha256": "378ce2219b460829f93c201068cae7b4c1b192b6fc9d3ef59b64396ef93989ee"
+  },
+  "worker_id": "gpt-5.6-pro-20260726-0248"
+}
