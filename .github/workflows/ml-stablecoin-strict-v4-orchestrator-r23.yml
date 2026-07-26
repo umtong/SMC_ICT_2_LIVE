@@ -1,0 +1,194 @@
+name: Orchestrate and publish stablecoin strict V4 decision
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'research/triggers/stablecoin_strict_v4_macos/**'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: stablecoin-strict-v4-orchestrator
+  cancel-in-progress: false
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 390
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_WORKFLOW: ml-stablecoin-strict-v4-macos-r22.yml
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Dispatch sole main-installed strict V4 authority
+        id: dispatch
+        run: |
+          set -euo pipefail
+          started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "started=$started" >> "$GITHUB_OUTPUT"
+          gh workflow run "$TARGET_WORKFLOW" --ref main
+          run_id=''
+          for _ in $(seq 1 90); do
+            run_id=$(gh run list \
+              --workflow "$TARGET_WORKFLOW" \
+              --branch main \
+              --event workflow_dispatch \
+              --limit 20 \
+              --json databaseId,createdAt \
+              --jq ".[] | select(.createdAt >= \"$started\") | .databaseId" \
+              | head -n 1)
+            if [ -n "$run_id" ]; then break; fi
+            sleep 2
+          done
+          test -n "$run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "STRICT_V4_DISPATCHED_RUN=$run_id"
+
+      - name: Complete immutable strict V4 decision
+        id: wait
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          run_id='${{ steps.dispatch.outputs.run_id }}'
+          gh run watch "$run_id" --exit-status
+          rc=$?
+          echo "conclusion_rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Download immutable V4 evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          run_id='${{ steps.dispatch.outputs.run_id }}'
+          rm -rf evidence
+          mkdir -p evidence
+          set +e
+          gh run download "$run_id" \
+            --name "stablecoin-strict-v4-macos-$run_id" \
+            --dir evidence
+          rc=$?
+          set -e
+          echo "$rc" > evidence/ARTIFACT_DOWNLOAD_EXIT_CODE.txt
+          gh run view "$run_id" --json databaseId,status,conclusion,createdAt,updatedAt,headSha,event,workflowName \
+            > evidence/WORKFLOW_RUN.json
+
+      - name: Build decision summary and immutable manifest
+        if: always()
+        run: |
+          set -euo pipefail
+          run_id='${{ steps.dispatch.outputs.run_id }}'
+          target="research_runs/stablecoin_strict_v4_macos_${run_id}"
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp -R evidence/. "$target/"
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          run_id=os.environ['RUN_ID']
+          target=Path('research_runs')/f'stablecoin_strict_v4_macos_{run_id}'
+          workflow_path=target/'WORKFLOW_RUN.json'
+          workflow=json.loads(workflow_path.read_text()) if workflow_path.exists() else {}
+
+          def first(name: str):
+              matches=list(target.rglob(name))
+              return matches[0] if matches else None
+
+          source_path=first('SOURCE_GATE_RESULT.json')
+          economic_path=first('RESULT.json')
+          full_path=first('FULL_RESULT.json')
+          source=json.loads(source_path.read_text()) if source_path else None
+          economic=json.loads(economic_path.read_text()) if economic_path else None
+
+          decision={
+              'schema_version':1,
+              'claim_id':'CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001',
+              'workflow_run_id':run_id,
+              'workflow':workflow,
+              'source_sha':'73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539',
+              'strict_sha':'209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c',
+              'v4_correction':'CORRECTION-20260727-ML-STABLECOIN-SIMULTANEOUS-EVENT-LIQUIDATION-DISTANCE-004',
+              'source_status':source.get('status') if source else 'NO_SOURCE_RESULT',
+              'source_event_count':source.get('event_count') if source else None,
+              'source_month_count':len(source.get('months_with_events',[])) if source else None,
+              'source_tokens':source.get('distinct_tokens') if source else None,
+              'economic_status':economic.get('status') if economic else 'NOT_OPENED',
+              'engine':economic.get('engine') if economic else None,
+              'strict_causal_guard':economic.get('strict_causal_guard') if economic else None,
+              'v4_account_guard':economic.get('simultaneous_event_and_liquidation_guard') if economic else None,
+              'development_gate':economic.get('development_gate') if economic else None,
+              'selected_risk_path':(
+                  economic.get('risk_search',{}).get('selected')
+                  if isinstance(economic,dict) and isinstance(economic.get('risk_search'),dict)
+                  else None
+              ),
+              'official_2024h1_opened':economic.get('official_2024h1_opened') if economic else False,
+              'orders_submitted':False,
+          }
+          if economic and economic.get('status')=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
+              decision['next_stage']='OFFICIAL_2024H1_IMMEDIATELY'
+          elif source and source.get('status')=='PASS':
+              decision['next_stage']='CHANGE_ALPHA'
+          elif source and source.get('status')=='FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE':
+              decision['next_stage']='CHANGE_ALPHA'
+          else:
+              decision['next_stage']='REPAIR_TRANSPORT_ONLY_OR_CHANGE_ALPHA'
+
+          (target/'DECISION.json').write_text(json.dumps(decision,indent=2,sort_keys=True)+'\n')
+          rows=[]
+          for path in sorted(p for p in target.rglob('*') if p.is_file() and p.name!='SHA256SUMS.txt'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(target).as_posix()}\n")
+          (target/'SHA256SUMS.txt').write_text(''.join(rows))
+
+          source_status=decision['source_status']
+          economic_status=decision['economic_status']
+          title=f"Record strict stablecoin V4 decision: {source_status} / {economic_status}"
+          body=(
+              '## Decision-ready strict stablecoin V4 execution\n\n'
+              f"- claim: `{decision['claim_id']}`\n"
+              f"- workflow run: `{run_id}`\n"
+              f"- source SHA: `{decision['source_sha']}`\n"
+              f"- strict SHA: `{decision['strict_sha']}`\n"
+              f"- V4 correction: `{decision['v4_correction']}`\n"
+              f"- source status: **{source_status}**\n"
+              f"- source events/months/tokens: `{decision['source_event_count']}` / `{decision['source_month_count']}` / `{decision['source_tokens']}`\n"
+              f"- economic status: **{economic_status}**\n"
+              f"- selected risk path: `{decision['selected_risk_path']}`\n"
+              f"- next stage: **{decision['next_stage']}**\n"
+              f"- orders submitted: `{decision['orders_submitted']}`\n\n"
+              'This PR contains the immutable source/economic output, workflow metadata, compact decision and SHA-256 manifest. '
+              'A pre-2024 survivor proceeds immediately to official 2024H1; otherwise the exact information unit closes and alpha changes without adjacent tuning.\n'
+          )
+          (target/'RESULT_PR_TITLE.txt').write_text(title+'\n')
+          (target/'RESULT_PR_BODY.md').write_text(body)
+          PY
+        env:
+          RUN_ID: ${{ steps.dispatch.outputs.run_id }}
+
+      - name: Publish decision branch and result PR
+        if: always()
+        run: |
+          set -euo pipefail
+          run_id='${{ steps.dispatch.outputs.run_id }}'
+          target="research_runs/stablecoin_strict_v4_macos_${run_id}"
+          branch="automation/stablecoin-strict-v4-${run_id}"
+          git config user.name github-actions
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git checkout -b "$branch"
+          git add "$target"
+          git commit -m "Record strict stablecoin V4 run ${run_id}"
+          git push origin "$branch"
+          title=$(head -n 1 "$target/RESULT_PR_TITLE.txt")
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "$title" \
+            --body-file "$target/RESULT_PR_BODY.md"
