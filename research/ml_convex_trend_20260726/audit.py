@@ -32,10 +32,12 @@ def decoded_runner_sha256() -> str:
 def main() -> None:
     result = json.loads((OUT / "RESULT.json").read_text())
     prereg_sha = sha256(ROOT / "preregistration.json")
-    expected = json.loads((ROOT / "FINGERPRINTS.json").read_text())["preregistration_sha256"]
+    fingerprints = json.loads((ROOT / "FINGERPRINTS.json").read_text())
+    expected_prereg = fingerprints["preregistration_sha256"]
+    expected_source = fingerprints["decoded_runner_sha256"]
     source_sha = decoded_runner_sha256()
-    assert prereg_sha == expected == result["preregistration_sha256"]
-    assert source_sha == result["runner_source_sha256"]
+    assert prereg_sha == expected_prereg == result["preregistration_sha256"]
+    assert source_sha == expected_source
     assert result["official_2024_opened"] is False
     assert result["status"] == "CONFIRMATION_BELOW_GATE"
     assert result["decision"] == "KILL_EXACT_CONVEX_TREND_ROUTE_NO_ADJACENT_TUNING"
@@ -112,7 +114,7 @@ def main() -> None:
         "official_2024_opened": False,
         "checks": [
             "preregistration hash preserved",
-            "decoded scientific runner hash matches recorded result",
+            "decoded scientific runner hash matches fingerprint",
             "confirmation labels and all exits precede 2024",
             "model metrics independently recomputed",
             "account returns compound to reported totals at 12/18/24bp",
