@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-USDC-LEAD-FATAL-001",
+  "claim_id": "CLM-20260726-0553-USDC-LEAD-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE",
+  "qualification": "FATAL_ALPHA_SCREEN_ONLY_NOT_RANK_ELIGIBLE",
+  "scope": {
+    "signal_instruments": ["BTCPERP", "ETHPERP"],
+    "execution_instruments": ["BTCUSDT", "ETHUSDT"],
+    "venue": "Bybit",
+    "decision_latency_ms": 100,
+    "one_global_slot": true,
+    "cost_profiles_bps": [12, 18, 24]
+  },
+  "stages": {
+    "discovery_dates": ["2023-06-11", "2023-09-17", "2023-12-17"],
+    "frozen_validation_dates": ["2023-07-15", "2023-08-15", "2023-10-15", "2023-11-15"],
+    "official_2024_opened": false,
+    "official_2025_opened": false,
+    "official_2026_opened": false
+  },
+  "screen": {
+    "candidate_count": 320,
+    "discovery_labeled_event_count": 24163,
+    "validation_labeled_event_count": 29480,
+    "validation_gate_pass_count": 0,
+    "positive_total_return_candidate_count": {"12": 0, "18": 0, "24": 0}
+  },
+  "best_raw_candidate": {
+    "candidate_id": "e63c282db754ee68db92",
+    "family": "usdc_move_continuation",
+    "horizon_seconds": 300,
+    "trade_count": 26,
+    "mean_net_bps": {"12": -8.5953795244, "18": -14.5953795244, "24": -20.5953795244},
+    "total_return": {"12": -0.0221001204, "18": -0.0372369840, "24": -0.0521395448},
+    "maximum_drawdown_at_18bp": 0.0372369840,
+    "top_10_percent_removed_return_at_18bp": -0.0557392319,
+    "positive_symbol_date_fraction_at_18bp": 0.125
+  },
+  "best_minimum_sample_candidate": {
+    "candidate_id": "efd24d4690854e169d4a",
+    "family": "usdc_residual_continuation",
+    "horizon_seconds": 300,
+    "trade_count": 42,
+    "mean_net_bps": {"12": -9.1053735924, "18": -15.1053735924, "24": -21.1053735924},
+    "median_net_bps": {"12": -12.3331355962, "18": -18.3331355962, "24": -24.3331355962},
+    "total_return": {"12": -0.0375205552, "18": -0.0614719817, "24": -0.0848273739},
+    "maximum_drawdown_at_18bp": 0.0628496547,
+    "profit_factor_at_18bp": 0.2927371878,
+    "top_10_percent_removed_return_at_18bp": -0.0850803184,
+    "top_five_positive_share_at_18bp": 0.9701987353,
+    "positive_symbol_date_fraction_at_18bp": 0.0
+  },
+  "identities": {
+    "code_commit": "c8c0967f157e613d5cae8f3a75ad0cb3afe7e52b",
+    "implementation_sha256": "0ef75fef536352c56eb4ebf20dd6a76ac7e3f660d1dda60f071524a79b90a30b",
+    "evaluation_contract_sha256": "235d9ff6b7896c7301ef701b64f4ab4e01939c493aa938b607182a39a23c7a27",
+    "dataset_fingerprint": "51b2fbefb278df14b79765a7d6946cd09dd616ba20c4346c49052ba2df9961a6",
+    "result_summary_sha256": "81557045c538ff73914e74dba6ab241aef992f1cbce8324627911cc74f175102",
+    "artifact_digest_sha256": "e7d208380b0015a157d0e5e6d6de44bf2f33e652ddd38fca9746898e7107bc90"
+  },
+  "evidence": {
+    "pull_request": 65,
+    "workflow_run": 30182009861,
+    "workflow_artifact": 8625845427,
+    "orders_submitted": false
+  },
+  "decision": "Close this exact USDC-event-to-USDT continuation/reversal family. Every frozen candidate lost even at 12 bps; do not expand 2023, open 2024, or optimize execution, risk, leverage or adjacent thresholds under this dependency fingerprint."
+}
