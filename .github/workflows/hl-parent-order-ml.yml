@@ -8,7 +8,7 @@ on:
       - "research/hyperliquid_wallet_flow_20260726/preregistration_parent_order_ml_v1.json"
       - "research/hyperliquid_wallet_flow_20260726/PRE_OUTCOME_IMPLEMENTATION_CORRECTION_001.json"
       - "research/hyperliquid_wallet_flow_20260726/parent_order_ml_source_manifest.json"
-      - "research/hyperliquid_wallet_flow_20260726/run_parent_order_ml.py.gz"
+      - "research/hyperliquid_wallet_flow_20260726/run_parent_order_ml.py.gz.b64.part*"
       - "research/hyperliquid_wallet_flow_20260726/reconstruct_parent_order_ml.py"
       - "research/hyperliquid_wallet_flow_20260726/test_parent_order_ml.py"
   push:
@@ -19,7 +19,7 @@ on:
       - "research/hyperliquid_wallet_flow_20260726/preregistration_parent_order_ml_v1.json"
       - "research/hyperliquid_wallet_flow_20260726/PRE_OUTCOME_IMPLEMENTATION_CORRECTION_001.json"
       - "research/hyperliquid_wallet_flow_20260726/parent_order_ml_source_manifest.json"
-      - "research/hyperliquid_wallet_flow_20260726/run_parent_order_ml.py.gz"
+      - "research/hyperliquid_wallet_flow_20260726/run_parent_order_ml.py.gz.b64.part*"
       - "research/hyperliquid_wallet_flow_20260726/reconstruct_parent_order_ml.py"
       - "research/hyperliquid_wallet_flow_20260726/test_parent_order_ml.py"
   workflow_dispatch:
@@ -144,7 +144,7 @@ jobs:
             "$root/preregistration_parent_order_ml_v1.json" \
             "$root/PRE_OUTCOME_IMPLEMENTATION_CORRECTION_001.json" \
             "$root/parent_order_ml_source_manifest.json" \
-            "$root/run_parent_order_ml.py.gz" \
+            "$root"/run_parent_order_ml.py.gz.b64.part* \
             "$root/reconstruct_parent_order_ml.py" \
             "$root/test_parent_order_ml.py" \
             "$root/run_parent_order_ml.py" \
