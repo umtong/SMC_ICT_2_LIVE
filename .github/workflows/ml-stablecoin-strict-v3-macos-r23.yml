@@ -25,7 +25,11 @@ jobs:
       OMP_NUM_THREADS: '2'
       OPENBLAS_NUM_THREADS: '2'
       MKL_NUM_THREADS: '2'
-      EXECUTION_SHA: afb0af5e29b2176b477764f35a278fae448e9cbd
+      VECLIB_MAXIMUM_THREADS: '2'
+      EXECUTION_SHA: 2d6b0ceb2e373a66f7be2fb314b5aa17d43ce9f4
+      EXPECTED_SOURCE_SHA: 3631cf01a2a2b91d690b81160e14ba033a298f75
+      EXPECTED_STRICT_SHA: 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c
+      AUTHORITY_RECORD: research/execution/stablecoin_strict_macos_authority_20260727/EXECUTION_CORRECTION_001_SOURCE3631_HELPER.json
       RUN_ROOT: ${{ runner.temp }}/stablecoin_strict_v3_validation_hook
 
     steps:
@@ -37,7 +41,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Materialize the immutable validator-hook authority
+      - name: Validate pre-outcome exact-source authority
+        run: |
+          set -euo pipefail
+          python -m json.tool "$AUTHORITY_RECORD" >/dev/null
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          record=json.loads(Path(os.environ['AUTHORITY_RECORD']).read_text())
+          assert record['correction_id']=='EXECUTION-CORRECTION-20260727-STABLECOIN-MACOS-SOURCE3631-HELPER-001'
+          assert record['recorded_before_source_decision'] is True
+          assert record['recorded_before_market_outcome'] is True
+          assert record['execution_helper_sha']==os.environ['EXECUTION_SHA']
+          assert record['source_sha']==os.environ['EXPECTED_SOURCE_SHA']
+          assert record['strict_sha']==os.environ['EXPECTED_STRICT_SHA']
+          assert record['source_result_observed_before_correction'] is False
+          assert record['market_outcome_observed_before_correction'] is False
+          assert record['orders_submitted'] is False
+          PY
+
+      - name: Materialize immutable source3631 validator authority
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin "$EXECUTION_SHA"
@@ -51,6 +74,15 @@ jobs:
           python -m json.tool \
             research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION.json \
             >/dev/null
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          record=json.loads(Path('research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION.json').read_text())
+          assert record['source_sha']==os.environ['EXPECTED_SOURCE_SHA']
+          assert record['strict_sha']==os.environ['EXPECTED_STRICT_SHA']
+          assert record['recorded_before_source_decision'] is True
+          assert record['recorded_before_market_outcome'] is True
+          PY
 
       - name: Run corrected source and strict V3 economic decision
         run: |
@@ -70,23 +102,42 @@ jobs:
           marker=Path(os.environ['RUNNER_TEMP'])/'stablecoin_strict_v3_validation_hook_summary.json'
           x=json.loads(marker.read_text())
           assert x['claim_id']=='CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001'
-          assert x['source_sha'] in {
-              '3631cf01a2a2b91d690b81160e14ba033a298f75',
-              '73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539',
-          }
-          assert x['strict_sha']=='209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c'
-          assert x['source']['status'] in {
+          assert x['source_sha']==os.environ['EXPECTED_SOURCE_SHA']
+          assert x['strict_sha']==os.environ['EXPECTED_STRICT_SHA']
+          source=x['source']
+          assert source['status'] in {
               'PASS',
               'FAIL_BELOW_SOURCE_DENSITY_OR_COVERAGE',
               'SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE',
           }
-          if x['source']['status']=='PASS':
-              assert x['source']['source_schema_id']=='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
-              assert x['source']['source_correction_id']=='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
-              assert x['source']['transport_response_policy_correction']=='CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019'
-              assert x['economic']['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
-              assert x['economic']['official_2024h1_opened'] is False
-              assert x['economic']['orders_submitted'] is False
+          if source['status']=='PASS':
+              assert source['source_schema_id']=='STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1'
+              assert source['source_correction_id']=='CORRECTION-20260726-ML-STABLECOIN-USDT-ISSUE-REDEEM-010'
+              assert source['transport_response_policy_correction']=='CORRECTION-20260727-ML-STABLECOIN-BLOCKSCOUT-STATUS0-FAIL-CLOSED-019'
+              assert source['status_zero_empty_policy']=='EXPLICIT_NO_RECORDS_ONLY'
+              assert source['unrecognized_status_zero_policy']=='FAIL_CLOSED_SOURCE_UNAVAILABLE'
+              assert source['pass_checks'] and all(value is True for value in source['pass_checks'].values())
+              assert int(source['event_count'])>=120
+              assert int(source['event_month_count'])>=24
+              assert sorted(source['distinct_tokens'])==['USDC','USDT']
+              economic=x['economic']
+              assert economic['engine']=='ML_STABLECOIN_ISSUANCE_FIRST_PASSAGE_STRICT_CAUSAL_V3'
+              assert economic['official_2024h1_opened'] is False
+              assert economic['orders_submitted'] is False
+              assert economic['status'] in {
+                  'PRE2024_BELOW_GATE',
+                  'PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1',
+              }
+              guard=economic['strict_causal_guard']
+              assert guard['correction_id']=='CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002'
+              assert guard['fatal_validity_violation'] is False
+              if economic['status']=='PRE2024_SURVIVOR_READY_FOR_SEQUENTIAL_2024H1':
+                  selected=economic['selected_risk_path']
+                  assert selected is not None
+                  assert selected['growth']>0
+                  assert selected['liquidation'] is False
+          else:
+              assert x['economic']['status']=='NOT_OPENED'
           print('STABLECOIN_STRICT_V3_MACOS_DECISION',json.dumps(x,sort_keys=True))
           PY
 
@@ -96,13 +147,17 @@ jobs:
           set -euo pipefail
           evidence="$RUNNER_TEMP/stablecoin-strict-v3-macos-evidence"
           rm -rf "$evidence"
-          mkdir -p "$evidence"
+          mkdir -p "$evidence/inputs"
           cp "$RUNNER_TEMP/STABLECOIN_STRICT_V3_MACOS.log" "$evidence/" 2>/dev/null || true
           cp "$RUNNER_TEMP/stablecoin_strict_v3_validation_hook_summary.json" "$evidence/" 2>/dev/null || true
+          cp "$AUTHORITY_RECORD" "$evidence/inputs/"
+          cp research/execution/stablecoin_strict_validator_hook_20260727/EXECUTION_CORRECTION.json "$evidence/inputs/VALIDATOR_EXECUTION_CORRECTION.json"
           if [ -d "$RUN_ROOT/output" ]; then
             cp -R "$RUN_ROOT/output" "$evidence/output"
           fi
           printf '%s\n' "$EXECUTION_SHA" > "$evidence/PINNED_EXECUTION_SHA.txt"
+          printf '%s\n' "$EXPECTED_SOURCE_SHA" > "$evidence/PINNED_SOURCE_SHA.txt"
+          printf '%s\n' "$EXPECTED_STRICT_SHA" > "$evidence/PINNED_STRICT_SHA.txt"
           python - <<'PY'
           import hashlib, os
           from pathlib import Path
