@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "correction_id": "REPRO-CORRECTION-20260726-ML-HOURWEEK-PRE2024-SOL-002",
+  "claim_id": "CLM-20260726-2237-ML-HOURWEEK-PRE2024-001",
+  "reason": "Pinning package versions did not make Ridge predictions byte-identical across GitHub-hosted BLAS hardware. The Q3 survivor count, sole Q4 route, all selected trade metrics, official 2024H1 eligible-entry count, all account paths, authority boundaries and economic decision remained identical.",
+  "observed_reproduction": {
+    "q3_survivor_count": 50,
+    "q4_confirmed_count": 1,
+    "selected_route": "SOLUSDT SHORT UTC00-11 multiplier 0.75",
+    "committed_base_threshold": 0.0179551047702047,
+    "reproduced_base_threshold": 0.017950320401123723,
+    "absolute_threshold_difference": 0.000004784369080977,
+    "committed_minimum_session_prediction": -0.01119145604313856,
+    "reproduced_minimum_session_prediction": -0.011191507067458504,
+    "eligible_entries_both": 0,
+    "completed_trades_both": 0,
+    "geometric_daily_growth_both": 0.0,
+    "later_periods_opened_both": false
+  },
+  "validation_change": "Require exact source artifact, exact selected route, exact Q3/Q4 survivor counts, exact selection trade ledger metrics, official eligible-entry count zero, all 12/18/24bp paths zero, authority seals and an absolute base-threshold tolerance below 1e-4. Do not require byte-identical floating-point JSON across BLAS implementations.",
+  "scientific_rules_changed": false,
+  "official_result_changed": false,
+  "orders_submitted": false
+}
