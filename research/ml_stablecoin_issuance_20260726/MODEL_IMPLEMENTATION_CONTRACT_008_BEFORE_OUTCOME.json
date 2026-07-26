@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "contract_id": "MODEL-IMPLEMENTATION-CONTRACT-20260726-ML-STABLECOIN-008",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "source_gate_result_observed": false,
+  "market_outcome_observed": false,
+  "model_fit_observed": false,
+  "official_2024_2026_observed": false,
+  "orders_submitted": false,
+  "purpose": "Make a source-pass immediately executable through the frozen pre-2024 ML screen, broad prewritten risk search and official 2024H1 sequential research interval without adding a later purity gate.",
+  "market_data": {
+    "provider": "Bybit official public MetaTrader4 kline archive",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "interval_minutes": 1,
+    "pre2024_start": "2021-01-01T00:00:00Z",
+    "official_2024H1_end_exclusive": "2024-07-01T00:00:00Z",
+    "availability": "one-minute bar is usable only after its close; entry uses the next exact contiguous minute open strictly after event availability",
+    "gaps": "never imputed; reset rolling state and invalidate every feature or label crossing the gap"
+  },
+  "funding": {
+    "primary": "Bybit V5 public funding history at recorded fundingRateTimestamp",
+    "fallback": "if an exact historical settlement is unavailable, charge an adverse unsigned 2 bp per crossed UTC 00/08/16 boundary and never credit funding",
+    "cashflow": "long pays positive rate and receives negative rate; short has the opposite cashflow"
+  },
+  "structural_liquidity": {
+    "bar": "exact contiguous completed UTC 60-minute OHLC from 1-minute Bybit bars",
+    "pivot_span": 2,
+    "confirmation": "a pivot becomes available only after two complete hourly bars on its right",
+    "active_pool": "confirmed pivot remains active until a completed one-minute bar consumes it",
+    "lookback_days": 14,
+    "entry_requires": "nearest active upper and lower pools each at least 12 bp from entry"
+  },
+  "event_and_rows": {
+    "availability_primary": "available_timestamp_12",
+    "availability_stress": "available_timestamp_64",
+    "two_market_rows_per_event": true,
+    "same_direction_60m": "sum prior available event notional with identical mint/burn direction during the preceding 60 minutes, excluding the current event",
+    "net_issuance_24h": "signed prior available mint minus burn notional during the preceding 24 hours, excluding the current event",
+    "gas_utilization": "event-block gasUsed divided by gasLimit, retrieved from the same keyless Ethereum source before the decision row is finalized"
+  },
+  "features": [
+    "log1p_event_usd_notional",
+    "mint_plus1_burn_minus1",
+    "usdc_indicator",
+    "log1p_prior_60m_same_direction_notional",
+    "signed_prior_24h_net_issuance_scaled",
+    "event_block_gas_utilization",
+    "prior_completed_15m_log_return",
+    "prior_completed_60m_realized_volatility",
+    "prior_completed_60m_path_efficiency",
+    "upper_pool_distance_bps",
+    "lower_pool_distance_bps",
+    "btc_eth_completed_15m_return_breadth"
+  ],
+  "model": {
+    "family": "HistGradientBoostingClassifier",
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 160,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 20,
+      "l2_regularization": 1.0,
+      "max_bins": 63,
+      "random_state": 20260726
+    },
+    "imputation": "training-partition numeric median only",
+    "calibration": "one IsotonicRegression(out_of_bounds=clip) when the frozen calibration partition has at least 50 resolved labels and both classes; otherwise raw HGBT probability",
+    "baseline": "lower_distance/(upper_distance+lower_distance)"
+  },
+  "chronology": {
+    "train": ["2021-01-01T00:00:00Z", "2022-01-01T00:00:00Z"],
+    "calibration": ["2022-01-01T00:00:00Z", "2022-07-01T00:00:00Z"],
+    "confirmation": ["2022-07-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "development": ["2023-01-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "official_refit_fit": ["2021-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "official_refit_calibration": ["2023-01-01T00:00:00Z", "2023-07-01T00:00:00Z"],
+    "risk_selection": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "official_2024H1": ["2024-01-01T00:00:00Z", "2024-07-01T00:00:00Z"]
+  },
+  "labels_and_execution": {
+    "label": "which frozen pool is touched first after entry",
+    "fit_excludes": ["same-minute dual touch", "source or market gap before resolution", "unresolved at evaluation boundary"],
+    "account_dual_touch": "structural stop first",
+    "target_fill": "frozen target price with no favorable gap improvement",
+    "stop_fill": "worse of structural stop and adverse minute open",
+    "source_boundary": "full structural stop plus all costs",
+    "elapsed_time_exit": false,
+    "one_global_slot": true,
+    "simultaneous_priority": ["higher after-cost expected value", "larger event notional", "BTCUSDT before ETHUSDT", "event_id"]
+  },
+  "account": {
+    "cost_bps": [12, 18, 24],
+    "base_planned_stop_risk": 0.005,
+    "base_notional_cap": 3.0,
+    "participation_cap": "0.1% of prior complete one-minute approximate quote turnover",
+    "liquidation_safety": "effective leverage is additionally capped at 0.8/(stop_distance_fraction+0.005)",
+    "winner_removal": "remove the largest positive 10% of accepted event keys before slot competition and replay from initial NAV",
+    "calendar_growth": "all UTC calendar days in each fixed interval"
+  },
+  "risk_search": {
+    "opens_only_after_full_confirmation_and_development_gate": true,
+    "planned_stop_risk_grid": [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6],
+    "notional_cap_grid": [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100],
+    "selection": "highest 24-bp geometric daily growth on 2023H2 among no-liquidation paths with positive winner-removed return; no 1% cap"
+  },
+  "official_2024H1": {
+    "opens_immediately_after_freeze": true,
+    "evaluation": "same model family, features, action equation, execution and frozen risk/cap; events and Bybit data from 2024H1 are never used to select the 2024H1 version",
+    "decision": "report the complete realistic path. If negative, winner-removal negative, central trade negative with no structural improvement path, or otherwise structurally far from 1% daily growth, retire rather than add another pre-gate. A promising result may inform a version frozen with data through 2024-06-30 for 2024H2."
+  }
+}
