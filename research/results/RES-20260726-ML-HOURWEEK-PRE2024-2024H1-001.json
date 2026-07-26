@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001",
+  "claim_id": "CLM-20260726-2240-ML-HOURWEEK-OFFICIAL-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_CAUSAL_PRE2024_FROZEN_OFFICIAL_2024H1_BINANCE_PROXY",
+  "economic_status": "OFFICIAL_2024H1_NEGATIVE_AT_18_AND_24BPS",
+  "ranking_role": "NONE_RETIRED_INFORMATION_UNIT",
+  "scientific_question": "Does the minimal causal Ridge UTC-state system, including its session, side, asset and threshold filter selected strictly from 2023H2, retain cost-sized growth in the first official 2024H1 interval?",
+  "system_frozen_at": "2023-12-31T23:59:59Z",
+  "model": {
+    "family": "Ridge",
+    "horizon_hours": 24,
+    "alpha": 10.0,
+    "calibration_quantile": 0.95,
+    "cost_multiplier": 0.75,
+    "exit_ratio": 0.0,
+    "switch_penalty_cost_multiples": 1.0,
+    "entry": "next hourly open",
+    "exit": "signed expected edge non-positive or a superior eligible route takes the global slot",
+    "elapsed_time_liquidation": false
+  },
+  "pre2024_selection": {
+    "selection_period": "2023-07-01 through 2023-12-31",
+    "candidate_count": 720,
+    "formal_gate_count": 33,
+    "selected_filter": {
+      "session": "ALL",
+      "side_filter": "LONG",
+      "assets": ["BTCUSDT", "SOLUSDT", "XRPUSDT"],
+      "threshold_multiplier": 0.75
+    },
+    "primary_24bps": {
+      "ending_nav_multiple": 2.6078521824217105,
+      "total_return": 1.6078521824217105,
+      "geometric_daily_growth": 0.005222978115636545,
+      "maximum_drawdown": 0.21918629448631854,
+      "trade_count": 42,
+      "profit_factor": 3.567849917430279,
+      "median_trade_return": 0.0038644558366120532,
+      "q3_return": 0.8231092359560963,
+      "q4_return": 0.430442088158294
+    },
+    "exact_winner_removal_24bps": {
+      "ending_nav_multiple": 2.4069758568127493,
+      "total_return": 1.4069758568127493,
+      "geometric_daily_growth": 0.004785168659092953,
+      "maximum_drawdown": 0.23870447238683679,
+      "trade_count": 43,
+      "profit_factor": 3.120307190905064,
+      "median_trade_return": 0.003005500815907156
+    }
+  },
+  "official_2024H1": {
+    "12bps": {
+      "total_return": 0.021232326752595565,
+      "geometric_daily_growth": 0.0001154465619959133,
+      "maximum_drawdown": 0.3593716480601905,
+      "trade_count": 80,
+      "profit_factor": 1.1016931897726432,
+      "median_trade_return": -0.005267163850665774,
+      "q1_return": 0.3470152890440694,
+      "q2_return": -0.24185543025474554,
+      "exact_winner_removed_total_return": -0.03267891960513836
+    },
+    "18bps": {
+      "total_return": -0.026628964916328823,
+      "geometric_daily_growth": -0.00014828536981936757,
+      "maximum_drawdown": 0.36473038799938706,
+      "trade_count": 80,
+      "profit_factor": 1.0674447584920674,
+      "median_trade_return": -0.005863824536249883,
+      "q1_return": 0.31507177751914295,
+      "q2_return": -0.25983429062715,
+      "exact_winner_removed_total_return": -0.07746023748978792
+    },
+    "24bps": {
+      "ending_nav_multiple": 0.9277528209008509,
+      "total_return": -0.07224717909914913,
+      "geometric_daily_growth": -0.0004119477551317585,
+      "maximum_drawdown": 0.37004430305119074,
+      "trade_count": 80,
+      "profit_factor": 1.034402700682338,
+      "median_trade_return": -0.006460127332800082,
+      "q1_return": 0.28388578369787254,
+      "q2_return": -0.2773867950864607,
+      "exact_winner_removal": {
+        "ending_nav_multiple": 0.8798315581678299,
+        "total_return": -0.12016844183217013,
+        "geometric_daily_growth": -0.0007031856215791166,
+        "maximum_drawdown": 0.37277391506591706,
+        "trade_count": 79,
+        "profit_factor": 0.9983793248596958,
+        "median_trade_return": -0.007555685147714666,
+        "q1_return": 0.20060495228458808,
+        "q2_return": -0.2671764709169073
+      }
+    }
+  },
+  "decision": "RETIRE_HOURWEEK_FILTER_AND_SWITCH_ALPHA",
+  "decision_reason": "The exact system selected using only information available by 2023-12-31 lost at 18 and 24 basis points in official 2024H1, had a negative median, lost heavily in Q2 and remained negative after event-key winner removal. No adjacent session, asset, side, threshold, feature, risk or leverage rescue is authorized.",
+  "supersedes_for_ranking": {
+    "result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
+    "reason": "Its 720 filters were selected after observing the complete 2024-2025 development path. It remains a diagnostic upper frontier but was not a system that could have been frozen at 2023-12-31 for official 2024H1."
+  },
+  "source_lineage": {
+    "market_snapshot": "GitHub Actions run 30147824722 artifact 8616632878",
+    "data_role": "Binance USD-M 5m proxy aggregated to completed hourly states",
+    "funding": "adverse unsigned 1bp per 8 hours proxy",
+    "exact_bybit_execution": false
+  },
+  "2024H2_2026_opened": false,
+  "orders_submitted": false,
+  "target_status": "NOT_MET"
+}
