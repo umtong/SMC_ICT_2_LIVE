@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260727-STABLECOIN-VALIDATOR-TRANSPORT-EXIT-004",
+  "claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_decision": true,
+  "recorded_before_market_outcome": true,
+  "problem": "The validator helper allowed source exit codes 0 and 2 only. A network or provider exception exits 1 before write_transport_failure.py can create the required fail-closed source decision and compact marker.",
+  "correction": "Allow source process exit 1 to return to the helper, then require SOURCE_GATE_RESULT.json or create SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE with the frozen transport-failure writer.",
+  "unchanged": [
+    "source commit and fail-closed Blockscout response semantics",
+    "strict economic commit and causal guard",
+    "event identities and chronology",
+    "features, model, labels, costs, targets, stops and risk frontier",
+    "source PASS gate and immediate 2024H1 rule",
+    "credentials and order prohibition"
+  ],
+  "source_result_observed": false,
+  "market_archive_opened": false,
+  "model_metric_observed": false,
+  "trade_or_pnl_observed": false,
+  "official_2024_2026_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
