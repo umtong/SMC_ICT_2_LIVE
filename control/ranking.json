@@ -4,11 +4,19 @@
   "status": "ACTIVE",
   "ranking_id": "STRATEGY-RANKING-20260726-R20",
   "ranking_rule": {
-    "eligibility": "hard-valid or preliminary causal strategy whose complete route was frozen using only information available before its evaluated interval",
+    "eligibility": "hard-valid or preliminary causal strategy whose complete route was frozen using only information available before its evaluated interval; interval-selected routes remain development diagnostics only",
     "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
     "primary_metric": "realistic_after_cost_geometric_daily_growth",
-    "selection_leakage_rule": "a route selected using the evaluated interval is retained as a development diagnostic but cannot lead the active causal strategy ranking",
     "survival_constraint": "forced liquidation, irrecoverable account damage or prohibited elapsed-time liquidation cannot rank",
+    "secondary_criteria": [
+      "maximum_drawdown_and_recovery",
+      "liquidation_and_tail_loss",
+      "profit_concentration_and_top_trade_removal",
+      "effective_independent_trade_count",
+      "execution_and_cost_robustness",
+      "capital_efficiency",
+      "validation_and_comparison_confidence"
+    ],
     "incomplete_normalization": "provisional rank with disclosed confidence",
     "rank_does_not_determine_work_priority": true
   },
@@ -46,6 +54,12 @@
       "bybit_execution_replayed": false,
       "actual_funding_included": false
     },
+    "sequential_evidence": {
+      "information_cutoff": "2023-12-31T23:59:59Z",
+      "opened_intervals": ["2024H1"],
+      "unopened_intervals": ["2024H2", "2025H1", "2025H2", "2026H1"],
+      "information_unit_retired": true
+    },
     "known_weaknesses": [
       "All positive PnL came from five winners and exact winner removal produced a loss.",
       "The median completed trade was -50bp.",
@@ -55,23 +69,19 @@
     ]
   },
   "ranked_candidates": [
-    {"rank": 1, "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001", "candidate_label": "Official 2024H1 frozen HGBT Donchian accept/flat", "normalized_cost_bps": 24, "geometric_daily_growth": 0.0003873170703223572, "target_gap": 0.009612682929677643, "comparison_confidence": "LOW", "comparison_status": "OFFICIAL_2024H1_RETIRED_WINNER_REMOVAL_NEGATIVE"},
-    {"rank": 2, "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001", "candidate_label": "CME gap competing-risk ML", "normalized_cost_bps": 24, "geometric_daily_growth": 0.0003348504650920563, "target_gap": 0.009665149534907944, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_PROXY_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"},
-    {"rank": 3, "source_result_id": "RES-20260726-LIQUIDITY-MASS-001", "candidate_label": "Bybit liquidity-mass rejection", "normalized_cost_bps": 12, "geometric_daily_growth": 0.0001185504610022094, "target_gap": 0.00988144953899779, "comparison_confidence": "VERY_LOW", "comparison_status": "BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"},
-    {"rank": 4, "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001", "candidate_label": "Official 2024H1 unfiltered Donchian comparator", "normalized_cost_bps": 24, "geometric_daily_growth": 0.00010051636083741045, "target_gap": 0.00989948363916259, "comparison_confidence": "LOW", "comparison_status": "OFFICIAL_2024H1_UNFILTERED_PF_1_109"},
-    {"rank": 5, "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001", "candidate_label": "08:00 option-settlement SMT", "normalized_cost_bps": 18, "geometric_daily_growth": 0.00009955592268640068, "target_gap": 0.0099004440773136, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_PROXY_12_TRADES"},
-    {"rank": 6, "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001", "candidate_label": "Bybit MMXM lifecycle", "normalized_cost_bps": 12, "geometric_daily_growth": 0.00005750578742594239, "target_gap": 0.009942494212574058, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_FIT_NEGATIVE_MEDIAN_SECOND_HALF_LOSS"},
-    {"rank": 7, "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001", "candidate_label": "KRW-relative regional SMT reversal", "normalized_cost_bps": 12, "geometric_daily_growth": 0.000048748293338896076, "target_gap": 0.009951251706661104, "comparison_confidence": "VERY_LOW", "comparison_status": "TWO_TRADES_WINNER_REMOVAL_NEGATIVE"},
-    {"rank": 8, "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001", "candidate_label": "Liquidation exhaustion reversal", "normalized_cost_bps": 18, "geometric_daily_growth": 0.0000358316, "target_gap": 0.0099641684, "comparison_confidence": "VERY_LOW", "comparison_status": "SPARSE_FIT_SIGN_REVERSAL_WINNER_REMOVAL_NEGATIVE"}
-  ],
-  "development_diagnostics": [
-    {"source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001", "candidate_label": "UTC08-15 XRP threshold-1.25 selected-development frontier", "recorded_24bp_geometric_daily_growth": 0.002230296864317971, "status": "NOT_ACTIVE_RANK_ELIGIBLE_FILTER_SELECTED_ON_2024_2025", "official_causal_followup": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001"},
-    {"source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian all-breakout pre-2024 development comparator", "recorded_24bp_geometric_daily_growth": 0.0007001887213879954, "status": "SUPERSEDED_FOR_RANKING_BY_OFFICIAL_2024H1_PATH"},
-    {"source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "candidate_label": "Donchian after-loser pre-2024 development comparator", "recorded_24bp_geometric_daily_growth": 0.0006318446194384375, "status": "DEVELOPMENT_ONLY_WINNER_REMOVAL_NEGATIVE_NO_OFFICIAL_2024H1"}
+    {"rank": 1, "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001", "candidate_label": "Official 2024H1 frozen HGBT Donchian accept/flat at 24bp", "geometric_daily_growth": 0.0003873170703223572, "geometric_daily_growth_at_24bps": 0.0003873170703223572, "target_gap": 0.009612682929677643, "comparison_confidence": "LOW", "comparison_status": "OFFICIAL_2024H1_RETIRED_WINNER_REMOVAL_NEGATIVE"},
+    {"rank": 2, "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001", "candidate_label": "CME gap competing-risk ML at 24bp", "geometric_daily_growth": 0.0003348504650920563, "geometric_daily_growth_at_24bps": 0.0003348504650920563, "target_gap": 0.009665149534907944, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_PROXY_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"},
+    {"rank": 3, "source_result_id": "RES-20260726-LIQUIDITY-MASS-001", "candidate_label": "Bybit liquidity-mass rejection at 12bp", "geometric_daily_growth": 0.0001185504610022094, "target_gap": 0.00988144953899779, "comparison_confidence": "VERY_LOW", "comparison_status": "BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"},
+    {"rank": 4, "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001", "candidate_label": "Official 2024H1 unfiltered Donchian comparator at 24bp", "geometric_daily_growth": 0.00010051636083741045, "geometric_daily_growth_at_24bps": 0.00010051636083741045, "target_gap": 0.00989948363916259, "comparison_confidence": "LOW", "comparison_status": "OFFICIAL_2024H1_UNFILTERED_PF_1_109"},
+    {"rank": 5, "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001", "candidate_label": "08:00 option-settlement SMT at 18bp", "geometric_daily_growth": 0.00009955592268640068, "target_gap": 0.0099004440773136, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_PROXY_12_TRADES"},
+    {"rank": 6, "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001", "candidate_label": "Bybit MMXM lifecycle at 12bp", "geometric_daily_growth": 0.00005750578742594239, "target_gap": 0.009942494212574058, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_FIT_NEGATIVE_MEDIAN_SECOND_HALF_LOSS"},
+    {"rank": 7, "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001", "candidate_label": "KRW-relative regional SMT reversal at 12bp", "geometric_daily_growth": 0.000048748293338896076, "target_gap": 0.009951251706661104, "comparison_confidence": "VERY_LOW", "comparison_status": "TWO_TRADES_WINNER_REMOVAL_NEGATIVE"},
+    {"rank": 8, "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001", "candidate_label": "Liquidation exhaustion reversal at 18bp", "geometric_daily_growth": 0.0000358316, "target_gap": 0.0099641684, "comparison_confidence": "VERY_LOW", "comparison_status": "SPARSE_FIT_SIGN_REVERSAL_WINNER_REMOVAL_NEGATIVE"}
   ],
   "unranked_results": [
     {"source_result_id": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001", "reason": "Official 2024H1 negative at 18/24bp; exact family retired."},
-    {"source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001", "reason": "Filter selected using the complete 2024-2025 path; retained as a development diagnostic only."},
+    {"source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001", "reason": "Filter selected using the complete 2024-2025 path; retained as a development diagnostic only. Recorded diagnostic growth was 0.223030%/day at 24bp."},
+    {"source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "reason": "Pre-2024 Donchian all-breakout and after-loser paths remain development diagnostics and are superseded for active ranking by the official 2024H1 account path."},
     {"source_result_id": "RES-20260725-DYNAMIC-FACTOR-001", "reason": "Prohibited elapsed-time liquidation."},
     {"source_result_id": "RES-20260725-ABS-FLOW-001", "reason": "Prohibited scheduled maximum holding close."},
     {"source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001", "reason": "Fixed timeout exit."},
