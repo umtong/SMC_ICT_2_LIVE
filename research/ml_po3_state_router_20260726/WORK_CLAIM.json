@@ -1,0 +1,49 @@
+{
+  "base_revision": 11,
+  "claim_id": "CLM-20260726-1712-ML-PO3-STATE-001",
+  "github_branch": "agent/r11-ml-po3-state-router-001",
+  "lease_until": "2026-07-27T01:12:00+09:00",
+  "non_overlap": "Latent delivery phase, not nearest-pool first passage, pool-mass routing, fixed PO3/MMXM/session templates, L2 next-return prediction, OCO movement hazard or cross-venue lead-lag.",
+  "objective_fingerprint": "3afbe24b4f3ee397f2333b7d226c0f961ef8ff9687dd337c3673ade62d17e71f",
+  "orders_submitted": false,
+  "pull_request": null,
+  "result_id": null,
+  "schema_version": 1,
+  "scope": {
+    "calibration_year": 2022,
+    "costs_bps": [
+      12,
+      18,
+      24
+    ],
+    "features": [
+      "ret_z",
+      "range_ratio",
+      "body_eff",
+      "wick_skew",
+      "flow_imb"
+    ],
+    "model": "one shared three-state diagonal-Gaussian Markov model",
+    "notional_cap": 3.0,
+    "proxy_market": "Binance USD-M",
+    "risk_fraction": 0.01,
+    "route": "accumulation box -> one-sided raid/reclaim -> learned manipulation-to-distribution reversal",
+    "sealed_years": [
+      2024,
+      2025,
+      2026
+    ],
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "train_year": 2021,
+    "conditional_development_year": 2023
+  },
+  "scope_fingerprint": "a33d4da47083f1539f07605aa9d8b66a40ae897ea64a1ede3d08460df70dcc8f",
+  "started_at": "2026-07-26T17:12:00+09:00",
+  "status": "RUNNING",
+  "worker_id": "gpt-5.6-pro-20260726-1712"
+}
