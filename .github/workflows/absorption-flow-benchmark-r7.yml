@@ -27,9 +27,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: absorption-or-donchian-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
-    if: github.head_ref != 'agent/r14-donchian-2024h1-trigger-001'
+    if: github.head_ref != 'agent/r15-donchian-2024h1-trigger-final'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -105,12 +109,12 @@ jobs:
           retention-days: 30
 
   donchian-2024h1:
-    if: github.head_ref == 'agent/r14-donchian-2024h1-trigger-001'
-    runs-on: ubuntu-slim
+    if: github.head_ref == 'agent/r15-donchian-2024h1-trigger-final'
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       ROOT: research/donchian_2024h1_20260726
-      OUT: research_runs/donchian_2024h1_20260726/r14
+      OUT: research_runs/donchian_2024h1_20260726/r15
       DATA: ${{ runner.temp }}/donchian_2024h1
       PYTHONHASHSEED: '0'
       PYTHONUNBUFFERED: '1'
@@ -134,6 +138,7 @@ jobs:
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/preregistration.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_CORRECTION_001_SLIM_SHA_SCOPED_BEFORE_OUTCOME.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_002_STANDARD_RUNNER_BEFORE_OUTCOME.json" >/dev/null
           python -m json.tool "$ROOT/EXECUTION_TRIGGER_002_PR_VISIBLE_SAME_CONTRACT.json" >/dev/null
           python "$ROOT/reconstruct.py"
           python -m py_compile "$ROOT/reconstruct.py" "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/download_bars.py" "$ROOT/download_funding.py"
@@ -165,7 +170,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          result=json.loads(Path('research_runs/donchian_2024h1_20260726/r14/RESULT.json').read_text())
+          result=json.loads(Path('research_runs/donchian_2024h1_20260726/r15/RESULT.json').read_text())
           assert result['claim_id']=='CLM-20260726-2139-DONCHIAN-2024H1-001'
           assert result['opened_periods']==['2024H1']
           assert result['unopened_periods']==['2024H2','2025H1','2025H2','2026H1']
@@ -173,7 +178,7 @@ jobs:
           assert result['evaluation']['forced_boundary_close'] is False
           assert result['orders_submitted'] is False
           assert result['paper_live_started'] is False
-          print(json.dumps({'status':result['status'],'gdg_12bps':result['paths']['12bps']['geometric_daily_growth'],'gdg_24bps':result['paths']['24bps']['geometric_daily_growth']},sort_keys=True))
+          print(json.dumps({'status':result['status'],'gdg_12bps':result['paths']['12bps']['geometric_daily_growth'],'gdg_18bps':result['paths']['18bps']['geometric_daily_growth'],'gdg_24bps':result['paths']['24bps']['geometric_daily_growth']},sort_keys=True))
           PY
       - name: Freeze evidence hashes
         if: always()
@@ -183,6 +188,7 @@ jobs:
           sha256sum \
             "$ROOT/WORK_CLAIM.json" "$ROOT/preregistration.json" "$ROOT/README.md" "$ROOT/SOURCES.md" \
             "$ROOT/EXECUTION_CORRECTION_001_SLIM_SHA_SCOPED_BEFORE_OUTCOME.json" \
+            "$ROOT/EXECUTION_CORRECTION_002_STANDARD_RUNNER_BEFORE_OUTCOME.json" \
             "$ROOT/EXECUTION_TRIGGER_002_PR_VISIBLE_SAME_CONTRACT.json" \
             "$ROOT/bundle_manifest.json" "$ROOT/reconstruct.py" "$ROOT"/source_bundle.tar.gz.b64.part* \
             "$ROOT/run.py" "$ROOT/test_run.py" "$ROOT/download_bars.py" "$ROOT/download_funding.py" \
@@ -191,7 +197,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: donchian-2024h1-visible-${{ github.run_id }}
+          name: donchian-2024h1-final-${{ github.run_id }}
           path: research_runs/donchian_2024h1_20260726
           if-no-files-found: error
           retention-days: 30
