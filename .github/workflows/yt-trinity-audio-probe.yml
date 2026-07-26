@@ -1,0 +1,137 @@
+name: YT Trinity public audio extraction probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/yt-trinity-caption-exec-001]
+    paths:
+      - control/yt-trinity-audio-probe-trigger.json
+      - .github/workflows/yt-trinity-audio-probe.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-audio-probe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install current yt-dlp extraction stack
+        run: |
+          python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+          python -m yt_dlp --version
+          ffmpeg -version | head -1
+      - name: Download short public audio samples
+        shell: bash
+        run: |
+          mkdir -p artifact/audio artifact/logs
+          python - <<'PY'
+          import concurrent.futures
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          videos = {
+              'known_positive_control': 'F6wDs1HRTSo',
+              'swipalnam_sample': 'UmEPMyzjQS8',
+              'chartbro_sample': '0h9lpMUBSlE',
+              'indicator_sensei_sample': 'wIhgAp-XNTA',
+          }
+          profiles = {
+              'default_no_web': 'youtube:player_client=default,-web,-web_safari;player_skip=webpage,configs',
+              'tv': 'youtube:player_client=tv;player_skip=webpage,configs',
+              'ios': 'youtube:player_client=ios;player_skip=webpage,configs',
+              'android_vr': 'youtube:player_client=android_vr;player_skip=webpage,configs',
+          }
+
+          def run_one(item):
+              name, video_id, profile, extractor_args = item
+              stem = f'{name}__{profile}'
+              output = Path('artifact/audio') / f'{stem}.%(ext)s'
+              command = [
+                  sys.executable, '-m', 'yt_dlp',
+                  '--no-playlist', '--ignore-config',
+                  '--js-runtimes', 'node', '--remote-components', 'ejs:github',
+                  '--impersonate', 'chrome', '--extractor-args', extractor_args,
+                  '--download-sections', '*0-30', '--force-keyframes-at-cuts',
+                  '-f', 'ba/b', '-x', '--audio-format', 'wav',
+                  '-o', str(output),
+                  f'https://www.youtube.com/watch?v={video_id}',
+              ]
+              try:
+                  completed = subprocess.run(command, text=True, capture_output=True, timeout=180)
+                  code, stdout, stderr = completed.returncode, completed.stdout, completed.stderr
+              except subprocess.TimeoutExpired as exc:
+                  code = 124
+                  stdout = exc.stdout if isinstance(exc.stdout, str) else ''
+                  stderr = (exc.stderr if isinstance(exc.stderr, str) else '') + '\nTIMEOUT'
+              files = sorted(Path('artifact/audio').glob(f'{stem}.*'))
+              return {
+                  'name': name,
+                  'video_id': video_id,
+                  'profile': profile,
+                  'returncode': code,
+                  'files': [{'name': file.name, 'bytes': file.stat().st_size} for file in files],
+                  'success': any(file.stat().st_size > 100_000 for file in files),
+                  'stdout_tail': stdout[-2500:],
+                  'stderr_tail': stderr[-4000:],
+              }
+
+          work = [(name, video_id, profile, args) for name, video_id in videos.items() for profile, args in profiles.items()]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+              rows = list(pool.map(run_one, work))
+          rows.sort(key=lambda row: (row['name'], row['profile']))
+          result = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'runner_os': os.environ['RUNNER_OS'],
+              'success_count': sum(row['success'] for row in rows),
+              'rows': rows,
+          }
+          Path('artifact/result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'runner_os': result['runner_os'], 'success_count': result['success_count'], 'successes': [row for row in rows if row['success']]}, ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-audio-probe-${{ matrix.os }}-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 14
+      - name: Persist compact probe result
+        if: always()
+        run: |
+          if [[ ! -f artifact/result.json ]]; then exit 0; fi
+          cp artifact/result.json "research/yt_trinity_ml/AUDIO_PROBE_${RUNNER_OS}.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "research/yt_trinity_ml/AUDIO_PROBE_${RUNNER_OS}.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record ${RUNNER_OS} audio extraction probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
