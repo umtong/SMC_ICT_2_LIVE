@@ -1,0 +1,30 @@
+{
+  "amendment_id": "L2_CANCEL_REFILL_TAKER_EXECUTION_AMENDMENT_002",
+  "claim_id": "CLM-20260726-0946-L2-CANCEL-REFILL-001",
+  "recorded_at": "2026-07-26T10:35:00+09:00",
+  "reason": "The hash-valid monolithic run remained in the pre-2024 fit computation for an extended interval. To reduce wall-clock time without changing the experiment, the six frozen date-symbol units are processed independently and aggregated chronologically.",
+  "scientific_changes": "none",
+  "unchanged": [
+    "engine source SHA-256",
+    "fit dates and symbols",
+    "100ms decision state",
+    "50ms executable quote retention",
+    "features and event floor",
+    "432 candidate grid",
+    "latencies and horizons",
+    "costs and capacity",
+    "one global slot during aggregate replay",
+    "fit gate",
+    "sealed 2024-2026"
+  ],
+  "parallel_units": [
+    "2023-03-01 BTCUSDT",
+    "2023-03-01 ETHUSDT",
+    "2023-05-01 BTCUSDT",
+    "2023-05-01 ETHUSDT",
+    "2023-07-01 BTCUSDT",
+    "2023-07-01 ETHUSDT"
+  ],
+  "aggregation": "Concatenate the six compact event frames, sort by decision_us/symbol/side, freeze the same thresholds, and rerun the same one-global-slot candidate evaluator.",
+  "development_boundary": "The parallel workflow completes the fit gate only. Development data are opened only if at least one unchanged fit policy survives."
+}
