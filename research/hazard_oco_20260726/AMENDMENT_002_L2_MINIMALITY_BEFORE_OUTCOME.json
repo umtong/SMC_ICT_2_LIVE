@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T17:42:00+09:00",
+  "timing": "Committed after the source-schema-only workflow and targeted registry search, but before any future movement label, model, score, simulated order, trade path or PnL was computed.",
+  "new_information": [
+    "RES-20260726-HAZARD-OCO-DIAGNOSTIC-001 already retired the sparse own-symbol top-of-book/trade OCO dependency after a hard-invalid primary run and a non-clean diagnostic with zero survivors.",
+    "RES-20260726-BYBIT-L2-RESILIENCY-FATAL-001 already rejected directional executable-return prediction from the same general top-five Bybit L2 source under an ordinary taker payoff.",
+    "The schema probe confirmed two reusable completed 100ms state tables with top-five book, cancellation/refill, BBO and stationary movement fields; it computed no outcome."
+  ],
+  "material_dependency_change": "The claim is narrowed to the untested joint hypothesis that multi-level L2 state predicts direction-neutral movement hazard strongly enough for a symmetric conditional-entry payoff. Neither the old top-of-book OCO nor the directional L2 taker screen tested this information-target/payoff pair.",
+  "minimality_changes": {
+    "models": "one fixed HGBT only",
+    "thresholds": "one 99th-percentile fit-score threshold only",
+    "entry_offset": "4bp only",
+    "payoffs": ["40bp target / 20bp stop", "60bp target / 25bp stop", "80bp target / 30bp stop"],
+    "cancel_latency": "100ms base and 300ms mandatory stress, not a selection grid",
+    "risk": "fixed 1% planned loss with no risk or leverage search",
+    "exit": "target, stop, double-trigger flattening or conservative source-boundary full stop; no elapsed-time liquidation"
+  },
+  "schema_mapping_rule": "At most twelve symmetric state or prior-trade features are fixed in preregistration_v2.json. Existing future label columns in the reused Parquet files are prohibited from features and labels; the hazard label is recomputed independently from future midpoint state after each decision.",
+  "scientific_outcome_observed": false,
+  "sealed_periods_changed": false,
+  "orders_permitted": false
+}
