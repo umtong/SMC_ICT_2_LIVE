@@ -1,6 +1,6 @@
 # Current state
 
-- revision: 21
+- revision: 22
 - phase: ACTIVE_RESEARCH
 - current first place: `FIRST-20260726-ML-DONCHIAN-HGBT-2024H1-24BPS`
 - first-place stage: `OFFICIAL_2024H1_SEQUENTIAL_BINANCE_PROXY_RETIRED_WINNER_CONCENTRATED`
@@ -51,29 +51,30 @@ The entire hourweek/session/asset/side/threshold family is retired. 2024H2 throu
 
 All remain structurally far below 1%. None has deployment authority. Rank creates no incumbency protection.
 
-## Newly closed source dependency
+## Closed external-inventory source dependencies
 
-`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the cumulative Hugging Face USDC/WETH source before market outcomes. Its `USDC` and `WETH` columns are cumulative unsigned volumes, not pool balances or signed `amount0/amount1` Swap flow, so WETH purchase versus sale direction cannot be reconstructed causally. No price, label, model, PnL or official period opened. The route may reopen only with canonical signed V3 Swap events or an equivalent immutable source.
+`RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001` closes the cumulative Hugging Face USDC/WETH source before market outcomes. Its `USDC` and `WETH` columns are cumulative unsigned volumes, not pool balances or signed `amount0/amount1` Swap flow, so WETH purchase versus sale direction cannot be reconstructed causally. The route may reopen only with canonical signed V3 Swap events or an equivalent immutable source.
 
-This is a source-semantics result, not negative alpha evidence against signed Uniswap inventory transfer.
+`RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001` closes the continuous 2021-2023 Binance COIN-M liquidationSnapshot dependency before market outcomes. Official S3 listing evidence shows BTCUSD_PERP and ETHUSD_PERP archives begin only on `2023-06-25`; requested-period coverage is `17.0776%` and `16.9863%`, far below the frozen 80% minimum. No price, label, model, action, trade, PnL, risk/leverage search or official interval opened.
 
-## Active high-information ML work
+These are source-semantic or source-coverage results, not negative alpha evidence against a future complete signed inventory source.
 
-Only two primary information units remain active:
+## Sole active high-information ML work
 
-1. corrected Ethereum USDT `Issue/Redeem` plus USDC zero-address `Transfer` supply shocks, followed by one frozen BTC/ETH HGBT and immediate 2024H1 evaluation for a pre-2024 survivor;
-2. checksum-verified Binance COIN-M `BTCUSD_PERP` and `ETHUSD_PERP` forced-liquidation records, signal-mapped to Bybit BTCUSDT/ETHUSDT, followed by one pooled HGBT and the same immediate sequential rule.
+Only one primary information unit remains active: corrected Ethereum USDT `Issue/Redeem` plus USDC zero-address `Transfer` supply shocks.
 
-Broad-universe completed-bar diffusion, extra UTC filters, unsigned cumulative Uniswap volumes, duplicate source transports and polling-only economic workflows are paused or closed before outcomes.
+The source decision covers every month in 2021-2023, requires 12-block availability with 64-block stress, both tokens, at least 120 unique events and at least 24 event-bearing months. A source PASS opens exactly one strict-causal BTC/ETH HGBT account system. Features stop at the last fully completed minute at the finalized event second; the next-minute open is execution only; unresolved stage-boundary exposure is marked rather than synthetically exited.
+
+A cost-surviving pre-2024 survivor is frozen using information through `2023-12-31` and opens official 2024H1 immediately. Source or economic failure retires the exact dependency and requires a new alpha source rather than adjacent tuning.
 
 ## Current objective and next exact action
 
-Do not tune Donchian or UTC time filters. Consume the two source gates immediately.
+Do not tune Donchian, UTC filters, unsigned Uniswap volumes or incomplete liquidation snapshots. Consume the strict-causal stablecoin source and economic decision now.
 
-- A source PASS opens its already-frozen pre-2024 ML/account stage in the same information unit.
-- A positive cost-surviving system is frozen using information through 2023-12-31 and opens official 2024H1 immediately.
-- A source or economic failure closes the exact route without adjacent feature, threshold, target, stop, risk or leverage rescue.
+- Source PASS opens the already-frozen pre-2024 model/account stage in the same execution.
+- A positive non-concentrated survivor opens official 2024H1 immediately.
+- Source or economic failure closes the exact route without feature, threshold, target, stop, risk or leverage rescue.
 - Any superior hard-valid account path is inserted into the cumulative ranking immediately.
 - Growth above 1% is retained at full strength; 1% is never treated as a ceiling.
 
-Updated: 2026-07-27 00:10 KST
+Updated: 2026-07-27 00:39 KST
