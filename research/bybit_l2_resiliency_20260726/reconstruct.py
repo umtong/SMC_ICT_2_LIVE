@@ -12,6 +12,19 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "source_bundle.tar.gz.b64"
 MANIFEST = ROOT / "bundle_manifest.json"
 
+# The original checked-in evaluator passed synthetic tests, then the first real
+# Tardis day exposed that pandas returns a Series from to_datetime here. Apply
+# one deterministic implementation correction after verifying the immutable
+# original source bytes and before compilation. No market rule, model, feature,
+# threshold, date or execution assumption changes.
+PATCH_TARGET = "run_screen.py"
+PATCH_OLD = (
+    b"seconds = timestamps.hour * 3600 + timestamps.minute * 60 + timestamps.second"
+)
+PATCH_NEW = (
+    b"seconds = timestamps.dt.hour * 3600 + timestamps.dt.minute * 60 + timestamps.dt.second"
+)
+
 
 def sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
@@ -29,6 +42,7 @@ def main() -> int:
     if len(tar_bytes) != manifest["tar_bytes"] or sha256(tar_bytes) != manifest["tar_sha256"]:
         raise SystemExit("tar transport mismatch")
     expected = set(manifest["files"])
+    emitted: dict[str, dict[str, object]] = {}
     with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as archive:
         members = archive.getmembers()
         if {member.name for member in members} != expected:
@@ -44,9 +58,20 @@ def main() -> int:
             spec = manifest["files"][member.name]
             if len(payload) != spec["bytes"] or sha256(payload) != spec["sha256"]:
                 raise SystemExit(f"source mismatch: {member.name}")
+            original_sha = sha256(payload)
+            if member.name == PATCH_TARGET:
+                if payload.count(PATCH_OLD) != 1 or PATCH_NEW in payload:
+                    raise SystemExit("unexpected pandas timestamp patch context")
+                payload = payload.replace(PATCH_OLD, PATCH_NEW, 1)
             compile(payload, str(ROOT / member.name), "exec")
             (ROOT / member.name).write_bytes(payload)
-    print(json.dumps({"status": "PASS", "files": sorted(expected)}, sort_keys=True))
+            emitted[member.name] = {
+                "original_sha256": original_sha,
+                "emitted_sha256": sha256(payload),
+                "emitted_bytes": len(payload),
+                "deterministic_patch": member.name == PATCH_TARGET,
+            }
+    print(json.dumps({"status": "PASS", "files": emitted}, sort_keys=True))
     return 0
 
 
