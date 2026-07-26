@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "correction_id": "TRANSPORT-CORRECTION-20260726-AAVE-BLOCK-BY-TIME-001",
+  "claim_id": "CLM-20260726-1952-ML-AAVE-LIQUIDATION-001",
+  "timing": "BEFORE_ANY_PRICE_LABEL_MODEL_OR_PNL",
+  "observed_problem": "The first outcome-sealed source gate spent the execution limit repeatedly locating historical day boundaries from genesis through sequential JSON-RPC binary searches. It was cancelled with an empty run log and no decoded event, count, price, label, model or PnL output.",
+  "change": [
+    "Locate each frozen UTC day boundary with the public Blockscout getblocknobytime endpoint.",
+    "Verify the returned start/end blocks and every event block timestamp through keyless Ethereum JSON-RPC.",
+    "Query the same canonical V2/V3 pool addresses and LiquidationCall topic in larger adaptive non-overlapping ranges.",
+    "Batch block-timestamp reads with sequential fallback."
+  ],
+  "unchanged": [
+    "seven frozen probe dates",
+    "canonical V2 and V3 pool addresses",
+    "canonical LiquidationCall ABI and topic",
+    "source gate count and breadth requirements",
+    "120-second historical availability delay for any later stage",
+    "all model, feature, target, stop, cost, risk and leverage rules",
+    "2024-2026 seals",
+    "order permission"
+  ],
+  "blockscout_role": "Mechanical timestamp-to-block locator only; Ethereum RPC verifies chain ID, bytecode, boundary timestamps, raw logs and event timestamps.",
+  "scientific_outcome_opened_before_change": false,
+  "orders_submitted": false
+}
