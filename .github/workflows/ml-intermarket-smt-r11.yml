@@ -51,13 +51,14 @@ jobs:
             "dukascopy-node@1.46.4"
           echo "NODE_PATH=$RUNNER_TEMP/dukascopy-node/node_modules" >> "$GITHUB_ENV"
 
-      - name: Reconstruct, compile and run causal tests
+      - name: Reconstruct, apply attested pre-outcome fix, compile and run causal tests
         shell: bash
         run: |
           set -euo pipefail
           root=research/ml_intermarket_smt_20260726
           python "$root/reconstruct.py"
-          python -m py_compile "$root/run.py" "$root/test_run.py"
+          python "$root/apply_pre_outcome_fix.py"
+          python -m py_compile "$root/run.py" "$root/test_run.py" "$root/apply_pre_outcome_fix.py"
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
           PYTHONPATH="$root" python "$root/run.py" --self-test
           python scripts/validate_project.py
@@ -142,12 +143,15 @@ jobs:
           sha256sum \
             "$root/WORK_CLAIM.json" \
             "$root/preregistration.json" \
+            "$root/CORRECTION_001_COOLDOWN_SENTINEL_BEFORE_OUTCOME.json" \
             "$root/README.md" \
             "$root/SOURCES.md" \
             "$root/download_dukascopy.js" \
             "$root/reconstruct.py" \
+            "$root/apply_pre_outcome_fix.py" \
             "$root/run_py.gz.b64.part00" \
             "$root/run_py.gz.b64.part01" \
+            "$root/run.py" \
             "$root/test_run.py" \
             > "$out/INPUT_SHA256SUMS.txt"
           find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
