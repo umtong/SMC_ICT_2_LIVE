@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "study_id": "ML_PATH_CONTINUITY_STRUCTURAL_FIRST_PASSAGE_V1",
+  "claim_id": "CLM-20260726-1958-ML-PATH-CONTINUITY-001",
+  "worker_id": "gpt-5.6-pro-20260726-1958",
+  "base_project_revision": 11,
+  "registered_at": "2026-07-26T19:58:00+09:00",
+  "objective": "Discover a hard-valid, explainable ML strategy whose realistic after-cost Bybit account growth materially exceeds the current project-wide first place, then update the cumulative ranking if warranted.",
+  "economic_hypothesis": "A directional path delivered through many small, sign-consistent completed returns is more likely to continue after its first deep but structurally valid OTE pullback, while a path dominated by one or two discontinuous jumps is more likely to overreact and traverse the opposing frozen liquidity pool first. One calibrated model must decide between continuation and reversal from causal path quality, flow, volatility, cross-asset breadth and frozen upper/lower liquidity geometry.",
+  "historical_information_boundary": {
+    "allowed_motivation": [
+      "Da, Gurun and Warachka continuous-information hypothesis published before 2024",
+      "pre-2024 cryptocurrency momentum, reversal, jump and liquidity literature",
+      "SMC/ICT external-liquidity, displacement and 50%-79% OTE concepts translated into deterministic completed-bar rules"
+    ],
+    "explicitly_excluded_from_rule_definition": [
+      "2026 Price Path Continuity and the Cross-Section of Cryptocurrency Returns",
+      "any 2024-2026 market outcome",
+      "future model labels, future first-passage outcomes or future MFE/MAE"
+    ]
+  },
+  "market": {
+    "execution_venue": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "bar_interval_minutes": 15,
+    "global_pending_or_open_slots": 1,
+    "initial_nav_usdt": 10000.0
+  },
+  "partitions": {
+    "train": ["2021-01-01T00:00:00Z", "2022-07-01T00:00:00Z"],
+    "calibration": ["2022-07-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+    "confirmation": ["2023-01-01T00:00:00Z", "2023-07-01T00:00:00Z"],
+    "development": ["2023-07-01T00:00:00Z", "2024-01-01T00:00:00Z"],
+    "conditional_sequential_oos": ["2024-01-01T00:00:00Z", "2026-07-01T00:00:00Z"]
+  },
+  "event_definition": {
+    "path_window_bars": 16,
+    "slow_path_window_bars": 48,
+    "minimum_displacement_atr": 1.5,
+    "minimum_absolute_displacement_bps": 30.0,
+    "ote_retracement_fraction": [0.50, 0.79],
+    "first_touch_only": true,
+    "decision_time": "completed 15-minute event bar close",
+    "entry_time": "next exact contiguous 15-minute Bybit contract open",
+    "source_gap_policy": "rolling state resets after missing bars; no forward fill across source gaps"
+  },
+  "liquidity_pool_definition": {
+    "upper_candidates": ["prior completed 4h high", "prior completed UTC-day high", "prior completed UTC-week high", "prior completed rolling-30d high"],
+    "lower_candidates": ["prior completed 4h low", "prior completed UTC-day low", "prior completed UTC-week low", "prior completed rolling-30d low"],
+    "selection": "nearest candidate strictly beyond next-open entry by at least 20bp",
+    "maximum_distance_bps": 800.0,
+    "freeze_time": "event decision time",
+    "label": "which frozen pool is touched first after entry",
+    "same_bar_both_touch": "AMBIGUOUS for model fitting and adverse stop-first for account replay",
+    "unresolved": "CENSORED for model fitting; blocks the account and fails promotion if unresolved at evaluation end"
+  },
+  "model": {
+    "model_family_count": 1,
+    "family": "sklearn HistGradientBoostingClassifier",
+    "hyperparameters": {
+      "learning_rate": 0.05,
+      "max_iter": 240,
+      "max_leaf_nodes": 15,
+      "max_depth": 3,
+      "min_samples_leaf": 40,
+      "l2_regularization": 2.0,
+      "random_state": 42
+    },
+    "calibrator": "one IsotonicRegression fitted only on calibration resolved labels",
+    "feature_count": 22,
+    "economic_decision_rule_count": 1,
+    "decision_rule": "LONG, SHORT or FLAT from calibrated upper-first probability, frozen pool distances, 18bp round-trip cost and 10bp minimum expected edge",
+    "baseline": "distance-only martingale first-passage probability"
+  },
+  "features": [
+    "path_return_4h", "path_return_12h", "path_efficiency_4h", "path_efficiency_12h",
+    "sign_consistency_4h", "jump_concentration_4h", "jump_concentration_12h",
+    "linear_path_r2_4h", "linear_path_r2_12h", "return_acceleration",
+    "atr_percent", "event_body_atr", "event_rejection_wick", "event_close_location",
+    "ote_retracement_fraction", "displacement_atr", "taker_quote_imbalance",
+    "turnover_zscore", "range_zscore", "cross_asset_breadth",
+    "cross_asset_residual", "funding_rate_state"
+  ],
+  "execution": {
+    "round_trip_cost_bps": [12.0, 18.0, 24.0],
+    "actual_historical_funding": true,
+    "same_bar_ordering": "protective stop first",
+    "gap_stop": "adverse actual open",
+    "target_fill": "frozen target price, never a more favorable intrabar price",
+    "base_planned_risk_fraction": 0.02,
+    "base_maximum_notional_leverage": 8.0,
+    "maximum_prior_bar_turnover_participation": 0.001,
+    "risk_search_condition": "opened only if the unchanged 2%-risk signal path passes every base economic and robustness gate",
+    "conditional_risk_fractions": [0.01, 0.02, 0.04, 0.06],
+    "conditional_leverage_caps": [4.0, 8.0, 12.0],
+    "no_elapsed_time_exit": true
+  },
+  "pre2024_gate": {
+    "minimum_train_resolved_rows": 500,
+    "minimum_calibration_resolved_rows": 150,
+    "minimum_confirmation_resolved_rows": 150,
+    "minimum_development_trades": 100,
+    "minimum_confirmation_auc": 0.54,
+    "minimum_auc_lift_over_distance_baseline": 0.01,
+    "minimum_brier_skill": 0.0,
+    "positive_total_return_at_12_18_24bps": true,
+    "minimum_profit_factor_at_18bps": 1.25,
+    "positive_median_trade_at_18bps": true,
+    "positive_after_removing_largest_10pct_positive_trades_at_18bps": true,
+    "minimum_positive_month_fraction": 0.58,
+    "both_development_quarters_positive": true,
+    "maximum_marked_drawdown": 0.35,
+    "maximum_top5_positive_pnl_share": 0.45,
+    "maximum_unresolved_positions": 0
+  },
+  "conditional_sequential_rule": {
+    "open_only_after_full_pre2024_gate": true,
+    "half_year_boundaries": ["2024-01-01", "2024-07-01", "2025-01-01", "2025-07-01", "2026-01-01", "2026-07-01"],
+    "model_update": "at each half-year start refit the same fixed HGBT on all resolved rows ending before the most recent six months and fit the same isotonic calibrator on the most recent completed six months; existing positions remain governed by their frozen pools",
+    "continuous_nav": true,
+    "initial_nav_2024": 10000.0,
+    "ranking_comparison": "insert into the cumulative ranking only after hard-valid account metrics are normalized and compared to all recorded candidates"
+  },
+  "prohibitions": [
+    "No model-family, feature, event-threshold, pool, EV, risk or leverage change after opening an outcome partition.",
+    "No 2024-2026 download unless every pre-2024 gate passes.",
+    "No target-return fitting, forced daily profit target or elapsed-time liquidation.",
+    "No credentials, private endpoint, paper, testnet or live order."
+  ]
+}
