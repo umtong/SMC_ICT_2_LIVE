@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-uniswap-source-gate-r14-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ml-uniswap-source-gate-r14-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   source-gate:
