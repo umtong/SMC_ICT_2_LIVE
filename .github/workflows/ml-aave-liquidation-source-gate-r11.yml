@@ -1,0 +1,77 @@
+name: ML Aave liquidation source gate
+
+on:
+  push:
+    branches: [agent/r11-ml-aave-liquidation-001]
+    paths:
+      - 'research/ml_aave_liquidation_20260726/WORK_CLAIM.json'
+      - 'research/ml_aave_liquidation_20260726/PREREGISTRATION.md'
+      - 'research/ml_aave_liquidation_20260726/export_addresses.cjs'
+      - 'research/ml_aave_liquidation_20260726/probe_aave_liquidations.py'
+      - '.github/workflows/ml-aave-liquidation-source-gate-r11.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_aave_liquidation_20260726/**'
+      - '.github/workflows/ml-aave-liquidation-source-gate-r11.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Export pinned official Aave addresses
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ml-aave-liquidation-source
+          cd /tmp/ml-aave-liquidation-source
+          npm init -y >/dev/null
+          npm install --no-save '@bgd-labs/aave-address-book@4.61.2'
+          node "$GITHUB_WORKSPACE/research/ml_aave_liquidation_20260726/export_addresses.cjs" \
+            > ADDRESSES.json
+          cat ADDRESSES.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install fixed probe environment
+        run: |
+          python -m pip install \
+            'requests==2.32.3' \
+            'eth-abi==5.1.0' \
+            'eth-utils==5.1.0'
+      - name: Compile and run outcome-sealed source gate
+        run: |
+          set -euo pipefail
+          python -m py_compile research/ml_aave_liquidation_20260726/probe_aave_liquidations.py
+          python research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
+            --addresses /tmp/ml-aave-liquidation-source/ADDRESSES.json \
+            --output /tmp/ml-aave-liquidation-source \
+            | tee /tmp/ml-aave-liquidation-source/run.log
+      - name: Freeze evidence hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ml-aave-liquidation-source
+          cp research/ml_aave_liquidation_20260726/PREREGISTRATION.md \
+            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
+          cp research/ml_aave_liquidation_20260726/probe_aave_liquidations.py \
+            /tmp/ml-aave-liquidation-source/ 2>/dev/null || true
+          find /tmp/ml-aave-liquidation-source -maxdepth 1 -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > /tmp/ml-aave-liquidation-source/SHA256SUMS.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-aave-liquidation-source-${{ github.run_id }}
+          path: /tmp/ml-aave-liquidation-source
+          if-no-files-found: error
+          retention-days: 30
