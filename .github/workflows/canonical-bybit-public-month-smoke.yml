@@ -1,13 +1,6 @@
 name: Canonical Bybit public monthly smoke
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - scripts/market_data/build_public_trade_month.py
-      - scripts/market_data/verify_canonical_bybit.py
-      - tests/test_public_trade_month.py
-      - .github/workflows/canonical-bybit-public-month-smoke.yml
   push:
     branches:
       - agent/r22-canonical-halfyear-market-data-001
