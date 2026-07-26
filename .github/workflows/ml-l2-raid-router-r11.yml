@@ -84,10 +84,85 @@ jobs:
           root=research/ml_l2_raid_router_20260726
           out=research_runs/ml_l2_raid_router_20260726/r11
           mkdir -p "$out"
+          set +e
           PYTHONPATH="$root" python "$root/run.py" \
             --dependency-root dependency \
             --output "$out" \
             2>&1 | tee "$out/RUN.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if test "$status" -ne 0; then
+            python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import re
+          from pathlib import Path
+
+          out = Path("research_runs/ml_l2_raid_router_20260726/r11")
+          log = (out / "RUN.log").read_text(encoding="utf-8")
+          pattern = r"fit event rows (\d+): train=(\d+) calibration=(\d+) confirmation=(\d+)"
+          match = re.search(pattern, log)
+          if "RuntimeError: too few event rows for ML fit" not in log or match is None:
+              raise SystemExit("scientific workflow failed for a reason other than frozen event scarcity")
+          total, train, calibration, confirmation = map(int, match.groups())
+          result = {
+              "claim_id": "CLM-20260726-1740-ML-L2-RAID-001",
+              "result_id": "RES-20260726-ML-L2-RAID-EVENT-SCARCITY-001",
+              "engine_version": "ML-L2-RAID-ACCEPTANCE-V1",
+              "status": "FIT_EVENT_SCARCITY",
+              "hard_validity": "PASS_INITIAL_CAUSAL_EVENT_SCARCITY",
+              "economic_status": "BELOW_GATE_EVENT_SCARCITY",
+              "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+              "fit": {
+                  "event_rows": total,
+                  "partition_rows": {
+                      "training": train,
+                      "calibration": calibration,
+                      "confirmation": confirmation,
+                  },
+                  "model_fitted": False,
+                  "reason": "Frozen exact previous-five-minute first-raid event produced too few chronological rows to fit and calibrate the single preregistered model.",
+                  "gate_checks": {
+                      "resolved_confirmation_rows_at_least_40": confirmation >= 40,
+                      "model_auc_at_least_0_55": False,
+                      "auc_lift_over_distance_baseline_at_least_0_02": False,
+                      "positive_brier_skill_over_distance_baseline": False,
+                      "trade_count_at_18bps_at_least_20": False,
+                      "positive_total_return_at_18bps": False,
+                      "positive_total_return_at_24bps": False,
+                      "positive_median_trade_at_12bps": False,
+                      "positive_winner_removed_return_at_12bps": False,
+                      "both_confirmation_halves_positive_at_18bps": False,
+                      "winner_removed_sample_day_growth_at_24bps_at_least_1pct": False,
+                  },
+              },
+              "development": None,
+              "development_opened": False,
+              "development_source_economically_read": False,
+              "prohibited_years_opened": [],
+              "orders_submitted": False,
+              "live_permission_changed": False,
+              "source": {
+                  "parent_artifact_id": 8626087323,
+                  "parent_workflow_run": 30182786091,
+                  "parent_artifact_digest": "sha256:90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1",
+                  "fit_state_sha256": "da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b",
+                  "conditional_state_sha256": "8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f",
+              },
+              "decision": "Retire this exact event definition without loosening the raid, decision delay, structural destinations, features, partitions, probability gate, cost, risk or leverage. Reopen only with a materially denser information unit or payoff.",
+              "limitations": [
+                  "No model or account path is economically interpretable because the frozen event population is below the minimum ML sample.",
+                  "The conditional 2023 frame remains unopened by the scientific evaluator.",
+                  "This result cannot enter the strategy ranking or change live permission.",
+              ],
+          }
+          (out / "RESULT.json").write_text(
+              json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+            (cd "$out" && sha256sum RESULT.json RUN.log > SHA256SUMS.txt)
+          fi
 
       - name: Verify boundaries and record immutable inputs
         if: always()
