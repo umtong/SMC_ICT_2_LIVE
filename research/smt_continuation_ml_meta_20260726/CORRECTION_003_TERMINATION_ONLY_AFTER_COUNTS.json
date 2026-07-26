@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260726-SMT-CONTINUATION-TERMINATION-003",
+  "claim_id": "CLM-20260726-1906-SMT-CONTINUATION-ML-001",
+  "recorded_at": "2026-07-26T20:08:00+09:00",
+  "trigger": "The frozen 52-Sunday extraction completed and exposed zero FIT rows, six score-calibration rows and twelve untouched-confirmation rows. The trainer rejected the missing FIT stage before writing its already-defined early sample-gate result.",
+  "scientific_outputs_observed_before_correction": {
+    "dates_attempted": 52,
+    "raw_event_rows": 60,
+    "deduplicated_events": 55,
+    "pullback_events": 18,
+    "both_latency_executable": 16,
+    "both_latency_target_first": 5,
+    "fit_matrix_rows": 0,
+    "score_calibration_matrix_rows": 6,
+    "fit_confirmation_matrix_rows": 12,
+    "model_fitted": false,
+    "strategy_selection_computed": false,
+    "account_pnl_computed": false,
+    "development_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "change": "Record the frozen sample-scarcity decision directly from immutable extraction outputs instead of treating the trainer's missing-stage exception as an implementation failure.",
+  "unchanged": [
+    "all 52 frozen 2022 Sunday dates",
+    "event and pullback definitions",
+    "all thresholds and features",
+    "one logistic model and structural baseline contract",
+    "100ms and 300ms latency",
+    "24bp cost",
+    "target, stop, risk, leverage and capacity rules",
+    "2023 conditional gate and 2024-2026 seals"
+  ]
+}
