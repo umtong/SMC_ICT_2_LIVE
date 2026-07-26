@@ -28,14 +28,14 @@ jobs:
           python-version: "3.11"
       - name: Install transport dependency
         run: python -m pip install requests==2.32.3
-      - name: Probe official public hosts
-        run: python research/ml_sweep_crowding/probe_bybit_hosts.py
+      - name: Probe all documented official public hosts
+        run: python research/ml_sweep_crowding/probe_bybit_hosts_v2.py
       - name: Publish immutable probe
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/results/ml_sweep_crowding/source_host_probe.json
-          git commit -m "research: publish Bybit official host probe"
+          git add research/results/ml_sweep_crowding/source_host_probe_v2.json
+          git commit -m "research: publish expanded Bybit official host probe"
           git push origin HEAD:${GITHUB_REF_NAME}
