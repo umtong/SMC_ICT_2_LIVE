@@ -1,0 +1,82 @@
+name: Materialize stablecoin economic source before outcome
+
+on:
+  push:
+    branches: [agent/r15-ml-stablecoin-economic-clean-001]
+    paths:
+      - '.github/workflows/ml-stablecoin-materialize-before-outcome-r15.yml'
+      - 'research/ml_stablecoin_issuance_economic_20260726/AMENDMENT_004_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json'
+      - 'research/ml_stablecoin_issuance_economic_20260726/BUNDLE_MANIFEST.json'
+      - 'research/ml_stablecoin_issuance_economic_20260726/reconstruct.py'
+      - 'research/ml_stablecoin_issuance_economic_20260726/*.b64.part*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stablecoin-economic-materialize-before-outcome
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r15-ml-stablecoin-economic-clean-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen verification environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.1.3 pandas==2.2.3 requests==2.32.4 \
+            scikit-learn==1.6.1 pyarrow==18.1.0 pytest==8.3.5
+      - name: Reconstruct without source or market outcome
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_economic_20260726
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/run.py" "$root/test_run.py" "$root/reconstruct.py"
+          PYTHONPATH="$root" pytest -q "$root/test_run.py"
+          PYTHONPATH="$root" python "$root/run.py" self-test
+          python -m json.tool "$root/AMENDMENT_004_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json" >/dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/ml_stablecoin_issuance_economic_20260726')
+          a=json.loads((root/'AMENDMENT_004_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json').read_text())
+          assert a['recorded_before_source_or_market_outcome'] is True
+          assert a['source_pass_observed'] is False
+          assert a['market_outcome_observed'] is False
+          assert a['model_fit_observed'] is False
+          assert a['official_2024H1_observed'] is False
+          assert a['official_2024H1']['opens_immediately_after_pre2024_freeze'] is True
+          PY
+      - name: Commit readable immutable engine
+        run: |
+          set -euo pipefail
+          root=research/ml_stablecoin_issuance_economic_20260726
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$root/run.py" "$root/test_run.py"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Materialize stablecoin economic engine before outcome [skip ci]'
+          git push origin HEAD:agent/r15-ml-stablecoin-economic-clean-001
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stablecoin-economic-source-before-outcome-${{ github.sha }}
+          path: |
+            research/ml_stablecoin_issuance_economic_20260726/run.py
+            research/ml_stablecoin_issuance_economic_20260726/test_run.py
+            research/ml_stablecoin_issuance_economic_20260726/AMENDMENT_004_IMMEDIATE_2024H1_AFTER_COST_POSSIBILITY_BEFORE_OUTCOME.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
