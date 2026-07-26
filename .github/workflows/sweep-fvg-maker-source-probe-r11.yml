@@ -1,0 +1,167 @@
+name: Sweep-FVG maker source capability probe
+
+on:
+  push:
+    branches:
+      - agent/r11-sweep-fvg-maker-001
+    paths:
+      - ".github/workflows/sweep-fvg-maker-source-probe-r11.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: sweep-fvg-maker-source-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ARTIFACT_ID: "8626087323"
+      ARTIFACT_SHA256: "90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install deterministic probe environment
+        run: python -m pip install pandas==2.2.3 pyarrow==17.0.0
+      - name: Download and verify immutable source artifact
+        run: |
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/umtong/SMC_ICT_2_LIVE/actions/artifacts/$ARTIFACT_ID/zip" \
+            --output /tmp/bybit_l2_resiliency.zip
+          echo "$ARTIFACT_SHA256  /tmp/bybit_l2_resiliency.zip" | sha256sum --check -
+          rm -rf /tmp/bybit_l2_resiliency
+          mkdir -p /tmp/bybit_l2_resiliency
+          unzip -q /tmp/bybit_l2_resiliency.zip -d /tmp/bybit_l2_resiliency
+      - name: Inspect retained state and raw-source capabilities
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import hashlib
+          import json
+          from pathlib import Path
+          import pyarrow.parquet as pq
+          import pandas as pd
+
+          root = Path('/tmp/bybit_l2_resiliency')
+          states = sorted((root / 'output' / 'compact_states').glob('*.parquet'))
+          if len(states) != 2:
+              raise SystemExit(f'expected two compact states, found {states}')
+          source_manifest = json.loads((root / 'output' / 'SOURCE_MANIFEST.json').read_text())
+
+          def sha(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open('rb') as handle:
+                  for block in iter(lambda: handle.read(1 << 20), b''):
+                      h.update(block)
+              return h.hexdigest()
+
+          reports = []
+          all_columns = set()
+          for path in states:
+              parquet = pq.ParquetFile(path)
+              schema = parquet.schema_arrow
+              columns = schema.names
+              all_columns.update(columns)
+              table = parquet.read_row_group(0, columns=columns[: min(len(columns), 16)])
+              sample = table.slice(0, 3).to_pydict()
+              reports.append({
+                  'name': path.name,
+                  'sha256': sha(path),
+                  'bytes': path.stat().st_size,
+                  'rows': parquet.metadata.num_rows,
+                  'row_groups': parquet.metadata.num_row_groups,
+                  'columns': columns,
+                  'schema': str(schema),
+                  'sample_first_columns': sample,
+              })
+
+          lower = {c.lower(): c for c in all_columns}
+          def any_contains(*terms: str) -> list[str]:
+              return sorted(c for c in all_columns if all(term in c.lower() for term in terms))
+
+          capability = {
+              'has_local_arrival_clock': bool(any_contains('local', 'timestamp') or any_contains('decision')),
+              'has_exchange_timestamp': bool(any_contains('timestamp')),
+              'has_best_bid_price': bool(any_contains('bid', 'price') or any_contains('best', 'bid')),
+              'has_best_ask_price': bool(any_contains('ask', 'price') or any_contains('best', 'ask')),
+              'has_bid_amount': bool(any_contains('bid', 'amount') or any_contains('bid', 'size') or any_contains('bid', 'depth')),
+              'has_ask_amount': bool(any_contains('ask', 'amount') or any_contains('ask', 'size') or any_contains('ask', 'depth')),
+              'has_multi_level_book': len(any_contains('bid')) >= 5 and len(any_contains('ask')) >= 5,
+              'has_aggressive_flow': bool(any_contains('flow') or any_contains('trade')),
+              'has_trade_price_level_consumption': bool(any_contains('trade', 'price') or any_contains('last', 'price')),
+              'has_cancel_refill_features': bool(any_contains('cancel') and any_contains('refill')),
+              'has_future_labels': bool(any_contains('future') or any_contains('label')),
+          }
+          exact_queue_simulation_from_compact_state = all([
+              capability['has_local_arrival_clock'],
+              capability['has_best_bid_price'],
+              capability['has_best_ask_price'],
+              capability['has_bid_amount'],
+              capability['has_ask_amount'],
+              capability['has_trade_price_level_consumption'],
+          ])
+          raw_files = source_manifest['files']
+          raw_recovery = {
+              'archive_count': len(raw_files),
+              'all_urls_https': all(str(row['url']).startswith('https://') for row in raw_files),
+              'all_sha256_present': all(len(str(row['sha256'])) == 64 for row in raw_files),
+              'book_snapshot_count': sum(row['data_type'] == 'book_snapshot_5' for row in raw_files),
+              'trade_count': sum(row['data_type'] == 'trades' for row in raw_files),
+              'dates': sorted({row['date'] for row in raw_files}),
+              'symbols': sorted({row['symbol'] for row in raw_files}),
+              'compressed_bytes': sum(int(row['compressed_bytes']) for row in raw_files),
+          }
+          if not raw_recovery['all_urls_https'] or not raw_recovery['all_sha256_present']:
+              raise SystemExit('raw source recovery contract incomplete')
+
+          next_action = (
+              'freeze compact-state queue-aware screen'
+              if exact_queue_simulation_from_compact_state
+              else 'download exact SHA-fixed raw book_snapshot_5 and trades, then freeze raw queue-aware screen'
+          )
+          output = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260726-1648-SWEEP-FVG-MAKER-001',
+              'stage': 'SOURCE_CAPABILITY_ONLY_NO_PNL',
+              'artifact_id': 8626087323,
+              'artifact_sha256': '90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1',
+              'state_reports': reports,
+              'all_columns': sorted(all_columns),
+              'capability': capability,
+              'exact_queue_simulation_from_compact_state': exact_queue_simulation_from_compact_state,
+              'raw_recovery': raw_recovery,
+              'next_action': next_action,
+              'strategy_pnl_opened': False,
+              '2024_opened': False,
+              '2025_opened': False,
+              '2026_opened': False,
+              'orders_submitted': False,
+          }
+          dest = Path('research/sweep_fvg_maker_20260726/STATE_PROBE.json')
+          dest.write_text(json.dumps(output, sort_keys=True, indent=2, default=str) + '\n')
+          print(json.dumps({
+              'columns': sorted(all_columns),
+              'capability': capability,
+              'exact_queue_simulation_from_compact_state': exact_queue_simulation_from_compact_state,
+              'raw_recovery': raw_recovery,
+              'next_action': next_action,
+          }, sort_keys=True, separators=(',', ':')))
+          PY
+      - name: Persist decision-ready source probe
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/sweep_fvg_maker_20260726/STATE_PROBE.json
+          git commit -m "Record Sweep-FVG maker source capability [skip sweep-maker]"
+          git push origin HEAD:agent/r11-sweep-fvg-maker-001
