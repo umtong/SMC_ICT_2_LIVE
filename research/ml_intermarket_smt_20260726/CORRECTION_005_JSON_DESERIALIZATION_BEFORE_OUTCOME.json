@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1740-ML-INTERMARKET-SMT-001",
+  "correction_id": "CORRECTION_005_JSON_DESERIALIZATION_BEFORE_OUTCOME",
+  "recorded_at": "2026-07-26T19:42:00+09:00",
+  "timing": "Recorded after workflow 30198570172 failed during the first Dukascopy source acquisition and before any candidate event, model fit, model metric, action, trade path, PnL or later-period source access existed.",
+  "observed_failure": "The official dukascopy-node Node.js examples request format=json. getHistoricalRates therefore returns serialized JSON text, while download_dukascopy.js required Array.isArray(data) before parsing. Nonempty official source payloads were rejected as no rows. An explicit format=array retry did not establish a usable array return in the pinned runtime.",
+  "change": {
+    "file": "research/ml_intermarket_smt_20260726/download_dukascopy.js",
+    "return_format": "json",
+    "normalization": "If the return value is a string, JSON.parse it. If it is an object with an array-valued data field, use that field. Otherwise require a nonempty array and fail closed with type/key diagnostics.",
+    "scope": "Output-container deserialization only. Instrument, price side, timeframe, dates, chunking, retry rules, timestamps, flat-row handling and all scientific rules are unchanged."
+  },
+  "frozen_scientific_contract_unchanged": [
+    "Dukascopy usatechidxusd and usa500idxusd completed one-minute bid bars",
+    "Bybit BTCUSDT and ETHUSDT structural first-passage account market",
+    "external shock and crypto underreaction event definition",
+    "twelve features",
+    "one HGBT and one isotonic calibrator",
+    "chronological train calibration confirmation and conditional development",
+    "continuation-direction lock",
+    "structural target and stop",
+    "one global slot",
+    "12/18/24bp paths",
+    "risk and capacity rules",
+    "2024-2026 seals"
+  ],
+  "outcome_accessed_before_change": false,
+  "orders_permitted": false
+}
