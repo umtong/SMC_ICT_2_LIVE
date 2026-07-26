@@ -1,0 +1,168 @@
+{
+  "confirmation_opened": false,
+  "decision": "RETIRE_EXACT_INFORMATION_UNIT_WITHOUT_CONFIRMATION_OR_2024H1",
+  "economic_status": "BELOW_GATE_OPPORTUNITY_SCARCITY_AND_CONCENTRATION",
+  "family_results": {
+    "consensus_overreaction": {
+      "aggregate": {
+        "date_12bp": {
+          "2023-01-15": 13,
+          "2023-03-19": 0,
+          "2023-04-16": 5
+        },
+        "dates_with_at_least_3_12bp": 2,
+        "follower_date_12bp": {
+          "SOLUSDT|2023-01-15": 13,
+          "SOLUSDT|2023-03-19": 0,
+          "SOLUSDT|2023-04-16": 5,
+          "XRPUSDT|2023-01-15": 0,
+          "XRPUSDT|2023-03-19": 0,
+          "XRPUSDT|2023-04-16": 0
+        },
+        "follower_date_cells_with_at_least_3_12bp": 2,
+        "maximum_single_date_share_12bp": 0.7222222222222222,
+        "total_12bp": 18,
+        "total_24bp": 10
+      },
+      "gate_checks": {
+        "at_least_two_dates_with_3_12bp": true,
+        "at_least_two_follower_date_cells_with_3_12bp": true,
+        "maximum_single_date_share": false,
+        "total_12bp_at_least_15": true,
+        "total_24bp_at_least_4": true
+      },
+      "gate_passed": false
+    },
+    "consensus_underreaction": {
+      "aggregate": {
+        "date_12bp": {
+          "2023-01-15": 6,
+          "2023-03-19": 1,
+          "2023-04-16": 4
+        },
+        "dates_with_at_least_3_12bp": 2,
+        "follower_date_12bp": {
+          "SOLUSDT|2023-01-15": 6,
+          "SOLUSDT|2023-03-19": 0,
+          "SOLUSDT|2023-04-16": 4,
+          "XRPUSDT|2023-01-15": 0,
+          "XRPUSDT|2023-03-19": 1,
+          "XRPUSDT|2023-04-16": 0
+        },
+        "follower_date_cells_with_at_least_3_12bp": 2,
+        "maximum_single_date_share_12bp": 0.5454545454545454,
+        "total_12bp": 11,
+        "total_24bp": 1
+      },
+      "gate_checks": {
+        "at_least_two_dates_with_3_12bp": true,
+        "at_least_two_follower_date_cells_with_3_12bp": true,
+        "maximum_single_date_share": true,
+        "total_12bp_at_least_15": false,
+        "total_24bp_at_least_4": false
+      },
+      "gate_passed": false
+    },
+    "eth_idiosyncratic_overreaction": {
+      "aggregate": {
+        "date_12bp": {
+          "2023-01-15": 8,
+          "2023-03-19": 0,
+          "2023-04-16": 2
+        },
+        "dates_with_at_least_3_12bp": 1,
+        "follower_date_12bp": {
+          "SOLUSDT|2023-01-15": 8,
+          "SOLUSDT|2023-03-19": 0,
+          "SOLUSDT|2023-04-16": 2,
+          "XRPUSDT|2023-01-15": 0,
+          "XRPUSDT|2023-03-19": 0,
+          "XRPUSDT|2023-04-16": 0
+        },
+        "follower_date_cells_with_at_least_3_12bp": 1,
+        "maximum_single_date_share_12bp": 0.8,
+        "total_12bp": 10,
+        "total_24bp": 3
+      },
+      "gate_checks": {
+        "at_least_two_dates_with_3_12bp": false,
+        "at_least_two_follower_date_cells_with_3_12bp": false,
+        "maximum_single_date_share": false,
+        "total_12bp_at_least_15": false,
+        "total_24bp_at_least_4": false
+      },
+      "gate_passed": false
+    },
+    "eth_idiosyncratic_underreaction": {
+      "aggregate": {
+        "date_12bp": {
+          "2023-01-15": 8,
+          "2023-03-19": 0,
+          "2023-04-16": 0
+        },
+        "dates_with_at_least_3_12bp": 1,
+        "follower_date_12bp": {
+          "SOLUSDT|2023-01-15": 8,
+          "SOLUSDT|2023-03-19": 0,
+          "SOLUSDT|2023-04-16": 0,
+          "XRPUSDT|2023-01-15": 0,
+          "XRPUSDT|2023-03-19": 0,
+          "XRPUSDT|2023-04-16": 0
+        },
+        "follower_date_cells_with_at_least_3_12bp": 1,
+        "maximum_single_date_share_12bp": 1.0,
+        "total_12bp": 8,
+        "total_24bp": 3
+      },
+      "gate_checks": {
+        "at_least_two_dates_with_3_12bp": false,
+        "at_least_two_follower_date_cells_with_3_12bp": false,
+        "maximum_single_date_share": false,
+        "total_12bp_at_least_15": false,
+        "total_24bp_at_least_4": false
+      },
+      "gate_passed": false
+    }
+  },
+  "funding_opened": false,
+  "hard_validity_status": "PASS_CAUSAL_OPPORTUNITY_SCREEN_NO_PNL",
+  "known_limitations": [
+    "Opportunity screen only; no executable entry/exit strategy or account PnL was frozen.",
+    "Only three 2023 development dates were opened because every family failed before confirmation.",
+    "Opportunities were almost entirely SOLUSDT; XRPUSDT contributed no meaningful cost-sized breadth.",
+    "The strongest family concentrated 72.22% of 12bp events on one date.",
+    "Runtime warnings arose from intentionally unavailable warm-up cells; stage and no-PnL assertions still passed."
+  ],
+  "most_promising_failed_family": {
+    "dates_with_at_least_3_12bp": 2,
+    "failed_gate": "maximum_single_date_share",
+    "family": "consensus_overreaction",
+    "follower_date_cells_with_at_least_3_12bp": 2,
+    "maximum_single_date_share_12bp": 0.7222222222222222,
+    "total_12bp": 18,
+    "total_24bp": 10
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "pnl_computed": false,
+  "ranking_role": "NONE_PRE_PNL_OPPORTUNITY_SCREEN",
+  "reason_2024H1_not_opened": "No family passed the precommitted opportunity breadth and concentration gate; there was no cost-sized, cross-date, cross-follower opportunity surface to convert into a frozen strategy.",
+  "recovery_claim_id": "CLM-20260726-2150-TWOFACTOR-MICROSHOCK-RECOVERY-001",
+  "reproducibility": {
+    "artifact_digest": "sha256:463682d87cfee6ccca13ad9b2e955a5969558ca0c71a399260866572492255bd",
+    "artifact_id": 8626937475,
+    "decision_sha256": "977a1297ba97bc536224e0cbc5d5dba0344bcd4aafca248c013eac1f4861d29c",
+    "events_csv_sha256": "c99d93d9408b3766491085eb89c7c0d1d301cd3e70279d203de73e60a01dc762",
+    "run_log_sha256": "c2b08d58d9e037f4b0eb81e2346a0184473ccd4ef14d9eb81af5fdd7204d2778",
+    "source_commit": "b7d03fa44a125647de0bd88d53c7194cc181b973",
+    "source_manifest_sha256": "35f3f569f65aaea6c39d37742d76d2aec07c1809b27f4de6efc28a5d66deb949",
+    "stage1_result_sha256": "b03277de10e1ae20f1661dcb648fdef3e6fd44be0c4800eefb9e43b2beb146a4",
+    "workflow_run_id": 30185670025
+  },
+  "result_id": "RES-20260726-TWOFACTOR-MICROSHOCK-001",
+  "schema_version": 1,
+  "scientific_question": "Do prior-only BTC/ETH consensus or ETH-idiosyncratic sub-second shocks create sufficiently broad 12/18/24bp SOL/XRP residual opportunities to justify a frozen executable strategy and 2024H1 evaluation?",
+  "selected_family": null,
+  "source_claim_id": "CLM-20260726-1142-TWOFACTOR-MICROSHOCK-001",
+  "status": "TESTED_BELOW_GATE"
+}
