@@ -1,0 +1,99 @@
+{
+  "authority": {
+    "credentials": false,
+    "live_orders": false,
+    "paper_orders": false,
+    "testnet_orders": false
+  },
+  "chronology": {
+    "calibration_rule": "Use only the last 183 calendar days of the causal training set; threshold is the 95th percentile of absolute fitted predictions.",
+    "official_2026H1_open_once": true,
+    "official_forward_end_exclusive": "2026-07-01T00:00:00Z",
+    "official_forward_start": "2026-01-01T00:00:00Z",
+    "refit_frequency": "six_months",
+    "selected_development_end_exclusive": "2026-01-01T00:00:00Z",
+    "selected_development_start": "2024-01-01T00:00:00Z",
+    "signal_history_start": "2023-01-01T00:00:00Z",
+    "training_rule": "For each half-year, include only rows whose decision, next-open entry and complete 24-hour target interval finish before that half-year begins."
+  },
+  "claim_id": "CLM-20260726-2235-ML-HOURWEEK-XRP-BYBIT-2026H1-001",
+  "decision_rule": {
+    "always_report_2026H1": true,
+    "no_post_outcome_tuning": [
+      "features",
+      "ridge alpha",
+      "target horizon",
+      "calibration window or quantile",
+      "UTC hours",
+      "symbol",
+      "side",
+      "threshold multiplier",
+      "cost floor",
+      "exit rule",
+      "position sizing",
+      "funding rule",
+      "cost paths"
+    ],
+    "rank_promotion": "Only a hard-valid positive result may maintain or improve rank. A negative or materially weaker 2026H1 result is recorded immediately and may demote or retire the replica."
+  },
+  "execution_data": {
+    "contract": "XRPUSDT USDT-linear perpetual",
+    "cost_paths_round_trip_bps": [12, 24, 72, 96],
+    "execution_disclosure": "Hourly opens are Bybit-native but are not exact historical BBO/depth or queue replay.",
+    "funding": "V5 public historical funding rates valued with V5 hourly mark-price open at the settlement hour",
+    "price": "V5 public hourly trade-kline open at the hour following the decision",
+    "venue": "Bybit"
+  },
+  "experiment_id": "ML-HOURWEEK-XRP-BYBIT-2026H1-REPLICA-V1",
+  "model": {
+    "base_features": [
+      "ret1", "ret2", "ret3", "ret6", "ret12", "ret24", "ret48", "ret72", "ret168",
+      "vol6", "vol12", "vol24", "vol72", "vol168", "atr_pct", "range_atr", "body_atr", "close_loc",
+      "vol_z24", "vol_z168", "flow1", "flow6", "flow24", "mkt_ret1", "resid1", "mkt_ret3", "resid3",
+      "mkt_ret6", "resid6", "mkt_ret12", "resid12", "mkt_ret24", "resid24", "mkt_ret72", "resid72",
+      "mkt_ret168", "resid168", "breadth1", "rank1", "breadth6", "rank6", "breadth24", "rank24",
+      "breadth72", "rank72", "sin_hod", "cos_hod", "sin_how", "cos_how"
+    ],
+    "family": "StandardScaler plus pooled Ridge regression",
+    "hyperparameter_grid": false,
+    "interactions": "each symbol dummy multiplied by sin/cos hour-of-day and sin/cos hour-of-week",
+    "model_family_grid": false,
+    "ridge_alpha": 10.0,
+    "symbol_encoding": "four one-hot symbol columns",
+    "target": "log(XRP or other symbol open at t+25h / open at t+1h)",
+    "total_design_columns": 69
+  },
+  "policy": {
+    "cost_accounting": "Charge half the round-trip cost on actual marked notional at entry and exit.",
+    "elapsed_time_liquidation": false,
+    "eligible_entry_hours_utc": [8, 9, 10, 11, 12, 13, 14, 15],
+    "entry": "next hourly Bybit open",
+    "entry_threshold": "abs(prediction) >= max(1.25 * prior-only q95, 0.75 * round-trip cost)",
+    "execution_symbol": "XRPUSDT",
+    "exit": "first hourly decision where signed expected edge is non-positive",
+    "funding_accounting": "Apply each actual Bybit funding event to fixed position quantity and the Bybit mark-price open. Also report an adverse unsigned-funding stress.",
+    "global_slot": 1,
+    "period_end_nav": "Value any open position at immediate liquidation cost without creating a strategy exit.",
+    "position_sizing": "At entry set a fixed XRP base quantity equal to current NAV divided by entry price. Do not rebalance quantity while open.",
+    "side": "BOTH"
+  },
+  "ranking_benchmark": {
+    "current_first_place": "FIRST-20260726-ML-HOURWEEK-XRP-0815-125",
+    "parent_24bp_daily_growth": 0.002230296864317971,
+    "parent_status": "SELECTED_DEVELOPMENT_NOT_SEALED_OOS"
+  },
+  "replication_disclosure": "The original local source was not committed. This runner is an independently frozen reconstruction from the durable rule, lineage, result fields and immutable 2023-2025 snapshot. It is not claimed byte-identical. 2026H1 is forward evidence for this exact replica only.",
+  "robustness": {
+    "account_ruin": "Report and fail economic promotion if NAV is non-positive at any point.",
+    "cost_stress_bps": [12, 24, 72, 96],
+    "winner_removal": "Remove ceil(10% of completed base trades) with highest positive account PnL by exact start key before slot competition, then rerun the full account."
+  },
+  "schema_version": 1,
+  "scientific_question": "Does a frozen independently reconstructed causal Ridge UTC-state XRP route that reproduced the selected 2024-2025 development effect remain profitable during the first untouched 2026H1 interval when execution prices and funding are taken from Bybit?",
+  "signal_data": {
+    "availability": "Each completed hourly bar is usable only after the hour closes.",
+    "missing_data": "Reject the run on any expected hourly gap; no imputation.",
+    "provider": "Binance Vision USD-M monthly hourly klines",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"]
+  }
+}
