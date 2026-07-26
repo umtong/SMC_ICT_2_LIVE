@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "study_id": "BYBIT_LIQUIDITY_RAID_CISD_RETEST_FATAL_V1",
+  "claim_id": "CLM-20260726-1625-CISD-RETEST-001",
+  "rank_eligible": false,
+  "market": {
+    "venue": "Bybit",
+    "instrument": "BTCUSDT linear perpetual",
+    "fit_date": "2022-07-01",
+    "development_date": "2023-07-01",
+    "source_state_ms": 500,
+    "2024_to_2026_prohibited": true
+  },
+  "state_machine": {
+    "external_liquidity": "completed rolling 120/300/600-second high or low",
+    "raid": "first completed bar trading beyond external liquidity by 0/1/3 bp",
+    "anchor": "opening price or body midpoint of the latest same-delivery candle among the raid bar and four preceding completed bars",
+    "cisd_confirmation": "opposite completed candle closes through the frozen anchor within three bars, optionally with raid-side or dual-side aggressive-flow confirmation",
+    "entry_confirmation": "first later anchor retest from the new side that closes back in the CISD direction",
+    "entry": "next exact bar's executable ask for long or bid for short",
+    "stop": "beyond the extended raid/retest extreme plus one bp",
+    "target": "untouched opposing pre-raid external liquidity",
+    "exit": "stop, target, completed anchor invalidation, or terminal NAV mark"
+  },
+  "candidate_grid": {
+    "bar_seconds": [5, 15, 30],
+    "liquidity_lookback_seconds": [120, 300, 600],
+    "raid_excess_bps": [0, 1, 3],
+    "confirm_body_bps": [0, 2, 5],
+    "flow_mode": ["PRICE_ONLY", "RAID_FLOW", "DUAL_FLOW"],
+    "anchor_mode": ["OPEN", "BODY_MID"],
+    "maximum_confirmation_bars": 3,
+    "candidate_count": 486
+  },
+  "economics": {
+    "round_trip_cost_bps": [12, 18, 24],
+    "planned_risk_fractions": [0.005, 0.01, 0.02, 0.04, 0.08],
+    "risk_does_not_select_negative_path": true,
+    "winner_removal": "remove top 10 percent of positive 12bp event keys before complete rerouting"
+  },
+  "fit_gate": {
+    "minimum_trades": 20,
+    "positive_24bp_mean_and_median": true,
+    "24bp_profit_factor_above_one": true,
+    "one_percent_risk_sample_day_growth": ">=1%",
+    "winner_removed_rerouted_growth": ">=1%"
+  },
+  "prohibitions": [
+    "no same-bar entry",
+    "no time-forced exit",
+    "no risk rescue of negative expectancy",
+    "no 2024-2026 data",
+    "no credentials or orders"
+  ]
+}
