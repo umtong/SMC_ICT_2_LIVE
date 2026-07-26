@@ -15,6 +15,7 @@ ISSUE_TOPIC = "0xcb8241adb0c3fdb35b70c24ce35c5eb0c17af7431c99f827d44a445ca624176
 REDEEM_TOPIC = "0x702d5967f45f6513a38ffc42d6ba9bf230bd40e8f53b16363c7eb4fd2deb9a44"
 ZERO_ADDRESS = "0x" + "0" * 40
 ORIGINAL_DECODE_LOG = base.decode_log
+EMPTY_TOPIC_VALUES = {None, "", "0x", "0x0", "0x" + "0" * 64}
 
 
 def eligibility_safe_boundary(block_number: int, target_timestamp: int) -> int:
@@ -66,6 +67,21 @@ def event_filter_topics(token: str, direction: str) -> list[Any]:
     raise ValueError(f"unsupported token {token}")
 
 
+def normalize_event_topics(raw_topics: Any) -> list[str]:
+    """Drop only transport padding while preserving every real indexed topic."""
+    if not isinstance(raw_topics, (list, tuple)):
+        raise ValueError(f"event topics must be a sequence, got {type(raw_topics)!r}")
+    output: list[str] = []
+    for value in raw_topics:
+        if value in EMPTY_TOPIC_VALUES:
+            continue
+        text = str(value).lower()
+        if text in EMPTY_TOPIC_VALUES:
+            continue
+        output.append(text)
+    return output
+
+
 def decode_log(token: str, direction: str, log: dict[str, Any]) -> dict[str, Any]:
     """Decode canonical USDT Issue/Redeem or USDC zero-address Transfer."""
     contract = str(log["address"]).lower()
@@ -78,7 +94,7 @@ def decode_log(token: str, direction: str, log: dict[str, Any]) -> dict[str, Any
     if token != "USDT":
         raise ValueError(f"unsupported token {token}")
 
-    topics = log.get("topics") or []
+    topics = normalize_event_topics(log.get("topics") or [])
     expected_topic = ISSUE_TOPIC if direction == "MINT" else REDEEM_TOPIC if direction == "BURN" else None
     if expected_topic is None:
         raise ValueError(direction)
@@ -87,7 +103,7 @@ def decode_log(token: str, direction: str, log: dict[str, Any]) -> dict[str, Any
     # Issue/Redeem carry only a non-indexed uint256 amount. Reject any attempt
     # to reinterpret an ordinary Transfer as a supply event.
     if len(topics) != 1:
-        raise ValueError("USDT Issue/Redeem must contain only topic0")
+        raise ValueError(f"USDT Issue/Redeem has nonempty indexed topics: {topics[1:]}")
     amount_raw = int(log.get("data", "0x0"), 16)
     if amount_raw <= 0:
         raise ValueError("USDT supply-event amount must be positive")
@@ -171,6 +187,10 @@ def self_test() -> None:
         "logIndex": "0x2",
     }
     issue_row = decode_log("USDT", "MINT", issue)
+    padded_issue = dict(issue)
+    padded_issue["topics"] = [ISSUE_TOPIC, None, "", "0x", "0x" + "0" * 64]
+    if decode_log("USDT", "MINT", padded_issue)["amount_usd"] != 125_000_000:
+        raise AssertionError("empty topic padding changed USDT Issue decoding")
     if issue_row["amount_usd"] != 125_000_000 or issue_row["from_address"] != ZERO_ADDRESS:
         raise AssertionError(issue_row)
 
