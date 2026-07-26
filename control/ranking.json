@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 16,
+  "revision": 17,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260726-R16",
+  "ranking_id": "STRATEGY-RANKING-20260726-R17",
   "ranking_rule": {
     "eligibility": "hard_valid_or_preliminary_causal_strategy_or_portfolio_compatible_with_current_fixed_project_contract",
     "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
@@ -22,88 +22,98 @@
   },
   "first_place": {
     "rank": 1,
-    "first_place_id": "FIRST-20260726-DONCHIAN-ALL-A70626D9E484",
+    "first_place_id": "FIRST-20260726-ML-HOURWEEK-XRP-0815-125",
     "candidate_type": "STRATEGY",
-    "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
-    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/61",
-    "qualification_stage": "PRELIMINARY_CAUSAL_BINANCE_PROXY_WITH_OFFICIAL_2024H1_SEQUENTIAL_EVIDENCE",
+    "source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
+    "source_pull_request": "https://github.com/umtong/SMC_ICT_2_LIVE/pull/230",
+    "qualification_stage": "PROVISIONAL_CAUSAL_SEQUENTIAL_REFIT_SELECTED_DEVELOPMENT_BINANCE_PROXY",
     "target_status": "NOT_MET",
-    "selection_reason": "At the normalized 24bp comparison cost, the 2023 Donchian all-breakout path remains the highest recorded current-contract-compatible account at 0.0700189% geometric growth per UTC calendar day. Official 2024H1 was then opened as an active sequential research interval: the unchanged unfiltered route fell to 0.0100516% daily and one frozen HGBT accept/flat filter reached 0.0387317%. Both official paths remain structurally far below 1% and winner-concentrated, so the family is retired rather than protected even though the historical 24bp path remains provisional rank one.",
-    "comparison_confidence": "VERY_LOW",
-    "ml_requirement_status": "NOT_MET_NON_ML_FIRST_PLACE_FILTER_RETIRED",
+    "selection_reason": "The causal Ridge UTC-state route has the highest recorded current-contract-compatible after-cost growth. At 24bp it grows 0.223030% per UTC calendar day, 3.185x the former first place at the same cost, has a positive median trade and remains strongly positive after exact event-key winner removal and full slot rerouting.",
+    "comparison_confidence": "LOW",
+    "ml_requirement_status": "MET_CAUSAL_RIDGE_STATE_MACHINE",
     "metrics": {
-      "candidate_id": "a70626d9e484285f2cb4|all",
-      "family": "donchian_all_breakout_60m_entry96_exit48",
+      "candidate_id": "UTC08_15_BOTH_XRP_THRESHOLD_1.25",
+      "family": "causal_ridge_hourweek_state_machine",
       "base_cost_bps": 24,
-      "geometric_daily_growth": 0.0007001887213879954,
+      "geometric_daily_growth": 0.002230296864317971,
       "target_geometric_daily_growth": 0.01,
-      "target_gap": 0.009299811278612005,
-      "target_fraction": 0.07001887213879954,
-      "target_multiple_required": 14.281863790070096,
-      "total_return": 0.2910804833980871,
-      "trade_count": 99,
-      "profit_factor": 1.6274490829640196,
-      "maximum_drawdown": 0.09855424618390096,
-      "median_account_return_bps": -50.0,
-      "win_rate": 0.20202020202020202,
-      "top5_positive_share": 0.642218924348059,
-      "top10pct_removed_return": -0.2694691324532831,
-      "median_holding_hours": 19.0,
-      "maximum_leverage_used": 0.7231906112640232,
-      "channel_exit_count": 25,
-      "stop_exit_count": 74,
-      "geometric_daily_growth_at_12bps": 0.0009008544402622221,
-      "total_return_at_12bps": 0.3891108327238735,
-      "geometric_daily_growth_at_18bps": 0.0007941372483304399,
-      "total_return_at_18bps": 0.33608682555253844,
-      "official_2024H1_unfiltered_24bps_geometric_daily_growth": 0.00010051636083741045,
-      "official_2024H1_unfiltered_24bps_total_return": 0.01846140123876716,
-      "official_2024H1_filtered_24bps_geometric_daily_growth": 0.0003873170703223572,
-      "official_2024H1_filtered_24bps_total_return": 0.07302102602013516,
+      "target_gap": 0.007769703135682029,
+      "target_fraction": 0.2230296864317971,
+      "target_multiple_required": 4.483708048012711,
+      "total_return": 4.096385829505215,
+      "ending_nav_multiple": 5.096385829505215,
+      "profit_factor": 4.880804161162647,
+      "maximum_drawdown": 0.25813319810649304,
+      "trade_count": 58,
+      "median_account_return_bps": 214.98908105074182,
+      "positive_trade_count": 39,
+      "negative_trade_count": 19,
+      "long_trade_count": 51,
+      "short_trade_count": 7,
+      "top5_positive_share": 0.33650762333959033,
+      "top10pct_all_trade_winner_removed_return": 2.6051363507560445,
+      "top10pct_all_trade_winner_removed_geometric_daily_growth": 0.0017557934922893814,
+      "geometric_daily_growth_at_12bps": 0.0023257257966515787,
+      "geometric_daily_growth_at_72bps": 0.0018486719818398,
+      "geometric_daily_growth_at_96bps": 0.0016579140366066447,
+      "half_year_returns_24bps": {
+        "2024H1": 0.010256032307766949,
+        "2024H2": 1.599284725130186,
+        "2025H1": 0.7576924867972765,
+        "2025H2": 0.10416530378035871
+      },
       "actual_funding_included": false,
+      "adverse_funding_proxy_included": true,
       "bybit_execution_replayed": false,
-      "elapsed_time_liquidation": false
+      "elapsed_time_liquidation": false,
+      "official_2026_opened": false
     },
     "sequential_evidence": {
-      "development_period": "2023",
-      "development_gate_pass_count": 0,
-      "official_2024H1_opened": true,
-      "official_2024H1_information_cutoff": "2023-12-31T23:59:59Z",
-      "official_2024H1_unfiltered_24bps_geometric_daily_growth": 0.00010051636083741045,
-      "official_2024H1_filtered_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
-      "official_2024H1_filtered_24bps_geometric_daily_growth": 0.0003873170703223572,
-      "official_2024H1_filtered_winner_removed_return": -0.07661046043680741,
-      "2024H2_opened": false,
-      "2025_opened": false,
-      "2026_opened": false,
-      "family_decision": "RETIRED_AFTER_2024H1_STRUCTURALLY_BELOW_OBJECTIVE"
+      "base_policy_selection_period": "2023H2",
+      "sequential_refit_blocks": [
+        "2024H1",
+        "2024H2",
+        "2025H1",
+        "2025H2"
+      ],
+      "filter_selection_period": "2024-01-01 through 2025-12-31",
+      "filter_selection_is_sealed_oos": false,
+      "official_2026H1_opened": false
     },
     "known_weaknesses": [
-      "Binance USD-M completed bars are a proxy rather than exact Bybit execution.",
-      "Historical funding was omitted.",
-      "Completed 60-minute bars do not reproduce tick-level stop-order triggering.",
-      "The normalized 24bp median trade is -50bp and only 20.2% of trades win.",
-      "The five largest winners provide 64.22% of positive PnL.",
-      "Removing the largest positive 10% of event keys changes the 24bp 2023 return to -26.95%.",
-      "Official 2024H1 unfiltered growth fell to 0.0100516% daily, only 1.005% of the 1% reference.",
-      "The HGBT-filtered official 2024H1 path reached 0.0387317% daily but changed from +7.3021% to -7.6610% after winner-removal rerouting.",
-      "The HGBT had negative MAE skill against a constant baseline in pre-2024 confirmation and 2024H1.",
-      "This first place is non-ML and its tested ML filter is retired; neither is a deployable final system."
+      "The 720 entry filters were selected using the complete 2024-2025 development path; the result is not sealed OOS.",
+      "Binance USD-M hourly market data are a proxy rather than exact Bybit BBO/depth execution.",
+      "Funding is an adverse unsigned proxy rather than exact historical Bybit funding.",
+      "Exact Bybit margin, liquidation distance, partial fills and depth capacity are not yet replayed.",
+      "Only 58 completed trades across two years; 2024H1 contains one trade.",
+      "XRP-only execution and 51 of 58 trades are long.",
+      "Official 2026H1 remains sealed and is required for further promotion.",
+      "Daily growth is materially closer to but still below the 1% reference."
     ]
   },
   "ranked_candidates": [
     {
       "rank": 1,
+      "source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
+      "candidate_label": "ML UTC08-15 XRP threshold-1.25 causal state machine",
+      "geometric_daily_growth": 0.002230296864317971,
+      "geometric_daily_growth_at_24bps": 0.002230296864317971,
+      "target_gap": 0.007769703135682029,
+      "comparison_confidence": "LOW",
+      "comparison_status": "PROVISIONAL_SELECTED_2024_2025_DEVELOPMENT_BINANCE_PROXY_FUNDING_PROXY_2026_SEALED"
+    },
+    {
+      "rank": 2,
       "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
       "candidate_label": "Donchian all-breakout 60m/96/48 a70626d9e484285f2cb4",
       "geometric_daily_growth": 0.0007001887213879954,
       "geometric_daily_growth_at_24bps": 0.0007001887213879954,
       "target_gap": 0.009299811278612005,
       "comparison_confidence": "VERY_LOW",
-      "comparison_status": "PROVISIONAL_2023_24BPS_BINANCE_PROXY_OFFICIAL_2024H1_DEGRADATION_WINNER_CONCENTRATED"
+      "comparison_status": "PROVISIONAL_2023_24BPS_BINANCE_PROXY_NO_FUNDING_WINNER_CONCENTRATED"
     },
     {
-      "rank": 2,
+      "rank": 3,
       "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
       "candidate_label": "Donchian after-loser 60m/96/48/240 a70626d9e484285f2cb4",
       "geometric_daily_growth": 0.0006318446194384375,
@@ -113,7 +123,7 @@
       "comparison_status": "PROVISIONAL_2023_24BPS_BINANCE_PROXY_NO_FUNDING_WINNER_CONCENTRATED"
     },
     {
-      "rank": 3,
+      "rank": 4,
       "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
       "candidate_label": "2024H1 HGBT-filtered Donchian all-breakout",
       "geometric_daily_growth": 0.0003873170703223572,
@@ -123,7 +133,7 @@
       "comparison_status": "PROVISIONAL_OFFICIAL_2024H1_24BPS_BINANCE_PROXY_NO_FUNDING_NEGATIVE_MAE_SKILL_WINNER_REMOVAL_NEGATIVE"
     },
     {
-      "rank": 4,
+      "rank": 5,
       "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001",
       "candidate_label": "CME gap competing-risk ML da1b9e2861d6b396b81e",
       "geometric_daily_growth": 0.0003348504650920563,
@@ -133,7 +143,7 @@
       "comparison_status": "PROVISIONAL_YAHOO_CME_BINANCE_EXECUTION_PROXY_2022_ONLY_24BPS_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"
     },
     {
-      "rank": 5,
+      "rank": 6,
       "source_result_id": "RES-20260726-LIQUIDITY-MASS-001",
       "candidate_label": "Bybit liquidity-mass rejection 142f8501fcc7874fd6d2",
       "geometric_daily_growth": 0.0001185504610022094,
@@ -142,7 +152,7 @@
       "comparison_status": "PROVISIONAL_BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"
     },
     {
-      "rank": 6,
+      "rank": 7,
       "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001",
       "candidate_label": "08:00 option-settlement SMT 951df185862595e1",
       "geometric_daily_growth": 9.955592268640068e-05,
@@ -151,16 +161,16 @@
       "comparison_status": "PROVISIONAL_BINANCE_EXECUTION_PROXY_18BPS_12_TRADES_PRE2024_FIT_ONLY"
     },
     {
-      "rank": 7,
+      "rank": 8,
       "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001",
       "candidate_label": "Bybit MMXM lifecycle 80d3e98612ce67650e4c",
       "geometric_daily_growth": 5.750578742594239e-05,
-      "target_gap": 0.009942494212574059,
+      "target_gap": 0.009942494212574058,
       "comparison_confidence": "VERY_LOW",
       "comparison_status": "PROVISIONAL_BYBIT_NATIVE_PRE2024_FIT_ONLY_NEGATIVE_MEDIAN_SECOND_HALF_LOSS"
     },
     {
-      "rank": 8,
+      "rank": 9,
       "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001",
       "candidate_label": "KRW-relative regional SMT reversal 297bb96ecbf036bb",
       "geometric_daily_growth": 4.8748293338896076e-05,
@@ -170,7 +180,7 @@
       "comparison_status": "PROVISIONAL_UPBIT_PRIMARY_BINANCE_EXECUTION_PROXY_TWO_TRADES_WINNER_REMOVAL_NEGATIVE"
     },
     {
-      "rank": 9,
+      "rank": 10,
       "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001",
       "candidate_label": "liquidation exhaustion reversal 0c0b773a5be4eab4",
       "geometric_daily_growth": 3.58316e-05,
@@ -205,28 +215,16 @@
       "reason": "Removed: the four-trade best raw path uses hold_minutes=30 and becomes negative after winner removal."
     },
     {
-      "source_result_id": "RES-20260725-XSEC-FUNDING-CROWDING-001",
-      "reason": "Outside the fixed four-symbol traded universe; no normalized BTC/ETH/SOL/XRP-only account path exists."
-    },
-    {
-      "source_result_id": "RES-20260726-MARK-INDEX-RAID-ML-001",
-      "reason": "One sparse sample-day trade is not a normalized full-calendar account growth path; the model was inferior to structural distance and the trade disappears under winner removal."
-    },
-    {
       "source_result_id": "RES-20260726-ML-DIRECT-UTILITY-001",
-      "reason": "Hard-valid negative pre-2024 screen: frozen calibration scale 0, zero prediction variance, worse error than the constant baseline and zero authorized trades at 12/18/24bp; development and risk/leverage search unopened."
+      "reason": "Hard-valid negative pre-2024 screen: calibration scale 0, zero prediction variance and zero authorized trades."
     },
     {
       "source_result_id": "RES-20260726-ML-PATH-CONTINUITY-001",
-      "reason": "Hard-valid negative: HGBT underperformed structural distance and the 24bp account lost 71.93%, with still worse winner-removed performance."
+      "reason": "Hard-valid negative: model underperformed structural distance and the 24bp account lost 71.93%."
     },
     {
       "source_result_id": "RES-20260726-ML-OKX-CONSENSUS-001",
-      "reason": "Hard-valid event-scarcity result: 116/67/8 train/calibration/confirmation events, no model or account path."
-    },
-    {
-      "source_result_id": "RES-20260726-ML-AAVE-LIQUIDATION-SOURCE-UNAVAILABLE-001",
-      "reason": "Outcome-sealed source failure before prices, labels, model or PnL; not negative-alpha evidence and no ranking path."
+      "reason": "Hard-valid event-scarcity result: 116/67/8 train/calibration/confirmation events and no model/account path."
     },
     {
       "source_result_id": "source_only_and_hard_invalid_results",
@@ -243,13 +241,13 @@
     }
   ],
   "reconciliation_notes": [
-    "Opened 2024H1 as the first official sequential research interval for a strategy frozen through 2023-12-31; official evaluation is no longer described as unopened.",
-    "The unchanged Donchian baseline produced 0.0100516% daily growth at 24bp in 2024H1. A frozen HGBT accept/flat filter improved it to 0.0387317% but remained structurally far below 1%.",
-    "The HGBT path is inserted at provisional rank 3 under normalized 24bp conditions, above the CME gap path's 0.0334850% 24bp growth.",
-    "Winner-removal rerouting changed the HGBT path from +7.3021% to -7.6610%, and MAE skill was negative; the exact information unit is retired rather than tuned.",
-    "2024H1 is now seen sequential evidence and cannot be called fresh independent OOS for a modified strategy.",
-    "Active research remains on materially different stablecoin issuance and Uniswap inventory-transfer sources.",
-    "Rank does not imply economic-gate passage, deployment permission, research priority or protection."
+    "Retained RES-20260726-ML-HOURWEEK-XRP-001 at provisional rank 1; its 24bp growth and exact winner-removed reroute remain the strongest current account path.",
+    "Inserted RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001 at provisional rank 4 using its official sequential 2024H1 24bp growth of 0.0387317%.",
+    "Normalized Donchian and CME top comparisons to their recorded 24bp paths; the 2024H1 HGBT path exceeds CME gap ML at the same cost.",
+    "The HGBT path changes from +7.3021% to -7.6610% after winner-removal rerouting and has negative MAE skill; the exact information unit is retired despite its rank.",
+    "2024H1 is seen sequential evidence and cannot be relabeled independent OOS for a modified Donchian strategy.",
+    "The new first remains selected development rather than sealed OOS; exact Bybit execution and official 2026H1 are the next promotion boundaries.",
+    "Rank does not imply target passage, deployment permission, research priority or protection."
   ],
-  "updated_at": "2026-07-26T21:58:00+09:00"
+  "updated_at": "2026-07-26T22:34:00+09:00"
 }

@@ -2,7 +2,7 @@ name: ML Donchian official 2024H1 sequential result
 
 on:
   push:
-    branches: [agent/r16-register-donchian-2024h1-sequential-001]
+    branches: [agent/r16-register-donchian-2024h1-sequential-clean]
     paths:
       - 'research/ml_donchian_2024h1_sequential_20260726/**'
       - 'research/results/RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001.json'
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify durable result and state transition
+      - name: Verify durable result and cumulative ranking
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -41,8 +41,7 @@ jobs:
           import math
           from pathlib import Path
 
-          result_path=Path('research/results/RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001.json')
-          result=json.loads(result_path.read_text())
+          result=json.loads(Path('research/results/RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001.json').read_text())
           ranking=json.loads(Path('control/ranking.json').read_text())
           state=Path('control/current-state.md').read_text()
           rows=[json.loads(line) for line in Path('control/result-registry.jsonl').read_text().splitlines() if line.strip()]
@@ -61,18 +60,19 @@ jobs:
           assert result['reproduction']['rerun_summary_identical'] is True
           assert result['reproduction']['rerun_predictions_identical'] is True
 
-          assert ranking['revision']==16
-          assert ranking['first_place']['sequential_evidence']['official_2024H1_opened'] is True
-          rank3=ranking['ranked_candidates'][2]
-          assert rank3['rank']==3
-          assert rank3['source_result_id']==result['result_id']
-          assert math.isclose(rank3['geometric_daily_growth'],p24['geometric_daily_growth'],rel_tol=0,abs_tol=1e-15)
+          assert ranking['revision']==17
+          assert ranking['first_place']['source_result_id']=='RES-20260726-ML-HOURWEEK-XRP-001'
+          rank4=ranking['ranked_candidates'][3]
+          assert rank4['rank']==4
+          assert rank4['source_result_id']==result['result_id']
+          assert math.isclose(rank4['geometric_daily_growth'],p24['geometric_daily_growth'],rel_tol=0,abs_tol=1e-15)
           assert any(row['result_id']==result['result_id'] for row in rows)
-          assert '2024H1 is now seen sequential evidence' in state
+          assert '2024H1 is seen evidence' in state
           assert 'Rank does not determine research priority.' in state
           print(json.dumps({
+              'current_first':ranking['first_place']['first_place_id'],
               'result_id':result['result_id'],
-              'rank':rank3['rank'],
+              'rank':rank4['rank'],
               'growth_24bps':p24['geometric_daily_growth'],
               'winner_removed_return':p24['winner_removed_reroute']['total_return'],
               'decision':result['decision'],
