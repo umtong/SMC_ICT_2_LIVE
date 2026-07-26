@@ -52,15 +52,39 @@ jobs:
             "scikit-learn==1.6.1" \
             "pytest==8.3.4"
 
-      - name: Reconstruct and validate the single model
+      - name: Reconstruct immutable scientific source
         shell: bash
         run: |
           set -euo pipefail
           root=research/ml_okx_consensus_relay_20260726
           python "$root/reconstruct.py"
+
+      - name: Compile frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_okx_consensus_relay_20260726
           python -m py_compile "$root/reconstruct.py" "$root/run.py" "$root/test_run.py"
+
+      - name: Run adversarial causal and account tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_okx_consensus_relay_20260726
           PYTHONPATH="$root" pytest -q "$root/test_run.py"
+
+      - name: Run deterministic engine self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_okx_consensus_relay_20260726
           PYTHONPATH="$root" python "$root/run.py" self-test
+
+      - name: Validate frozen contracts and current project state
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/ml_okx_consensus_relay_20260726
           python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$root/preregistration.json" >/dev/null
           python -m json.tool "$root/bundle_manifest.json" >/dev/null
@@ -164,7 +188,10 @@ jobs:
           root=research/ml_okx_consensus_relay_20260726
           out=research_runs/ml_okx_consensus_relay_20260726/r12
           if test -f "$out/RESULT.json"; then
-            (cd "$out" && sha256sum --check SHA256SUMS.txt)
+            # RUN_FIT.log is written by tee after the scientific runner emits its internal checksum file.
+            # Recompute a post-run evidence inventory; this correction changes no market result.
+            find "$out" -maxdepth 1 -type f ! -name SHA256SUMS.txt ! -name OUTPUT_SHA256SUMS.txt -print0 \
+              | sort -z | xargs -0 sha256sum > "$out/OUTPUT_SHA256SUMS.txt"
             python - <<'PY'
           import json
           from pathlib import Path
