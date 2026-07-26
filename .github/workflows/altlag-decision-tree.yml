@@ -57,11 +57,16 @@ jobs:
           new="                    'under':float(f['under'][i]),\n"
           if old not in text:
               raise SystemExit('expected unused follower_return serialization line not found')
-          p.write_text(text.replace(old,new,1))
+          text=text.replace(old,new,1)
+          old_download="        status,payload,error=base._download(session,url,target)\n        if status!=200: raise RuntimeError(f'source unavailable {url}: {status} {error}')\n"
+          new_download="        payload=base._download(session,url,target)\n"
+          if old_download not in text:
+              raise SystemExit('expected base download adapter mismatch not found')
+          p.write_text(text.replace(old_download,new_download,1))
           PY
           python -m py_compile runtime/base_probe.py runtime/decision_tree.py
           python scripts/validate_project.py
-          sha256sum runtime/base_probe.py runtime/decision_tree.py research/bybit_altlag_decision_tree_20260726/preregistration.json > research_runs/bybit_altlag_decision_tree_20260726/INPUT_SHA256SUMS.txt
+          sha256sum runtime/base_probe.py runtime/decision_tree.py research/bybit_altlag_decision_tree_20260726/preregistration.json research/bybit_altlag_decision_tree_20260726/RUNTIME_INTERFACE_CORRECTION_001.json > research_runs/bybit_altlag_decision_tree_20260726/INPUT_SHA256SUMS.txt
 
       - name: Run fixed causal decision tree
         shell: bash
