@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-hl-liquidation-source-r13-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ml-hl-liquidation-source-r13-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   PYTHONHASHSEED: '0'
@@ -53,6 +53,7 @@ jobs:
           python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
           python -m json.tool "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" >/dev/null
           python -m json.tool "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" >/dev/null
+          python -m json.tool "$ROOT/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_DATA.json" >/dev/null
           python -m py_compile \
             "$ROOT/probe_hl_liquidations.py" \
             "$ROOT/test_probe_hl_liquidations.py"
@@ -122,6 +123,7 @@ jobs:
             "$ROOT/PREREGISTRATION.md" \
             "$ROOT/AMENDMENT_001_SOURCE_GATE_BEFORE_DATA.json" \
             "$ROOT/AMENDMENT_002_PINNED_PARQUET_TRANSPORT_BEFORE_DATA.json" \
+            "$ROOT/EXECUTION_CORRECTION_003_SHA_SCOPED_NO_CANCEL_BEFORE_DATA.json" \
             "$ROOT/SOURCES.md" \
             "$ROOT/probe_hl_liquidations.py" \
             "$ROOT/test_probe_hl_liquidations.py" \
