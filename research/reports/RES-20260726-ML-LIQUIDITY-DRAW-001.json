@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260726-ML-LIQUIDITY-DRAW-001",
+  "claim_id": "CLM-20260726-1703-ML-LIQUIDITY-DRAW-001",
+  "worker_id": "gpt-5.6-pro-20260726-1703",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity_status": "PASS_INITIAL_CAUSAL_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_role": "NONE_INITIAL_PRE2024_SCREEN",
+  "model": "one HistGradientBoostingClassifier plus one frozen isotonic calibrator",
+  "fit_partition": "2022-01-01 through 2022-12-31 with chronological train/calibration/confirmation",
+  "conditional_development_opened": false,
+  "prohibited_years_opened": [],
+  "prediction": {
+    "model_auc": 0.6936557405890079,
+    "distance_baseline_auc": 0.7348654930127331,
+    "auc_lift": -0.041209752423725154,
+    "model_brier": 0.2244036136117951,
+    "distance_baseline_brier": 0.20879303993890497,
+    "brier_skill": -0.07476577608840773,
+    "confirmation_rows": 4025
+  },
+  "account_12bps": {
+    "trade_count": 156,
+    "total_return": -0.05211463656899118,
+    "geometric_daily_growth": -0.0005815885149491606,
+    "profit_factor": 0.8802630112239467,
+    "maximum_drawdown": 0.12382567672835687,
+    "median_net_return_bps_on_notional": -52.44580810651839,
+    "top10pct_removed_return": -0.12385588087883315
+  },
+  "account_18bps": {
+    "trade_count": 156,
+    "total_return": -0.09192902190367136,
+    "geometric_daily_growth": -0.0010476327375807948,
+    "profit_factor": 0.7889243103326442,
+    "median_net_return_bps_on_notional": -58.43366707947021,
+    "top10pct_removed_return": -0.16468523620967968,
+    "positive_month_fraction": 0.3333333333333333
+  },
+  "account_24bps": {
+    "trade_count": 156,
+    "total_return": -0.12418203637106218,
+    "geometric_daily_growth": -0.0014402337546997046,
+    "profit_factor": 0.713832451275947,
+    "median_net_return_bps_on_notional": -64.42152605242204,
+    "top10pct_removed_return": -0.1969464426153128
+  },
+  "decision": "Retire the exact completed-15m external-liquidity first-passage direction model. It is less informative than the frozen structural-distance baseline and loses after costs. Do not tune adjacent model parameters, probability margins, pivot spans or pool widths under this dependency fingerprint.",
+  "summary": "The single nonlinear ML model was causally valid but inferior to a distance-only first-passage baseline and economically negative. Model AUC was 0.6937 versus 0.7349 for distance, Brier skill was negative, and the 18bp account lost 9.19% over 156 trades with a -58.43bp median trade. Every fit gate did not pass, so untouched 2023 and all later years remained unopened.",
+  "code_commit": "0900a631db03ed81b2db62388132efd6bd57039b",
+  "evaluation_contract_sha256": "dff40a2293d989f6f8922e1452414ccbeb57914dfff47f6f239fb608f91b98ad",
+  "result_sha256": "991b8663ca4623cdbe0821f149943175ef3fab9056a984517afb399bda7bf794",
+  "source_manifest_sha256": "9074fbe51f4aa613656dca4dfbc273219bb4cc1ab4292b8baf83a27e96f0a572",
+  "artifact_fingerprint": "e986870c95f524a5c6a872d38534b5714111746f215096c722ff9ee62986a817",
+  "dependency_fingerprint": "9b16777180abb1566387aec7a47b89020fa2ec1f88c4c7033b051d3ec46b0ada",
+  "artifact_links": [
+    "https://github.com/umtong/SMC_ICT_2_LIVE/pull/124",
+    "https://github.com/umtong/SMC_ICT_2_LIVE/actions/runs/30194348946",
+    "github-actions://umtong/SMC_ICT_2_LIVE/actions/runs/30194348946/artifacts/8629624480"
+  ],
+  "orders_submitted": false,
+  "live_permission_changed": false,
+  "created_at": "2026-07-26T17:20:00+09:00"
+}
