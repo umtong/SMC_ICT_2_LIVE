@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260726-1734-HAZARD-OCO-ML-001",
+  "created_at": "2026-07-26T17:36:00+09:00",
+  "stage": "SOURCE_SCHEMA_ONLY_NO_MODEL_NO_PNL",
+  "purpose": "Enumerate the exact completed-state columns, Arrow types, row counts, row-group boundaries, timestamp coverage and small head/tail samples before mapping the preregistered semantic feature groups to source columns.",
+  "allowed_reads": [
+    "Parquet metadata and schema",
+    "first and last five rows from each registered state table",
+    "row-group statistics and file-level nullability metadata"
+  ],
+  "prohibited": [
+    "future movement labels",
+    "model fitting or scoring",
+    "candidate generation",
+    "trade simulation or PnL",
+    "2024-2026 sources"
+  ],
+  "precommitted_semantic_feature_groups": [
+    "observed spread and executable midpoint",
+    "multi-level stationary queue shape and imbalance",
+    "microprice displacement",
+    "aggressive buy/sell flow and activity intensity",
+    "book update, withdrawal and refill intensity",
+    "short-horizon realized movement and range compression"
+  ],
+  "post_probe_rule": "Choose at most twelve source columns or prior-only transforms that directly instantiate these groups, then freeze one HGBT specification, one fit-score quantile and three structural target/stop cells before any future label, score or PnL is computed.",
+  "orders_permitted": false
+}
