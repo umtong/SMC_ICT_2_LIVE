@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/yt-trinity-smc-fidelity-screen.yml
       - research/yt_trinity_ml/upgrade_chunks/unified_smc_v4.*
+      - research/yt_trinity_ml/apply_v4_performance_patch.py
   push:
     branches: [agent/r22-yt-trinity-ml-001]
     paths:
@@ -96,6 +97,11 @@ jobs:
           print({'run_primary_screen_sha256': actual})
           PY
 
+      - name: Apply semantics-preserving compute reductions
+        run: |
+          set -euo pipefail
+          python research/yt_trinity_ml/apply_v4_performance_patch.py
+
       - name: Install deterministic research dependencies
         run: |
           set -euo pipefail
@@ -145,6 +151,7 @@ jobs:
             research/yt_trinity_ml/tests/test_corpus_alpha.py \
             research/yt_trinity_ml/SYSTEM_DESIGN.md \
             research/yt_trinity_ml/system_contract.json \
+            research/yt_trinity_ml/apply_v4_performance_patch.py \
             .github/workflows/yt-trinity-smc-fidelity-screen.yml \
             .github/workflows/yt-trinity-source-snapshot.yml
           git add -u research/yt_trinity_ml/upgrade_chunks .github/workflows/yt-trinity-unified-smc-v4-materialize.yml || true
