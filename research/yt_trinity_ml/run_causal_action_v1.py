@@ -380,9 +380,28 @@ def run(args: argparse.Namespace) -> int:
     features = _feature_columns(rows_2023)
 
     selections: list[dict[str, Any]] = []
+    selection_attempts: list[dict[str, Any]] = []
+    raw_pre2024: dict[str, Any] = {}
     for variant in variants:
         train_variant = training[training["exit_variant"] == variant].copy()
         validation_variant = validation[validation["exit_variant"] == variant].copy()
+        raw_pre2024[variant] = {
+            "training_rows": int(len(train_variant)),
+            "validation_rows": int(len(validation_variant)),
+            "validation_fill_rate": float(validation_variant["filled"].mean()) if len(validation_variant) else None,
+            "validation_mean_budget_r": float(validation_variant["net_budget_r"].mean()) if len(validation_variant) else None,
+            "validation_status_counts": validation_variant["status"].value_counts().to_dict(),
+            "validation_by_action": {
+                str(name): {
+                    "rows": int(len(group)),
+                    "fill_rate": float(group["filled"].mean()),
+                    "mean_budget_r": float(group["net_budget_r"].mean()),
+                    "positive_rate": float((group["net_budget_r"] > 0).mean()),
+                    "status_counts": group["status"].value_counts().to_dict(),
+                }
+                for name, group in validation_variant.groupby("action")
+            },
+        }
         if len(train_variant) < 100 or len(validation_variant) < 50:
             continue
         model = _fit(train_variant, features)
@@ -390,6 +409,12 @@ def run(args: argparse.Namespace) -> int:
         for quantile in (0.50, 0.60, 0.70, 0.75, 0.80, 0.85, 0.90, 0.925, 0.95):
             threshold = float(validation_variant["score"].quantile(quantile))
             base = _account(validation_variant, h2_start, pre_end, threshold, 0.01, 5.0, rule_map)
+            selection_attempts.append({
+                "variant": variant,
+                "quantile": quantile,
+                "threshold_h2": threshold,
+                "base_account_h2": base,
+            })
             if base["filled_trades"] < 15 or base["geometric_daily_growth"] <= 0:
                 continue
             best_risk = None
@@ -412,6 +437,15 @@ def run(args: argparse.Namespace) -> int:
             "schema_version": 1, "stage": "PRE2024_CAUSAL_ACTION_COARSE_NOT_RANKABLE",
             "decision": "NO_POSITIVE_CAUSAL_ACTION_SURVIVOR",
             "candidate_count_2023": len(candidates_2023), "action_rows_2023": len(rows_2023),
+            "raw_pre2024": raw_pre2024,
+            "selection_attempts": sorted(
+                selection_attempts,
+                key=lambda row: (
+                    row["base_account_h2"]["geometric_daily_growth"],
+                    row["base_account_h2"]["nav_multiple"],
+                ),
+                reverse=True,
+            ),
             "ranking_effect": "NONE",
         }
         (args.output / "CAUSAL_ACTION_RESULT.json").write_text(json.dumps(summary, indent=2) + "\n")
@@ -455,6 +489,15 @@ def run(args: argparse.Namespace) -> int:
         "candidate_count_2024_h1": len(candidates_2024),
         "action_rows_2024_h1": len(rows_2024),
         "selected_pre2024": selected,
+        "raw_pre2024": raw_pre2024,
+        "selection_attempts": sorted(
+            selection_attempts,
+            key=lambda row: (
+                row["base_account_h2"]["geometric_daily_growth"],
+                row["base_account_h2"]["nav_multiple"],
+            ),
+            reverse=True,
+        ),
         "frozen_threshold": frozen_threshold,
         "feature_count": len(features),
         "result_2024_h1": result_2024,
