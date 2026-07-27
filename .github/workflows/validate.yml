@@ -18,8 +18,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install project and test dependencies
-        run: python -m pip install ".[dev]"
+      - name: Install test dependency
+        run: python -m pip install "pytest>=8"
       - name: Validate project structure
         run: python scripts/validate_project.py
       - name: Run tests
