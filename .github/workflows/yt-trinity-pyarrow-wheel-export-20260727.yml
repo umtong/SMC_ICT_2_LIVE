@@ -1,0 +1,33 @@
+name: YT Trinity export PyArrow wheel
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-pyarrow-wheel-export-20260727.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download wheel
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          python -m pip download --only-binary=:all: --no-deps 'pyarrow==19.0.1' -d artifact
+          python -m pip download --only-binary=:all: --no-deps 'scikit-learn==1.6.1' -d artifact
+          sha256sum artifact/* > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-local-python-wheels-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 3
