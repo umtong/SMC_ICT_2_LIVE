@@ -80,6 +80,23 @@ jobs:
           print(json.dumps({'materialized_files': sorted(files), 'payload_sha256': hashlib.sha256(raw).hexdigest()}, indent=2))
           PY
 
+      - name: Apply audited instrument-rule checkpoint repair
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_primary_screen.py')
+          source = path.read_text(encoding='utf-8')
+          old = '        symbols=sorted(rules),\n'
+          new = '        symbols=sorted(rule.symbol for rule in rules),\n'
+          assert source.count(old) == 1, source.count(old)
+          path.write_text(source.replace(old, new, 1), encoding='utf-8')
+          actual = hashlib.sha256(path.read_bytes()).hexdigest()
+          assert actual == '6f0310eedaa6d731fc0da7523e97569aac99c686b41d1c27c96f3644c4cbda83', actual
+          print({'run_primary_screen_sha256': actual})
+          PY
+
       - name: Install deterministic research dependencies
         run: |
           set -euo pipefail
