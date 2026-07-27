@@ -38,9 +38,11 @@ jobs:
       - name: Materialize frozen scientific source
         run: |
           set -euo pipefail
-          git cat-file -e bd266a0338eb4c376ec092ad12b862cbdb1c7a94^{commit}
-          git worktree add --detach scientific bd266a0338eb4c376ec092ad12b862cbdb1c7a94
-          PYTHONPATH=scientific/research/yt_trinity_ml \
+          mkdir -p scientific/research/yt_trinity_ml/experiments
+          git show bd266a0338eb4c376ec092ad12b862cbdb1c7a94:research/yt_trinity_ml/experiments/smt_or_bpr_screen.py \
+            > scientific/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py
+          test "$(git hash-object scientific/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py)" = "8ef34cd2bc3357d873bfa8d073328b8681f2157f"
+          PYTHONPATH=research/yt_trinity_ml \
             python scientific/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py --self-test
 
       - name: Restore immutable monthly public archive cache
@@ -53,7 +55,7 @@ jobs:
         id: execute
         continue-on-error: true
         env:
-          PYTHONPATH: scientific/research/yt_trinity_ml
+          PYTHONPATH: research/yt_trinity_ml
         shell: bash
         run: |
           set -o pipefail
@@ -67,7 +69,9 @@ jobs:
             --evaluation-start 2024-01-01T00:00:00Z \
             --evaluation-end-exclusive 2024-07-01T00:00:00Z \
             2>&1 | tee artifact/screen/SCREEN_STDOUT.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit ${status}
 
       - name: Bind execution identity
         if: always()
@@ -85,11 +89,12 @@ jobs:
           summary_path = output / 'RUN_SUMMARY.json'
           log_path = output / 'SCREEN_STDOUT.log'
           payload = {
-              'schema_version': 2,
+              'schema_version': 3,
               'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
               'stage': 'PRE2024_SMT_OR_BPR_COARSE_NOT_RANKABLE',
               'scientific_source_commit': 'bd266a0338eb4c376ec092ad12b862cbdb1c7a94',
               'scientific_source_blob': '8ef34cd2bc3357d873bfa8d073328b8681f2157f',
+              'public_archive_loader_blob': os.popen('git hash-object research/yt_trinity_ml/system/public_archive.py').read().strip(),
               'workflow_source_sha': os.environ['GITHUB_SHA'],
               'run_id': int(os.environ['GITHUB_RUN_ID']),
               'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
@@ -145,7 +150,7 @@ jobs:
           if provisional:
               provisional = {key: value for key, value in provisional.items() if key not in {'trades', 'daily_nav'}}
           pointer = {
-              'schema_version': 2,
+              'schema_version': 3,
               'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
               'workflow': 'YT Trinity SMT opening-range BPR replay v2',
               'run_id': int(os.environ['GITHUB_RUN_ID']),
