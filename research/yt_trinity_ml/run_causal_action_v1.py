@@ -88,7 +88,10 @@ def _prepare_bars(frame: pd.DataFrame) -> pd.DataFrame:
     out["bar_start"] = pd.to_datetime(out["bar_start"], utc=True)
     for name in ("open", "high", "low", "close"):
         out[name] = pd.to_numeric(out[name], errors="coerce")
-    return out.sort_values("bar_start", kind="stable").reset_index(drop=False).rename(columns={"index": "available_at"})
+    if "available_at" not in out.columns:
+        out["available_at"] = out.index
+    out["available_at"] = pd.to_datetime(out["available_at"], utc=True)
+    return out.sort_values("bar_start", kind="stable").reset_index(drop=True)
 
 
 def _funding_index(funding: Mapping[tuple[str, pd.Timestamp], float]) -> dict[str, list[tuple[pd.Timestamp, float]]]:
