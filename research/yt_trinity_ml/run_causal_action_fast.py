@@ -61,7 +61,7 @@ def _cross(bars: PreparedBars, start: int, level: float, upward: bool,
 
 def _label(candidate: EventCandidate, action: str, exit_variant: str, bars: PreparedBars,
            funding: Mapping[str, list[tuple[pd.Timestamp, float]]], evaluation_end: pd.Timestamp,
-           config: v1.ScreenConfig) -> v1.ActionLabel | None:
+           config: v1.ScreenConfig, cancel_at: pd.Timestamp | None = None) -> v1.ActionLabel | None:
     side = int(candidate.side)
     evaluation_limit = int(np.searchsorted(bars.starts_ns, evaluation_end.value, side="left"))
     if action == "EARLY_PASSIVE":
@@ -85,13 +85,20 @@ def _label(candidate: EventCandidate, action: str, exit_variant: str, bars: Prep
         invalidation = _cross(bars, start, stop, side < 0, evaluation_limit)
         target_before_fill = _cross(bars, start, target, side > 0, evaluation_limit)
         fill = _cross(bars, start, entry_reference, side < 0, evaluation_limit, strict=True)
-        boundary = min([value for value in (invalidation, target_before_fill) if value is not None], default=None)
+        transition_cancel = None
+        if cancel_at is not None:
+            transition_cancel = int(np.searchsorted(bars.starts_ns, pd.Timestamp(cancel_at).value, side="left"))
+            if transition_cancel >= evaluation_limit:
+                transition_cancel = None
+        boundary_rows = [value for value in (invalidation, target_before_fill, transition_cancel) if value is not None]
+        boundary = min(boundary_rows, default=None)
         if fill is None or (boundary is not None and boundary <= fill):
             end_position = boundary if boundary is not None else evaluation_limit - 1
+            status = "CANCELLED_ON_CONFIRMED_TRANSITION" if transition_cancel is not None and boundary == transition_cancel else "CANCELLED_OR_UNFILLED"
             return v1.ActionLabel(
                 activation, bars.available[end_position], candidate.symbol, action, exit_variant, 0,
                 entry_reference, max(abs(entry_reference - stop), 1e-12), 0.0,
-                v1._candidate_features(candidate, action, entry_reference), "CANCELLED_OR_UNFILLED",
+                v1._candidate_features(candidate, action, entry_reference), status,
             )
         entry_position = fill
         entry_price = entry_reference
@@ -201,6 +208,19 @@ def _rows_fast(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.
                variants: Sequence[str], config: v1.ScreenConfig) -> pd.DataFrame:
     indexed_funding = v1._funding_index(funding)
     prepared = {symbol: _prepare(frame) for symbol, frame in execution.items()}
+    def narrative_key(candidate: EventCandidate) -> tuple[Any, ...]:
+        return (
+            candidate.symbol, candidate.family.value, candidate.side,
+            round(float(candidate.stop_reference), 8),
+            round(float(candidate.target_reference), 8),
+            round(float(candidate.structural_level), 8),
+        )
+    market_times: dict[tuple[Any, ...], list[pd.Timestamp]] = {}
+    for candidate in candidates:
+        if float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5:
+            market_times.setdefault(narrative_key(candidate), []).append(pd.Timestamp(candidate.timestamp))
+    for values in market_times.values():
+        values.sort()
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
         frame = prepared.get(candidate.symbol)
@@ -208,7 +228,13 @@ def _rows_fast(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.
             continue
         for action in ("EARLY_PASSIVE", "CONFIRMED_MARKET"):
             for variant in variants:
-                label = _label(candidate, action, variant, frame, indexed_funding, evaluation_end, config)
+                cancel_at = None
+                if action == "EARLY_PASSIVE":
+                    later = [time for time in market_times.get(narrative_key(candidate), []) if time > candidate.timestamp]
+                    cancel_at = later[0] if later else None
+                label = _label(
+                    candidate, action, variant, frame, indexed_funding, evaluation_end, config, cancel_at
+                )
                 if label is None:
                     continue
                 row = {
