@@ -1,4 +1,4 @@
-name: YT Trinity profit run monitor
+name: YT Trinity active compression run monitor
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
-      - name: Read current deterministic profit workflow runs
+      - name: Read current compression alpha workflow runs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -31,7 +31,7 @@ jobs:
             --get \
             --data-urlencode "branch=${GITHUB_REF_NAME}" \
             --data-urlencode "per_page=10" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/yt-trinity-profit-run-v3.yml/runs" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/yt-trinity-compression-alpha.yml/runs" \
             > /tmp/runs.json
           python - <<'PY'
           import hashlib, json
@@ -53,22 +53,26 @@ jobs:
                   'jobs_url': run.get('jobs_url'),
                   'artifacts_url': run.get('artifacts_url'),
               })
-          result = {'schema_version': 1, 'workflow_runs': rows}
+          result = {
+              'schema_version': 1,
+              'workflow': 'yt-trinity-compression-alpha.yml',
+              'workflow_runs': rows,
+          }
           raw = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
           result['sha256_before_field'] = hashlib.sha256(raw.encode()).hexdigest()
-          Path('research/yt_trinity_ml/PROFIT_RUN_MONITOR.json').write_text(
+          Path('research/yt_trinity_ml/COMPRESSION_ALPHA_MONITOR.json').write_text(
               json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
               encoding='utf-8',
           )
           print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
           PY
-      - name: Persist monitor pointer
+      - name: Persist current run identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/yt_trinity_ml/PROFIT_RUN_MONITOR.json
+          git add research/yt_trinity_ml/COMPRESSION_ALPHA_MONITOR.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Record current YT Trinity profit run status"
+          git commit -m "Record active compression alpha run identity"
           for attempt in 1 2 3 4; do
             git pull --rebase origin "${GITHUB_REF_NAME}"
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
