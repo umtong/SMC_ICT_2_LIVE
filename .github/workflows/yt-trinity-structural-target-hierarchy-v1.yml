@@ -1,0 +1,200 @@
+name: YT Trinity structural target hierarchy v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-structural-target-hierarchy-v1.yml
+      - research/yt_trinity_ml/system/corpus_alpha.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-structural-target-hierarchy-v1
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Add frozen internal objective to narrative state
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          core = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = core.read_text()
+
+          state_anchor = '''    liquidity_quality: int\n    ob_search_start: int | None = None\n'''
+          state_new = '''    liquidity_quality: int\n    internal_target: float | None = None\n    internal_target_quality: int = 0\n    ob_search_start: int | None = None\n'''
+          if 'internal_target: float | None' not in text:
+              if state_anchor not in text:
+                  raise SystemExit('narrative state anchor missing')
+              text = text.replace(state_anchor, state_new, 1)
+
+          suffix_anchor = '''        \"_generation\",\n'''
+          if '"_reference"' not in text[text.find('raw_suffixes'):text.find('raw_suffixes')+900]:
+              if suffix_anchor in text:
+                  text = text.replace(suffix_anchor, suffix_anchor + '        "_reference",\n', 1)
+              else:
+                  # Freshness patch may not have landed yet; use an existing suffix anchor.
+                  fallback = '''        \"_trade_count\", \"_open_interest\",\n'''
+                  if fallback not in text:
+                      raise SystemExit('numeric suffix anchor missing')
+                  text = text.replace(fallback, fallback + '        "_reference",\n', 1)
+
+          select_anchor = '\ndef _displacement(\n'
+          helper = r'''
+
+def _select_internal_target(
+    pools: Iterable[_LiquidityPool],
+    side: int,
+    path_high: float,
+    path_low: float,
+    external_target: float,
+    consumed: set[tuple[str, float]],
+) -> _LiquidityPool | None:
+    """Nearest fresh lower-order objective between price and frozen external draw."""
+    if side > 0:
+        valid = [
+            pool for pool in pools
+            if 2 <= pool.quality < 4
+            and path_high < pool.price < external_target
+            and _pool_key(pool) not in consumed
+        ]
+        return min(valid, key=lambda pool: (pool.price, -pool.quality, -pool.confluence)) if valid else None
+    valid = [
+        pool for pool in pools
+        if 2 <= pool.quality < 4
+        and external_target < pool.price < path_low
+        and _pool_key(pool) not in consumed
+    ]
+    return max(valid, key=lambda pool: (pool.price, pool.quality, pool.confluence)) if valid else None
+'''
+          if 'def _select_internal_target(' not in text:
+              if select_anchor not in text:
+                  raise SystemExit('internal target helper anchor missing')
+              text = text.replace(select_anchor, helper + select_anchor, 1)
+
+          # Freeze an internal objective alongside each reversal external draw.
+          short_target_anchor = '''        target = _select_draw_target(low_pools, -1, float(row[\"high\"]), float(row[\"low\"]), consumed_low)\n'''
+          short_target_new = short_target_anchor + '''        internal_target = (\n            _select_internal_target(low_pools, -1, float(row[\"high\"]), float(row[\"low\"]), target.price, consumed_low)\n            if target is not None else None\n        )\n'''
+          if 'internal_target = (' not in text[text.find('def _new_reversal_states'):text.find('def _new_reversal_states')+9000]:
+              if short_target_anchor not in text:
+                  raise SystemExit('reversal short target anchor missing')
+              text = text.replace(short_target_anchor, short_target_new, 1)
+
+          long_target_anchor = '''        target = _select_draw_target(high_pools, 1, float(row[\"high\"]), float(row[\"low\"]), consumed_high)\n'''
+          long_target_new = long_target_anchor + '''        internal_target = (\n            _select_internal_target(high_pools, 1, float(row[\"high\"]), float(row[\"low\"]), target.price, consumed_high)\n            if target is not None else None\n        )\n'''
+          # Replace the first occurrence after reversal long branch only if helper not already present twice.
+          reversal_start = text.find('def _new_reversal_states')
+          continuation_start = text.find('def _new_liquidity_delivery_states')
+          reversal = text[reversal_start:continuation_start if continuation_start > reversal_start else len(text)]
+          if reversal.count('internal_target = (') < 2:
+              index = text.find(long_target_anchor, reversal_start)
+              if index < 0:
+                  raise SystemExit('reversal long target anchor missing')
+              text = text[:index] + text[index:].replace(long_target_anchor, long_target_new, 1)
+
+          # Inject fields after every frozen external target assignment in state constructors.
+          state_target_anchor = '''                    draw_target=target.price,\n                    draw_target_quality=target.quality,\n'''
+          state_target_new = '''                    draw_target=target.price,\n                    draw_target_quality=target.quality,\n                    internal_target=None if internal_target is None else internal_target.price,\n                    internal_target_quality=0 if internal_target is None else internal_target.quality,\n'''
+          # Reversal contains two constructors.
+          while state_target_anchor in text and text.count('internal_target_quality=0 if internal_target') < 2:
+              text = text.replace(state_target_anchor, state_target_new, 1)
+
+          # Add internal target selection inside liquidity-first continuation long and short.
+          liquidity_start = text.find('def _new_liquidity_delivery_states')
+          if liquidity_start >= 0:
+              tail = text[liquidity_start:]
+              if tail.count('internal_target = (') < 2:
+                  if long_target_anchor not in tail or short_target_anchor not in tail:
+                      raise SystemExit('liquidity-first target anchors missing')
+                  tail = tail.replace(long_target_anchor, long_target_new, 1)
+                  tail = tail.replace(short_target_anchor, short_target_new, 1)
+                  text = text[:liquidity_start] + tail
+              # State constructors after liquidity helper should carry fields as well.
+              liquidity_start = text.find('def _new_liquidity_delivery_states')
+              prefix, tail = text[:liquidity_start], text[liquidity_start:]
+              while state_target_anchor in tail:
+                  tail = tail.replace(state_target_anchor, state_target_new, 1)
+              text = prefix + tail
+
+          feature_anchor = '''            \"target_distance_atr\": target_distance / atr,\n            \"raw_structural_reward_risk\": target_distance / max(stop_distance, 1e-12),\n'''
+          feature_new = '''            \"target_distance_atr\": target_distance / atr,\n            \"raw_structural_reward_risk\": target_distance / max(stop_distance, 1e-12),\n            \"internal_target_available\": float(state.internal_target is not None),\n            \"internal_target_quality\": float(state.internal_target_quality),\n            \"internal_target_distance_atr\": (\n                abs(float(state.internal_target) - entry) / atr\n                if state.internal_target is not None else np.nan\n            ),\n            \"execution_internal_target_reference\": (\n                float(state.internal_target) if state.internal_target is not None else np.nan\n            ),\n'''
+          if 'execution_internal_target_reference' not in text:
+              if feature_anchor not in text:
+                  raise SystemExit('setup feature target anchor missing')
+              text = text.replace(feature_anchor, feature_new, 1)
+          core.write_text(text)
+
+          model = Path('research/yt_trinity_ml/system/model.py')
+          m = model.read_text()
+          comprehension_anchor = '''        if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(value)\n'''
+          if 'not str(key).startswith("execution_")' not in m:
+              if comprehension_anchor not in m:
+                  raise SystemExit('candidate model feature anchor missing')
+              m = m.replace(
+                  comprehension_anchor,
+                  comprehension_anchor.rstrip('\n') + ' and not str(key).startswith("execution_")\n',
+                  1,
+              )
+          model.write_text(m)
+          PY
+      - name: Add target hierarchy regressions
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_internal_target_is_between_price_and_external_draw() -> None:
+    from system.corpus_alpha import _LiquidityPool, _select_internal_target
+    pools = [
+        _LiquidityPool(102.0, 2, 'INTERNAL_BSL'),
+        _LiquidityPool(104.0, 3, 'P1H'),
+        _LiquidityPool(110.0, 6, 'PDH'),
+    ]
+    selected = _select_internal_target(pools, 1, 100.0, 99.0, 110.0, set())
+    assert selected is not None and selected.price == 102.0
+
+
+def test_internal_target_feature_does_not_enter_ml_as_absolute_price() -> None:
+    from system.core import EventCandidate
+    from system.model import candidate_model_features
+    candidate = EventCandidate(
+        pd.Timestamp('2023-01-01', tz='UTC'), 'BTCUSDT',
+        EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 100.0, 100.0, 99.0, 110.0, 99.5,
+        {'execution_internal_target_reference': 105.0, 'internal_target_distance_atr': 2.0},
+    )
+    features = candidate_model_features(candidate)
+    assert 'execution_internal_target_reference' not in features
+    assert features['internal_target_distance_atr'] == 2.0
+PY
+      - name: Install and test target hierarchy
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_action_value_model.py \
+            research/yt_trinity_ml/tests/test_regressions.py
+      - name: Commit tested target hierarchy
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/system/model.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Freeze internal then external liquidity target hierarchy'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
