@@ -109,6 +109,7 @@ class ChronologicalEventModel:
         self.calibrator = IsotonicRegression(out_of_bounds="clip")
         self.fill_calibrator = IsotonicRegression(out_of_bounds="clip")
         self.passive_calibrator = IsotonicRegression(out_of_bounds="clip")
+        self._fill_calibrator_fitted = False
         self._market_win_r_fitted = False
         self._market_loss_r_fitted = False
         self._passive_win_r_fitted = False
@@ -240,6 +241,7 @@ class ChronologicalEventModel:
         self.calibrator.fit(raw_calibration, calibration["market_target_before_stop"].astype(int).to_numpy())
         raw_fill = self._positive_probability(self.fill_model, x_calibration)
         self.fill_calibrator.fit(raw_fill, calibration["passive_filled"].astype(int).to_numpy())
+        self._fill_calibrator_fitted = True
 
         market_wins = base[
             base["market_target_before_stop"].astype(int).eq(1) & base["market_net_r"].notna()
@@ -354,7 +356,11 @@ class ChronologicalEventModel:
         market_p = float(self.calibrator.predict([raw_market_p])[0])
         market_unconditional_r = float(self.r_model.predict(vector)[0])
         raw_fill = float(self._positive_probability(self.fill_model, vector)[0])
-        fill = float(self.fill_calibrator.predict([raw_fill])[0])
+        fill = (
+            float(self.fill_calibrator.predict([raw_fill])[0])
+            if self._fill_calibrator_fitted
+            else raw_fill
+        )
 
         if self._passive_outcome_fitted:
             raw_passive_p = float(self._positive_probability(self.passive_win_model, vector)[0])
