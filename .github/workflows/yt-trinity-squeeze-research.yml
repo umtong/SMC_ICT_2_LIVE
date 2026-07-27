@@ -1,0 +1,98 @@
+name: YT Trinity liquidation OI squeeze research
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/payloads/squeeze_research.py.gz.b64
+      - .github/workflows/yt-trinity-squeeze-research.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-squeeze-research-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  OMP_NUM_THREADS: "2"
+  MKL_NUM_THREADS: "2"
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install causal research stack
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow gdown
+          python -m pip freeze | sort > dependency-freeze.txt
+
+      - name: Materialize and verify frozen research source
+        run: |
+          set -euo pipefail
+          base64 --decode research/yt_trinity_ml/payloads/squeeze_research.py.gz.b64 \
+            | gzip --decompress --stdout > /tmp/run_squeeze_research.py
+          echo "ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa  /tmp/run_squeeze_research.py" \
+            | sha256sum --check --strict
+          python -m py_compile /tmp/run_squeeze_research.py
+
+      - name: Download immutable 2023 canonical Bybit shards
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/data artifact/result
+          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt \
+            -O artifact/data/BTCUSDT.zip
+          python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR \
+            -O artifact/data/ETHUSDT.zip
+          python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 \
+            -O artifact/data/SOLUSDT.zip
+          python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk \
+            -O artifact/data/XRPUSDT.zip
+          cat > artifact/data/SHA256SUMS <<'EOF'
+          ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46  BTCUSDT.zip
+          87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322  ETHUSDT.zip
+          d31a682456c32cab2158e10c957232a2a56e7fbae8d6d84495694781b127d132  SOLUSDT.zip
+          b014870d82664f24938faab8787d7bba1b8b655b9c31436c2dcb6eb79a8cd473  XRPUSDT.zip
+          EOF
+          (cd artifact/data && sha256sum --check --strict SHA256SUMS)
+          for symbol in BTCUSDT ETHUSDT SOLUSDT XRPUSDT; do
+            mkdir -p "artifact/data/${symbol}"
+            unzip -q "artifact/data/${symbol}.zip" -d "artifact/data/${symbol}"
+            python -m json.tool "artifact/data/${symbol}/DATASET_MANIFEST.json" >/dev/null
+          done
+
+      - name: Run action-specific causal squeeze evaluation
+        run: |
+          set -euo pipefail
+          cp /tmp/run_squeeze_research.py artifact/result/SOURCE.py
+          cp dependency-freeze.txt artifact/result/
+          set -o pipefail
+          python /tmp/run_squeeze_research.py \
+            --data-root artifact/data \
+            --output artifact/result \
+            2>&1 | tee artifact/result/RUN_STDOUT.log
+
+      - name: Upload immutable research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-squeeze-research-${{ github.sha }}
+          path: artifact/result
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
