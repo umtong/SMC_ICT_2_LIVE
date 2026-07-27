@@ -1,0 +1,98 @@
+name: YT Trinity execution-only reference preservation
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-execution-reference-preservation.yml
+      - research/yt_trinity_ml/system/corpus_alpha.py
+      - research/yt_trinity_ml/system/research_pipeline.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-execution-reference-preservation
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Preserve execution-only references without model exposure
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/research_pipeline.py')
+          text = path.read_text()
+          anchor = '''        row.update(encode_event_features(candidate))\n        rows.append(row)\n'''
+          replacement = '''        row.update(encode_event_features(candidate))\n        row.update({\n            str(name): float(value)\n            for name, value in candidate.feature_row.items()\n            if str(name).startswith(\"execution_\")\n            and isinstance(value, (int, float, np.integer, np.floating))\n            and np.isfinite(value)\n        })\n        rows.append(row)\n'''
+          if 'if str(name).startswith("execution_")' not in text:
+              if anchor not in text:
+                  raise SystemExit('label row feature anchor missing')
+              text = text.replace(anchor, replacement, 1)
+          path.write_text(text)
+          PY
+      - name: Add preservation regression
+        run: |
+          cat > research/yt_trinity_ml/tests/test_execution_reference_preservation.py <<'PY'
+          from __future__ import annotations
+
+          import pandas as pd
+
+          from system.coarse import CoarseExecutionConfig
+          from system.core import EventCandidate, EventFamily
+          from system.model import candidate_model_features
+          from system.research_pipeline import label_event_dataset
+
+
+          def test_execution_reference_is_labelled_but_not_modelled() -> None:
+              timestamp = pd.Timestamp('2023-01-01T00:00:00Z')
+              candidate = EventCandidate(
+                  timestamp, 'BTCUSDT', EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1,
+                  100.0, 100.0, 99.0, 102.0, 99.5,
+                  {'execution_internal_target_reference': 101.0, 'internal_target_distance_atr': 1.0},
+              )
+              bars = pd.DataFrame(
+                  {
+                      'bar_start': [timestamp + pd.Timedelta(minutes=1), timestamp + pd.Timedelta(minutes=2)],
+                      'open': [100.0, 100.5], 'high': [100.8, 102.5],
+                      'low': [99.5, 100.0], 'close': [100.5, 102.0],
+                      'mark_close': [100.5, 102.0], 'spread_bps': [0.5, 0.5],
+                  },
+                  index=[timestamp + pd.Timedelta(minutes=2), timestamp + pd.Timedelta(minutes=3)],
+              )
+              labels = label_event_dataset([candidate], {'BTCUSDT': bars}, CoarseExecutionConfig())
+              assert labels['execution_internal_target_reference'].iloc[0] == 101.0
+              assert 'execution_internal_target_reference' not in candidate_model_features(candidate)
+          PY
+      - name: Install and test
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_execution_reference_preservation.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested preservation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/research_pipeline.py research/yt_trinity_ml/tests/test_execution_reference_preservation.py
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Preserve structural execution references outside ML features'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
