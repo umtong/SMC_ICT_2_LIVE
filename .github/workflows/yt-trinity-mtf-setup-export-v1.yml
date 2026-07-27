@@ -1,0 +1,212 @@
+name: YT Trinity causal armed-setup export v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-mtf-setup-export-v1.yml
+      - research/yt_trinity_ml/system/corpus_alpha.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-mtf-setup-export-v1
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Expose armed narrative setups causally
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+
+          state_end = '''    path_high: float = -np.inf\n    path_low: float = np.inf\n\n\n'''
+          setup_dataclass = '''    path_high: float = -np.inf\n    path_low: float = np.inf\n\n\n@dataclass(frozen=True)\nclass NarrativeSetup:\n    timestamp: pd.Timestamp\n    symbol: str\n    family: EventFamily\n    side: int\n    zone_lower: float\n    zone_upper: float\n    stop_reference: float\n    target_reference: float\n    structural_level: float\n    feature_row: dict[str, float]\n\n\n'''
+          if 'class NarrativeSetup:' not in text:
+              if state_end not in text:
+                  raise SystemExit('narrative state end anchor missing')
+              text = text.replace(state_end, setup_dataclass, 1)
+
+          helper_anchor = '\ndef _arm_displacement(\n'
+          helper = r'''
+
+def _snapshot_armed_setup(
+    state: _NarrativeState,
+    row: pd.Series,
+    pos: int,
+    timestamp: pd.Timestamp,
+    symbol: str,
+) -> NarrativeSetup:
+    if state.zone_lower is None or state.zone_upper is None or state.stop is None:
+        raise RuntimeError('cannot snapshot unarmed narrative state')
+    values = _numeric_row(row)
+    atr = float(row['atr'])
+    values.update(
+        {
+            'setup_is_reversal': float(state.family == EventFamily.LIQUIDITY_SWEEP_REVERSAL),
+            'narrative_age_bars_at_arm': float(pos - state.created_pos),
+            'sweep_depth_atr': float(state.sweep_depth_atr),
+            'swept_level_count': float(state.swept_level_count),
+            'liquidity_quality': float(state.liquidity_quality),
+            'draw_target_quality': float(state.draw_target_quality),
+            'confirmation_body_atr': float(state.confirmation_body_atr),
+            'confirmation_volume_z': float(state.confirmation_volume_z),
+            'displacement_efficiency_at_confirmation': float(state.displacement_efficiency),
+            'fvg_width_atr': float(state.fvg_width_atr),
+            'ob_width_atr': float(state.ob_width_atr),
+            'pd_array_kind': float(state.zone_kind),
+            'zone_width_atr': (float(state.zone_upper) - float(state.zone_lower)) / atr,
+            'arm_stop_distance_atr': abs(float(row['close']) - float(state.stop)) / atr,
+            'arm_target_distance_atr': abs(float(state.draw_target) - float(row['close'])) / atr,
+            'internal_target_available': float(state.internal_target is not None),
+            'internal_target_quality': float(state.internal_target_quality),
+            'execution_internal_target_reference': (
+                float(state.internal_target) if state.internal_target is not None else np.nan
+            ),
+        }
+    )
+    return NarrativeSetup(
+        timestamp=pd.Timestamp(timestamp), symbol=symbol, family=state.family, side=state.side,
+        zone_lower=float(state.zone_lower), zone_upper=float(state.zone_upper),
+        stop_reference=float(state.stop), target_reference=float(state.draw_target),
+        structural_level=float(state.structural_level), feature_row=values,
+    )
+'''
+          if 'def _snapshot_armed_setup(' not in text:
+              if helper_anchor not in text:
+                  raise SystemExit('arm helper anchor missing')
+              text = text.replace(helper_anchor, helper + helper_anchor, 1)
+
+          old_arm_sig = '''def _arm_displacement(\n    state: _NarrativeState,\n    features: pd.DataFrame,\n    pos: int,\n    config: CorpusAlphaConfig,\n    diagnostics: Counter[str] | None = None,\n) -> _NarrativeState | None:\n'''
+          new_arm_sig = '''def _arm_displacement(\n    state: _NarrativeState,\n    features: pd.DataFrame,\n    pos: int,\n    config: CorpusAlphaConfig,\n    diagnostics: Counter[str] | None = None,\n    setup_sink: list[NarrativeSetup] | None = None,\n    symbol: str | None = None,\n    timestamp: pd.Timestamp | None = None,\n) -> _NarrativeState | None:\n'''
+          arm_slice = text[text.find('def _arm_displacement('):text.find('def _arm_displacement(')+500]
+          if 'setup_sink: list[NarrativeSetup]' not in arm_slice:
+              if old_arm_sig not in text:
+                  raise SystemExit('arm signature anchor missing')
+              text = text.replace(old_arm_sig, new_arm_sig, 1)
+
+          arm_return = '''    _bump(diagnostics, \"pd_array_states_armed\")\n    return state\n'''
+          arm_return_new = '''    _bump(diagnostics, \"pd_array_states_armed\")\n    if setup_sink is not None:\n        if symbol is None or timestamp is None:\n            raise RuntimeError(\"setup sink requires symbol and timestamp\")\n        setup_sink.append(_snapshot_armed_setup(state, row, pos, timestamp, symbol))\n        _bump(diagnostics, \"armed_setups_exported\")\n    return state\n'''
+          if 'armed_setups_exported' not in text:
+              if arm_return not in text:
+                  raise SystemExit('arm return anchor missing')
+              text = text.replace(arm_return, arm_return_new, 1)
+
+          old_process_sig = '''def _process_state(\n    state: _NarrativeState,\n    features: pd.DataFrame,\n    pos: int,\n    timestamp: pd.Timestamp,\n    symbol: str,\n    config: CorpusAlphaConfig,\n    diagnostics: Counter[str] | None = None,\n) -> tuple[_NarrativeState | None, EventCandidate | None]:\n'''
+          new_process_sig = '''def _process_state(\n    state: _NarrativeState,\n    features: pd.DataFrame,\n    pos: int,\n    timestamp: pd.Timestamp,\n    symbol: str,\n    config: CorpusAlphaConfig,\n    diagnostics: Counter[str] | None = None,\n    setup_sink: list[NarrativeSetup] | None = None,\n) -> tuple[_NarrativeState | None, EventCandidate | None]:\n'''
+          process_slice = text[text.find('def _process_state('):text.find('def _process_state(')+500]
+          if 'setup_sink: list[NarrativeSetup]' not in process_slice:
+              if old_process_sig not in text:
+                  raise SystemExit('process signature anchor missing')
+              text = text.replace(old_process_sig, new_process_sig, 1)
+
+          process_arm = '''        return _arm_displacement(state, features, pos, config, diagnostics), None\n'''
+          process_arm_new = '''        return _arm_displacement(\n            state, features, pos, config, diagnostics, setup_sink, symbol, timestamp\n        ), None\n'''
+          if 'setup_sink, symbol, timestamp' not in text:
+              if process_arm not in text:
+                  raise SystemExit('process arm call anchor missing')
+              text = text.replace(process_arm, process_arm_new, 1)
+
+          old_generate_sig = '''def _generate_corpus_candidates(\n    features: pd.DataFrame,\n    symbol: str,\n    config: CorpusAlphaConfig,\n    diagnostics: Counter[str] | None,\n) -> list[EventCandidate]:\n'''
+          new_generate_sig = '''def _generate_corpus_candidates(\n    features: pd.DataFrame,\n    symbol: str,\n    config: CorpusAlphaConfig,\n    diagnostics: Counter[str] | None,\n    setup_sink: list[NarrativeSetup] | None = None,\n) -> list[EventCandidate]:\n'''
+          generate_slice = text[text.find('def _generate_corpus_candidates('):text.find('def _generate_corpus_candidates(')+450]
+          if 'setup_sink: list[NarrativeSetup]' not in generate_slice:
+              if old_generate_sig not in text:
+                  raise SystemExit('generate signature anchor missing')
+              text = text.replace(old_generate_sig, new_generate_sig, 1)
+
+          process_call = '''            updated, event = _process_state(state, features, pos, timestamp, symbol, config, diagnostics)\n'''
+          process_call_new = '''            updated, event = _process_state(\n                state, features, pos, timestamp, symbol, config, diagnostics, setup_sink\n            )\n'''
+          if 'diagnostics, setup_sink' not in text:
+              if process_call not in text:
+                  raise SystemExit('generator process call anchor missing')
+              text = text.replace(process_call, process_call_new, 1)
+
+          public_anchor = '''def generate_corpus_candidates_with_diagnostics(\n'''
+          public = r'''
+
+def generate_corpus_setups_with_diagnostics(
+    features: pd.DataFrame,
+    symbol: str,
+    config: CorpusAlphaConfig = CorpusAlphaConfig(),
+) -> tuple[list[NarrativeSetup], dict[str, int]]:
+    diagnostics: Counter[str] = Counter()
+    diagnostics['rows'] = int(len(features))
+    setups: list[NarrativeSetup] = []
+    _generate_corpus_candidates(features, symbol, config, diagnostics, setups)
+    setups.sort(key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))
+    diagnostics['armed_setup_count'] = len(setups)
+    return setups, dict(sorted(diagnostics.items()))
+'''
+          if 'def generate_corpus_setups_with_diagnostics(' not in text:
+              if public_anchor not in text:
+                  raise SystemExit('public setup anchor missing')
+              text = text.replace(public_anchor, public + public_anchor, 1)
+          path.write_text(text)
+          PY
+      - name: Add causal setup export regression
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_armed_setup_precedes_retest_entry_candidate() -> None:
+    from system.corpus_alpha import generate_corpus_setups_with_diagnostics
+    frame = _features(
+        [
+            {'high': 101, 'low': 99, 'close': 100},
+            {'high': 102, 'low': 99, 'close': 101},
+            {'high': 104, 'low': 100, 'close': 103},
+            {'open': 104, 'high': 106, 'low': 102, 'close': 104, 'micro_last_swing_low': 100},
+            {'open': 104, 'high': 104.2, 'low': 98, 'close': 99, 'body_atr': -5.0,
+             'range_atr': 6.2, 'close_location': 0.16, 'bear_fvg_lower': 102,
+             'bear_fvg_upper': 103, 'last_swing_low': 95},
+            {'open': 102.0, 'high': 102.7, 'low': 101.8, 'close': 102.4,
+             'body_atr': 0.4, 'range_atr': 0.9, 'close_location': 0.67,
+             'last_swing_low': 97},
+            {'open': 102.2, 'high': 102.3, 'low': 100.7, 'close': 101.0,
+             'body_atr': -1.2, 'range_atr': 1.6, 'close_location': 0.19,
+             'last_swing_low': 97},
+        ]
+    )
+    setups, diagnostics = generate_corpus_setups_with_diagnostics(frame, 'BTCUSDT')
+    events = generate_corpus_candidates(frame, 'BTCUSDT')
+    assert len(setups) == 1 and len(events) == 1
+    assert setups[0].timestamp == frame.index[4]
+    assert events[0].timestamp == frame.index[6]
+    assert setups[0].timestamp < events[0].timestamp
+    assert diagnostics['armed_setups_exported'] == 1
+PY
+      - name: Install and test setup export
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py
+      - name: Commit tested setup export
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Expose armed SMC setups for causal one-minute entry'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
