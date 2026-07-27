@@ -10,9 +10,8 @@ on:
       - scripts/market_data/**
       - tests/test_canonical_market_data.py
       - tests/test_public_trade_month.py
-      - instructions/project-instructions.md
-      - prompts/goal-worker.md
       - .github/workflows/canonical-bybit-halfyear-data.yml
+      - .github/workflows/canonical-bybit-public-month-smoke.yml
       - .github/workflows/canonical-data-pr-diagnostics.yml
 
 permissions:
@@ -21,59 +20,32 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install diagnostic dependencies
-        run: python -m pip install "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
-      - name: Capture project and canonical-data checks
-        shell: bash
+      - run: python -m pip install ".[dev]"
+      - name: Validate canonical implementation
         run: |
-          set +e
-          mkdir -p diagnostic
-          python scripts/validate_project.py > diagnostic/validate-project.log 2>&1
-          echo $? > diagnostic/validate-project.exit
-          python -m pytest -q \
-            tests/test_canonical_market_data.py \
-            tests/test_public_trade_month.py \
-            > diagnostic/canonical-tests.log 2>&1
-          echo $? > diagnostic/canonical-tests.exit
-          python -m pytest -q > diagnostic/full-tests.log 2>&1
-          echo $? > diagnostic/full-tests.exit
+          python scripts/validate_project.py
+          python -m pytest -q
           python -m py_compile \
             scripts/market_data/build_canonical_bybit.py \
             scripts/market_data/build_public_trade_month.py \
-            scripts/market_data/inventory_public_bybit.py \
-            scripts/market_data/probe_public_archive_format.py \
+            scripts/market_data/build_public_trade_segment.py \
             scripts/market_data/bybit_client.py \
             scripts/market_data/bybit_fetch.py \
             scripts/market_data/canonical_spec.py \
             scripts/market_data/load_canonical_bybit.py \
-            scripts/market_data/verify_canonical_bybit.py \
-            > diagnostic/compile.log 2>&1
-          echo $? > diagnostic/compile.exit
-          python -m json.tool data/contracts/canonical_bybit_usdt_linear_v1.json \
-            > diagnostic/contract.json 2> diagnostic/contract-error.log
-          echo $? > diagnostic/contract.exit
-          git status --short > diagnostic/git-status.log
-          exit 0
-      - name: Upload diagnostic evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: canonical-data-pr-diagnostics-${{ github.run_id }}
-          path: diagnostic
-          if-no-files-found: error
-          retention-days: 14
-      - name: Enforce checks
-        shell: bash
-        run: |
-          test "$(cat diagnostic/validate-project.exit)" = 0
-          test "$(cat diagnostic/canonical-tests.exit)" = 0
-          test "$(cat diagnostic/full-tests.exit)" = 0
-          test "$(cat diagnostic/compile.exit)" = 0
-          test "$(cat diagnostic/contract.exit)" = 0
+            scripts/market_data/verify_canonical_bybit.py
+          python -m json.tool data/contracts/canonical_bybit_usdt_linear_v1.json >/dev/null
+          ! grep -R --line-number --fixed-string 'PRE_2024_2020' \
+            data/contracts/canonical_bybit_usdt_linear_v1.json \
+            docs/canonical-market-data.md \
+            scripts/market_data \
+            tests \
+            .github/workflows/canonical-bybit-halfyear-data.yml \
+            .github/workflows/canonical-bybit-public-month-smoke.yml

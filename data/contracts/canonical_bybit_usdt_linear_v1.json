@@ -1,21 +1,15 @@
 {
-  "schema_version": 1,
-  "dataset_family_id": "DSF-BYBIT-LINEAR-4ASSET-CANONICAL-HALFYEAR-V1",
+  "schema_version": 2,
+  "dataset_family_id": "DSF-BYBIT-LINEAR-4ASSET-CANONICAL-HALFYEAR-V2",
   "claim_id": "CLM-20260727-CANONICAL-HALFYEAR-DATA-001",
   "venue": "Bybit",
   "product": "USDT linear perpetual",
   "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
   "timezone": "UTC",
-  "evaluation_range": {
-    "start": "2024-01-01T00:00:00Z",
-    "end_exclusive": "2026-07-01T00:00:00Z"
-  },
+  "data_range": {"start": "2021-01-01T00:00:00Z", "end_exclusive": "2026-07-01T00:00:00Z"},
+  "evaluation_range": {"start": "2024-01-01T00:00:00Z", "end_exclusive": "2026-07-01T00:00:00Z"},
   "logical_segments": {
-    "PRE_2024": {
-      "end_exclusive": "2024-01-01T00:00:00Z",
-      "physical_shards": ["PRE_2024_2020", "PRE_2024_2021", "PRE_2024_2022", "PRE_2024_2023"],
-      "purpose": "training, calibration and frozen system preparation only"
-    },
+    "PRE_2024": {"start": "2021-01-01T00:00:00Z", "end_exclusive": "2024-01-01T00:00:00Z", "physical_shards": ["PRE_2024_2021", "PRE_2024_2022", "PRE_2024_2023"]},
     "2024_H1": {"start": "2024-01-01T00:00:00Z", "end_exclusive": "2024-07-01T00:00:00Z"},
     "2024_H2": {"start": "2024-07-01T00:00:00Z", "end_exclusive": "2025-01-01T00:00:00Z"},
     "2025_H1": {"start": "2025-01-01T00:00:00Z", "end_exclusive": "2025-07-01T00:00:00Z"},
@@ -23,7 +17,6 @@
     "2026_H1": {"start": "2026-01-01T00:00:00Z", "end_exclusive": "2026-07-01T00:00:00Z"}
   },
   "physical_segments": {
-    "PRE_2024_2020": {"start": "2020-01-01T00:00:00Z", "end_exclusive": "2021-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
     "PRE_2024_2021": {"start": "2021-01-01T00:00:00Z", "end_exclusive": "2022-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
     "PRE_2024_2022": {"start": "2022-01-01T00:00:00Z", "end_exclusive": "2023-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
     "PRE_2024_2023": {"start": "2023-01-01T00:00:00Z", "end_exclusive": "2024-01-01T00:00:00Z", "logical_segment": "PRE_2024"},
@@ -34,32 +27,35 @@
     "2026_H1": {"start": "2026-01-01T00:00:00Z", "end_exclusive": "2026-07-01T00:00:00Z", "logical_segment": "2026_H1"}
   },
   "core_streams": {
-    "trade_price_1m": {"endpoint": "/v5/market/kline", "interval": "1m", "required_for_account_replay": true},
-    "mark_price_1m": {"endpoint": "/v5/market/mark-price-kline", "interval": "1m", "required_for_account_replay": true},
-    "index_price_1m": {"endpoint": "/v5/market/index-price-kline", "interval": "1m", "required_for_account_replay": false},
-    "premium_index_1m": {"endpoint": "/v5/market/premium-index-price-kline", "interval": "1m", "required_for_account_replay": false},
-    "open_interest_5m": {"endpoint": "/v5/market/open-interest", "interval": "5m", "required_for_account_replay": false},
-    "account_ratio_5m": {"endpoint": "/v5/market/account-ratio", "interval": "5m", "required_for_account_replay": false},
-    "funding_events": {"endpoint": "/v5/market/funding/history", "interval": "event", "required_for_account_replay": true}
+    "trade_price_1m": {"endpoint": "/v5/market/kline", "interval": "1m"},
+    "mark_price_1m": {"endpoint": "/v5/market/mark-price-kline", "interval": "1m"},
+    "index_price_1m": {"endpoint": "/v5/market/index-price-kline", "interval": "1m"},
+    "premium_index_1m": {"endpoint": "/v5/market/premium-index-price-kline", "interval": "1m"},
+    "open_interest_5m": {"endpoint": "/v5/market/open-interest", "interval": "5m"},
+    "account_ratio_5m": {"endpoint": "/v5/market/account-ratio", "interval": "5m"},
+    "funding_events": {"endpoint": "/v5/market/funding/history", "interval": "event"}
   },
-  "precomputed_trade_bars": ["1m", "5m", "15m", "1h", "4h", "1d"],
-  "on_demand_bars": "Any coarser UTC-anchored bar may be deterministically derived from canonical 1m rows; incomplete source windows remain incomplete and are never forward-filled.",
+  "core_precomputed_trade_bars": ["1m", "5m", "15m", "1h", "4h", "1d"],
+  "microbar_lane": {
+    "source": "https://public.bybit.com/trading/<SYMBOL>/<SYMBOL><YYYY-MM-DD>.csv.gz",
+    "source_record": "individual public trade event",
+    "monthly_dataset_family_id": "DSF-BYBIT-LINEAR-4ASSET-MONTHLY-MICROBAR-V2",
+    "stored_intervals": ["1s", "5s", "15s"],
+    "derived_intervals": ["500ms"],
+    "five_hundred_ms_representation": "each 1s row contains two UTC-aligned half-second OHLC, directional flow, trade count, first/high/low/last event offsets and separate availability timestamps",
+    "raw_retention": "daily gzip is SHA-256 recorded and deleted after deterministic aggregation"
+  },
   "information_availability": {
-    "completed_bar": "usable at start_time + interval",
+    "500ms_h0": "usable at second start plus 500ms",
+    "500ms_h1": "usable at second start plus 1000ms",
+    "completed_bar": "usable at start_time plus interval",
     "funding": "usable at fundingRateTimestamp",
     "new_order_activation_delay_ms": 500,
-    "future_rows": "forbidden",
-    "missing_data": "preserve explicit gaps; no filling, interpolation or compressed time"
+    "missing_data": "source absence remains distinct from a covered no-trade interval; no price interpolation or compressed time"
   },
   "storage": {
-    "github": "code, contract, small manifests, hashes and validation only",
-    "google_drive": "immutable half-year artifacts and large market data",
+    "github": "code, contracts, manifests, hashes and validation",
+    "google_drive": "immutable core and monthly microbar artifacts",
     "drive_root_relative": "02_DATA/70_MARKET_AND_REFERENCE_DATA/00_CANONICAL_BYBIT_USDT_LINEAR"
-  },
-  "event_tape_lane": {
-    "source": "https://public.bybit.com/trading/<SYMBOL>/<SYMBOL><YYYY-MM-DD>.csv.gz",
-    "status": "separate large-data lane",
-    "purpose": "sub-minute 1s/5s/15s bars and execution-sensitive candidates",
-    "rule": "do not make every strategy reacquire it; preserve source daily gzip and deterministic aggregates once built"
   }
 }

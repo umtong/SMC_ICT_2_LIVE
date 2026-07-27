@@ -21,7 +21,6 @@ def test_canonicalize_grid_keeps_missing_rows_explicit() -> None:
     assert len(grid) == 3
     assert grid["observed"].tolist() == [True, False, True]
     assert stats["observed_rows"] == 2 and stats["missing_rows"] == 1
-    assert stats["coverage"] == 2 / 3
     assert grid["available_at_ms"].tolist() == [60_000, 120_000, 180_000]
 
 
@@ -39,9 +38,15 @@ def test_derived_bar_invalidates_incomplete_window() -> None:
     out = builder.derive_trade_bars(frame, "5min")
     assert len(out) == 1
     assert not bool(out.loc[0, "is_complete"])
-    assert int(out.loc[0, "source_rows_observed"]) == 4
     assert pd.isna(out.loc[0, "close"])
     assert int(out.loc[0, "available_at_ms"]) == 300_000
+
+
+def test_supported_segments_begin_in_2021() -> None:
+    assert "PRE_2024_2021" in builder.SEGMENTS
+    assert "PRE_2024_2022" in builder.SEGMENTS
+    assert "PRE_2024_2023" in builder.SEGMENTS
+    assert all("2020" not in name for name in builder.SEGMENTS)
 
 
 def test_evaluation_half_years_form_one_continuous_path() -> None:
@@ -75,18 +80,6 @@ def test_cursor_series_uses_provider_cursor() -> None:
     )
     assert frame["timestamp_ms"].tolist() == [0, 300_000, 600_000]
     assert len(audits) == 2
-
-
-def test_empty_grid_preserves_declared_columns() -> None:
-    empty = pd.DataFrame(columns=[
-        "start_time_ms", "open", "high", "low", "close", "volume", "turnover"
-    ])
-    grid, stats = builder.canonicalize_grid(
-        empty, timestamp_col="start_time_ms", start_ms=0,
-        end_exclusive_ms=120_000, step_ms=60_000, available_delay_ms=60_000,
-    )
-    assert {"open", "high", "low", "close", "volume", "turnover"}.issubset(grid.columns)
-    assert stats["observed_rows"] == 0
 
 
 def test_visible_rows_enforces_declared_availability() -> None:

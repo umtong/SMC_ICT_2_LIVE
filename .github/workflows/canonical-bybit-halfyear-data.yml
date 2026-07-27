@@ -1,17 +1,6 @@
-name: Canonical Bybit half-year market data
+name: Canonical Bybit core market data
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - control/canonical-data-build-trigger.json
-      - scripts/market_data/build_canonical_bybit.py
-      - scripts/market_data/bybit_client.py
-      - scripts/market_data/bybit_fetch.py
-      - scripts/market_data/canonical_spec.py
-      - scripts/market_data/verify_canonical_bybit.py
-      - data/contracts/canonical_bybit_usdt_linear_v1.json
-      - .github/workflows/canonical-bybit-halfyear-data.yml
   workflow_dispatch:
     inputs:
       segment:
@@ -21,7 +10,6 @@ on:
         type: choice
         options:
           - REQUIRED_SET
-          - PRE_2024_2020
           - PRE_2024_2021
           - PRE_2024_2022
           - PRE_2024_2023
@@ -36,15 +24,10 @@ on:
         default: ALL
         type: choice
         options: [ALL, BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT]
-  push:
-    branches:
-      - agent/r22-canonical-halfyear-market-data-001
-    paths:
-      - control/canonical-data-build-trigger.json
 
 concurrency:
-  group: canonical-bybit-halfyear-data-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: canonical-bybit-core-${{ github.ref }}-${{ inputs.segment }}-${{ inputs.symbol }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -54,23 +37,6 @@ env:
   BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
 
 jobs:
-  unit-contract:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install declared dependencies
-        run: python -m pip install ".[dev]"
-      - name: Compile and test
-        run: |
-          python -m py_compile scripts/market_data/build_canonical_bybit.py scripts/market_data/bybit_client.py scripts/market_data/bybit_fetch.py scripts/market_data/canonical_spec.py scripts/market_data/load_canonical_bybit.py scripts/market_data/verify_canonical_bybit.py
-          pytest -q tests/test_canonical_market_data.py
-          python -m json.tool data/contracts/canonical_bybit_usdt_linear_v1.json >/dev/null
-
   resolve-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -83,28 +49,26 @@ jobs:
           INPUT_SEGMENT: ${{ inputs.segment }}
           INPUT_SYMBOL: ${{ inputs.symbol }}
         run: |
-          segment="${INPUT_SEGMENT:-REQUIRED_SET}"
-          symbol="${INPUT_SYMBOL:-ALL}"
-          if [[ "$segment" == "REQUIRED_SET" ]]; then
-            segments='["PRE_2024_2023","2024_H1","2024_H2","2025_H1","2025_H2","2026_H1"]'
+          if [[ "$INPUT_SEGMENT" == "REQUIRED_SET" ]]; then
+            segments='["PRE_2024_2021","PRE_2024_2022","PRE_2024_2023","2024_H1","2024_H2","2025_H1","2025_H2","2026_H1"]'
           else
-            segments="[\"$segment\"]"
+            segments="[\"$INPUT_SEGMENT\"]"
           fi
-          if [[ "$symbol" == "ALL" ]]; then
+          if [[ "$INPUT_SYMBOL" == "ALL" ]]; then
             symbols='["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"]'
           else
-            symbols="[\"$symbol\"]"
+            symbols="[\"$INPUT_SYMBOL\"]"
           fi
           echo "segments=$segments" >> "$GITHUB_OUTPUT"
           echo "symbols=$symbols" >> "$GITHUB_OUTPUT"
 
   build-shard:
-    needs: [unit-contract, resolve-matrix]
+    needs: resolve-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 240
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 8
       matrix:
         segment: ${{ fromJSON(needs.resolve-matrix.outputs.segments) }}
         symbol: ${{ fromJSON(needs.resolve-matrix.outputs.symbols) }}
@@ -114,9 +78,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install declared build dependencies
-        run: python -m pip install .
-      - name: Build official Bybit shard through accessible official mainnet host
+      - run: python -m pip install .
+      - name: Build official core shard
         run: |
           python scripts/market_data/build_canonical_bybit.py \
             --segment "${{ matrix.segment }}" \
@@ -131,10 +94,9 @@ jobs:
           python scripts/market_data/verify_canonical_bybit.py \
             "artifact/${{ matrix.segment }}/${{ matrix.symbol }}" \
             | tee "artifact/${{ matrix.segment }}/${{ matrix.symbol }}/VERIFICATION.json"
-      - name: Upload Drive-transfer artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: canonical-bybit-${{ matrix.segment }}-${{ matrix.symbol }}
+          name: canonical-bybit-core-${{ matrix.segment }}-${{ matrix.symbol }}
           path: artifact/${{ matrix.segment }}/${{ matrix.symbol }}
           if-no-files-found: error
           compression-level: 0
