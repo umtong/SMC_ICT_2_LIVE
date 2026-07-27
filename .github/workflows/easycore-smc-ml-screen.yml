@@ -2,10 +2,11 @@ name: EasyCore SMC ICT ML causal screen
 
 on:
   workflow_dispatch:
-  push:
-    branches: [agent/gpt56-easycore-smc-ml-001]
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
     paths:
       - research/easycore_smc_ml/easycore_smc_ml.py
+      - research/easycore_smc_ml/README.md
       - .github/workflows/easycore-smc-ml-screen.yml
 
 permissions:
@@ -18,6 +19,7 @@ concurrency:
 env:
   PYTHONUNBUFFERED: "1"
   BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+  WORK_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
 jobs:
   causal-screen:
@@ -26,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.WORK_BRANCH }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -184,8 +186,8 @@ jobs:
           fi
           git commit -m "Record EasyCore SMC ML screen ${GITHUB_RUN_ID} [skip ci]"
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            git pull --rebase origin "${WORK_BRANCH}"
+            if git push origin "HEAD:${WORK_BRANCH}"; then
               exit 0
             fi
             sleep $((attempt * 2))
