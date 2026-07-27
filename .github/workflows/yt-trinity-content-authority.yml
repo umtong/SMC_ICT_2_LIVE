@@ -1,0 +1,47 @@
+name: YT Trinity complete content authority selection
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/COMPLETE_CONTENT_CORPUS_POINTER.json
+      - research/yt_trinity_ml/COBALT_CONTENT_CORPUS_POINTER.json
+      - research/yt_trinity_ml/FULL_CAPTION_CORPUS_POINTER.json
+      - research/yt_trinity_ml/select_complete_content_corpus.py
+      - .github/workflows/yt-trinity-content-authority.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-content-authority-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Select one complete immutable content authority
+        run: |
+          python research/yt_trinity_ml/select_complete_content_corpus.py \
+            --root research/yt_trinity_ml \
+            --output research/yt_trinity_ml/SELECTED_CONTENT_CORPUS_POINTER.json
+      - name: Persist authority state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/SELECTED_CONTENT_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Select complete YT Trinity content authority"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
