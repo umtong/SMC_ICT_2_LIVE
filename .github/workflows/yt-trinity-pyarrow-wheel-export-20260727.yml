@@ -7,7 +7,11 @@ on:
       - .github/workflows/yt-trinity-pyarrow-wheel-export-20260727.yml
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: yt-trinity-pyarrow-wheel-export-20260727
+  cancel-in-progress: false
 
 jobs:
   export:
@@ -15,10 +19,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Download wheel
+      - name: Download wheels
         run: |
           set -euo pipefail
           mkdir -p artifact
@@ -31,3 +38,29 @@ jobs:
           path: artifact
           if-no-files-found: error
           retention-days: 3
+      - name: Persist run pointer
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload = {
+              'schema_version': 1,
+              'source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'artifact_name': f"yt-trinity-local-python-wheels-{os.environ['GITHUB_SHA']}",
+          }
+          Path('research/yt_trinity_ml/LOCAL_WHEELS_POINTER.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/LOCAL_WHEELS_POINTER.json
+          git commit -m "Record local wheel export ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
