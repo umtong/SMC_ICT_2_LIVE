@@ -1,0 +1,68 @@
+name: YT Trinity passive state-transition cancellation
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-passive-state-transition-cancel.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-passive-state-transition-cancel
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Cancel unfilled mitigation limit at confirmed transition
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text=p.read_text()
+          text=text.replace(
+              '           config: v1.ScreenConfig) -> v1.ActionLabel | None:\n',
+              '           config: v1.ScreenConfig, cancel_at: pd.Timestamp | None = None) -> v1.ActionLabel | None:\n',
+              1,
+          )
+          old='''        invalidation = _cross(bars, start, stop, side < 0, evaluation_limit)\n        target_before_fill = _cross(bars, start, target, side > 0, evaluation_limit)\n        fill = _cross(bars, start, entry_reference, side < 0, evaluation_limit, strict=True)\n        boundary = min([value for value in (invalidation, target_before_fill) if value is not None], default=None)\n        if fill is None or (boundary is not None and boundary <= fill):\n            end_position = boundary if boundary is not None else evaluation_limit - 1\n            return v1.ActionLabel(\n                activation, bars.available[end_position], candidate.symbol, action, exit_variant, 0,\n                entry_reference, max(abs(entry_reference - stop), 1e-12), 0.0,\n                v1._candidate_features(candidate, action, entry_reference), "CANCELLED_OR_UNFILLED",\n            )\n'''
+          new='''        invalidation = _cross(bars, start, stop, side < 0, evaluation_limit)\n        target_before_fill = _cross(bars, start, target, side > 0, evaluation_limit)\n        fill = _cross(bars, start, entry_reference, side < 0, evaluation_limit, strict=True)\n        transition_cancel = None\n        if cancel_at is not None:\n            transition_cancel = int(np.searchsorted(bars.starts_ns, pd.Timestamp(cancel_at).value, side="left"))\n            if transition_cancel >= evaluation_limit:\n                transition_cancel = None\n        boundary_rows = [value for value in (invalidation, target_before_fill, transition_cancel) if value is not None]\n        boundary = min(boundary_rows, default=None)\n        if fill is None or (boundary is not None and boundary <= fill):\n            end_position = boundary if boundary is not None else evaluation_limit - 1\n            status = "CANCELLED_ON_CONFIRMED_TRANSITION" if transition_cancel is not None and boundary == transition_cancel else "CANCELLED_OR_UNFILLED"\n            return v1.ActionLabel(\n                activation, bars.available[end_position], candidate.symbol, action, exit_variant, 0,\n                entry_reference, max(abs(entry_reference - stop), 1e-12), 0.0,\n                v1._candidate_features(candidate, action, entry_reference), status,\n            )\n'''
+          if old not in text:
+              raise SystemExit('passive boundary block not found')
+          text=text.replace(old,new,1)
+          old='''    indexed_funding = v1._funding_index(funding)\n    prepared = {symbol: _prepare(frame) for symbol, frame in execution.items()}\n    rows: list[dict[str, Any]] = []\n    for candidate in candidates:\n'''
+          new='''    indexed_funding = v1._funding_index(funding)\n    prepared = {symbol: _prepare(frame) for symbol, frame in execution.items()}\n    def narrative_key(candidate: EventCandidate) -> tuple[Any, ...]:\n        return (\n            candidate.symbol, candidate.family.value, candidate.side,\n            round(float(candidate.stop_reference), 8),\n            round(float(candidate.target_reference), 8),\n            round(float(candidate.structural_level), 8),\n        )\n    market_times: dict[tuple[Any, ...], list[pd.Timestamp]] = {}\n    for candidate in candidates:\n        if float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5:\n            market_times.setdefault(narrative_key(candidate), []).append(pd.Timestamp(candidate.timestamp))\n    for values in market_times.values():\n        values.sort()\n    rows: list[dict[str, Any]] = []\n    for candidate in candidates:\n'''
+          if old not in text:
+              raise SystemExit('rows preparation block not found')
+          text=text.replace(old,new,1)
+          old='''                label = _label(candidate, action, variant, frame, indexed_funding, evaluation_end, config)\n'''
+          new='''                cancel_at = None\n                if action == "EARLY_PASSIVE":\n                    later = [time for time in market_times.get(narrative_key(candidate), []) if time > candidate.timestamp]\n                    cancel_at = later[0] if later else None\n                label = _label(\n                    candidate, action, variant, frame, indexed_funding, evaluation_end, config, cancel_at\n                )\n'''
+          if old not in text:
+              raise SystemExit('label call not found')
+          p.write_text(text.replace(old,new,1))
+          PY
+          python -m py_compile research/yt_trinity_ml/run_causal_action_fast.py
+          git rm .github/workflows/yt-trinity-passive-state-transition-cancel.yml
+      - name: Commit state-transition cancellation
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_causal_action_fast.py
+          git commit -m 'Cancel stale mitigation limits at confirmed transition'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
