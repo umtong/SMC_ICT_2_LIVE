@@ -1,0 +1,40 @@
+name: YT squeeze local parquet wheelhouse
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r23-yt-squeeze-alpha-001]
+    paths:
+      - .github/workflows/yt-squeeze-wheelhouse.yml
+
+permissions:
+  contents: read
+
+jobs:
+  wheelhouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download CPython 3.13 parquet wheel
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/wheels
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest artifact/wheels pyarrow
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          for path in sorted(Path('artifact/wheels').glob('*')):
+              print(hashlib.sha256(path.read_bytes()).hexdigest(), path.name)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-squeeze-pyarrow-cp313-${{ github.sha }}
+          path: artifact/wheels
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
