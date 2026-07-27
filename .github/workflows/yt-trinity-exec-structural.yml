@@ -1,0 +1,165 @@
+name: YT Trinity isolated structural runner
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-exec-001]
+    paths:
+      - .github/workflows/yt-trinity-exec-structural.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-exec-structural-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install deterministic stack
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1'
+      - name: Download immutable inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fetch_artifact() {
+            curl --fail --silent --show-error --location \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"
+          }
+          mkdir -p input/{labels,btc2023,eth2023,btc2024,eth2024,official} output
+          fetch_artifact 8643192491 /tmp/labels.zip
+          fetch_artifact 8636781702 /tmp/btc2023.zip
+          fetch_artifact 8636761741 /tmp/eth2023.zip
+          fetch_artifact 8636867995 /tmp/btc2024.zip
+          fetch_artifact 8636882043 /tmp/eth2024.zip
+          fetch_artifact 8644460717 /tmp/official.zip
+          unzip -q /tmp/labels.zip -d input/labels
+          unzip -q /tmp/btc2023.zip -d input/btc2023
+          unzip -q /tmp/eth2023.zip -d input/eth2023
+          unzip -q /tmp/btc2024.zip -d input/btc2024
+          unzip -q /tmp/eth2024.zip -d input/eth2024
+          unzip -q /tmp/official.zip -d input/official
+          find input -type f | sort > output/INPUT_FILES.txt
+      - name: Materialize deterministic corrections
+        run: |
+          set -euo pipefail
+          cp research/yt_trinity_ml/run_quality_structural_runner_v1.py /tmp/runner.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/runner.py'); t=p.read_text()
+          changes={
+            '                atr=max(stop_distance, 1e-12),':'                atr=max(stop_distance / 4.0, 1e-12),',
+            '''        planned_per_unit = (\n            outcome.stop_distance\n            + outcome.entry_price * (MAKER_FEE if outcome.action == "PASSIVE_RETEST" else TAKER_FEE)\n            + abs(outcome.entry_price - outcome.stop_distance) * (TAKER_FEE + STOP_SLIPPAGE)\n        )''':'''        expected_stop_price = outcome.entry_price - outcome.side * outcome.stop_distance\n        entry_slippage_budget = ENTRY_SLIPPAGE if outcome.action == "MARKETABLE" else 0.0\n        planned_per_unit = (\n            outcome.stop_distance\n            + outcome.entry_price * ((MAKER_FEE if outcome.action == "PASSIVE_RETEST" else TAKER_FEE) + entry_slippage_budget)\n            + abs(expected_stop_price) * (TAKER_FEE + STOP_SLIPPAGE)\n        )''',
+            '''        quantity = max(0.0, min(risk_quantity, leverage_quantity, liquidation_quantity))''':'''        raw_quantity = max(0.0, min(risk_quantity, leverage_quantity, liquidation_quantity))\n        step = 0.001 if outcome.symbol == "BTCUSDT" else 0.01\n        minimum = step\n        quantity = np.floor(raw_quantity / step) * step\n        if quantity < minimum:\n            quantity = 0.0''',
+            '''    discovery: list[dict[str, Any]] = []\n    outcomes_by_variant: dict[str, list[Outcome]] = {}\n    for variant in variants():\n        outcomes = simulate_set(candidates_2023, bars_2023, marks_2023, funding_2023, variant, h2_end)\n        outcomes_by_variant[variant.name] = outcomes\n        basic_h1 = account_replay(outcomes, h1_start, h1_end, 0.01, 5.0)\n        growth_h1 = account_replay(outcomes, h1_start, h1_end, 0.17, 20.0)\n        discovery.append({"variant": asdict(variant), "basic_h1": asdict(basic_h1), "growth_h1": asdict(growth_h1)})\n\n    eligible = [row for row in discovery if row["basic_h1"]["filled_trades"] >= 8]\n    selected_row = max(\n        eligible,\n        key=lambda row: (\n            row["basic_h1"]["geometric_daily_growth"],\n            -row["basic_h1"]["maximum_drawdown"],\n            row["basic_h1"]["filled_trades"],\n            row["variant"]["name"],\n        ),\n    )\n    selected = Variant(**selected_row["variant"])\n    selected_outcomes = outcomes_by_variant[selected.name]\n    basic_h2 = account_replay(selected_outcomes, h2_start, h2_end, 0.01, 5.0)\n    growth_h2 = account_replay(selected_outcomes, h2_start, h2_end, 0.17, 20.0)''':'''    candidates_h1 = [c for c in candidates_2023 if h1_start <= c.timestamp < h1_end]\n    candidates_h2 = [c for c in candidates_2023 if h2_start <= c.timestamp < h2_end]\n    discovery: list[dict[str, Any]] = []\n    for variant in variants():\n        outcomes = simulate_set(candidates_h1, bars_2023, marks_2023, funding_2023, variant, h1_end)\n        basic_h1 = account_replay(outcomes, h1_start, h1_end, 0.01, 5.0)\n        growth_h1 = account_replay(outcomes, h1_start, h1_end, 0.17, 20.0)\n        discovery.append({"variant": asdict(variant), "basic_h1": asdict(basic_h1), "growth_h1": asdict(growth_h1)})\n    eligible = [row for row in discovery if row["basic_h1"]["filled_trades"] >= 8]\n    if not eligible: raise RuntimeError("no H1 exit survivor")\n    selected_row = max(eligible,key=lambda row:(row["basic_h1"]["geometric_daily_growth"],-row["basic_h1"]["maximum_drawdown"],row["basic_h1"]["filled_trades"],row["variant"]["name"]))\n    selected = Variant(**selected_row["variant"])\n    selected_outcomes = simulate_set(candidates_h2, bars_2023, marks_2023, funding_2023, selected, h2_end)\n    basic_h2 = account_replay(selected_outcomes, h2_start, h2_end, 0.01, 5.0)\n    growth_h2 = account_replay(selected_outcomes, h2_start, h2_end, 0.17, 20.0)'''
+          }
+          for old,new in changes.items():
+            if old not in t: raise SystemExit('patch target missing: '+old[:120])
+            t=t.replace(old,new)
+          p.write_text(t)
+          PY
+          python -m py_compile /tmp/runner.py
+          cp /tmp/runner.py output/EXECUTED_SOURCE.py
+          sha256sum output/EXECUTED_SOURCE.py > output/EXECUTED_SOURCE.sha256
+      - name: Resolve paths
+        run: |
+          set -euo pipefail
+          find input/labels -name EVENT_LABELS.pkl.gz -print -quit > /tmp/labels
+          find input/official -name FROZEN_PERIOD_RESULT.json -print -quit > /tmp/official
+          for pair in 'btc2023 btc_2023' 'eth2023 eth_2023' 'btc2024 btc_2024h1' 'eth2024 eth_2024h1'; do
+            set -- $pair; root=$1; key=$2
+            find input/$root -path '*/trade_bars/1m.parquet' -print -quit > /tmp/${key}_bars
+            find input/$root -path '*/streams/mark_price_1m.parquet' -print -quit > /tmp/${key}_marks
+            find input/$root -path '*/streams/funding_events.parquet' -print -quit > /tmp/${key}_funding
+            test -s /tmp/${key}_bars && test -s /tmp/${key}_marks && test -s /tmp/${key}_funding
+          done
+          test -s /tmp/labels && test -s /tmp/official
+      - name: Baseline accounting crosscheck
+        run: |
+          set +e
+          python - <<'PY' 2>&1 | tee output/CROSSCHECK.log
+          import importlib.util,json
+          from pathlib import Path
+          from types import SimpleNamespace
+          import pandas as pd
+          spec=importlib.util.spec_from_file_location('runner','/tmp/runner.py'); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          official=json.loads(Path(Path('/tmp/official').read_text().strip()).read_text())
+          a=SimpleNamespace()
+          for key in ('btc_2024h1','eth_2024h1'):
+            setattr(a,key+'_bars',Path(Path('/tmp/'+key+'_bars').read_text().strip()))
+            setattr(a,key+'_marks',Path(Path('/tmp/'+key+'_marks').read_text().strip()))
+            setattr(a,key+'_funding',Path(Path('/tmp/'+key+'_funding').read_text().strip()))
+          c=m.candidates_from_frozen_pointer(Path('research/yt_trinity_ml/FROZEN_2024H1_V2_POINTER.json'))
+          bars,marks,funding=m.load_symbol_inputs(a,'2024h1')
+          start=pd.Timestamp('2024-01-01T00:00:00Z'); end=pd.Timestamp('2024-07-01T00:00:00Z')
+          o=m.simulate_set(c,bars,marks,funding,m.Variant('BASELINE_FULL_TARGET'),end)
+          r=m.account_replay(o,start,end,0.17,20.0)
+          expected=float(official['metrics']['account_multiple'])
+          payload={'expected':expected,'custom':m.asdict(r),'error':abs(r.account_multiple-expected),'outcomes':[m.asdict(x) for x in o]}
+          Path('output/BASELINE_CROSSCHECK.json').write_text(json.dumps(payload,indent=2,default=str)+'\n')
+          print(json.dumps(payload,indent=2,default=str))
+          raise SystemExit(0 if payload['error'] <= 1e-6 else 2)
+          PY
+          echo ${PIPESTATUS[0]} > output/CROSSCHECK_EXIT_CODE.txt
+          exit 0
+      - name: Run H1 selection, H2 validation, conditional 2024H1
+        run: |
+          set +e
+          if [[ "$(cat output/CROSSCHECK_EXIT_CODE.txt)" != 0 ]]; then echo 98 > output/RUN_EXIT_CODE.txt; exit 0; fi
+          python /tmp/runner.py \
+            --labels "$(cat /tmp/labels)" --frozen-pointer research/yt_trinity_ml/FROZEN_2024H1_V2_POINTER.json \
+            --btc-2023-bars "$(cat /tmp/btc_2023_bars)" --btc-2023-marks "$(cat /tmp/btc_2023_marks)" --btc-2023-funding "$(cat /tmp/btc_2023_funding)" \
+            --eth-2023-bars "$(cat /tmp/eth_2023_bars)" --eth-2023-marks "$(cat /tmp/eth_2023_marks)" --eth-2023-funding "$(cat /tmp/eth_2023_funding)" \
+            --btc-2024h1-bars "$(cat /tmp/btc_2024h1_bars)" --btc-2024h1-marks "$(cat /tmp/btc_2024h1_marks)" --btc-2024h1-funding "$(cat /tmp/btc_2024h1_funding)" \
+            --eth-2024h1-bars "$(cat /tmp/eth_2024h1_bars)" --eth-2024h1-marks "$(cat /tmp/eth_2024h1_marks)" --eth-2024h1-funding "$(cat /tmp/eth_2024h1_funding)" \
+            --output output 2>&1 | tee output/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]} > output/RUN_EXIT_CODE.txt
+          exit 0
+      - name: Persist pointer on isolated branch
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('output'); rp=root/'QUALITY_STRUCTURAL_RUNNER_RESULT.json'; cp=root/'BASELINE_CROSSCHECK.json'
+          result=json.loads(rp.read_text()) if rp.exists() else None; cross=json.loads(cp.read_text()) if cp.exists() else None
+          payload={'schema_version':1,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'crosscheck':cross,'crosscheck_exit_code':int((root/'CROSSCHECK_EXIT_CODE.txt').read_text()) if (root/'CROSSCHECK_EXIT_CODE.txt').exists() else 99,'run_exit_code':int((root/'RUN_EXIT_CODE.txt').read_text()) if (root/'RUN_EXIT_CODE.txt').exists() else 99,'result':result,'result_sha256':hashlib.sha256(rp.read_bytes()).hexdigest() if rp.exists() else None,'status':'valid' if result is not None and cross and cross['error']<=1e-6 else 'invalid_or_execution_failure'}
+          Path('research/yt_trinity_ml/EXEC_STRUCTURAL_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True,default=str)+'\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/yt_trinity_ml/EXEC_STRUCTURAL_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record isolated structural result ${GITHUB_RUN_ID}"
+            for i in 1 2 3 4 5; do git pull --rebase origin agent/r22-yt-trinity-ml-exec-001 && git push origin HEAD:agent/r22-yt-trinity-ml-exec-001 && break || sleep $((i*3)); done
+          fi
+      - name: Upload evidence
+        if: always()
+        run: (cd output && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-exec-structural-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+      - name: Enforce validity
+        if: always()
+        run: test "$(cat output/CROSSCHECK_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0 && test "$(cat output/RUN_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
