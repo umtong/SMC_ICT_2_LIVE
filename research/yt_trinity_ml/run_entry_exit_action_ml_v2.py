@@ -281,7 +281,7 @@ def account(rows: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp, risk: fl
         if row.order_end_time is None:
             continue
         slot_free = pd.Timestamp(row.order_end_time)
-        action_counts[row.action] = action_counts.get(row.action, 0) + 1
+        action_counts[row.identifier] = action_counts.get(row.identifier, 0) + 1
         if not bool(row.filled) or row.budget_r is None or not np.isfinite(float(row.budget_r)):
             continue
         value = float(row.budget_r)
