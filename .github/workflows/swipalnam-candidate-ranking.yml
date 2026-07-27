@@ -38,24 +38,48 @@ jobs:
                   payload = json.loads(path.read_text())
               except Exception:
                   continue
-              if 'full_period_metrics' in payload:
-                  metrics = payload.get('full_period_metrics') or {}
+
+              stage = str(payload.get('validation_stage') or '')
+              full_metrics = payload.get('full_period_metrics')
+              h1_metrics = payload.get('provisional_2024h1_metrics')
+              generic_metrics = payload.get('evaluation_metrics')
+              is_full_stage = stage.startswith('continuous_2024_2026') or 'full_period' in stage
+              if isinstance(full_metrics, dict) and full_metrics:
+                  metrics = full_metrics
                   period = '2024-01-01_to_2026-06-30'
-                  stage = payload.get('validation_stage') or 'continuous_full_period_preliminary'
+                  stage = stage or 'continuous_full_period_preliminary'
+              elif is_full_stage and isinstance(generic_metrics, dict) and generic_metrics:
+                  metrics = generic_metrics
+                  period = '2024-01-01_to_2026-06-30'
               else:
-                  metrics = payload.get('provisional_2024h1_metrics') or {}
+                  metrics = (
+                      h1_metrics
+                      if isinstance(h1_metrics, dict) and h1_metrics
+                      else generic_metrics if isinstance(generic_metrics, dict) else {}
+                  )
                   period = '2024_H1'
-                  stage = payload.get('validation_stage') or 'causal_2024H1_preliminary'
+                  stage = stage or 'causal_2024H1_preliminary'
+
               growth = metrics.get('geometric_daily_growth')
               multiple = metrics.get('account_multiple')
               if growth is None or multiple is None:
                   continue
               liquidations = int(metrics.get('liquidation_events') or 0)
-              exact_nav = 'V5_NAV' in path.name or 'exact_daily' in str(payload.get('variant', ''))
+              variant = str(payload.get('variant', '')).lower()
+              nav_method = str(metrics.get('daily_nav_method', '')).lower()
+              exact_nav = (
+                  'v5_nav' in path.name.lower()
+                  or 'exact_nav' in variant
+                  or 'exact_daily' in variant
+                  or 'utc midnight executable' in nav_method
+              )
               valid_path = float(metrics.get('final_nav') or 0) > 0 and liquidations == 0
               result_id = payload.get('result_id') or f"R-{path.stem.replace('RUN_POINTER_', '')}"
               confidence = (
-                  'higher_provisional_exact_midnight_NAV' if exact_nav
+                  'higher_provisional_exact_midnight_NAV'
+                  if exact_nav and period == '2024_H1'
+                  else 'highest_continuous_exact_midnight_NAV'
+                  if exact_nav and period != '2024_H1'
                   else 'lower_provisional_realized_state_daily_NAV'
               )
               candidates.append({
@@ -84,8 +108,8 @@ jobs:
               })
 
           # Invalid account paths are always last.  Growth and account multiple
-          # are the primary quantitative axes; exact-NAV status is retained as
-          # confidence metadata rather than silently changing the result.
+          # are the primary quantitative axes.  Full-period and H1 evidence keep
+          # explicit period/confidence metadata instead of being silently merged.
           candidates.sort(
               key=lambda item: (
                   bool(item['valid_path']),
@@ -98,11 +122,11 @@ jobs:
           for rank, item in enumerate(candidates, 1):
               item['rank'] = rank
           ranking = {
-              'schema_version': 1,
+              'schema_version': 2,
               'scope': 'swipalnam_transcript_grounded_claim_candidates',
               'target_geometric_daily_growth': 0.01,
               'ranking_rule': 'valid path, then cost-adjusted geometric daily growth, account multiple, completed trades',
-              'warning': 'H1 and full-period or realized-state and exact-midnight-NAV results are marked with different comparison confidence; this file does not conceal that mismatch.',
+              'warning': 'H1 and full-period evidence retain explicit period and comparison confidence; a provisional rank is not a deployment approval.',
               'candidates': candidates,
           }
           (root / 'CANDIDATE_RANKING.json').write_text(json.dumps(ranking, ensure_ascii=False, indent=2, sort_keys=True)+'\n')
@@ -115,7 +139,7 @@ jobs:
           }
           current = dict(current)
           current['selection_reason'] = (
-              'highest valid cost-adjusted geometric daily growth among completed claim candidates; confidence limitations remain explicit'
+              'highest valid cost-adjusted geometric daily growth among completed claim candidates; period and confidence limitations remain explicit'
               if candidates else current['selection_reason']
           )
           (root / 'CURRENT_BEST.json').write_text(json.dumps(current, ensure_ascii=False, indent=2, sort_keys=True)+'\n')
