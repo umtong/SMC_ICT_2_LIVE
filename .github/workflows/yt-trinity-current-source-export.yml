@@ -1,0 +1,41 @@
+name: YT Trinity current source export
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-current-source-export.yml
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-current-source-export.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-current-source-export-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 1
+      - name: Export exact current SMC source
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          printf '%s\n' "$(git rev-parse HEAD)" > artifact/HEAD_SHA.txt
+          cp -R research/yt_trinity_ml artifact/yt_trinity_ml
+          find artifact -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-current-source-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 3
