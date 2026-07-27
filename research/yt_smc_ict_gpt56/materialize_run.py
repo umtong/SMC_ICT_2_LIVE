@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+import base64
+import hashlib
+import zlib
+from pathlib import Path
+
+TARGET = 'run_experiment.py'
+SHA256 = '640b65d3fdfe522435d46a046269a89ee862accf1af47dfbbebbd01212fd5108'
+BLOB = (
+    "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"
+)
+
+def main() -> int:
+    data = zlib.decompress(base64.b64decode(BLOB))
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != SHA256:
+        raise SystemExit(f"sha256 mismatch: {digest} != {SHA256}")
+    path = Path(__file__).with_name(TARGET)
+    path.write_bytes(data)
+    print(f"materialized {path} sha256={digest} bytes={len(data)}")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())
