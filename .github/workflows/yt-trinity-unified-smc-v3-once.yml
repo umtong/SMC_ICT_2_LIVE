@@ -1,0 +1,130 @@
+name: YT Trinity unified SMC implementation upgrade (one shot)
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-unified-smc-v3-once.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-unified-smc-v3-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply-test-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout exact upgrade source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Materialize unified SMC/ICT implementation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64
+          import gzip
+          import json
+          from pathlib import Path
+
+          chunk_dir = Path('research/yt_trinity_ml/upgrade_chunks')
+          chunks = sorted(chunk_dir.glob('unified_smc_v3.*'))
+          assert [path.suffix for path in chunks] == [f'.{index:02d}' for index in range(7)], chunks
+          payload = ''.join(path.read_text(encoding='utf-8') for path in chunks)
+          files = json.loads(gzip.decompress(base64.b85decode(payload.encode('ascii'))).decode('utf-8'))
+          expected = {
+              'research/yt_trinity_ml/system/corpus_alpha.py',
+              'research/yt_trinity_ml/tests/test_corpus_alpha.py',
+              'research/yt_trinity_ml/run_primary_screen.py',
+              'research/yt_trinity_ml/system_contract.json',
+              'research/yt_trinity_ml/SYSTEM_DESIGN.md',
+              '.github/workflows/yt-trinity-system.yml',
+          }
+          assert set(files) == expected, sorted(files)
+          for relative, content in files.items():
+              path = Path(relative)
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_text(content, encoding='utf-8')
+
+          route_path = Path('.github/workflows/yt-trinity-route-pre2024-v1.yml')
+          route = route_path.read_text(encoding='utf-8')
+          replacements = {
+              "      - .github/workflows/yt-trinity-route-pre2024-v1.yml\n      - control/yt-trinity-route-pre2024-v1-trigger.json":
+                  "      - control/yt-trinity-route-pre2024-v1-trigger.json",
+              "Record switch-alpha route without opening 2024H1":
+                  "Record implementation-audit route without opening 2024H1",
+              "'stage': 'PRE2024_SWITCH_ALPHA'":
+                  "'stage': 'PRE2024_IMPLEMENTATION_AUDIT'",
+              "'next_action': 'materially different corpus-derived alpha, not adjacent threshold tuning'":
+                  "'next_action': 'audit the unified SMC/ICT stage funnel and repair implementation before premise rejection or unrelated-alpha routing'",
+              "Path('output/SWITCH_ALPHA_RESULT.json')":
+                  "Path('output/IMPLEMENTATION_AUDIT_RESULT.json')",
+              "'switch_alpha_result': read('SWITCH_ALPHA_RESULT.json')":
+                  "'implementation_audit_result': read('IMPLEMENTATION_AUDIT_RESULT.json')",
+          }
+          for old, new in replacements.items():
+              if old not in route:
+                  raise RuntimeError(f'missing route patch anchor: {old}')
+              route = route.replace(old, new)
+          route_path.write_text(route, encoding='utf-8')
+          PY
+
+      - name: Install deterministic research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
+
+      - name: Validate unified narrative and integration invariants
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/unified-smc-v3
+          {
+            python -m py_compile research/yt_trinity_ml/system/*.py research/yt_trinity_ml/run_primary_screen.py research/yt_trinity_ml/run_research.py
+            python -m json.tool research/yt_trinity_ml/system_contract.json >/dev/null
+            pytest -q -x research/yt_trinity_ml/tests/test_corpus_alpha.py
+            pytest -q -x research/yt_trinity_ml/tests
+          } 2>&1 | tee artifact/unified-smc-v3/validation.log
+
+      - name: Commit tested implementation and remove staging files
+        run: |
+          set -euo pipefail
+          rm -rf research/yt_trinity_ml/upgrade_chunks
+          rm .github/workflows/yt-trinity-unified-smc-v3-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/run_primary_screen.py \
+            research/yt_trinity_ml/system_contract.json \
+            research/yt_trinity_ml/SYSTEM_DESIGN.md \
+            .github/workflows/yt-trinity-system.yml \
+            .github/workflows/yt-trinity-route-pre2024-v1.yml \
+            research/yt_trinity_ml/upgrade_chunks \
+            .github/workflows/yt-trinity-unified-smc-v3-once.yml
+          git commit -m 'Unify SMC narrative and audit implementation before alpha switching'
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git rebase origin/agent/r22-yt-trinity-ml-001
+          git push origin HEAD:agent/r22-yt-trinity-ml-001
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-unified-smc-v3-${{ github.sha }}
+          path: artifact/unified-smc-v3
+          if-no-files-found: warn
+          retention-days: 30
