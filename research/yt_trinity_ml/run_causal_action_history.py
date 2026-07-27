@@ -338,24 +338,39 @@ def run(args: argparse.Namespace) -> int:
         float(scored_calibration["score"].quantile(quantile)),
     )
 
-    decision_2024, execution_2024, funding_2024 = load_canonical_frames(
+    # Rebuild the exact information state available at 2024-01-01. Loading the
+    # evaluation shard alone would reset rolling indicators, prior-session liquidity
+    # and still-valid SMC narrative states at the boundary. Pre-2024 rows warm the
+    # causal state machine, but only actions whose activation is inside H1 may trade.
+    evaluation_context_segments = (*PRE2024_SEGMENTS, "2024_H1")
+    decision_context, execution_context, funding_context = load_canonical_frames(
         args.data_root,
         args.repo_root,
         PRIMARY,
-        ("2024_H1",),
+        evaluation_context_segments,
     )
-    _, candidates_2024, diagnostics_2024 = generate_causal_action_candidates_by_symbol(
-        decision_2024,
+    _, candidates_context, diagnostics_context = generate_causal_action_candidates_by_symbol(
+        decision_context,
         FeatureConfig(),
     )
+    candidates_2024 = [
+        candidate for candidate in candidates_context
+        if EVALUATION_START <= pd.Timestamp(candidate.timestamp) < EVALUATION_END
+    ]
     rows_2024 = _rows_fast(
         candidates_2024,
-        execution_2024,
-        funding_2024,
+        execution_context,
+        funding_context,
         EVALUATION_END,
         (variant,),
         screen,
     )
+    diagnostics_2024 = {
+        "context_segments": list(evaluation_context_segments),
+        "full_context_candidate_count": len(candidates_context),
+        "evaluation_candidate_count": len(candidates_2024),
+        "by_symbol": diagnostics_context,
+    }
     scored_2024 = _score(production_model, rows_2024)
     account_2024 = _account(
         scored_2024,
