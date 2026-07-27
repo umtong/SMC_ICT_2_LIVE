@@ -71,8 +71,8 @@ jobs:
             local id="$1" out="$2"
             for attempt in 1 2 3; do
               echo "download ${out} attempt=${attempt}" | tee -a artifact/result/DOWNLOAD.log
-              if python -m gdown --fuzzy "https://drive.google.com/file/d/${id}/view?usp=sharing" \
-                   -O "${out}" 2>&1 | tee -a artifact/result/DOWNLOAD.log; then
+              if python -m gdown "${id}" -O "${out}" \
+                   2>&1 | tee -a artifact/result/DOWNLOAD.log; then
                 if [[ -s "${out}" ]]; then
                   return 0
                 fi
