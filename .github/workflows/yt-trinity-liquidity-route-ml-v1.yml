@@ -3,9 +3,12 @@ name: YT Trinity liquidity-delivery router ML v1
 on:
   workflow_dispatch:
   push:
-    branches: [agent/yt-trinity-liquidity-route-ml-v1]
+    branches: [agent/yt-trinity-liquidity-route-ml-clean]
     paths:
-      - research/yt_trinity_liquidity_route/**
+      - research/yt_trinity_liquidity_route/payload/**
+      - research/yt_trinity_liquidity_route/materialize_source.py
+      - research/yt_trinity_liquidity_route/restore_canonical.py
+      - research/yt_trinity_ml/system/canonical_adapter.py
       - .github/workflows/yt-trinity-liquidity-route-ml-v1.yml
       - control/yt-trinity-liquidity-route-ml-v1-trigger.json
 
