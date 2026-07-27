@@ -1,0 +1,55 @@
+name: Canonical Bybit sparse 500ms smoke
+
+on:
+  push:
+    branches:
+      - agent/r22-canonical-halfyear-market-data-001
+    paths:
+      - scripts/market_data/build_public_trade_compact.py
+      - scripts/market_data/load_public_trade_compact.py
+      - scripts/market_data/verify_public_trade_compact.py
+      - tests/test_public_trade_compact.py
+      - .github/workflows/canonical-bybit-public-compact-smoke.yml
+  workflow_dispatch:
+
+concurrency:
+  group: canonical-bybit-sparse500-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install ".[dev]"
+      - name: Run compact unit tests
+        run: python -m pytest -q tests/test_public_trade_compact.py
+      - name: Build full BTCUSDT January 2024 sparse 500ms shard
+        run: |
+          python scripts/market_data/build_public_trade_compact.py \
+            --symbol BTCUSDT \
+            --month 2024-01 \
+            --out artifact
+      - name: Verify and report
+        shell: bash
+        run: |
+          shard="artifact/2024_H1/BTCUSDT/2024-01"
+          python scripts/market_data/verify_public_trade_compact.py "$shard" \
+            | tee "$shard/VERIFICATION.json"
+          find "$shard" -type f -printf '%P\t%s\n' | sort \
+            | tee "$shard/FILE_SIZES.tsv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-sparse500-smoke-BTCUSDT-2024-01
+          path: artifact/2024_H1/BTCUSDT/2024-01
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
