@@ -26,12 +26,30 @@ def load_loader(repo_root: str | Path) -> ModuleType:
     return module
 
 
+def _epoch_ms(series: pd.Series, *, label: str) -> pd.Series:
+    """Return a nullable-free NumPy int64 epoch-ms key.
+
+    Canonical parquet readers may expose integer columns either as NumPy ``int64``
+    or pandas nullable ``Int64``. ``merge_asof`` requires an exact dtype match, so
+    leaving that transport detail unnormalised can stop the replay before any
+    economic evaluation.
+    """
+    numeric = pd.to_numeric(series, errors="coerce")
+    if numeric.isna().any():
+        raise ValueError(f"{label} contains missing or non-numeric values")
+    if ((numeric % 1) != 0).any():
+        raise ValueError(f"{label} must contain integer epoch milliseconds")
+    return numeric.astype("int64")
+
+
 def _index_by_available(frame: pd.DataFrame, *, timestamp_column: str) -> pd.DataFrame:
     if timestamp_column not in frame.columns:
         raise ValueError(f"missing {timestamp_column}")
     result = frame.copy()
     if "available_at_ms" not in result.columns:
         raise ValueError("canonical frame lacks available_at_ms")
+    result[timestamp_column] = _epoch_ms(result[timestamp_column], label=timestamp_column)
+    result["available_at_ms"] = _epoch_ms(result["available_at_ms"], label="available_at_ms")
     result["timestamp"] = pd.to_datetime(result[timestamp_column], unit="ms", utc=True)
     result["available_at"] = pd.to_datetime(result["available_at_ms"], unit="ms", utc=True)
     result = result.sort_values(timestamp_column, kind="stable")
@@ -86,9 +104,12 @@ def causal_asof_join(base: pd.DataFrame, auxiliary: pd.DataFrame) -> pd.DataFram
     """Join only auxiliary rows available by each base decision timestamp."""
     if "available_at_ms" not in base.columns or "available_at_ms" not in auxiliary.columns:
         raise ValueError("both frames require available_at_ms")
-    left = base.reset_index(drop=True).sort_values("available_at_ms", kind="stable")
+    left = base.reset_index(drop=True).copy()
+    left["available_at_ms"] = _epoch_ms(left["available_at_ms"], label="base.available_at_ms")
+    left = left.sort_values("available_at_ms", kind="stable")
     index_column = auxiliary.index.name or "index"
     right = auxiliary.reset_index(drop=False).rename(columns={index_column: "source_timestamp"})
+    right["available_at_ms"] = _epoch_ms(right["available_at_ms"], label="auxiliary.available_at_ms")
     right = right.sort_values("available_at_ms", kind="stable")
     value_columns = [name for name in right.columns if name not in {"available_at_ms", "source_timestamp"}]
     joined = pd.merge_asof(
