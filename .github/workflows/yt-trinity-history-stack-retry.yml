@@ -1,0 +1,98 @@
+name: YT Trinity retry failed history patch carriers
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - research/yt_trinity_ml/HISTORY_STACK_STATUS.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-history-stack-retry
+  cancel-in-progress: false
+
+jobs:
+  retry-remaining:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Touch only carriers that still exist after a failed audit
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          status = json.loads(Path('research/yt_trinity_ml/HISTORY_STACK_STATUS.json').read_text())
+          retry_path = Path('research/yt_trinity_ml/HISTORY_STACK_RETRY.json')
+          retry = json.loads(retry_path.read_text()) if retry_path.exists() else {'attempt': 0}
+          attempt = int(retry.get('attempt', 0))
+          touched = []
+          carriers = [
+              '.github/workflows/yt-trinity-pd-array-depths.yml',
+              '.github/workflows/yt-trinity-pd-array-depth-test-update.yml',
+              '.github/workflows/yt-trinity-pd-depth-schema-hotfix.yml',
+              '.github/workflows/yt-trinity-passive-state-transition-cancel.yml',
+              '.github/workflows/yt-trinity-passive-supersession.yml',
+              '.github/workflows/yt-trinity-transition-cancel-test-wire.yml',
+              '.github/workflows/yt-trinity-passive-supersession-test-wire.yml',
+              '.github/workflows/yt-trinity-pd-array-failure-exit.yml',
+              '.github/workflows/yt-trinity-pd-failure-coordinate-hotfix.yml',
+              '.github/workflows/yt-trinity-grouped-action-model-wire.yml',
+              '.github/workflows/yt-trinity-grouped-model-test-wire.yml',
+              '.github/workflows/yt-trinity-grouped-fill-head.yml',
+              '.github/workflows/yt-trinity-fill-fallback-causality.yml',
+              '.github/workflows/yt-trinity-causal-risk-domain.yml',
+              '.github/workflows/yt-trinity-history-model-fingerprint.yml',
+              '.github/workflows/yt-trinity-liquidity-identity-time.yml',
+              '.github/workflows/yt-trinity-liquidity-period-identity.yml',
+              '.github/workflows/yt-trinity-cancel-latency-ordering.yml',
+              '.github/workflows/yt-trinity-narrative-key-stop-independent.yml',
+              '.github/workflows/yt-trinity-history-feature-contract.yml',
+              '.github/workflows/yt-trinity-history-stack-gate-wire.yml',
+              '.github/workflows/yt-trinity-history-audit-head-binding.yml',
+          ]
+          if status.get('status') == 'FAIL' and attempt < 4:
+              stamp = datetime.now(timezone.utc).isoformat()
+              for raw in carriers:
+                  path = Path(raw)
+                  if not path.exists():
+                      continue
+                  text = path.read_text()
+                  lines = [line for line in text.splitlines() if not line.startswith('# retry-carrier:')]
+                  lines.append(f'# retry-carrier: {stamp}')
+                  path.write_text('\n'.join(lines) + '\n')
+                  touched.append(raw)
+              attempt += 1
+          elif status.get('status') == 'PASS':
+              attempt = 0
+          payload = {
+              'schema_version': 1,
+              'attempt': attempt,
+              'source_audit_run_id': status.get('workflow_run_id'),
+              'source_audit_status': status.get('status'),
+              'touched_carriers': touched,
+              'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+          }
+          retry_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows research/yt_trinity_ml/HISTORY_STACK_RETRY.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Retry remaining history patch carriers"
+            for try in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+              sleep $((try * 3))
+            done
+            exit 1
+          fi
