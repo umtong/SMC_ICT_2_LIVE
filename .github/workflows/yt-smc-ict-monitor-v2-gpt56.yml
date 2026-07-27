@@ -1,0 +1,112 @@
+name: YT SMC ICT workflow monitor v2 gpt56
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/yt-smc-ict-causal-ml-gpt56-20260727
+    paths:
+      - .github/workflows/yt-smc-ict-monitor-v2-gpt56.yml
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: yt-smc-ict-monitor-v2-gpt56-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - name: Snapshot every project-lane workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          token = os.environ['GH_TOKEN']
+          repository = os.environ['REPOSITORY']
+          branch = os.environ['BRANCH']
+          query = urllib.parse.urlencode({'branch': branch, 'per_page': 100})
+          request = urllib.request.Request(
+              f'https://api.github.com/repos/{repository}/actions/runs?{query}',
+              headers={
+                  'Authorization': f'Bearer {token}',
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+                  'User-Agent': 'yt-smc-ict-monitor-v2-gpt56',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              raw = json.load(response)
+          runs = []
+          for run in raw.get('workflow_runs', []):
+              name = str(run.get('name') or '')
+              if not name.startswith('YT SMC ICT'):
+                  continue
+              runs.append({
+                  'id': run.get('id'),
+                  'name': name,
+                  'event': run.get('event'),
+                  'status': run.get('status'),
+                  'conclusion': run.get('conclusion'),
+                  'run_number': run.get('run_number'),
+                  'run_attempt': run.get('run_attempt'),
+                  'head_sha': run.get('head_sha'),
+                  'created_at': run.get('created_at'),
+                  'updated_at': run.get('updated_at'),
+                  'html_url': run.get('html_url'),
+              })
+          runs.sort(key=lambda item: (item.get('created_at') or '', item.get('id') or 0), reverse=True)
+          latest = {}
+          for run in runs:
+              latest.setdefault(run['name'], run)
+          payload = {
+              'schema_version': 2,
+              'observed_at': datetime.now(timezone.utc).isoformat(),
+              'branch': branch,
+              'monitor_run_id': int(os.environ['CURRENT_RUN_ID']),
+              'latest': latest,
+              'runs': runs,
+          }
+          path = Path('research/yt_smc_ict_gpt56/WORKFLOW_STATUS_V2.json')
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+
+      - name: Commit workflow snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_smc_ict_gpt56/WORKFLOW_STATUS_V2.json
+          git commit -m "Record YT SMC ICT workflow state v2 ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
