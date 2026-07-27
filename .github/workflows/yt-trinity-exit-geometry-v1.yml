@@ -59,6 +59,22 @@ jobs:
           test -s /tmp/label_path
           test -s /tmp/btc_path
           test -s /tmp/eth_path
+      - name: Patch scalar spread default compatibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_exit_geometry_v1.py')
+          text = path.read_text(encoding='utf-8')
+          old = "    out['spread_bps'] = pd.to_numeric(out.get('spread_bps', 0.5), errors='coerce').fillna(0.5)"
+          new = """    if 'spread_bps' in out.columns:
+              out['spread_bps'] = pd.to_numeric(out['spread_bps'], errors='coerce').fillna(0.5)
+          else:
+              out['spread_bps'] = 0.5"""
+          if old not in text:
+              raise SystemExit('expected spread compatibility target not found')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+          python -m py_compile research/yt_trinity_ml/run_exit_geometry_v1.py
       - name: Execute H1 discovery and frozen H2 validation
         run: |
           set +e
