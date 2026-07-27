@@ -1,0 +1,196 @@
+name: YT Trinity time-bound liquidity identity
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-liquidity-identity-time.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-liquidity-identity-time
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bind pool identity to causal formation time
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+          old = '''class _LiquidityPool:\n    price: float\n    quality: int\n    kind: str\n    confluence: int = 1\n'''
+          new = '''class _LiquidityPool:\n    price: float\n    quality: int\n    kind: str\n    identity: str = ""\n    confluence: int = 1\n'''
+          if old not in text:
+              raise SystemExit('liquidity pool dataclass marker missing')
+          text = text.replace(old, new, 1)
+
+          return_marker = '''    out["distance_current_4h_open_atr"] = (out["close"] - out["current_4h_open"]) / out["atr"]\n    return out\n'''
+          identity_block = '''    out["distance_current_4h_open_atr"] = (out["close"] - out["current_4h_open"]) / out["atr"]\n\n    # The same source label and price can represent a completely new liquidity pool\n    # later. Record the first decision time at which each current source value became\n    # available; consumption then applies only to that exact formation identity.\n    decision_ns = pd.Series(\n        pd.DatetimeIndex(out.index).as_unit("ns").asi8.astype(float),\n        index=out.index,\n    )\n    source_names = {\n        name for name, _quality, _kind in (*_HIGH_POOL_SOURCES, *_LOW_POOL_SOURCES)\n    }\n    for name in sorted(source_names):\n        if name not in out.columns:\n            continue\n        values = pd.to_numeric(out[name], errors="coerce")\n        changed = values.notna() & (values.shift(1).isna() | values.ne(values.shift(1)))\n        out[f"{name}_identity_ns"] = decision_ns.where(changed).ffill()\n    return out\n'''
+          if return_marker not in text:
+              raise SystemExit('build_corpus_features return marker missing')
+          text = text.replace(return_marker, identity_block, 1)
+
+          old = '''    raw = [\n        _LiquidityPool(float(row[name]), quality, kind)\n        for name, quality, kind in sources\n        if name in row.index and _finite(row.get(name))\n    ]\n'''
+          new = '''    raw: list[_LiquidityPool] = []\n    for name, quality, kind in sources:\n        if name not in row.index or not _finite(row.get(name)):\n            continue\n        identity_value = row.get(f"{name}_identity_ns")\n        if _finite(identity_value):\n            identity = f"{kind}@{int(float(identity_value))}"\n        else:\n            # Synthetic tests and legacy feature frames may omit identity columns.\n            # In production build_corpus_features always provides them.\n            row_time = pd.Timestamp(row.name).value if row.name is not None else 0\n            identity = f"{kind}@{int(row_time)}"\n        raw.append(_LiquidityPool(float(row[name]), quality, kind, identity))\n'''
+          if old not in text:
+              raise SystemExit('liquidity raw pool marker missing')
+          text = text.replace(old, new, 1)
+
+          old = '''            _LiquidityPool(\n                price=float(np.average(prices, weights=weights)),\n                quality=max(item.quality for item in group),\n                kind="+".join(sorted({item.kind for item in group})),\n                confluence=len(group),\n            )\n'''
+          new = '''            _LiquidityPool(\n                price=float(np.average(prices, weights=weights)),\n                quality=max(item.quality for item in group),\n                kind="+".join(sorted({item.kind for item in group})),\n                identity="|".join(sorted({item.identity for item in group})),\n                confluence=len(group),\n            )\n'''
+          if old not in text:
+              raise SystemExit('confluent pool marker missing')
+          text = text.replace(old, new, 1)
+
+          old_start = text.index('def _pool_key(pool: _LiquidityPool) -> tuple[str, float]:')
+          old_end = text.index('\n\ndef _select_draw_target', old_start)
+          replacement = '''def _pool_key(pool: _LiquidityPool) -> tuple[str, float]:\n    # Consumption belongs to one formation event, not every future occurrence of the\n    # same price. Fine log-price quantization remains scale-free across instruments.\n    identity = pool.identity or "+".join(\n        sorted(part for part in pool.kind.split("+") if part)\n    ) or "LEVEL"\n    return identity, round(float(np.log(pool.price)), 6)\n'''
+          text = text[:old_start] + replacement + text[old_end:]
+          path.write_text(text)
+          PY
+          cat > research/yt_trinity_ml/tests/test_liquidity_identity_time.py <<'PY'
+          from __future__ import annotations
+
+          import pandas as pd
+
+          from system.corpus_alpha import (
+              _liquidity_pools,
+              _pool_key,
+              _select_draw_target,
+          )
+
+
+          def _row(timestamp: str, identity_ns: int) -> pd.Series:
+              row = pd.Series(
+                  {
+                      "previous_day_high": 100.0,
+                      "previous_day_high_identity_ns": float(identity_ns),
+                      "previous_day_low": 90.0,
+                      "previous_day_low_identity_ns": float(identity_ns),
+                  }
+              )
+              row.name = pd.Timestamp(timestamp)
+              return row
+
+
+          def test_same_price_on_new_day_is_a_new_liquidity_pool() -> None:
+              first = _liquidity_pools(
+                  _row("2021-01-02T00:00:00Z", 1_609_459_200_000_000_000),
+                  True,
+                  1.0,
+                  0.01,
+              )[0]
+              later = _liquidity_pools(
+                  _row("2023-01-02T00:00:00Z", 1_672_617_600_000_000_000),
+                  True,
+                  1.0,
+                  0.01,
+              )[0]
+              assert first.price == later.price == 100.0
+              assert _pool_key(first) != _pool_key(later)
+
+
+          def test_consumed_old_pool_does_not_block_new_same_price_draw() -> None:
+              first = _liquidity_pools(
+                  _row("2021-01-02T00:00:00Z", 1_609_459_200_000_000_000),
+                  True,
+                  1.0,
+                  0.01,
+              )[0]
+              later = _liquidity_pools(
+                  _row("2023-01-02T00:00:00Z", 1_672_617_600_000_000_000),
+                  True,
+                  1.0,
+                  0.01,
+              )[0]
+              selected = _select_draw_target(
+                  [later],
+                  1,
+                  99.0,
+                  89.0,
+                  {_pool_key(first)},
+                  minimum_quality=4,
+              )
+              assert selected is not None
+              assert selected.price == 100.0
+
+
+          def test_consumed_exact_formation_remains_consumed() -> None:
+              pool = _liquidity_pools(
+                  _row("2023-01-02T00:00:00Z", 1_672_617_600_000_000_000),
+                  True,
+                  1.0,
+                  0.01,
+              )[0]
+              selected = _select_draw_target(
+                  [pool],
+                  1,
+                  99.0,
+                  89.0,
+                  {_pool_key(pool)},
+                  minimum_quality=4,
+              )
+              assert selected is None
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/corpus_alpha.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_liquidity_identity_time.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py
+          git rm .github/workflows/yt-trinity-liquidity-identity-time.yml
+      - name: Wire and commit time-bound liquidity identity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/yt-trinity-history-model-screen.yml')
+          text = workflow.read_text()
+          head = text.split('permissions:')[0]
+          if 'test_liquidity_identity_time.py' not in head:
+              anchor = '      - research/yt_trinity_ml/tests/test_causal_action_history_model.py\n'
+              text = text.replace(
+                  anchor,
+                  anchor + '      - research/yt_trinity_ml/tests/test_liquidity_identity_time.py\n',
+                  1,
+              )
+          body = text[text.index('pytest -q'):]
+          if 'test_liquidity_identity_time.py' not in body:
+              anchor = '              research/yt_trinity_ml/tests/test_causal_action_history_model.py \\\n'
+              text = text.replace(
+                  anchor,
+                  anchor + '              research/yt_trinity_ml/tests/test_liquidity_identity_time.py \\\n',
+                  1,
+              )
+          workflow.write_text(text)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/yt-trinity-history-model-screen.yml \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_liquidity_identity_time.py
+          git commit -m 'Bind liquidity consumption to formation time'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
