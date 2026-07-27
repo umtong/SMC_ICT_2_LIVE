@@ -1,0 +1,55 @@
+name: Swipalnam reproducible PyArrow wheelhouse
+
+on:
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - .github/workflows/swipalnam-pyarrow-wheelhouse-pr.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swipalnam-pyarrow-wheelhouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheelhouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download Linux CPython 3.12 PyArrow wheel and hashes
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/wheelhouse
+          python -m pip download \
+            --only-binary=:all: \
+            --no-deps \
+            --dest artifact/wheelhouse \
+            "pyarrow==21.0.0"
+          sha256sum artifact/wheelhouse/* > artifact/wheelhouse/SHA256SUMS
+          python - <<'PY'
+          import json
+          import platform
+          import sys
+          from pathlib import Path
+          Path('artifact/wheelhouse/ENVIRONMENT.json').write_text(json.dumps({
+              'python': sys.version,
+              'platform': platform.platform(),
+              'implementation': platform.python_implementation(),
+          }, indent=2, sort_keys=True) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-pyarrow-cp312-linux-x86_64
+          path: artifact/wheelhouse
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

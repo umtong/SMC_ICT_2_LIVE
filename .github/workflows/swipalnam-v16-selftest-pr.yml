@@ -1,0 +1,39 @@
+name: Swipalnam V16 causal boundary self-test
+
+on:
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v16_causal_boundary.py
+      - .github/workflows/swipalnam-v16-selftest-pr.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swipalnam-v16-selftest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+      - name: Compile and execute V16 invariants
+        run: |
+          set -euo pipefail
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v16_causal_boundary.py --self-test

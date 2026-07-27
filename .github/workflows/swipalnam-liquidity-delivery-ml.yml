@@ -1,0 +1,234 @@
+name: Swipalnam liquidity-delivery SMC ICT ML
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py
+      - research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+      - .github/workflows/swipalnam-liquidity-delivery-ml.yml
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py
+      - research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+      - .github/workflows/swipalnam-liquidity-delivery-ml.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-liquidity-delivery-ml-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_ROOT: artifact/canonical
+  RESULT_ROOT: artifact/swipalnam_smc_ml
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  causal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+
+      - name: Compile and run causal invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py \
+            research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py --self-test
+
+      - name: Restore cached canonical core
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-core-btceth-2023-2024h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+
+      - name: Restore canonical Actions artifacts or rebuild exact missing shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ -f "$shard/DATASET_MANIFEST.json" ]]; then
+                echo "reuse cache $segment $symbol"
+                continue
+              fi
+              if python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --segment "$segment" \
+                --symbol "$symbol" \
+                --destination-root "$CANONICAL_ROOT"; then
+                echo "restored artifact $segment $symbol"
+              else
+                echo "artifact unavailable; rebuilding exact shard $segment $symbol"
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                | tee "$shard/RESEARCH_VERIFICATION.json"
+            done
+          done
+
+      - name: Run pre-2024 selection and causal 2024H1 evaluation
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 45 \
+            2>&1 | tee "$RESULT_ROOT/STDOUT.log"
+
+      - name: Publish compact run summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["RESULT_ROOT"])
+          path = root / "RUN_SUMMARY.json"
+          if not path.exists():
+              raise SystemExit("RUN_SUMMARY.json missing")
+          summary = json.loads(path.read_text(encoding="utf-8"))
+          pre = summary.get("pre2024_metrics") or {}
+          h1 = summary.get("provisional_2024h1_metrics") or {}
+          lines = [
+              "## Swipalnam liquidity-delivery SMC/ICT ML",
+              f"- decision: `{summary.get('decision')}`",
+              f"- target hit in 2024H1: `{summary.get('target_hit_2024h1')}`",
+              f"- raw candidates: `{summary.get('candidate_count')}`",
+              f"- selected retraining: `{summary.get('selected_retraining_policy')}`",
+              f"- pre-2024 geometric daily growth: `{pre.get('geometric_daily_growth')}`",
+              f"- pre-2024 account multiple: `{pre.get('account_multiple')}`",
+              f"- pre-2024 trades: `{pre.get('completed_trades')}`",
+              f"- 2024H1 geometric daily growth: `{h1.get('geometric_daily_growth')}`",
+              f"- 2024H1 account multiple: `{h1.get('account_multiple')}`",
+              f"- 2024H1 max drawdown: `{h1.get('max_drawdown')}`",
+              f"- 2024H1 trades: `{h1.get('completed_trades')}`",
+          ]
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
+              handle.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-liquidity-delivery-ml-${{ github.sha }}
+          path: artifact/swipalnam_smc_ml
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist recoverable result pointer
+        if: success() && github.event_name != 'pull_request'
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          summary_path = Path(os.environ["RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          pre = summary.get("pre2024_metrics") or {}
+          h1 = summary.get("provisional_2024h1_metrics") or {}
+          pointer = {
+              "schema_version": 1,
+              "system_id": summary.get("system_id"),
+              "source_sha": os.environ["SOURCE_SHA"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+              "artifact_name": f"swipalnam-liquidity-delivery-ml-{os.environ['SOURCE_SHA']}",
+              "run_summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              "decision": summary.get("decision"),
+              "target_hit_2024h1": summary.get("target_hit_2024h1"),
+              "candidate_count": summary.get("candidate_count"),
+              "selected_structural_configuration": summary.get("selected_structural_configuration"),
+              "selected_retraining_policy": summary.get("selected_retraining_policy"),
+              "selected_ml_score_threshold": summary.get("selected_ml_score_threshold"),
+              "selected_account_configuration": summary.get("selected_account_configuration"),
+              "pre2024_metrics": pre,
+              "provisional_2024h1_metrics": h1,
+          }
+          path = Path("research/swipalnam_smc_ml/RUN_POINTER.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          growth = h1.get("geometric_daily_growth")
+          multiple = h1.get("account_multiple")
+          trades = h1.get("completed_trades")
+          decision = re.sub(r"[^A-Za-z0-9_-]+", "-", str(summary.get("decision")))[:40]
+          Path("artifact/commit-message.txt").write_text(
+              f"Record Swipalnam H1 g={growth} multiple={multiple} trades={trades} {decision}\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_POINTER.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -F artifact/commit-message.txt
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$BRANCH_NAME"
+            if git push origin "HEAD:$BRANCH_NAME"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1

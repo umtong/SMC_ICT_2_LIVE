@@ -1,0 +1,225 @@
+name: Swipalnam one-shot causal calendar hotfix and screen
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - .github/workflows/swipalnam-one-shot-calendar-hotfix.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-one-shot-calendar-hotfix
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_ROOT: artifact/canonical
+  RESULT_ROOT: artifact/swipalnam_smc_ml_hotfix
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+  TARGET_SCRIPT: research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py
+  SELF_PATH: .github/workflows/swipalnam-one-shot-calendar-hotfix.yml
+
+jobs:
+  patch-and-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Patch causal calendar features and strengthen the invariant test
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin "$GITHUB_REF_NAME"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py")
+          text = path.read_text(encoding="utf-8")
+          old = '    dt = pd.to_datetime(out["start_time_ms"], unit="ms", utc=True)\n'
+          new = '    dt = pd.DatetimeIndex(pd.to_datetime(out["start_time_ms"], unit="ms", utc=True))\n'
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit("calendar conversion target not found")
+
+          marker = '    assert len(resample(minute, 5)) == 60\n'
+          invariant = (
+              marker
+              + '    enriched = enrich(resample(minute, 5), 5, {}, minute)\n'
+              + '    assert len(enriched) == 60\n'
+              + '    assert {"prev_day_high", "prev_session_high", "session_bucket", "hour_sin"}.issubset(enriched.columns)\n'
+          )
+          if '    enriched = enrich(resample(minute, 5), 5, {}, minute)\n' not in text:
+              if marker not in text:
+                  raise SystemExit("self-test insertion point not found")
+              text = text.replace(marker, invariant, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+          python -m py_compile "$TARGET_SCRIPT"
+          python "$TARGET_SCRIPT" --self-test
+
+      - name: Persist the executable hotfix and remove the one-shot carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$TARGET_SCRIPT"
+          git rm "$SELF_PATH"
+          git commit -m "Fix causal calendar feature construction"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then
+              break
+            fi
+            if [[ "$attempt" == 5 ]]; then exit 1; fi
+            sleep $((attempt * 2))
+          done
+          echo "PATCHED_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+
+      - name: Re-run compiled causal invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py \
+            research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py --self-test
+
+      - name: Restore cached canonical core
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-core-btceth-2023-2024h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+
+      - name: Restore canonical artifacts or rebuild exact missing shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ -f "$shard/DATASET_MANIFEST.json" ]]; then
+                echo "reuse cache $segment $symbol"
+                continue
+              fi
+              if python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --segment "$segment" \
+                --symbol "$symbol" \
+                --destination-root "$CANONICAL_ROOT"; then
+                echo "restored artifact $segment $symbol"
+              else
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                | tee "$shard/RESEARCH_VERIFICATION.json"
+            done
+          done
+
+      - name: Run fixed pre-2024 selection and causal 2024H1 evaluation
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 45 \
+            2>&1 | tee "$RESULT_ROOT/STDOUT.log"
+
+      - name: Persist fixed result pointer
+        if: success()
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          summary_path = Path(os.environ["RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          pointer = {
+              "schema_version": 2,
+              "system_id": summary.get("system_id"),
+              "source_sha": os.environ["PATCHED_SOURCE_SHA"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+              "artifact_name": f"swipalnam-calendar-hotfix-{os.environ['PATCHED_SOURCE_SHA']}",
+              "run_summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              "decision": summary.get("decision"),
+              "target_hit_2024h1": summary.get("target_hit_2024h1"),
+              "candidate_count": summary.get("candidate_count"),
+              "selected_structural_configuration": summary.get("selected_structural_configuration"),
+              "selected_retraining_policy": summary.get("selected_retraining_policy"),
+              "selected_ml_score_threshold": summary.get("selected_ml_score_threshold"),
+              "selected_account_configuration": summary.get("selected_account_configuration"),
+              "pre2024_metrics": summary.get("pre2024_metrics"),
+              "provisional_2024h1_metrics": summary.get("provisional_2024h1_metrics"),
+          }
+          path = Path("research/swipalnam_smc_ml/RUN_POINTER.json")
+          path.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          git add research/swipalnam_smc_ml/RUN_POINTER.json
+          git commit -m "Record fixed Swipalnam causal H1 result"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Upload fixed immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-calendar-hotfix-${{ env.PATCHED_SOURCE_SHA || github.sha }}
+          path: artifact/swipalnam_smc_ml_hotfix
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90

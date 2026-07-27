@@ -1,0 +1,82 @@
+name: Swipalnam V15 self-test diagnostic
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - .github/workflows/swipalnam-v15-selftest-diagnostic.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: swipalnam-v15-selftest-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" "scikit-learn>=1.5" "requests>=2.32"
+      - name: Capture compile and self-test result
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifact/v15_selftest
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py \
+            > >(tee artifact/v15_selftest/COMPILE.log) 2>&1
+          compile_code=$?
+          test_code=99
+          if [[ "$compile_code" == "0" ]]; then
+            python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py --self-test \
+              > >(tee artifact/v15_selftest/SELF_TEST.log) 2>&1
+            test_code=$?
+          fi
+          COMPILE_CODE="$compile_code" TEST_CODE="$test_code" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def tail(path):
+              p = Path(path)
+              if not p.exists():
+                  return "missing"
+              return "\n".join(p.read_text(encoding="utf-8", errors="replace").splitlines()[-120:])[-20000:]
+
+          payload = {
+              "schema_version": 1,
+              "compile_exit_code": int(os.environ["COMPILE_CODE"]),
+              "self_test_exit_code": int(os.environ["TEST_CODE"]),
+              "compile_tail": tail("artifact/v15_selftest/COMPILE.log"),
+              "self_test_tail": tail("artifact/v15_selftest/SELF_TEST.log"),
+          }
+          Path("research/swipalnam_smc_ml/RUN_STATUS_V15_SELFTEST.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Commit diagnostic status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_STATUS_V15_SELFTEST.json
+          git commit -m "Record V15 self-test diagnostic"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

@@ -1,0 +1,342 @@
+name: Swipalnam one-shot causal core fix and V11 exact-NAV evaluation
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - .github/workflows/swipalnam-one-shot-causal-core-fix.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-one-shot-causal-core-fix
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTHONHASHSEED: "0"
+  CANONICAL_ROOT: artifact/canonical
+  H1_RESULT_ROOT: artifact/swipalnam_smc_ml_v14_causal_regime_h1
+  FULL_RESULT_ROOT: artifact/swipalnam_smc_ml_v14_causal_regime_full
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  fix-and-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies before executable validation
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+          mkdir -p "$H1_RESULT_ROOT" "$FULL_RESULT_ROOT"
+
+      - name: Remove evaluation leakage and repair realistic account execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin "$GITHUB_REF_NAME"
+          python - <<'PY'
+          from pathlib import Path
+
+          ROOT = Path("research/swipalnam_smc_ml/experiments")
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              if old not in text:
+                  if new in text:
+                      return
+                  raise SystemExit(f"replacement target missing: {path}: {old[:100]!r}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          base = ROOT / "liquidity_delivery_ml.py"
+          replace_once(
+              base,
+              '    dt = pd.to_datetime(out["start_time_ms"], unit="ms", utc=True)\n',
+              '    dt = pd.DatetimeIndex(pd.to_datetime(out["start_time_ms"], unit="ms", utc=True))\n',
+          )
+          replace_once(
+              base,
+              '''def feature_matrix(frame: pd.DataFrame) -> pd.DataFrame:\n    work = frame.copy()\n    work["symbol_code"] = work["symbol"].map({symbol: i for i, symbol in enumerate(sorted(work["symbol"].unique()))})\n    for name in FEATURES:\n        if name not in work:\n            work[name] = np.nan\n    x = work[FEATURES].replace([np.inf, -np.inf], np.nan)\n    return x.fillna(x.median().fillna(0)).astype(float)\n''',
+              '''def feature_matrix(frame: pd.DataFrame) -> pd.DataFrame:\n    work = frame.copy()\n    # Stable encoding prevents the active symbol set from changing feature meaning.\n    work["symbol_code"] = work["symbol"].map({"BTCUSDT": 0, "ETHUSDT": 1, "SOLUSDT": 2, "XRPUSDT": 3})\n    for name in FEATURES:\n        if name not in work:\n            work[name] = np.nan\n    # HistGradientBoosting learns missing-value routing natively.  Whole-frame\n    # medians would make an earlier decision depend on the future distribution.\n    return work[FEATURES].replace([np.inf, -np.inf], np.nan).astype(float)\n''',
+          )
+          replace_once(base, 'HistGradientBoostingRegressor(loss="huber",', 'HistGradientBoostingRegressor(loss="absolute_error",')
+          replace_once(
+              base,
+              '    assert len(resample(minute, 5)) == 60\n    assert abs(geometric_growth(pd.Series([100, 101, 102.01]))-0.01) < 1e-9\n',
+              '''    assert len(resample(minute, 5)) == 60\n    enriched = enrich(resample(minute, 5), 5, {}, minute)\n    assert len(enriched) == 60\n    assert {"prev_day_high", "prev_session_high", "session_bucket", "hour_sin"}.issubset(enriched.columns)\n    sample = pd.DataFrame({\n        "symbol": ["BTCUSDT"] * 80,\n        "direction": np.where(np.arange(80) % 2 == 0, 1, -1),\n        "displacement_body_atr": np.linspace(0.2, 1.8, 80),\n    })\n    x = feature_matrix(sample)\n    assert x.isna().any().any()\n    classifier, regressor = model_pair(17)\n    binary = pd.Series(np.arange(80) % 2)\n    target = pd.Series(np.sin(np.arange(80) / 7))\n    classifier.fit(x, binary)\n    regressor.fit(x, target)\n    assert np.isfinite(classifier.predict_proba(x.iloc[:2])).all()\n    assert np.isfinite(regressor.predict(x.iloc[:2])).all()\n    assert abs(geometric_growth(pd.Series([100, 101, 102.01]))-0.01) < 1e-9\n''',
+          )
+
+          v5 = ROOT / "liquidity_delivery_ml_v5_nav.py"
+          replace_once(
+              v5,
+              '''def _turnover_window(minute: pd.DataFrame, timestamp_ms: int, bars: int = 60) -> float:\n    pos = _minute_index(minute, timestamp_ms, "left")\n    return float(minute["turnover"].iloc[max(0, pos - bars):pos + 1].sum())\n''',
+              '''def _turnover_window(minute: pd.DataFrame, timestamp_ms: int, bars: int = 60) -> float:\n    # Only bars whose declared availability time has elapsed may determine impact.\n    available = minute["available_at_ms"].to_numpy(np.int64)\n    pos = int(np.searchsorted(available, timestamp_ms, side="right"))\n    return float(minute["turnover"].iloc[max(0, pos - bars):pos].sum())\n''',
+          )
+          replace_once(
+              v5,
+              '''def _impact_rate(notional: float, local_turnover: float, impact_bps: float) -> float:\n    participation = notional / max(local_turnover, notional, v1.EPS)\n    return impact_bps * math.sqrt(max(participation, 0.0)) / 10_000\n''',
+              '''def _impact_rate(notional: float, local_turnover: float, impact_bps: float) -> float:\n    # Participation is deliberately not capped at one; oversize orders must become\n    # increasingly expensive instead of receiving a fixed maximum impact.\n    participation = notional / max(local_turnover, v1.EPS)\n    return impact_bps * math.sqrt(max(participation, 0.0)) / 10_000\n''',
+          )
+          text = v5.read_text(encoding="utf-8")
+          start_marker = '''        direction = int(row.direction)\n        entry = float(row.entry_price)\n'''
+          end_marker = '''        partial_time, tp1 = _partial_event(row, minute_by_symbol[str(row.symbol)])\n'''
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit("V5 sizing block not found")
+          new_block = '''        direction = int(row.direction)\n        entry = float(row.entry_price)\n        stop_quote = float(row.stop_price)\n        stop_exec = stop_quote * (1 - direction * embedded_slippage)\n        stop_distance = abs(entry - stop_exec)\n        planned_loss = nav * float(account.risk_fraction)\n        local_turnover = _turnover_window(minute_by_symbol[str(row.symbol)], int(row.entry_time_ms))\n        max_quantity = nav * float(account.leverage) / entry\n        quantity = min(\n            planned_loss / max(stop_distance + (entry + stop_exec) * fee_rate, v1.EPS),\n            max_quantity,\n        )\n        # Solve quantity and participation-sensitive impact together.\n        for _ in range(16):\n            provisional_notional = quantity * entry\n            provisional_impact = _impact_rate(provisional_notional, local_turnover, float(account.impact_bps))\n            expected_loss_per_unit = stop_distance + (entry + stop_exec) * (fee_rate + provisional_impact)\n            solved = min(planned_loss / max(expected_loss_per_unit, v1.EPS), max_quantity)\n            if abs(solved - quantity) <= max(1e-12, quantity * 1e-8):\n                quantity = solved\n                break\n            quantity = 0.5 * quantity + 0.5 * solved\n        if quantity <= 0:\n            continue\n        notional = quantity * entry\n        entry_impact = _impact_rate(notional, local_turnover, float(account.impact_bps))\n        effective_leverage = notional / max(nav, v1.EPS)\n        stop_pct = stop_distance / entry\n        liquidation_distance = max(\n            0.0,\n            1 / max(effective_leverage, v1.EPS) - float(account.maintenance_margin_rate) - 2 * fee_rate,\n        )\n        if stop_pct >= 0.90 * liquidation_distance:\n            liquidation_events += 1\n            continue\n\n'''
+          v5.write_text(text[:start] + new_block + text[end:], encoding="utf-8")
+          replace_once(
+              v5,
+              '        partial_cost = quantity * partial_fraction * tp1 * (fee_rate + partial_impact)\n',
+              '        partial_cost = quantity * partial_fraction * tp1 * (fee_rate + embedded_slippage + partial_impact)\n',
+          )
+          replace_once(
+              v5,
+              '            "notional": notional,\n            "planned_loss": planned_loss,\n',
+              '            "notional": notional,\n            "effective_leverage": effective_leverage,\n            "planned_loss": planned_loss,\n',
+          )
+
+          v6 = ROOT / "liquidity_delivery_ml_v6_replacement.py"
+          replace_once(
+              v6,
+              '''    score_scale = float(eligible["ml_score"].std(ddof=0))\n    if not np.isfinite(score_scale) or score_scale <= 0:\n        score_scale = max(abs(float(eligible["ml_score"].median())), 1e-6)\n    margin = replacement_sigma * score_scale\n''',
+              '''    # The replacement threshold is selected on pre-2024 data and then\n    # expressed only relative to that frozen ML acceptance threshold.\n    margin = float(replacement_sigma) * max(abs(float(threshold)), 0.10)\n''',
+          )
+
+          v7 = ROOT / "liquidity_delivery_ml_v7_confidence_risk.py"
+          text = v7.read_text(encoding="utf-8")
+          start = text.find('def _risk_multiplier(score: float, frame, threshold: float, maximum: float) -> float:\n')
+          end = text.find('\n\n# Keep one audited account implementation.', start)
+          if start < 0 or end < 0:
+              raise SystemExit("V7 risk multiplier block not found")
+          new_function = '''def _risk_multiplier(score: float, frame, threshold: float, maximum: float) -> float:\n    # Account risk at time t cannot depend on score quantiles observed later in\n    # the evaluation period.  Scale only from the preselected threshold.\n    denominator = max(abs(float(threshold)), 0.10)\n    normalized = float(np.clip((score - float(threshold)) / denominator, 0.0, 1.0))\n    return 0.35 + (float(maximum) - 0.35) * normalized ** 1.5\n'''
+          v7.write_text(text[:start] + new_function + text[end:], encoding="utf-8")
+          PY
+
+      - name: Compile and test repaired causal invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v11_regime_features.py --self-test
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+          root = Path("research/swipalnam_smc_ml/experiments").resolve()
+          sys.path.insert(0, str(root))
+          import liquidity_delivery_ml_v5_nav as v5
+          import liquidity_delivery_ml_v7_confidence_risk as v7
+          assert v5._impact_rate(400.0, 100.0, 4.0) > v5._impact_rate(100.0, 100.0, 4.0)
+          bars = pd.DataFrame({"available_at_ms": [1000, 2000], "turnover": [10.0, 1_000_000.0]})
+          assert v5._turnover_window(bars, 1500) == 10.0
+          assert v7._risk_multiplier(0.4, None, 0.2, 2.0) == v7._risk_multiplier(0.4, object(), 0.2, 2.0)
+          print("CAUSAL_CORE_FIX_SELF_TEST_PASS")
+          PY
+
+      - name: Persist repaired engine and remove one-shot carriers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v5_nav.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v6_replacement.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v7_confidence_risk.py
+          git rm -f \
+            .github/workflows/swipalnam-one-shot-calendar-hotfix.yml \
+            .github/workflows/swipalnam-one-shot-causal-core-fix.yml
+          git commit -m "Repair causal ML and exact-NAV execution core"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then
+              break
+            fi
+            if [[ "$attempt" == 5 ]]; then exit 1; fi
+            sleep $((attempt * 2))
+          done
+          echo "PATCHED_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Restore BTC ETH pre-2024 and 2024H1 canonical shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" --segment "$segment" --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" --symbol "$symbol" --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 --max-attempts 8 --min-request-interval 0.10 --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" > "$shard/RESEARCH_VERIFICATION_V14.json"
+            done
+          done
+
+      - name: Run repaired V11 regime-gated exact-NAV 2024H1 replay
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v11_regime_features.py \
+            --data-root "$CANONICAL_ROOT" --output "$H1_RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 50 2>&1 | tee "$H1_RESULT_ROOT/STDOUT.log"
+
+      - name: Decide whether economic alpha merits continuous full-period replay
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          path = Path(os.environ["H1_RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          summary = json.loads(path.read_text(encoding="utf-8"))
+          h1 = summary.get("provisional_2024h1_metrics") or {}
+          advance = (
+              float(h1.get("geometric_daily_growth") or -1) > 0
+              and int(h1.get("completed_trades") or 0) >= 20
+              and int(h1.get("liquidation_events") or 0) == 0
+          )
+          with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as fh:
+              fh.write(f"ADVANCE_FULL={'true' if advance else 'false'}\n")
+          print(json.dumps({"advance_full": advance, "h1": h1}, indent=2))
+          PY
+
+      - name: Restore remaining canonical evaluation shards
+        if: env.ADVANCE_FULL == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" --segment "$segment" --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" --symbol "$symbol" --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 --max-attempts 8 --min-request-interval 0.10 --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" > "$shard/RESEARCH_VERIFICATION_V14.json"
+            done
+          done
+
+      - name: Run continuous 2024 through 2026H1 exact-NAV replay
+        if: env.ADVANCE_FULL == 'true'
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v11_regime_features.py \
+            --data-root "$CANONICAL_ROOT" --output "$FULL_RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1 \
+            --train-start 2023-01-01T00:00:00Z --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2026-07-01T00:00:00Z \
+            --minimum-candidates 50 2>&1 | tee "$FULL_RESULT_ROOT/STDOUT.log"
+
+      - name: Persist causal V11 result pointers
+        if: success()
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          def pointer(source: Path, stage: str) -> dict:
+              summary = json.loads(source.read_text(encoding="utf-8"))
+              return {
+                  "schema_version": 14,
+                  "variant": "cross_timeframe_exact_nav_causal_replacement_confidence_aligned_target_ladder_gap_entry_regime",
+                  "system_id": "SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V14-CAUSAL-REGIME",
+                  "validation_stage": stage,
+                  "source_sha": os.environ["PATCHED_SOURCE_SHA"],
+                  "workflow_run_id": int(os.environ["RUN_ID"]),
+                  "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+                  "run_summary_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                  "decision": summary.get("decision"),
+                  "target_hit": summary.get("target_hit_2024h1"),
+                  "candidate_count": summary.get("candidate_count"),
+                  "selected_structural_configuration": summary.get("selected_structural_configuration"),
+                  "selected_retraining_policy": summary.get("selected_retraining_policy"),
+                  "selected_ml_score_threshold": summary.get("selected_ml_score_threshold"),
+                  "selected_account_configuration": summary.get("selected_account_configuration"),
+                  "pre2024_metrics": summary.get("pre2024_metrics"),
+                  "evaluation_metrics": summary.get("provisional_2024h1_metrics"),
+              }
+
+          h1_source = Path(os.environ["H1_RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          Path("research/swipalnam_smc_ml/RUN_POINTER_V14_CAUSAL_REGIME_H1.json").write_text(
+              json.dumps(pointer(h1_source, "causal_2024H1_exact_NAV"), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          full_source = Path(os.environ["FULL_RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          if full_source.exists():
+              Path("research/swipalnam_smc_ml/RUN_POINTER_V14_CAUSAL_REGIME_FULL.json").write_text(
+                  json.dumps(pointer(full_source, "continuous_2024_2026H1_exact_NAV"), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                  encoding="utf-8",
+              )
+          PY
+          git add research/swipalnam_smc_ml/RUN_POINTER_V14_CAUSAL_REGIME_*.json
+          git commit -m "Record causal regime exact-NAV evaluation"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Upload immutable causal-regime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-causal-core-v14-${{ env.PATCHED_SOURCE_SHA || github.sha }}
+          path: |
+            artifact/swipalnam_smc_ml_v14_causal_regime_h1
+            artifact/swipalnam_smc_ml_v14_causal_regime_full
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90

@@ -1,0 +1,162 @@
+name: Swipalnam liquidity-delivery SMC ICT ML V11 regime features
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v2.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v2_fixed.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3_runner.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3_fast_runner.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v4_cross_tf.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v5_nav.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v6_replacement.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v7_confidence_risk.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v8_aligned_labels.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v9_target_ladder.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v10_gap_entry.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v11_regime_features.py
+      - research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+      - .github/workflows/swipalnam-liquidity-delivery-ml-v11-regime-features.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-liquidity-delivery-ml-v11-regime-features-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTHONHASHSEED: "0"
+  CANONICAL_ROOT: artifact/canonical
+  RESULT_ROOT: artifact/swipalnam_smc_ml_v11_regime_features
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  causal-regime-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" "scikit-learn>=1.5" "requests>=2.32"
+      - name: Compile and self-test
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v11_regime_features.py --self-test
+      - name: Restore reusable canonical core
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-core-btceth-2023-2024h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+      - name: Restore artifacts or rebuild exact missing shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" --segment "$segment" --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" --symbol "$symbol" --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 --max-attempts 8 --min-request-interval 0.10 --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" > "$shard/RESEARCH_VERIFICATION_V11.json"
+            done
+          done
+      - name: Run regime-gated pre-2024 selection and 2024H1 replay
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v11_regime_features.py \
+            --data-root "$CANONICAL_ROOT" --output "$RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 50 2>&1 | tee "$RESULT_ROOT/STDOUT.log"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-liquidity-delivery-ml-v11-regime-features-${{ github.sha }}
+          path: artifact/swipalnam_smc_ml_v11_regime_features
+          if-no-files-found: error
+          retention-days: 90
+      - name: Persist V11 pointer
+        if: success()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          src = Path(os.environ['RESULT_ROOT']) / 'RUN_SUMMARY.json'
+          s = json.loads(src.read_text())
+          p = {
+              'schema_version': 11,
+              'variant': 'cross_timeframe_exact_nav_replacement_confidence_risk_aligned_labels_target_ladder_gap_entry_regime_features',
+              'system_id': 'SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V11-REGIME',
+              'validation_stage': 'causal_2024H1_exact_NAV_regime_features',
+              'source_sha': os.environ['SOURCE_SHA'],
+              'workflow_run_id': int(os.environ['RUN_ID']),
+              'workflow_run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'artifact_name': f"swipalnam-liquidity-delivery-ml-v11-regime-features-{os.environ['SOURCE_SHA']}",
+              'run_summary_sha256': hashlib.sha256(src.read_bytes()).hexdigest(),
+              'decision': s.get('decision'),
+              'target_hit_2024h1': s.get('target_hit_2024h1'),
+              'candidate_count': s.get('candidate_count'),
+              'selected_structural_configuration': s.get('selected_structural_configuration'),
+              'selected_retraining_policy': s.get('selected_retraining_policy'),
+              'selected_ml_score_threshold': s.get('selected_ml_score_threshold'),
+              'selected_account_configuration': s.get('selected_account_configuration'),
+              'pre2024_metrics': s.get('pre2024_metrics'),
+              'provisional_2024h1_metrics': s.get('provisional_2024h1_metrics'),
+          }
+          out = Path('research/swipalnam_smc_ml/RUN_POINTER_V11_REGIME.json')
+          out.write_text(json.dumps(p, ensure_ascii=False, indent=2, sort_keys=True)+'\n')
+          h1 = p['provisional_2024h1_metrics'] or {}
+          Path('artifact/v11-commit-message.txt').write_text(
+              f"Record Swipalnam V11 regime H1 g={h1.get('geometric_daily_growth')} multiple={h1.get('account_multiple')} trades={h1.get('completed_trades')}\n"
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_POINTER_V11_REGIME.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -F artifact/v11-commit-message.txt
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$BRANCH_NAME"
+            if git push origin "HEAD:$BRANCH_NAME"; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
