@@ -2,6 +2,12 @@ name: YT Trinity unified SMC v4 bootstrap and screen
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-smc-fidelity-screen.yml
+      - research/yt_trinity_ml/upgrade_chunks/unified_smc_v4.*
+      - control/yt-trinity-smc-v4-bootstrap-trigger.json
   push:
     branches: [agent/r22-yt-trinity-ml-001]
     paths:
@@ -107,6 +113,7 @@ jobs:
           } 2>&1 | tee artifact/bootstrap/test.log
 
       - name: Persist tested unified SMC v4 source
+        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           rm -f research/yt_trinity_ml/upgrade_chunks/unified_smc_v4.*
@@ -266,18 +273,20 @@ jobs:
             cd output
             find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
           )
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add research/yt_trinity_ml/SMC_FIDELITY_SCREEN_POINTER.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Record unified SMC v4 screen ${GITHUB_RUN_ID}"
-            TARGET_BRANCH='agent/r22-yt-trinity-ml-001'
-            for attempt in 1 2 3 4 5 6; do
-              git pull --rebase origin "${TARGET_BRANCH}"
-              if git push origin "HEAD:${TARGET_BRANCH}"; then break; fi
-              if [[ "${attempt}" == 6 ]]; then exit 1; fi
-              sleep $((attempt * 3))
-            done
+          if [[ "${GITHUB_EVENT_NAME}" == 'push' ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add research/yt_trinity_ml/SMC_FIDELITY_SCREEN_POINTER.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Record unified SMC v4 screen ${GITHUB_RUN_ID}"
+              TARGET_BRANCH='agent/r22-yt-trinity-ml-001'
+              for attempt in 1 2 3 4 5 6; do
+                git pull --rebase origin "${TARGET_BRANCH}"
+                if git push origin "HEAD:${TARGET_BRANCH}"; then break; fi
+                if [[ "${attempt}" == 6 ]]; then exit 1; fi
+                sleep $((attempt * 3))
+              done
+            fi
           fi
 
       - name: Upload immutable bootstrap and screen evidence
