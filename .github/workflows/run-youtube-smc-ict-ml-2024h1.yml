@@ -1,0 +1,166 @@
+name: Run transcript-grounded SMC ICT ML 2024H1
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/youtube_smc_ict_ml/**
+      - tests/test_youtube_smc_ict_ml.py
+      - .github/workflows/run-youtube-smc-ict-ml-2024h1.yml
+  push:
+    branches:
+      - agent/youtube-smc-ict-ml-core-20260727
+    paths:
+      - research/youtube_smc_ict_ml/**
+      - tests/test_youtube_smc_ict_ml.py
+      - .github/workflows/run-youtube-smc-ict-ml-2024h1.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: youtube-smc-ict-ml-2024h1-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_DATA_SHA: 957430b826cd649c0c002f62d606f2549b1eea0f
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  build-canonical-shards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        segment: [PRE_2024_2021, PRE_2024_2022, PRE_2024_2023, 2024_H1]
+        symbol: [BTCUSDT, ETHUSDT]
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out pinned canonical data implementation
+        run: |
+          git fetch --no-tags origin "$CANONICAL_DATA_SHA" --depth=1
+          git worktree add --detach /tmp/canonical-data "$CANONICAL_DATA_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install canonical data dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "pandas==2.2.3" \
+            "pyarrow==25.0.0" \
+            "requests==2.32.4"
+
+      - name: Build official causal shard
+        working-directory: /tmp/canonical-data
+        run: |
+          python scripts/market_data/build_canonical_bybit.py \
+            --segment "${{ matrix.segment }}" \
+            --symbol "${{ matrix.symbol }}" \
+            --base-url "$BYBIT_PUBLIC_BASE_URL" \
+            --timeout 30 \
+            --max-attempts 8 \
+            --min-request-interval 0.10 \
+            --out "$GITHUB_WORKSPACE/shard"
+
+      - name: Verify immutable shard
+        working-directory: /tmp/canonical-data
+        run: |
+          python scripts/market_data/verify_canonical_bybit.py \
+            "$GITHUB_WORKSPACE/shard/${{ matrix.segment }}/${{ matrix.symbol }}" \
+            | tee "$GITHUB_WORKSPACE/shard/${{ matrix.segment }}/${{ matrix.symbol }}/VERIFICATION.json"
+
+      - name: Upload shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-smc-canonical-${{ matrix.segment }}-${{ matrix.symbol }}
+          path: shard
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  evaluate:
+    needs: build-canonical-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "numpy==2.3.5" \
+            "pandas==2.2.3" \
+            "pyarrow==25.0.0" \
+            "scikit-learn==1.8.0" \
+            "joblib>=1.4" \
+            "pytest==8.3.4"
+
+      - name: Download canonical shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: yt-smc-canonical-*
+          path: canonical_data
+          merge-multiple: true
+
+      - name: Verify causal simulator tests
+        run: PYTHONPATH=. pytest -q tests/test_youtube_smc_ict_ml.py
+
+      - name: Run pre-2024 preparation and 2024H1 evaluation
+        run: |
+          rm -rf artifacts/youtube_smc_ict_ml
+          PYTHONPATH=. python research/youtube_smc_ict_ml/run_research.py \
+            --data-root canonical_data \
+            --output artifacts/youtube_smc_ict_ml
+
+      - name: Print result summary
+        if: always()
+        run: |
+          if [[ -f artifacts/youtube_smc_ict_ml/SUMMARY.md ]]; then
+            cat artifacts/youtube_smc_ict_ml/SUMMARY.md
+          fi
+
+      - name: Package complete evidence
+        if: always()
+        run: |
+          if [[ -d artifacts/youtube_smc_ict_ml ]]; then
+            tar -C artifacts -czf youtube-smc-ict-ml-2024h1-evidence.tgz youtube_smc_ict_ml
+          fi
+
+      - name: Upload result evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-smc-ict-ml-2024h1-${{ github.run_id }}
+          path: |
+            youtube-smc-ict-ml-2024h1-evidence.tgz
+            artifacts/youtube_smc_ict_ml/RESULT.json
+            artifacts/youtube_smc_ict_ml/SUMMARY.md
+            artifacts/youtube_smc_ict_ml/ARTIFACT_MANIFEST.json
+            artifacts/youtube_smc_ict_ml/SHA256SUMS
+            artifacts/youtube_smc_ict_ml/2024H1_selected_metrics.json
+            artifacts/youtube_smc_ict_ml/2024H1_cost_stress_1p35x_metrics.json
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 30
