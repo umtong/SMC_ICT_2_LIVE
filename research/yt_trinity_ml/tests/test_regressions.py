@@ -151,3 +151,43 @@ def test_causal_asof_join_normalizes_nullable_and_numpy_epoch_keys() -> None:
 
     assert joined["available_at_ms"].dtype == np.dtype("int64")
     assert joined["mark_close"].tolist() == [100.5, 100.5]
+
+
+def test_causal_asof_join_preserves_independent_source_time_per_stream() -> None:
+    base = pd.DataFrame(
+        {
+            "available_at_ms": np.asarray([300_000, 600_000], dtype=np.int64),
+            "close": [101.0, 102.0],
+        },
+        index=pd.to_datetime(["1970-01-01T00:05:00Z", "1970-01-01T00:10:00Z"]),
+    )
+    mark = pd.DataFrame(
+        {
+            "available_at_ms": np.asarray([299_000, 599_000], dtype=np.int64),
+            "mark_close": [100.5, 101.5],
+        },
+        index=pd.DatetimeIndex(
+            pd.to_datetime(["1970-01-01T00:04:00Z", "1970-01-01T00:09:00Z"]),
+            name="timestamp",
+        ),
+    )
+    index = pd.DataFrame(
+        {
+            "available_at_ms": np.asarray([298_000, 598_000], dtype=np.int64),
+            "index_close": [100.4, 101.4],
+        },
+        index=pd.DatetimeIndex(
+            pd.to_datetime(["1970-01-01T00:03:00Z", "1970-01-01T00:08:00Z"]),
+            name="timestamp",
+        ),
+    )
+
+    joined = causal_asof_join(causal_asof_join(base, mark), index)
+
+    assert "mark_close_source_timestamp" in joined.columns
+    assert "index_close_source_timestamp" in joined.columns
+    assert "source_timestamp" not in joined.columns
+    assert joined["mark_close"].tolist() == [100.5, 101.5]
+    assert joined["index_close"].tolist() == [100.4, 101.4]
+    assert joined["mark_close_source_timestamp"].iloc[0] == pd.Timestamp("1970-01-01T00:04:00Z")
+    assert joined["index_close_source_timestamp"].iloc[0] == pd.Timestamp("1970-01-01T00:03:00Z")
