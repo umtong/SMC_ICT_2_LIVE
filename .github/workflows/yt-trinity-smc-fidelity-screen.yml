@@ -8,9 +8,12 @@ on:
     paths:
       - .github/workflows/yt-trinity-smc-fidelity-screen.yml
       - research/yt_trinity_ml/system/corpus_alpha.py
+      - research/yt_trinity_ml/system/model.py
+      - research/yt_trinity_ml/system/research_pipeline.py
       - research/yt_trinity_ml/run_primary_screen.py
       - research/yt_trinity_ml/INSTRUMENT_RULES.json
       - research/yt_trinity_ml/tests/test_corpus_alpha.py
+      - research/yt_trinity_ml/tests/test_action_value_model.py
 
 permissions:
   contents: write
@@ -116,6 +119,8 @@ jobs:
             python -m py_compile \
               research/yt_trinity_ml/system/corpus_alpha.py \
               research/yt_trinity_ml/system/canonical_adapter.py \
+              research/yt_trinity_ml/system/model.py \
+              research/yt_trinity_ml/system/research_pipeline.py \
               research/yt_trinity_ml/run_primary_screen.py
             pytest -q research/yt_trinity_ml/tests \
               --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
