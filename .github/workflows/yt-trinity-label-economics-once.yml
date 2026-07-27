@@ -1,0 +1,131 @@
+name: YT Trinity one-shot label economics
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-label-economics-once.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-label-economics-once
+  cancel-in-progress: false
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deterministic analysis dependencies
+        run: python -m pip install -q 'pandas==2.2.3' 'pyarrow==19.0.1' 'numpy==2.2.6'
+      - name: Download completed event-label checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8641680196/zip" \
+            -o /tmp/labels.zip
+          mkdir -p input output
+          unzip -q /tmp/labels.zip -d input
+          test -f input/EVENT_LABELS.parquet
+      - name: Summarize raw structure and action economics
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+
+          frame = pd.read_parquet('input/EVENT_LABELS.parquet')
+          def stats(series):
+              values = pd.to_numeric(series, errors='coerce').dropna().astype(float)
+              if values.empty:
+                  return {'count': 0}
+              return {
+                  'count': int(len(values)),
+                  'mean': float(values.mean()),
+                  'median': float(values.median()),
+                  'sum': float(values.sum()),
+                  'positive_fraction': float((values > 0).mean()),
+                  'p01': float(values.quantile(0.01)),
+                  'p10': float(values.quantile(0.10)),
+                  'p25': float(values.quantile(0.25)),
+                  'p75': float(values.quantile(0.75)),
+                  'p90': float(values.quantile(0.90)),
+                  'p99': float(values.quantile(0.99)),
+              }
+          def scope(rows):
+              filled = rows[pd.to_numeric(rows['passive_filled'], errors='coerce').eq(1)]
+              result = {
+                  'rows': int(len(rows)),
+                  'market_target_rate': float(pd.to_numeric(rows['market_target_before_stop'], errors='coerce').mean()) if len(rows) else None,
+                  'market_net_r': stats(rows['market_net_r']),
+                  'passive_fill_rate': float(pd.to_numeric(rows['passive_filled'], errors='coerce').mean()) if len(rows) else None,
+                  'passive_net_r_including_nonfill_zero': stats(rows['passive_net_r']),
+                  'passive_filled_rows': int(len(filled)),
+                  'passive_target_rate_given_fill': float(pd.to_numeric(filled['passive_target_before_stop'], errors='coerce').mean()) if len(filled) else None,
+                  'passive_net_r_given_fill': stats(filled['passive_net_r']) if len(filled) else {'count': 0},
+              }
+              for feature in ('raw_reward_risk','raw_structural_reward_risk','liquidity_quality','draw_target_quality','htf_bias_alignment','dealing_range_side_alignment','pd_array_kind','entry_confirmation_kind'):
+                  if feature in rows.columns:
+                      result[feature] = stats(rows[feature])
+              return result
+
+          groups = {'ALL': scope(frame)}
+          for symbol, rows in frame.groupby('symbol', sort=True):
+              groups[f'SYMBOL::{symbol}'] = scope(rows)
+          for family, rows in frame.groupby('family', sort=True):
+              groups[f'FAMILY::{family}'] = scope(rows)
+          for (symbol, family), rows in frame.groupby(['symbol','family'], sort=True):
+              groups[f'SYMBOL_FAMILY::{symbol}::{family}'] = scope(rows)
+
+          payload = {
+              'schema_version': 1,
+              'source_checkpoint_artifact_id': 8641680196,
+              'source_checkpoint_sha256': hashlib.sha256(Path('input/EVENT_LABELS.parquet').read_bytes()).hexdigest(),
+              'source_commit': os.environ['GITHUB_SHA'],
+              'row_count': int(len(frame)),
+              'column_count': int(len(frame.columns)),
+              'columns': list(frame.columns),
+              'event_start_min': pd.to_datetime(frame['event_start'], utc=True).min().isoformat() if len(frame) else None,
+              'event_start_max': pd.to_datetime(frame['event_start'], utc=True).max().isoformat() if len(frame) else None,
+              'event_end_max': pd.to_datetime(frame['event_end'], utc=True).max().isoformat() if len(frame) else None,
+              'groups': groups,
+              'ranking_effect': 'NONE_DIAGNOSTIC_PRE2024_COARSE',
+          }
+          out = Path('output/LABEL_ECONOMICS.json')
+          out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          Path('research/yt_trinity_ml/LABEL_ECONOMICS_POINTER.json').write_bytes(out.read_bytes())
+          PY
+      - name: Persist and upload result
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/LABEL_ECONOMICS_POINTER.json
+          git commit -m "Record YT Trinity raw label economics ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then break; fi
+            sleep $((attempt * 2))
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-label-economics-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 30
