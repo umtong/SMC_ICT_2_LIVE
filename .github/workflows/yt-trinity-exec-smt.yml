@@ -1,0 +1,97 @@
+name: YT Trinity isolated SMT opening-range BPR
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-exec-001]
+    paths:
+      - .github/workflows/yt-trinity-exec-smt.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-exec-smt-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install deterministic stack
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1' 'requests==2.32.3'
+      - name: Materialize immutable alpha source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_BLOB: 8ef34cd2bc3357d873bfa8d073328b8681f2157f
+        run: |
+          set -euo pipefail
+          mkdir -p research/yt_trinity_ml/experiments output cache
+          curl --fail --silent --show-error --location \
+            -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs/${SOURCE_BLOB}" -o /tmp/source.json
+          python - <<'PY'
+          import base64,json,os
+          from pathlib import Path
+          payload=json.loads(Path('/tmp/source.json').read_text()); raw=base64.b64decode(payload['content'])
+          path=Path('research/yt_trinity_ml/experiments/smt_or_bpr_screen.py'); path.write_bytes(raw)
+          Path('output/IMMUTABLE_SOURCE.py').write_bytes(raw)
+          Path('output/SOURCE_BINDING.json').write_text(json.dumps({'source_commit':'bd266a0338eb4c376ec092ad12b862cbdb1c7a94','source_blob':os.environ['SOURCE_BLOB'],'bytes':len(raw)},indent=2)+'\n')
+          PY
+          test "$(git hash-object research/yt_trinity_ml/experiments/smt_or_bpr_screen.py)" = "$SOURCE_BLOB"
+          python -m py_compile research/yt_trinity_ml/experiments/smt_or_bpr_screen.py research/yt_trinity_ml/system/public_archive.py
+          PYTHONPATH=research/yt_trinity_ml python research/yt_trinity_ml/experiments/smt_or_bpr_screen.py --self-test
+      - name: Run pre-2024 selection and conditional 2024H1
+        run: |
+          set +e
+          PYTHONPATH=research/yt_trinity_ml python research/yt_trinity_ml/experiments/smt_or_bpr_screen.py \
+            --cache-root cache --output output \
+            --corpus-pointer research/yt_trinity_ml/COMPLETE_CORPUS_POINTER.json \
+            --data-start 2021-01-01T00:00:00Z --selection-start 2022-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            2>&1 | tee output/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]} > output/EXIT_CODE.txt
+          exit 0
+      - name: Persist pointer on isolated branch
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('output'); path=root/'RUN_SUMMARY.json'; summary=json.loads(path.read_text()) if path.exists() else None
+          code=int((root/'EXIT_CODE.txt').read_text()) if (root/'EXIT_CODE.txt').exists() else 99
+          log=(root/'RUN_STDOUT.log').read_text(errors='replace') if (root/'RUN_STDOUT.log').exists() else ''
+          payload={'schema_version':1,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'scientific_source_commit':'bd266a0338eb4c376ec092ad12b862cbdb1c7a94','scientific_source_blob':'8ef34cd2bc3357d873bfa8d073328b8681f2157f','exit_code':code,'status':'success' if code==0 and summary is not None else 'execution_failure_not_economic_failure','summary':summary,'summary_sha256':hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None,'stdout_tail':log[-16000:],'ranking_effect':'NONE_COARSE_NOT_EVENT_TAPE_VALIDATED'}
+          Path('research/yt_trinity_ml/EXEC_SMT_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True,default=str)+'\n')
+          PY
+          git config user.name github-actions[bot]; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/yt_trinity_ml/EXEC_SMT_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record isolated SMT result ${GITHUB_RUN_ID}"
+            for i in 1 2 3 4 5; do git pull --rebase origin agent/r22-yt-trinity-ml-exec-001 && git push origin HEAD:agent/r22-yt-trinity-ml-exec-001 && break || sleep $((i*3)); done
+          fi
+      - name: Upload evidence
+        if: always()
+        run: (cd output && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-exec-smt-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fail after evidence preservation
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
