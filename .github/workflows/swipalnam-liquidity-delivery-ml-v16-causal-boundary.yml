@@ -1,0 +1,317 @@
+name: Swipalnam V16 causal boundary exact NAV
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v16_causal_boundary.py
+      - .github/workflows/swipalnam-liquidity-delivery-ml-v16-causal-boundary.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-v16-causal-boundary-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTHONHASHSEED: "0"
+  CANONICAL_ROOT: artifact/canonical
+  H1_RESULT_ROOT: artifact/swipalnam_v16_causal_boundary_h1
+  FULL_RESULT_ROOT: artifact/swipalnam_v16_causal_boundary_full
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+
+      - name: Validate V16 causal invariants
+        run: |
+          set -euo pipefail
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v16_causal_boundary.py --self-test
+
+      - name: Restore reusable canonical cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-v16-btceth-2023-2026h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+
+      - name: Restore BTC ETH 2023 and 2024H1 canonical shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                > "$shard/RESEARCH_VERIFICATION_V16.json"
+            done
+          done
+
+      - name: Run pre-2024 selection and causal 2024H1 evaluation
+        id: h1
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$H1_RESULT_ROOT"
+          PYTHONPATH=. python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v16_causal_boundary.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$H1_RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 50 \
+            2>&1 | tee "$H1_RESULT_ROOT/STDOUT.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Decide full-period replay from economic validity, not H1 positivity
+        id: advance
+        if: steps.h1.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          summary = json.loads((Path(os.environ["H1_RESULT_ROOT"]) / "RUN_SUMMARY.json").read_text())
+          metrics = summary.get("provisional_2024h1_metrics") or {}
+          advance = (
+              int(metrics.get("completed_trades") or 0) >= 20
+              and int(metrics.get("liquidation_events") or 0) == 0
+              and float(metrics.get("final_nav") or 0) > 0
+          )
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"run_full={'true' if advance else 'false'}\n")
+          print(json.dumps({"advance_full": advance, "h1_metrics": metrics}, indent=2))
+          PY
+
+      - name: Restore remaining BTC ETH evaluation shards
+        if: steps.advance.outputs.run_full == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                > "$shard/RESEARCH_VERIFICATION_V16.json"
+            done
+          done
+
+      - name: Run one continuous 2024 through 2026H1 NAV path
+        id: full
+        if: steps.advance.outputs.run_full == 'true'
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$FULL_RESULT_ROOT"
+          PYTHONPATH=. python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v16_causal_boundary.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$FULL_RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2026-07-01T00:00:00Z \
+            --minimum-candidates 50 \
+            2>&1 | tee "$FULL_RESULT_ROOT/STDOUT.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Persist result and exact failure evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          H1_EXIT: ${{ steps.h1.outputs.exit_code }}
+          ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
+          FULL_EXIT: ${{ steps.full.outputs.exit_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("research/swipalnam_smc_ml")
+
+          def read_summary(directory):
+              path = Path(directory) / "RUN_SUMMARY.json"
+              return (json.loads(path.read_text()), path) if path.exists() else (None, path)
+
+          def log_tail(directory):
+              path = Path(directory) / "STDOUT.log"
+              if not path.exists():
+                  return "log_missing"
+              return "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[-100:])[-16000:]
+
+          h1, h1_path = read_summary(os.environ["H1_RESULT_ROOT"])
+          full, full_path = read_summary(os.environ["FULL_RESULT_ROOT"])
+          status = {
+              "schema_version": 16,
+              "system_id": "SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V16-CAUSAL-BOUNDARY",
+              "source_sha": os.environ["SOURCE_SHA"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+              "h1_exit_code": os.environ.get("H1_EXIT"),
+              "h1_summary_present": h1 is not None,
+              "advance_full": os.environ.get("ADVANCE_FULL") == "true",
+              "full_exit_code": os.environ.get("FULL_EXIT"),
+              "full_summary_present": full is not None,
+          }
+          if h1 is None:
+              status["h1_failure_tail"] = log_tail(os.environ["H1_RESULT_ROOT"])
+          if status["advance_full"] and full is None:
+              status["full_failure_tail"] = log_tail(os.environ["FULL_RESULT_ROOT"])
+          (root / "RUN_STATUS_V16_EXECUTION.json").write_text(
+              json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+          )
+
+          def pointer(summary, source_path, stage, result_id):
+              metrics = summary.get("provisional_2024h1_metrics") or {}
+              payload = {
+                  "schema_version": 16,
+                  "result_id": result_id,
+                  "variant": "dual_auction_fill_adjusted_causal_active_features_exact_evaluation_boundary_NAV",
+                  "system_id": "SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V16-CAUSAL-BOUNDARY",
+                  "validation_stage": stage,
+                  "source_sha": os.environ["SOURCE_SHA"],
+                  "workflow_run_id": int(os.environ["RUN_ID"]),
+                  "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+                  "run_summary_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+                  "decision": summary.get("decision"),
+                  "target_hit": bool(float(metrics.get("geometric_daily_growth") or -1) >= 0.01),
+                  "candidate_count": summary.get("candidate_count"),
+                  "selected_structural_configuration": summary.get("selected_structural_configuration"),
+                  "selected_retraining_policy": summary.get("selected_retraining_policy"),
+                  "selected_ml_score_threshold": summary.get("selected_ml_score_threshold"),
+                  "selected_account_configuration": summary.get("selected_account_configuration"),
+                  "pre2024_metrics": summary.get("pre2024_metrics"),
+                  "evaluation_metrics": metrics,
+                  "known_limitations": [
+                      "funding accrual still uses the causally known entry snapshot instead of every exact funding event",
+                      "ambiguous minute bars remain stop-first until microbar replay is attached",
+                  ],
+              }
+              if stage == "causal_2024H1_exact_boundary_NAV":
+                  payload["provisional_2024h1_metrics"] = metrics
+              else:
+                  payload["full_period_metrics"] = metrics
+              return payload
+
+          if h1 is not None:
+              (root / "RUN_POINTER_V16_CAUSAL_BOUNDARY_H1.json").write_text(
+                  json.dumps(pointer(h1, h1_path, "causal_2024H1_exact_boundary_NAV", "R-SWIPALNAM-V16-H1"), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+              )
+          if full is not None:
+              (root / "RUN_POINTER_V16_CAUSAL_BOUNDARY_FULL.json").write_text(
+                  json.dumps(pointer(full, full_path, "continuous_2024_2026H1_exact_boundary_NAV", "R-SWIPALNAM-V16-FULL"), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+              )
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_STATUS_V16_EXECUTION.json
+          git add research/swipalnam_smc_ml/RUN_POINTER_V16_CAUSAL_BOUNDARY_*.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Record V16 causal-boundary evaluation"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin "$GITHUB_REF_NAME"
+              if git push origin "HEAD:$GITHUB_REF_NAME"; then break; fi
+              if [[ "$attempt" == 5 ]]; then exit 1; fi
+              sleep $((attempt * 2))
+            done
+          fi
+
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-v16-causal-boundary-${{ github.sha }}
+          path: |
+            artifact/swipalnam_v16_causal_boundary_h1
+            artifact/swipalnam_v16_causal_boundary_full
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 90
+
+      - name: Enforce executable result
+        if: always()
+        env:
+          H1_EXIT: ${{ steps.h1.outputs.exit_code }}
+          ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
+          FULL_EXIT: ${{ steps.full.outputs.exit_code }}
+        run: |
+          if [[ "${H1_EXIT:-1}" != "0" ]]; then exit 1; fi
+          if [[ "${ADVANCE_FULL:-false}" == "true" && "${FULL_EXIT:-1}" != "0" ]]; then exit 1; fi
