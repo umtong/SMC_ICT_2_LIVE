@@ -1,0 +1,82 @@
+name: YT Trinity current source chunk capture
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-current-source-chunk-capture.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-current-source-chunk-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Capture exact current scientific source into verified chunks
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_head="$(git rev-parse HEAD)"
+          files=(
+            research/yt_trinity_ml/system/corpus_alpha.py
+            research/yt_trinity_ml/run_primary_screen.py
+            research/yt_trinity_ml/tests/test_corpus_alpha.py
+          )
+          for optional in \
+            research/yt_trinity_ml/tests/test_primary_screen_diagnostics.py \
+            research/yt_trinity_ml/INSTRUMENT_RULES.json \
+            .github/workflows/yt-trinity-smc-fidelity-screen.yml; do
+            [[ -f "$optional" ]] && files+=("$optional")
+          done
+          tar -czf /tmp/current_smc_source.tar.gz "${files[@]}"
+          base64 -w 0 /tmp/current_smc_source.tar.gz > /tmp/current_smc_source.tar.gz.b64
+          root=research/yt_trinity_ml/current_snapshot_chunks
+          rm -rf "$root"
+          mkdir -p "$root"
+          split -b 20000 -d -a 3 /tmp/current_smc_source.tar.gz.b64 "$root/chunk."
+          python - "$root" "$source_head" "${files[@]}" <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          source_head = sys.argv[2]
+          files = sys.argv[3:]
+          tar_path = Path('/tmp/current_smc_source.tar.gz')
+          b64_path = Path('/tmp/current_smc_source.tar.gz.b64')
+          chunks = []
+          for path in sorted(root.glob('chunk.*')):
+              chunks.append({
+                  'name': path.name,
+                  'bytes': path.stat().st_size,
+                  'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+              })
+          manifest = {
+              'schema_version': 1,
+              'source_head': source_head,
+              'files': files,
+              'tar_gz_sha256': hashlib.sha256(tar_path.read_bytes()).hexdigest(),
+              'base64_sha256': hashlib.sha256(b64_path.read_bytes()).hexdigest(),
+              'chunks': chunks,
+          }
+          (root / 'manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$root"
+          git commit -m "Capture current SMC source for lossless fidelity merge"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
