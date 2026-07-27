@@ -1,0 +1,263 @@
+name: YT Trinity liquidity-first delivery refinement
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-liquidity-delivery-v2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-liquidity-delivery-v2
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Apply liquidity-first continuation narrative
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+
+          cfg_anchor = '    strong_counter_bias_floor: float = -3.0\n'
+          cfg_insert = '''    strong_counter_bias_floor: float = -3.0\n    continuation_requires_liquidity_raid: bool = True\n    continuation_minimum_htf_bias: float = 2.0\n    continuation_requires_discount_premium: bool = True\n'''
+          if 'continuation_requires_liquidity_raid' not in text:
+              if cfg_anchor not in text:
+                  raise SystemExit('configuration anchor missing')
+              text = text.replace(cfg_anchor, cfg_insert, 1)
+
+          function_anchor = '\ndef _new_continuation_state(\n'
+          function = r'''
+
+def _new_liquidity_delivery_states(
+    features: pd.DataFrame,
+    pos: int,
+    consumed_high: set[tuple[str, float]],
+    consumed_low: set[tuple[str, float]],
+    config: CorpusAlphaConfig,
+    diagnostics: Counter[str] | None = None,
+) -> list[_NarrativeState]:
+    """Arm trend delivery only after opposing internal liquidity is raided.
+
+    A first BOS/displacement by itself is not a complete ICT continuation narrative.
+    The aligned continuation must first manipulate internal liquidity against the
+    completed HTF bias, originate from discount/premium, then displace toward an
+    untouched external draw. External raids remain handled by the reversal path.
+    """
+
+    row = features.iloc[pos]
+    atr = float(row['atr'])
+    buffer = config.sweep_buffer_atr * atr
+    high_pools = _liquidity_pools(row, True, atr, config.liquidity_dedup_tolerance_atr)
+    low_pools = _liquidity_pools(row, False, atr, config.liquidity_dedup_tolerance_atr)
+    internal_highs = [
+        pool for pool in high_pools
+        if 2 <= pool.quality < 4
+        and _pool_key(pool) not in consumed_high
+        and float(row['high']) > pool.price + buffer
+    ]
+    internal_lows = [
+        pool for pool in low_pools
+        if 2 <= pool.quality < 4
+        and _pool_key(pool) not in consumed_low
+        and float(row['low']) < pool.price - buffer
+    ]
+    if internal_highs and internal_lows:
+        _bump(diagnostics, 'ambiguous_two_sided_internal_raid_bars')
+        return []
+    bias = float(row.get('htf_bias_score', 0.0)) if _finite(row.get('htf_bias_score')) else 0.0
+    range_position = (
+        float(row.get('dealing_range_position'))
+        if _finite(row.get('dealing_range_position'))
+        else 0.5
+    )
+    timestamp = features.index[pos]
+    states: list[_NarrativeState] = []
+
+    if internal_lows and bias >= config.continuation_minimum_htf_bias:
+        if config.continuation_requires_discount_premium and range_position > 0.5:
+            _bump(diagnostics, 'continuation_discount_rejections')
+        else:
+            selected = max(internal_lows, key=lambda pool: (pool.quality, pool.confluence, -pool.price))
+            internal_break = row.get('micro_last_swing_high')
+            if not _finite(internal_break):
+                internal_break = row.get('internal_high_5')
+            target = _select_draw_target(high_pools, 1, float(row['high']), float(row['low']), consumed_high)
+            if not _finite(internal_break):
+                _bump(diagnostics, 'continuation_raid_missing_internal_structure')
+            elif target is None:
+                _bump(diagnostics, 'continuation_raid_missing_external_draw')
+            else:
+                states.append(
+                    _NarrativeState(
+                        family=EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION,
+                        side=1,
+                        created_pos=pos,
+                        created_at=timestamp,
+                        structural_level=selected.price,
+                        origin_extreme=float(row['low']),
+                        internal_break=float(internal_break),
+                        draw_target=target.price,
+                        draw_target_quality=target.quality,
+                        swept_level_count=sum(pool.confluence for pool in internal_lows),
+                        sweep_depth_atr=(selected.price - float(row['low'])) / atr,
+                        liquidity_quality=selected.quality,
+                        ob_search_start=pos,
+                        raid_reclaimed_same_bar=bool(float(row['close']) > selected.price),
+                        stop=float(row['low'] - config.stop_buffer_atr * atr),
+                        path_high=float(row['high']),
+                        path_low=float(row['low']),
+                    )
+                )
+                _bump(diagnostics, 'continuation_internal_liquidity_raids')
+                _bump(diagnostics, 'continuation_narratives_armed')
+
+    if internal_highs and bias <= -config.continuation_minimum_htf_bias:
+        if config.continuation_requires_discount_premium and range_position < 0.5:
+            _bump(diagnostics, 'continuation_premium_rejections')
+        else:
+            selected = max(internal_highs, key=lambda pool: (pool.quality, pool.confluence, pool.price))
+            internal_break = row.get('micro_last_swing_low')
+            if not _finite(internal_break):
+                internal_break = row.get('internal_low_5')
+            target = _select_draw_target(low_pools, -1, float(row['high']), float(row['low']), consumed_low)
+            if not _finite(internal_break):
+                _bump(diagnostics, 'continuation_raid_missing_internal_structure')
+            elif target is None:
+                _bump(diagnostics, 'continuation_raid_missing_external_draw')
+            else:
+                states.append(
+                    _NarrativeState(
+                        family=EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION,
+                        side=-1,
+                        created_pos=pos,
+                        created_at=timestamp,
+                        structural_level=selected.price,
+                        origin_extreme=float(row['high']),
+                        internal_break=float(internal_break),
+                        draw_target=target.price,
+                        draw_target_quality=target.quality,
+                        swept_level_count=sum(pool.confluence for pool in internal_highs),
+                        sweep_depth_atr=(float(row['high']) - selected.price) / atr,
+                        liquidity_quality=selected.quality,
+                        ob_search_start=pos,
+                        raid_reclaimed_same_bar=bool(float(row['close']) < selected.price),
+                        stop=float(row['high'] + config.stop_buffer_atr * atr),
+                        path_high=float(row['high']),
+                        path_low=float(row['low']),
+                    )
+                )
+                _bump(diagnostics, 'continuation_internal_liquidity_raids')
+                _bump(diagnostics, 'continuation_narratives_armed')
+    return states
+'''
+          if 'def _new_liquidity_delivery_states(' not in text:
+              if function_anchor not in text:
+                  raise SystemExit('continuation function anchor missing')
+              text = text.replace(function_anchor, function + function_anchor, 1)
+
+          old_calls = '''        new_reversals = _new_reversal_states(features, pos, consumed_high, consumed_low, config, diagnostics)\n        continuation_long = _new_continuation_state(features, pos, 1, consumed_high, consumed_low, config, diagnostics)\n        continuation_short = _new_continuation_state(features, pos, -1, consumed_high, consumed_low, config, diagnostics)\n        states.extend(new_reversals)\n        if continuation_long is not None:\n            states.append(continuation_long)\n        if continuation_short is not None:\n            states.append(continuation_short)\n'''
+          new_calls = '''        new_reversals = _new_reversal_states(features, pos, consumed_high, consumed_low, config, diagnostics)\n        liquidity_continuations = _new_liquidity_delivery_states(\n            features, pos, consumed_high, consumed_low, config, diagnostics\n        )\n        states.extend(new_reversals)\n        states.extend(liquidity_continuations)\n        if not config.continuation_requires_liquidity_raid:\n            continuation_long = _new_continuation_state(features, pos, 1, consumed_high, consumed_low, config, diagnostics)\n            continuation_short = _new_continuation_state(features, pos, -1, consumed_high, consumed_low, config, diagnostics)\n            if continuation_long is not None:\n                states.append(continuation_long)\n            if continuation_short is not None:\n                states.append(continuation_short)\n'''
+          if 'liquidity_continuations = _new_liquidity_delivery_states' not in text:
+              if old_calls not in text:
+                  raise SystemExit('generator call anchor missing')
+              text = text.replace(old_calls, new_calls, 1)
+          path.write_text(text)
+          PY
+      - name: Add liquidity-delivery regression
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_default_continuation_requires_opposing_internal_liquidity_raid() -> None:
+    from system.corpus_alpha import generate_corpus_candidates
+    frame = _features(
+        [
+            {'high': 101, 'low': 99, 'close': 100, 'htf_bias_score': 3, 'dealing_range_position': 0.30,
+             'micro_last_swing_low': 99.2, 'micro_last_swing_high': 102},
+            {'open': 100, 'high': 100.5, 'low': 98.8, 'close': 99.5, 'htf_bias_score': 3,
+             'dealing_range_position': 0.30, 'micro_last_swing_low': 99.2, 'micro_last_swing_high': 102,
+             'previous_4h_high': 108},
+            {'open': 99.5, 'high': 103.5, 'low': 99.4, 'close': 103.2, 'body_atr': 3.7,
+             'range_atr': 4.1, 'close_location': 0.93, 'htf_bias_score': 3,
+             'dealing_range_position': 0.35, 'micro_last_swing_high': 102,
+             'bull_fvg_lower': 100.0, 'bull_fvg_upper': 101.0, 'previous_4h_high': 108},
+            {'open': 100.7, 'high': 102.0, 'low': 100.4, 'close': 101.5, 'body_atr': 0.8,
+             'range_atr': 1.6, 'close_location': 0.69, 'htf_bias_score': 3,
+             'dealing_range_position': 0.40, 'previous_4h_high': 108},
+        ]
+    )
+    events = generate_corpus_candidates(frame, 'ETHUSDT')
+    continuation = [event for event in events if event.family == EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION]
+    assert len(continuation) == 1
+    assert continuation[0].side == 1
+    assert continuation[0].timestamp == frame.index[3]
+    assert continuation[0].feature_row['liquidity_quality'] in {2.0, 3.0}
+
+
+def test_unmanipulated_bos_is_not_default_continuation() -> None:
+    frame = _features(
+        [
+            {'high': 101, 'low': 99, 'close': 100, 'last_swing_high': 103, 'htf_bias_score': 3},
+            {'high': 102, 'low': 99.5, 'close': 101, 'last_swing_high': 103, 'htf_bias_score': 3},
+            {'open': 101, 'high': 105, 'low': 101, 'close': 104, 'body_atr': 3.0,
+             'range_atr': 4.0, 'close_location': 0.75, 'bull_fvg_lower': 100,
+             'bull_fvg_upper': 101, 'micro_last_swing_low': 98, 'last_swing_high': 103,
+             'previous_4h_high': 108, 'htf_bias_score': 3},
+            {'open': 100.7, 'high': 102, 'low': 100.4, 'close': 101.5, 'body_atr': 0.8,
+             'range_atr': 1.6, 'close_location': 0.69, 'last_swing_high': 103,
+             'previous_4h_high': 108, 'htf_bias_score': 3},
+        ]
+    )
+    assert not [
+        event for event in generate_corpus_candidates(frame, 'ETHUSDT')
+        if event.family == EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION
+    ]
+PY
+      - name: Preserve legacy direct-BOS diagnostic test explicitly
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/tests/test_corpus_alpha.py')
+          text = path.read_text()
+          old = "events = generate_corpus_candidates(frame, \"ETHUSDT\")\n    assert len(events) == 1\n    event = events[0]\n    assert event.timestamp == frame.index[3]\n    assert event.family == EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION"
+          new = "from system.corpus_alpha import CorpusAlphaConfig\n    events = generate_corpus_candidates(\n        frame, \"ETHUSDT\", CorpusAlphaConfig(continuation_requires_liquidity_raid=False)\n    )\n    assert len(events) == 1\n    event = events[0]\n    assert event.timestamp == frame.index[3]\n    assert event.family == EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION"
+          if old in text:
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Install and run causal regressions
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested liquidity-first continuation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Require opposing liquidity raid before continuation delivery'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
