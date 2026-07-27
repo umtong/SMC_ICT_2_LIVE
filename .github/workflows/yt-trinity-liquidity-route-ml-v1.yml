@@ -1,0 +1,252 @@
+name: YT Trinity liquidity-delivery router ML v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/yt-trinity-liquidity-route-ml-v1]
+    paths:
+      - research/yt_trinity_liquidity_route/**
+      - .github/workflows/yt-trinity-liquidity-route-ml-v1.yml
+      - control/yt-trinity-liquidity-route-ml-v1-trigger.json
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-liquidity-route-ml-v1-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_SOURCE_SHA: 957430b826cd649c0c002f62d606f2549b1eea0f
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Checkout exact canonical data implementation
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: 957430b826cd649c0c002f62d606f2549b1eea0f
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
+          mkdir -p artifact/result
+
+      - id: source
+        name: Verify transcript-grounded scientific source
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            python research/yt_trinity_liquidity_route/materialize_source.py
+            python -m py_compile \
+              research/yt_trinity_liquidity_route/liquidity_route.py \
+              research/yt_trinity_liquidity_route/restore_canonical.py
+            PYTHONPATH=research/yt_trinity_ml \
+              python research/yt_trinity_liquidity_route/liquidity_route.py --self-test
+            test "$(sha256sum research/yt_trinity_liquidity_route/liquidity_route.py | awk '{print $1}')" = \
+              "7728855a94ce3ab8264605b2a8cccf76cbe0e0a153eb4dcce09a01480ad6cdca"
+          } 2>&1 | tee artifact/result/SOURCE.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit ${status}
+
+      - name: Restore canonical shard cache
+        if: steps.source.outcome == 'success'
+        uses: actions/cache@v4
+        with:
+          path: inputs/data
+          key: yt-trinity-liquidity-route-canonical-btceth-2021-2024h1-v1
+
+      - id: data
+        name: Restore or build and verify exact canonical shards
+        if: steps.source.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -o pipefail
+          python research/yt_trinity_liquidity_route/restore_canonical.py \
+            --data-root inputs/data \
+            --canonical-repo canonical_repo \
+            2>&1 | tee artifact/result/DATA.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit ${status}
+
+      - id: execute
+        name: Execute 2023 selection and restarted 2024H1
+        if: steps.source.outcome == 'success' && steps.data.outcome == 'success'
+        continue-on-error: true
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        shell: bash
+        run: |
+          set -o pipefail
+          python research/yt_trinity_liquidity_route/liquidity_route.py \
+            --data-root inputs/data \
+            --canonical-repo canonical_repo \
+            --output artifact/result \
+            2>&1 | tee artifact/result/STDOUT.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit ${status}
+
+      - name: Bind immutable identity
+        if: always()
+        env:
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+          SOURCE_EXIT_CODE: ${{ steps.source.outputs.exit_code }}
+          DATA_OUTCOME: ${{ steps.data.outcome }}
+          DATA_EXIT_CODE: ${{ steps.data.outputs.exit_code }}
+          EXECUTION_OUTCOME: ${{ steps.execute.outcome }}
+          EXECUTION_EXIT_CODE: ${{ steps.execute.outputs.exit_code }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import sys
+          from pathlib import Path
+
+          output = Path("artifact/result")
+          output.mkdir(parents=True, exist_ok=True)
+          summary = output / "RUN_SUMMARY.json"
+          payload = {
+              "schema_version": 2,
+              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+              "system_id": "YT-TRINITY-LIQUIDITY-DELIVERY-ROUTER-ML-V1",
+              "source_sha": os.environ["GITHUB_SHA"],
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "canonical_source_sha": os.environ["CANONICAL_SOURCE_SHA"],
+              "strategy_source_sha256": "7728855a94ce3ab8264605b2a8cccf76cbe0e0a153eb4dcce09a01480ad6cdca",
+              "corpus_digest_sha256": "913aa9e98bb696b1c029b410cf3efd5158122f9cf1ff84adaeb536e31157cc53",
+              "source_outcome": os.environ.get("SOURCE_OUTCOME"),
+              "source_exit_code": os.environ.get("SOURCE_EXIT_CODE"),
+              "data_outcome": os.environ.get("DATA_OUTCOME"),
+              "data_exit_code": os.environ.get("DATA_EXIT_CODE"),
+              "execution_outcome": os.environ.get("EXECUTION_OUTCOME"),
+              "execution_exit_code": os.environ.get("EXECUTION_EXIT_CODE"),
+              "python": sys.version,
+              "platform": platform.platform(),
+              "summary_sha256": hashlib.sha256(summary.read_bytes()).hexdigest() if summary.exists() else None,
+          }
+          (output / "RUN_IDENTITY.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+          (
+            cd artifact/result
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-liquidity-route-ml-v1-${{ github.sha }}
+          path: artifact/result
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist recoverable result or failure pointer
+        if: always()
+        env:
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+          SOURCE_EXIT_CODE: ${{ steps.source.outputs.exit_code }}
+          DATA_OUTCOME: ${{ steps.data.outcome }}
+          DATA_EXIT_CODE: ${{ steps.data.outputs.exit_code }}
+          EXECUTION_OUTCOME: ${{ steps.execute.outcome }}
+          EXECUTION_EXIT_CODE: ${{ steps.execute.outputs.exit_code }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path("artifact/result")
+          summary_path = output / "RUN_SUMMARY.json"
+          summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else None
+
+          def tail(name: str) -> str:
+              path = output / name
+              return path.read_text(encoding="utf-8", errors="replace")[-12000:] if path.exists() else ""
+
+          pointer = {
+              "schema_version": 2,
+              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+              "system_id": "YT-TRINITY-LIQUIDITY-DELIVERY-ROUTER-ML-V1",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"yt-trinity-liquidity-route-ml-v1-{os.environ['GITHUB_SHA']}",
+              "summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
+              "source_outcome": os.environ.get("SOURCE_OUTCOME"),
+              "source_exit_code": os.environ.get("SOURCE_EXIT_CODE"),
+              "data_outcome": os.environ.get("DATA_OUTCOME"),
+              "data_exit_code": os.environ.get("DATA_EXIT_CODE"),
+              "execution_outcome": os.environ.get("EXECUTION_OUTCOME"),
+              "execution_exit_code": os.environ.get("EXECUTION_EXIT_CODE"),
+              "candidate_count": summary.get("candidate_count") if summary else None,
+              "base_positive_both_periods": summary.get("base_positive_both_periods") if summary else None,
+              "selected_contract": summary.get("selected_contract") if summary else None,
+              "restarted_2024h1": summary.get("restarted_2024h1") if summary else None,
+              "decision": summary.get("decision") if summary else "EXECUTION_FAILED_NO_SUMMARY",
+              "ranking_effect": summary.get("ranking_effect") if summary else "NONE_EXECUTION_FAILURE",
+              "source_log_tail": tail("SOURCE.log"),
+              "data_log_tail": tail("DATA.log"),
+              "execution_log_tail": tail("STDOUT.log"),
+          }
+          Path("research/yt_trinity_liquidity_route/RESULT_POINTER.json").write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_liquidity_route/RESULT_POINTER.json
+          if [[ -f research/yt_trinity_liquidity_route/liquidity_route.py ]]; then
+            git add research/yt_trinity_liquidity_route/liquidity_route.py
+          fi
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record YT Trinity liquidity-route ML result ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Enforce completed economic result
+        if: always()
+        env:
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+          DATA_OUTCOME: ${{ steps.data.outcome }}
+          EXECUTION_OUTCOME: ${{ steps.execute.outcome }}
+        run: |
+          [[ "${SOURCE_OUTCOME}" == "success" ]]
+          [[ "${DATA_OUTCOME}" == "success" ]]
+          [[ "${EXECUTION_OUTCOME}" == "success" ]]
+          test -f artifact/result/RUN_SUMMARY.json
