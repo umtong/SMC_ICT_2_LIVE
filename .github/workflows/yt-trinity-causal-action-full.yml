@@ -1,0 +1,194 @@
+name: YT Trinity causal action continuous 2024-2026H1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-causal-action-full.yml
+      - research/yt_trinity_ml/run_causal_action_full.py
+      - research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-causal-action-full-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  continuous-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Check H1 route
+        id: route
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json')
+          positive=False
+          if p.exists():
+              obj=json.loads(p.read_text())
+              result=obj.get('result') or {}
+              h1=result.get('result_2024_h1') or {}
+              positive=float(h1.get('geometric_daily_growth',0.0))>0
+          with Path('/tmp/route.txt').open('w') as f: f.write('true' if positive else 'false')
+          PY
+          echo "positive=$(cat /tmp/route.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout canonical loader
+        if: steps.route.outputs.positive == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        if: steps.route.outputs.positive == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic dependencies
+        if: steps.route.outputs.positive == 'true'
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1"
+
+      - name: Download continuous canonical shards
+        if: steps.route.outputs.positive == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/data output
+          fetch_named_artifact() {
+            local name="$1" target="$2" metadata id
+            metadata="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100")"
+            id="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["id"])' <<<"${metadata}")"
+            mkdir -p "${target}"
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              -o "/tmp/${id}.zip"
+            unzip -q "/tmp/${id}.zip" -d "${target}"
+          }
+          for segment in PRE_2024_2023 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              fetch_named_artifact "canonical-bybit-${segment}-${symbol}" "inputs/data/${segment}/${symbol}"
+            done
+          done
+
+      - name: Run continuous frozen-policy replay
+        if: steps.route.outputs.positive == 'true'
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          python -m py_compile \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/run_causal_action_full.py
+          compile_code=$?
+          if [ "$compile_code" -eq 0 ]; then
+            python research/yt_trinity_ml/run_causal_action_full.py \
+              --repo-root canonical_repo \
+              --data-root inputs/data \
+              --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.json \
+              --pointer research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json \
+              --output output \
+              2>&1 | tee output/STDOUT.log
+            code=${PIPESTATUS[0]}
+          else
+            code=$compile_code
+          fi
+          echo "$code" > output/EXIT_CODE.txt
+          exit 0
+
+      - name: Record unopened route
+        if: steps.route.outputs.positive != 'true'
+        run: |
+          mkdir -p output
+          cat > output/CAUSAL_ACTION_FULL_RESULT.json <<'JSON'
+          {
+            "schema_version": 1,
+            "stage": "FULL_PERIOD_NOT_OPENED",
+            "reason": "2024H1 causal-action coarse growth was nonpositive or unavailable",
+            "ranking_effect": "NONE"
+          }
+          JSON
+          echo 0 > output/EXIT_CODE.txt
+
+      - name: Persist full-period pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          out=Path('output');out.mkdir(exist_ok=True)
+          result_path=out/'CAUSAL_ACTION_FULL_RESULT.json'
+          result=json.loads(result_path.read_text()) if result_path.exists() else None
+          code=int((out/'EXIT_CODE.txt').read_text()) if (out/'EXIT_CODE.txt').exists() else 99
+          pointer={
+            'schema_version':1,
+            'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001',
+            'source_commit':os.environ['GITHUB_SHA'],
+            'workflow_run_id':int(os.environ['GITHUB_RUN_ID']),
+            'exit_code':code,
+            'job_status':'success' if code==0 else 'execution_failure_not_economic_failure',
+            'result':result,
+            'result_sha256':hashlib.sha256(result_path.read_bytes()).hexdigest() if result_path.exists() else None,
+            'ranking_effect':'NONE_COARSE_1M_NOT_RANKABLE',
+          }
+          p=out/'CAUSAL_ACTION_FULL_POINTER.json';p.write_text(json.dumps(pointer,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          Path('/tmp/CAUSAL_ACTION_FULL_POINTER.json').write_bytes(p.read_bytes())
+          PY
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          cp /tmp/CAUSAL_ACTION_FULL_POINTER.json research/yt_trinity_ml/CAUSAL_ACTION_FULL_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/CAUSAL_ACTION_FULL_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record continuous causal action result ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then break; fi
+              sleep $((attempt * 3))
+            done
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-causal-action-full-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail after evidence
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
