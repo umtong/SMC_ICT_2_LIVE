@@ -1,0 +1,173 @@
+name: YT Trinity SMT opening-range BPR alpha screen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/experiments/smt_or_bpr_screen.py
+      - .github/workflows/yt-trinity-smt-or-bpr-screen.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-smt-or-bpr-screen-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install causal screen dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests
+
+      - name: Compile and test causal invariants
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python -m py_compile research/yt_trinity_ml/experiments/smt_or_bpr_screen.py
+          python research/yt_trinity_ml/experiments/smt_or_bpr_screen.py --self-test
+
+      - name: Restore immutable Bybit public archive cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/cache
+          key: yt-trinity-bybit-mt4-1m-btc-eth-2021-2024h1-v1
+
+      - name: Run pre-2024 ML selection and conditional 2024H1 screen
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/screen
+          python research/yt_trinity_ml/experiments/smt_or_bpr_screen.py \
+            --cache-root artifact/cache \
+            --output artifact/screen \
+            --corpus-pointer research/yt_trinity_ml/COMPLETE_CORPUS_POINTER.json \
+            --data-start 2021-01-01T00:00:00Z \
+            --selection-start 2022-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            2>&1 | tee artifact/screen/SCREEN_STDOUT.log
+
+      - name: Publish compact result summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('artifact/screen/RUN_SUMMARY.json')
+          if not path.exists():
+              raise SystemExit('RUN_SUMMARY.json missing')
+          summary = json.loads(path.read_text(encoding='utf-8'))
+          selected = summary.get('selected_configuration') or {}
+          metrics = selected.get('metrics') or {}
+          provisional = summary.get('provisional_2024h1') or {}
+          lines = [
+              '## YT Trinity SMT / opening-range BPR screen',
+              f"- decision: `{summary.get('decision')}`",
+              f"- candidates: `{summary.get('candidate_count')}`",
+              f"- positive basic alpha: `{summary.get('positive_basic_alpha')}`",
+              f"- pre-2024 geometric daily growth: `{metrics.get('geometric_daily_growth')}`",
+              f"- pre-2024 account multiple: `{metrics.get('account_multiple')}`",
+              f"- pre-2024 trades: `{metrics.get('completed_trades')}`",
+              f"- provisional 2024H1 geometric daily growth: `{provisional.get('geometric_daily_growth')}`",
+              f"- provisional 2024H1 account multiple: `{provisional.get('account_multiple')}`",
+          ]
+          with Path(__import__('os').environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as handle:
+              handle.write('\n'.join(lines) + '\n')
+          PY
+
+      - name: Upload immutable screen evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-smt-or-bpr-screen-${{ github.sha }}
+          path: artifact/screen
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist recoverable result pointer
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -f artifact/screen/RUN_SUMMARY.json ]]; then
+            exit 0
+          fi
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          summary_path = Path('artifact/screen/RUN_SUMMARY.json')
+          summary = json.loads(summary_path.read_text(encoding='utf-8'))
+          selected = summary.get('selected_configuration')
+          if selected:
+              selected = {
+                  **{key: value for key, value in selected.items() if key != 'metrics'},
+                  'metrics': {
+                      key: value
+                      for key, value in selected.get('metrics', {}).items()
+                      if key not in {'trades', 'daily_nav'}
+                  },
+              }
+          provisional = summary.get('provisional_2024h1')
+          if provisional:
+              provisional = {
+                  key: value for key, value in provisional.items()
+                  if key not in {'trades', 'daily_nav'}
+              }
+          pointer = {
+              'schema_version': 1,
+              'claim_id': summary.get('claim_id'),
+              'system_id': summary.get('system_id'),
+              'workflow': 'YT Trinity SMT opening-range BPR alpha screen',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-smt-or-bpr-screen-{os.environ['GITHUB_SHA']}",
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              'decision': summary.get('decision'),
+              'positive_basic_alpha': summary.get('positive_basic_alpha'),
+              'candidate_count': summary.get('candidate_count'),
+              'selected_configuration': selected,
+              'provisional_2024h1': provisional,
+              'timings': summary.get('timings'),
+          }
+          path = Path('research/yt_trinity_ml/SMT_OR_BPR_SCREEN_POINTER.json')
+          path.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/SMT_OR_BPR_SCREEN_POINTER.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record SMT opening-range BPR screen ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
