@@ -1,0 +1,137 @@
+def _narrative_key(candidate: EventCandidate) -> tuple[Any, ...]:
+    # Stop placement is management, not narrative identity.
+    return (
+        candidate.symbol, candidate.family.value, candidate.side,
+        round(float(candidate.target_reference), 8),
+        round(float(candidate.structural_level), 8),
+    )
+
+
+def _structural_cancel_times(
+    candidates: Sequence[EventCandidate],
+) -> dict[int, pd.Timestamp]:
+    """Index the first later causal state that cancels each passive order.
+
+    This is semantically identical to scanning every future passive state for every
+    order, but uses range-extrema and sorted-time indexes rather than O(N^2) loops.
+    """
+    passive = [
+        row for row in candidates
+        if float(row.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5
+    ]
+    market = [
+        row for row in candidates
+        if float(row.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5
+    ]
+    result: dict[int, pd.Timestamp] = {}
+
+    def record(candidate: EventCandidate, timestamp: pd.Timestamp | None) -> None:
+        if timestamp is None:
+            return
+        key = id(candidate)
+        prior = result.get(key)
+        if prior is None or timestamp < prior:
+            result[key] = timestamp
+
+    market_groups: dict[tuple[Any, ...], list[int]] = {}
+    for row in market:
+        market_groups.setdefault(_narrative_key(row), []).append(
+            pd.Timestamp(row.timestamp).value
+        )
+    market_ns = {
+        key: np.asarray(sorted(values), dtype=np.int64)
+        for key, values in market_groups.items()
+    }
+    for row in passive:
+        values = market_ns.get(_narrative_key(row))
+        if values is None:
+            continue
+        position = int(np.searchsorted(
+            values, pd.Timestamp(row.timestamp).value, side="right"
+        ))
+        if position < len(values):
+            record(row, pd.Timestamp(values[position], unit="ns", tz="UTC"))
+
+    same_draw: dict[tuple[Any, ...], list[EventCandidate]] = {}
+    for row in passive:
+        key = (
+            row.symbol, row.family.value, row.side,
+            round(float(row.target_reference), 8),
+        )
+        same_draw.setdefault(key, []).append(row)
+    for key, group in same_draw.items():
+        side = int(key[2])
+        by_time: dict[pd.Timestamp, list[EventCandidate]] = {}
+        for row in group:
+            by_time.setdefault(pd.Timestamp(row.timestamp), []).append(row)
+        times = sorted(by_time)
+        if len(times) < 2:
+            continue
+        times_ns = np.asarray([time.value for time in times], dtype=np.int64)
+        if key[1] == "DISPLACEMENT_BREAK_RETEST_CONTINUATION":
+            for row in group:
+                position = int(np.searchsorted(
+                    times_ns, pd.Timestamp(row.timestamp).value, side="right"
+                ))
+                if position < len(times):
+                    record(row, times[position])
+            continue
+        future_low = np.asarray(
+            [min(float(row.stop_reference) for row in by_time[time]) for time in times],
+            dtype=float,
+        )
+        future_high = np.asarray(
+            [max(float(row.stop_reference) for row in by_time[time]) for time in times],
+            dtype=float,
+        )
+        index = _RangeExtremaIndex(future_low, future_high)
+        for row in group:
+            start = int(np.searchsorted(
+                times_ns, pd.Timestamp(row.timestamp).value, side="right"
+            ))
+            position = (
+                index.first_low_lt(start, float(row.stop_reference))
+                if side > 0
+                else index.first_high_gt(start, float(row.stop_reference))
+            )
+            if position is not None:
+                record(row, times[position])
+
+    by_symbol: dict[str, list[EventCandidate]] = {}
+    for row in passive:
+        by_symbol.setdefault(row.symbol, []).append(row)
+    for group in by_symbol.values():
+        by_time: dict[pd.Timestamp, list[EventCandidate]] = {}
+        for row in group:
+            by_time.setdefault(pd.Timestamp(row.timestamp), []).append(row)
+        times = sorted(by_time)
+        if not times:
+            continue
+        times_ns = np.asarray([time.value for time in times], dtype=np.int64)
+        short_min = np.asarray([
+            min(
+                (float(row.decision_price) for row in by_time[time] if row.side < 0),
+                default=np.inf,
+            )
+            for time in times
+        ], dtype=float)
+        long_max = np.asarray([
+            max(
+                (float(row.decision_price) for row in by_time[time] if row.side > 0),
+                default=-np.inf,
+            )
+            for time in times
+        ], dtype=float)
+        index = _RangeExtremaIndex(short_min, long_max)
+        for row in group:
+            start = int(np.searchsorted(
+                times_ns, pd.Timestamp(row.timestamp).value, side="right"
+            ))
+            position = (
+                index.first_low_lt(start, float(row.entry_reference))
+                if row.side > 0
+                else index.first_high_gt(start, float(row.entry_reference))
+            )
+            if position is not None:
+                record(row, times[position])
+    return result
