@@ -14,7 +14,7 @@ def _rows() -> pd.DataFrame:
     rows = []
     start = pd.Timestamp("2023-01-01T00:00:00Z")
     for action, base_r in (("EARLY_PASSIVE", 0.45), ("CONFIRMED_MARKET", -0.15)):
-        for i in range(180):
+        for i in range(260):
             activation = start + pd.Timedelta(hours=6 * i)
             quality = rng.uniform(-1.0, 1.0)
             noise = rng.normal(0.0, 0.35)
