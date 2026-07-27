@@ -1,0 +1,124 @@
+name: YT Trinity OI liquidation continuation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-oi-continuation-002
+    paths:
+      - research/yt_trinity_ml/run_oi_continuation.py
+      - .github/workflows/yt-trinity-oi-continuation.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/yt_trinity_ml/run_oi_continuation.py
+      - .github/workflows/yt-trinity-oi-continuation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-oi-continuation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic research dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow gdown
+          python -m pip freeze | sort > dependency-freeze.txt
+
+      - name: Compile OI continuation research runner
+        run: |
+          set -euo pipefail
+          python -m py_compile research/yt_trinity_ml/run_oi_continuation.py
+
+      - name: Download and verify four canonical Bybit 2023 datasets
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          python - <<'PY'
+          from __future__ import annotations
+          import hashlib
+          import json
+          import zipfile
+          from pathlib import Path
+          import gdown
+
+          sources = {
+              "BTCUSDT": ("1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt", "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46"),
+              "ETHUSDT": ("1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR", "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322"),
+              "SOLUSDT": ("1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5", "d31a682456c32cab2158e10c957232a2a56e7fbae8d6d84495694781b127d132"),
+              "XRPUSDT": ("19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk", "b014870d82664f24938faab8787d7bba1b8b655b9c31436c2dcb6eb79a8cd473"),
+          }
+          rows = []
+          for symbol, (file_id, expected_sha) in sources.items():
+              zip_path = Path("data") / f"{symbol}.zip"
+              destination = Path("data") / symbol
+              result = gdown.download(id=file_id, output=str(zip_path), quiet=False, fuzzy=True)
+              if not result or not zip_path.exists():
+                  raise SystemExit(f"download failed: {symbol}")
+              digest = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+              if digest != expected_sha:
+                  raise SystemExit(f"dataset hash mismatch {symbol}: {digest} != {expected_sha}")
+              destination.mkdir(parents=True, exist_ok=True)
+              with zipfile.ZipFile(zip_path) as archive:
+                  archive.extractall(destination)
+              manifest = json.loads((destination / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
+              rows.append({"symbol": symbol, "zip_sha256": digest, "manifest": manifest})
+          Path("data/DATA_DEPENDENCIES.json").write_text(
+              json.dumps(rows, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Run causal OI liquidation continuation research
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/result
+          python research/yt_trinity_ml/run_oi_continuation.py \
+            --data-root data \
+            --output artifact/result \
+            2>&1 | tee artifact/RUN.log
+          cp dependency-freeze.txt data/DATA_DEPENDENCIES.json artifact/
+
+      - name: Hash immutable research evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ -d artifact ]]; then
+            (
+              cd artifact
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+
+      - name: Upload immutable OI continuation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-oi-continuation-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
