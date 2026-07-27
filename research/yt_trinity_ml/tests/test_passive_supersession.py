@@ -57,7 +57,7 @@ def test_deeper_same_draw_raid_cancels_older_unfilled_limit() -> None:
     first = rows.sort_values("activation").iloc[0]
     assert first["filled"] == 0
     assert first["status"] == "CANCELLED_ON_CONFIRMED_TRANSITION"
-    assert pd.Timestamp(first["event_end"]) == pd.Timestamp("2023-01-01T00:11:00Z")
+    assert pd.Timestamp(first["event_end"]) == pd.Timestamp("2023-01-01T00:12:00Z")
 
 
 def test_opposing_armed_delivery_below_long_entry_cancels_long_limit() -> None:

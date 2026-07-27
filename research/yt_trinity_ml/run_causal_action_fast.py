@@ -126,7 +126,12 @@ def _label(candidate: EventCandidate, action: str, exit_variant: str, bars: Prep
         fill = _cross(bars, start, entry_reference, side < 0, evaluation_limit, strict=True)
         transition_cancel = None
         if cancel_at is not None:
-            transition_cancel = int(np.searchsorted(bars.starts_ns, pd.Timestamp(cancel_at).value, side="left"))
+            cancel_activation = pd.Timestamp(cancel_at) + pd.Timedelta(
+                milliseconds=config.activation_latency_ms
+            )
+            transition_cancel = int(np.searchsorted(
+                bars.starts_ns, cancel_activation.value, side="left"
+            ))
             if transition_cancel >= evaluation_limit:
                 transition_cancel = None
         boundary_rows = [value for value in (invalidation, target_before_fill, transition_cancel) if value is not None]

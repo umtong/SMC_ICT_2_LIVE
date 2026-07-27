@@ -51,5 +51,5 @@ def test_unfilled_limit_cancels_when_confirmed_market_state_arrives() -> None:
     assert label is not None
     assert label.filled == 0
     assert label.status == "CANCELLED_ON_CONFIRMED_TRANSITION"
-    assert label.event_end == pd.Timestamp("2023-01-01T00:11:00Z")
+    assert label.event_end == pd.Timestamp("2023-01-01T00:12:00Z")
     assert label.net_pnl_per_unit == 0.0
