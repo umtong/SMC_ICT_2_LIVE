@@ -27,6 +27,7 @@ jobs:
           set -euo pipefail
           test "$(git hash-object research/yt_trinity_ml/run_causal_action_fast.py)" = "24d68f9634ddfcbf74e245a80ddec7f5c24bc426"
           test "$(git hash-object research/yt_trinity_ml/tests/test_passive_transition_cancel.py)" = "bfe7e0772d398717a7c73b61cf758768b08f32c3"
+          test "$(git hash-object research/yt_trinity_ml/tests/test_passive_supersession.py)" = "782e577611eae067afac053dece41c2845a8d80a"
           python - <<'PY'
           from pathlib import Path
           path=Path('research/yt_trinity_ml/run_causal_action_fast.py')
@@ -37,13 +38,14 @@ jobs:
               raise SystemExit('cancel block mismatch')
           path.write_text(text.replace(old,new,1))
 
-          test=Path('research/yt_trinity_ml/tests/test_passive_transition_cancel.py')
-          text=test.read_text()
-          old='''    assert label.event_end == pd.Timestamp("2023-01-01T00:11:00Z")\n'''
-          new='''    # Confirmation at 00:10 activates cancellation at 00:10:00.500.\n    # With one-minute execution data, the first observable post-latency bar is 00:11,\n    # whose declared availability is 00:12.\n    assert label.event_end == pd.Timestamp("2023-01-01T00:12:00Z")\n'''
-          if old not in text:
-              raise SystemExit('cancel test expectation mismatch')
-          test.write_text(text.replace(old,new,1))
+          for name in ('test_passive_transition_cancel.py', 'test_passive_supersession.py'):
+              test=Path('research/yt_trinity_ml/tests') / name
+              text=test.read_text()
+              old='''pd.Timestamp("2023-01-01T00:11:00Z")'''
+              new='''pd.Timestamp("2023-01-01T00:12:00Z")'''
+              if old not in text:
+                  raise SystemExit(f'cancel test expectation mismatch: {name}')
+              test.write_text(text.replace(old,new,1))
           PY
       - uses: actions/setup-python@v5
         with:
@@ -70,7 +72,10 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add research/yt_trinity_ml/run_causal_action_fast.py research/yt_trinity_ml/tests/test_passive_transition_cancel.py
+          git add \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py
           git rm .github/workflows/yt-trinity-cancel-latency-repair.yml
           git commit -m 'Apply fixed 500ms latency to passive cancellation'
           for attempt in 1 2 3 4 5; do
