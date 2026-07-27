@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 import json
 
+import numpy as np
 import pandas as pd
 
 from .coarse import CoarseEventReplay, CoarseExecutionConfig, CoarseLabeler, coarse_closeout_price
