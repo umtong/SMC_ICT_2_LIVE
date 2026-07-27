@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/yt-trinity-smc-fidelity-screen.yml
       - research/yt_trinity_ml/upgrade_chunks/unified_smc_v4.*
-      - control/yt-trinity-smc-v4-bootstrap-trigger.json
   push:
     branches: [agent/r22-yt-trinity-ml-001]
     paths:
@@ -19,7 +18,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: yt-trinity-unified-smc-v4-bootstrap-screen
+  group: yt-trinity-unified-smc-v4-bootstrap-screen-${{ github.event_name }}-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
