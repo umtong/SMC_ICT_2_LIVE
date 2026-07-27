@@ -7,11 +7,11 @@ on:
       - scripts/market_data/build_public_trade_compact.py
       - scripts/market_data/load_public_trade_compact.py
       - scripts/market_data/verify_public_trade_compact.py
-      - scripts/market_data/repack_public_trade_compact_v4.py
-      - scripts/market_data/load_public_trade_compact_v4.py
-      - scripts/market_data/verify_public_trade_compact_v4.py
+      - scripts/market_data/repack_public_trade_compact_v5.py
+      - scripts/market_data/load_public_trade_compact_v5.py
+      - scripts/market_data/verify_public_trade_compact_v5.py
       - tests/test_public_trade_compact.py
-      - tests/test_public_trade_compact_v4.py
+      - tests/test_public_trade_compact_v5.py
       - .github/workflows/canonical-bybit-public-compact-smoke.yml
   push:
     branches:
@@ -20,11 +20,11 @@ on:
       - scripts/market_data/build_public_trade_compact.py
       - scripts/market_data/load_public_trade_compact.py
       - scripts/market_data/verify_public_trade_compact.py
-      - scripts/market_data/repack_public_trade_compact_v4.py
-      - scripts/market_data/load_public_trade_compact_v4.py
-      - scripts/market_data/verify_public_trade_compact_v4.py
+      - scripts/market_data/repack_public_trade_compact_v5.py
+      - scripts/market_data/load_public_trade_compact_v5.py
+      - scripts/market_data/verify_public_trade_compact_v5.py
       - tests/test_public_trade_compact.py
-      - tests/test_public_trade_compact_v4.py
+      - tests/test_public_trade_compact_v5.py
       - .github/workflows/canonical-bybit-public-compact-smoke.yml
   workflow_dispatch:
 
@@ -50,28 +50,29 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_public_trade_compact.py \
-            tests/test_public_trade_compact_v4.py
+            tests/test_public_trade_compact_v5.py
       - name: Build full BTCUSDT January 2024 sparse 500ms shard
         run: |
           python scripts/market_data/build_public_trade_compact.py \
             --symbol BTCUSDT \
             --month 2024-01 \
             --out artifact
-      - name: Repack to V4 bucket-index encoding
+      - name: Repack to exact tick-index V5 encoding
         run: |
-          python scripts/market_data/repack_public_trade_compact_v4.py \
+          python scripts/market_data/repack_public_trade_compact_v5.py \
             artifact/2024_H1/BTCUSDT/2024-01
       - name: Verify and report
         shell: bash
         run: |
           shard="artifact/2024_H1/BTCUSDT/2024-01"
-          python scripts/market_data/verify_public_trade_compact_v4.py "$shard" \
+          python scripts/market_data/verify_public_trade_compact_v5.py "$shard" \
             | tee "$shard/VERIFICATION.json"
           find "$shard" -type f -printf '%P\t%s\n' | sort \
             | tee "$shard/FILE_SIZES.tsv"
+          test "$(stat -c %s "$shard/micro_bars/500ms_observed_v5.parquet")" -lt 104857600
       - uses: actions/upload-artifact@v4
         with:
-          name: canonical-bybit-sparse500-v4-smoke-BTCUSDT-2024-01
+          name: canonical-bybit-sparse500-v5-smoke-BTCUSDT-2024-01
           path: artifact/2024_H1/BTCUSDT/2024-01
           if-no-files-found: error
           compression-level: 0
