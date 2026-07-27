@@ -1,0 +1,133 @@
+name: YT Trinity SOL XRP NPZ export
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-profit-run-001]
+    paths:
+      - control/yt-trinity-solxrp-npz-trigger.json
+      - .github/workflows/yt-trinity-solxrp-npz.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-solxrp-npz-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  CANONICAL_RUN_ID: "30218767426"
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deterministic converter
+        run: python -m pip install -q --disable-pip-version-check "numpy==2.3.5" "pandas==2.2.3" "pyarrow==25.0.0"
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-SOLUSDT
+          path: source/PRE_2024_2023/SOLUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-XRPUSDT
+          path: source/PRE_2024_2023/XRPUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-SOLUSDT
+          path: source/2024_H1/SOLUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-XRPUSDT
+          path: source/2024_H1/XRPUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Convert parquet to portable arrays
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+
+          segments=('PRE_2024_2023','2024_H1')
+          symbols=('SOLUSDT','XRPUSDT')
+          streams=('trade_price_1m','mark_price_1m','index_price_1m','premium_index_1m','funding_events','open_interest_5m','account_ratio_5m')
+          cols=('start_time_ms','timestamp_ms','available_at_ms','open','high','low','close','volume','turnover','funding_rate','open_interest','buy_ratio','sell_ratio','long_short_ratio','source_present','complete','source_minute_count')
+          root=Path('artifact/solxrp-npz'); records=[]
+          def digest(path):
+              h=hashlib.sha256()
+              with path.open('rb') as f:
+                  for c in iter(lambda:f.read(1<<20),b''): h.update(c)
+              return h.hexdigest()
+          def one(seg,sym,name,kind,path):
+              frame=pd.read_parquet(path); arrays={}
+              for c in cols:
+                  if c not in frame: continue
+                  v=frame[c]
+                  if pd.api.types.is_integer_dtype(v.dtype): a=v.astype('int64').to_numpy()
+                  elif pd.api.types.is_bool_dtype(v.dtype): a=v.astype('uint8').to_numpy()
+                  else: a=pd.to_numeric(v,errors='coerce').astype('float64').to_numpy()
+                  arrays[c]=a
+              out=root/seg/sym/(f'trade_{name}.npz' if kind=='bar' else f'{name}.npz')
+              out.parent.mkdir(parents=True,exist_ok=True); np.savez_compressed(out,**arrays)
+              records.append({'segment':seg,'symbol':sym,'name':name,'kind':kind,'rows':len(frame),'path':str(out.relative_to(root)),'sha256':digest(out),'bytes':out.stat().st_size})
+          for seg in segments:
+              for sym in symbols:
+                  base=Path('source')/seg/sym
+                  for name in streams:
+                      paths=list(base.rglob(f'streams/{name}.parquet'))
+                      if len(paths)!=1: raise SystemExit(f'{seg}/{sym}/{name}: {paths}')
+                      one(seg,sym,name,'stream',paths[0])
+                  paths=list(base.rglob('trade_bars/15m.parquet'))
+                  if len(paths)!=1: raise SystemExit(f'{seg}/{sym}/15m: {paths}')
+                  one(seg,sym,'15m','bar',paths[0])
+          manifest={'schema_version':1,'source_run_id':30218767426,'segments':list(segments),'symbols':list(symbols),'files':records,'file_count':len(records),'total_bytes':sum(x['bytes'] for x in records)}
+          raw=(json.dumps(manifest,indent=2,sort_keys=True)+'\n').encode(); manifest['manifest_sha256_before_field']=hashlib.sha256(raw).hexdigest()
+          (root/'MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(manifest,indent=2,sort_keys=True))
+          PY
+          (cd artifact/solxrp-npz && find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-solxrp-npz-${{ github.sha }}
+          path: artifact/solxrp-npz
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
+      - name: Persist export pointer
+        run: |
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          m=json.loads(Path('artifact/solxrp-npz/MANIFEST.json').read_text())
+          p={'schema_version':1,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'artifact_name':f"yt-trinity-solxrp-npz-{os.environ['GITHUB_SHA']}",'manifest':m}
+          p['pointer_sha256_before_field']=hashlib.sha256((json.dumps(p,sort_keys=True)+'\n').encode()).hexdigest()
+          Path('research/yt_trinity_ml/SOLXRP_NPZ_POINTER.json').write_text(json.dumps(p,indent=2,sort_keys=True)+'\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/yt_trinity_ml/SOLXRP_NPZ_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record SOL XRP NPZ export ${GITHUB_RUN_ID}"
+          for i in 1 2 3 4; do git pull --rebase origin "${GITHUB_REF_NAME}"; git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0; sleep $((i*2)); done
+          exit 1
