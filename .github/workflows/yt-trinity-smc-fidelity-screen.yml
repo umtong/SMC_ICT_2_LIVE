@@ -21,8 +21,8 @@ permissions:
   actions: read
 
 concurrency:
-  group: yt-trinity-smc-fidelity-screen
-  cancel-in-progress: true
+  group: yt-trinity-smc-fidelity-screen-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   screen:
