@@ -17,13 +17,13 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Download Linux CPython 3.11 wheel
+          python-version: '3.13'
+      - name: Download Linux CPython 3.13 wheel
         run: |
           python -m pip download --only-binary=:all: --no-deps 'pyarrow==25.0.0' -d wheelhouse
       - uses: actions/upload-artifact@v4
         with:
-          name: pyarrow-cp311-linux-${{ github.run_id }}
+          name: pyarrow-cp313-linux-${{ github.run_id }}
           path: wheelhouse/*.whl
           if-no-files-found: error
           retention-days: 3
