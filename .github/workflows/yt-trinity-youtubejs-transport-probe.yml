@@ -39,12 +39,10 @@ jobs:
           node-version: '22'
 
       - uses: actions/setup-python@v5
-        if: runner.os == 'Linux'
         with:
           python-version: '3.13'
 
-      - name: Download pinned local Parquet runtime
-        if: runner.os == 'Linux'
+      - name: Download pinned Linux CPython 3.13 Parquet runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -52,6 +50,10 @@ jobs:
           python -m pip download \
             --only-binary=:all: \
             --no-deps \
+            --platform manylinux_2_28_x86_64 \
+            --python-version 3.13 \
+            --implementation cp \
+            --abi cp313 \
             --dest runtime-wheel \
             pyarrow==18.1.0
           sha256sum runtime-wheel/* > runtime-wheel/SHA256SUMS
