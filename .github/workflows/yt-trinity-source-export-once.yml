@@ -1,0 +1,67 @@
+name: YT Trinity one-shot source export
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-source-export-once.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-source-export-once
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Package exact research source
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          printf '%s\n' "${GITHUB_SHA}" > artifact/HEAD_SHA.txt
+          cp -R research/yt_trinity_ml artifact/yt_trinity_ml
+          if [[ -f scripts/market_data/load_canonical_bybit.py ]]; then
+            mkdir -p artifact/scripts/market_data
+            cp scripts/market_data/load_canonical_bybit.py artifact/scripts/market_data/
+          fi
+          find artifact -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-source-export-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 3
+      - name: Persist run pointer
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload = {
+              'schema_version': 1,
+              'source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'artifact_name': f"yt-trinity-source-export-{os.environ['GITHUB_SHA']}",
+          }
+          Path('research/yt_trinity_ml/SOURCE_EXPORT_POINTER.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/SOURCE_EXPORT_POINTER.json
+          git commit -m "Record one-shot YT Trinity source export ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
