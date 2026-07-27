@@ -1,0 +1,61 @@
+name: Canonical Bybit robust historical trade smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/market_data/build_public_trade_compact_robust.py
+      - tests/test_public_trade_compact_robust.py
+      - .github/workflows/canonical-bybit-public-robust-smoke.yml
+  push:
+    branches:
+      - agent/r22-canonical-halfyear-market-data-001
+    paths:
+      - scripts/market_data/build_public_trade_compact_robust.py
+      - tests/test_public_trade_compact_robust.py
+      - .github/workflows/canonical-bybit-public-robust-smoke.yml
+  workflow_dispatch:
+
+concurrency:
+  group: canonical-bybit-robust-history-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install ".[dev]"
+      - name: Run robust ordering unit tests
+        run: python -m pytest -q tests/test_public_trade_compact_robust.py
+      - name: Build full unsorted historical month
+        run: |
+          python scripts/market_data/build_public_trade_compact_robust.py \
+            --symbol BTCUSDT \
+            --month 2021-06 \
+            --out artifact
+      - name: Repack and verify V5
+        shell: bash
+        run: |
+          shard="artifact/PRE_2024/BTCUSDT/2021-06"
+          python scripts/market_data/repack_public_trade_compact_v5.py "$shard"
+          python scripts/market_data/verify_public_trade_compact_v5.py "$shard" \
+            | tee "$shard/VERIFICATION.json"
+          find "$shard" -type f -printf '%P\t%s\n' | sort \
+            | tee "$shard/FILE_SIZES.tsv"
+          test "$(stat -c %s "$shard/micro_bars/500ms_observed_v5.parquet")" -lt 104857600
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-robust-v5-smoke-BTCUSDT-2021-06
+          path: artifact/PRE_2024/BTCUSDT/2021-06
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
