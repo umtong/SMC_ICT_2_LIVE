@@ -139,3 +139,40 @@ def test_passive_and_market_actions_keep_separate_heads() -> None:
     assert set(model.heads) == {"CONFIRMED_MARKET", "EARLY_PASSIVE"}
     assert scored.loc[0, "fill_probability"] < 1.0
     assert scored.loc[1, "fill_probability"] == 1.0
+
+
+def test_fingerprint_binds_exact_training_and_calibration_content() -> None:
+    base, calibration = _base_calibration()
+    config = HistoryActionModelConfig(
+        min_samples_leaf=15, max_iter=120, minimum_base_rows=100,
+        minimum_outcome_rows=40, lower_confidence_penalty=0.10,
+    )
+    original = ExplicitHistoryActionValueModel(config).fit(
+        base, calibration, ["quality", "passive_depth_fraction"]
+    )
+    changed_base = base.copy()
+    changed_base.loc[0, "quality"] = float(changed_base.loc[0, "quality"]) + 0.123456789
+    changed = ExplicitHistoryActionValueModel(config).fit(
+        changed_base, calibration.copy(), ["quality", "passive_depth_fraction"]
+    )
+    assert original.base_rows_digest != changed.base_rows_digest
+    assert original.calibration_rows_digest == changed.calibration_rows_digest
+    assert original.fingerprint() != changed.fingerprint()
+
+
+def test_row_order_does_not_change_model_input_digest() -> None:
+    base, calibration = _base_calibration()
+    config = HistoryActionModelConfig(
+        min_samples_leaf=15, max_iter=120, minimum_base_rows=100,
+        minimum_outcome_rows=40, lower_confidence_penalty=0.10,
+    )
+    first = ExplicitHistoryActionValueModel(config).fit(
+        base, calibration, ["quality", "passive_depth_fraction"]
+    )
+    second = ExplicitHistoryActionValueModel(config).fit(
+        base.sample(frac=1.0, random_state=9).reset_index(drop=True),
+        calibration.sample(frac=1.0, random_state=10).reset_index(drop=True),
+        ["quality", "passive_depth_fraction"],
+    )
+    assert first.base_rows_digest == second.base_rows_digest
+    assert first.calibration_rows_digest == second.calibration_rows_digest

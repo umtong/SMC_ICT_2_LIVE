@@ -60,7 +60,35 @@ class ExplicitHistoryActionValueModel:
         self.config = config
         self.feature_names: list[str] = []
         self.heads: dict[str, _Head] = {}
+        self.base_rows_digest: str | None = None
+        self.calibration_rows_digest: str | None = None
         self.fitted = False
+
+    @staticmethod
+    def _rows_digest(rows: pd.DataFrame, feature_names: Sequence[str]) -> str:
+        """Hash the exact causal feature/label multiset used by a fitted model."""
+        identity = (
+            "activation", "event_end", "symbol", "action", "exit_variant",
+            "filled", "net_budget_r",
+        )
+        columns = [name for name in identity if name in rows.columns]
+        columns.extend(name for name in feature_names if name in rows.columns and name not in columns)
+        frame = rows[columns].copy()
+        for name in ("activation", "event_end"):
+            if name in frame.columns:
+                frame[name] = pd.to_datetime(frame[name], utc=True).astype("int64")
+        row_hashes = pd.util.hash_pandas_object(
+            frame, index=False, categorize=True
+        ).to_numpy(dtype=np.uint64)
+        row_hashes.sort()
+        metadata = {
+            "columns": columns,
+            "dtypes": [str(frame[name].dtype) for name in columns],
+            "rows": int(len(frame)),
+        }
+        digest = sha256(json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+        digest.update(row_hashes.tobytes())
+        return digest.hexdigest()
 
     def _classifier(self) -> Any:
         return make_pipeline(
@@ -230,6 +258,8 @@ class ExplicitHistoryActionValueModel:
         self.feature_names = list(feature_names)
         if not self.feature_names:
             raise ValueError("no causal action features")
+        self.base_rows_digest = self._rows_digest(base_rows, self.feature_names)
+        self.calibration_rows_digest = self._rows_digest(calibration_rows, self.feature_names)
         actions = sorted(set(base_rows["action"].astype(str)))
         for action in actions:
             base = base_rows[base_rows["action"].astype(str).eq(action)].copy()
@@ -316,6 +346,8 @@ class ExplicitHistoryActionValueModel:
         return {
             "config": self.config.__dict__,
             "feature_count": len(self.feature_names),
+            "base_rows_digest": self.base_rows_digest,
+            "calibration_rows_digest": self.calibration_rows_digest,
             "actions": {
                 action: {
                     "passive": head.passive,
@@ -341,6 +373,8 @@ class ExplicitHistoryActionValueModel:
         payload = {
             "config": self.config.__dict__,
             "feature_names": self.feature_names,
+            "base_rows_digest": self.base_rows_digest,
+            "calibration_rows_digest": self.calibration_rows_digest,
             "diagnostics": self.diagnostics(),
         }
         return sha256(
