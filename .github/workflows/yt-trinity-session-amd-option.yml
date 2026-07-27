@@ -1,0 +1,129 @@
+name: YT Trinity optional session AMD contract
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-session-amd-option.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-session-amd-option
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Add optional session-aware manipulation contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+          anchor = '    continuation_requires_discount_premium: bool = True\n'
+          if 'require_session_amd' not in text:
+              if anchor not in text:
+                  raise SystemExit('liquidity-first configuration not materialized yet')
+              text = text.replace(anchor, anchor + '    require_session_amd: bool = False\n', 1)
+
+          helper_anchor = '\ndef _liquidity_pools('
+          helper = r'''
+
+def _session_manipulation_pool_allowed(pool: _LiquidityPool, row: pd.Series) -> bool:
+    """Use only knowable session ranges in their subsequent ICT kill zone."""
+    session = int(float(row.get('session_code', 0.0))) if _finite(row.get('session_code')) else 0
+    kinds = set(pool.kind.split('+'))
+    persistent = {'PDH', 'PDL', 'PWH', 'PWL', '4H_BSL', '4H_SSL', '1H_BSL', '1H_SSL', 'EQH', 'EQL'}
+    if session == 2:  # London: completed Asia plus persistent external liquidity.
+        return bool(kinds & (persistent | {'ASIA_H', 'ASIA_L'}))
+    if session == 3:  # New York: completed London/Asia plus persistent external liquidity.
+        return bool(kinds & (persistent | {'ASIA_H', 'ASIA_L', 'LONDON_H', 'LONDON_L'}))
+    return False
+'''
+          if 'def _session_manipulation_pool_allowed(' not in text:
+              if helper_anchor not in text:
+                  raise SystemExit('liquidity pool anchor missing')
+              text = text.replace(helper_anchor, helper + helper_anchor, 1)
+
+          raid_anchor = '''    swept_lows = [\n        pool\n        for pool in low_pools\n        if _pool_key(pool) not in consumed_low\n        and float(row[\"low\"]) < pool.price - buffer\n    ]\n'''
+          raid_new = raid_anchor + '''    if config.require_session_amd:\n        if float(row.get(\"killzone\", 0.0)) < 1.0:\n            return []\n        swept_highs = [pool for pool in swept_highs if _session_manipulation_pool_allowed(pool, row)]\n        swept_lows = [pool for pool in swept_lows if _session_manipulation_pool_allowed(pool, row)]\n'''
+          # The first occurrence is the external-reversal function.
+          if 'swept_highs = [pool for pool in swept_highs if _session_manipulation_pool_allowed' not in text:
+              if raid_anchor not in text:
+                  raise SystemExit('external raid anchor missing')
+              text = text.replace(raid_anchor, raid_new, 1)
+
+          internal_anchor = '''    row = features.iloc[pos]\n    atr = float(row[\"atr\"])\n    buffer = config.sweep_buffer_atr * atr\n'''
+          internal_new = '''    row = features.iloc[pos]\n    if config.require_session_amd and float(row.get(\"killzone\", 0.0)) < 1.0:\n        return []\n    atr = float(row[\"atr\"])\n    buffer = config.sweep_buffer_atr * atr\n'''
+          # Apply specifically inside the new liquidity-delivery function.
+          marker = 'def _new_liquidity_delivery_states('
+          start = text.find(marker)
+          if start < 0:
+              raise SystemExit('liquidity delivery function missing')
+          tail = text[start:]
+          if 'if config.require_session_amd and float(row.get("killzone"' not in tail:
+              if internal_anchor not in tail:
+                  raise SystemExit('internal raid anchor missing')
+              tail = tail.replace(internal_anchor, internal_new, 1)
+              text = text[:start] + tail
+          path.write_text(text)
+          PY
+      - name: Add session contract regression
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_session_amd_option_blocks_same_setup_outside_killzone() -> None:
+    from system.corpus_alpha import CorpusAlphaConfig
+    frame = _features(
+        [
+            {'high': 101, 'low': 99, 'close': 100, 'session_code': 0, 'killzone': 0,
+             'htf_bias_score': 3, 'dealing_range_position': 0.30, 'micro_last_swing_low': 99.2,
+             'micro_last_swing_high': 102},
+            {'open': 100, 'high': 100.5, 'low': 98.8, 'close': 99.5, 'session_code': 0,
+             'killzone': 0, 'htf_bias_score': 3, 'dealing_range_position': 0.30,
+             'micro_last_swing_low': 99.2, 'micro_last_swing_high': 102, 'previous_4h_high': 108},
+            {'open': 99.5, 'high': 103.5, 'low': 99.4, 'close': 103.2, 'body_atr': 3.7,
+             'range_atr': 4.1, 'close_location': 0.93, 'session_code': 0, 'killzone': 0,
+             'htf_bias_score': 3, 'dealing_range_position': 0.35, 'micro_last_swing_high': 102,
+             'bull_fvg_lower': 100, 'bull_fvg_upper': 101, 'previous_4h_high': 108},
+            {'open': 100.7, 'high': 102, 'low': 100.4, 'close': 101.5, 'body_atr': 0.8,
+             'range_atr': 1.6, 'close_location': 0.69, 'session_code': 0, 'killzone': 0,
+             'htf_bias_score': 3, 'dealing_range_position': 0.40, 'previous_4h_high': 108},
+        ]
+    )
+    assert not generate_corpus_candidates(
+        frame, 'ETHUSDT', CorpusAlphaConfig(require_session_amd=True)
+    )
+PY
+      - name: Install and test
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py
+      - name: Commit tested optional session contract
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Add optional London and New York AMD liquidity contract'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
