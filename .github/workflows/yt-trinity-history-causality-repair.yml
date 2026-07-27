@@ -1,0 +1,366 @@
+name: YT Trinity explicit-history causality repair
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-history-causality-repair.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-history-causality-repair
+  cancel-in-progress: false
+
+jobs:
+  repair-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+
+      - name: Verify exact scientific base
+        run: |
+          set -euo pipefail
+          test "$(git hash-object research/yt_trinity_ml/run_causal_action_fast.py)" = "89b53ced0ed9c6b871d42ec8d248c26c02803efc"
+          test "$(git hash-object research/yt_trinity_ml/system/causal_action_candidates.py)" = "6cf6d0a17cf424d599aff3607fee6c30a5bf86bd"
+          test "$(git hash-object research/yt_trinity_ml/tests/test_causal_action_fast.py)" = "0f0aacfedf74348b8feacf38f99caabd108137fa"
+          test ! -e research/yt_trinity_ml/tests/test_pd_array_failure_exit.py
+
+      - name: Apply causal order-state and PD-array failure repair
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          fast = Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text = fast.read_text()
+          old = '''    if action == "EARLY_PASSIVE":
+                  geometry = v1._early_geometry(candidate)
+                  if geometry is None:
+                      return None
+                  signal_time, entry_reference = geometry
+                  activation = signal_time + pd.Timedelta(milliseconds=config.activation_latency_ms)
+              else:
+          '''
+          new = '''    if action == "EARLY_PASSIVE":
+                  # A causal passive candidate exists when its displacement-origin
+                  # PD array becomes knowable. Never reconstruct that order backward
+                  # from later mitigation/CISD success.
+                  if float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5:
+                      signal_time = pd.Timestamp(candidate.timestamp)
+                      entry_reference = float(candidate.entry_reference)
+                  else:
+                      geometry = v1._early_geometry(candidate)
+                      if geometry is None:
+                          return None
+                      signal_time, entry_reference = geometry
+                  activation = signal_time + pd.Timedelta(milliseconds=config.activation_latency_ms)
+              else:
+          '''
+          if old not in text:
+              raise SystemExit('early-passive block mismatch')
+          text = text.replace(old, new, 1)
+
+          cross = '''def _cross(bars: PreparedBars, start: int, level: float, upward: bool,
+                     end: int, *, strict: bool = False) -> int | None:
+              if upward:
+                  position = bars.extrema.first_high_gt(start, level) if strict else bars.extrema.first_high_ge(start, level)
+              else:
+                  position = bars.extrema.first_low_lt(start, level) if strict else bars.extrema.first_low_le(start, level)
+              return position if position is not None and position < end else None
+
+
+          '''
+          expanded = '''def _cross(bars: PreparedBars, start: int, level: float, upward: bool,
+                     end: int, *, strict: bool = False) -> int | None:
+              if upward:
+                  position = bars.extrema.first_high_gt(start, level) if strict else bars.extrema.first_high_ge(start, level)
+              else:
+                  position = bars.extrema.first_low_lt(start, level) if strict else bars.extrema.first_low_le(start, level)
+              return position if position is not None and position < end else None
+
+
+          def _pd_array_bounds(candidate: EventCandidate) -> tuple[float, float] | None:
+              """Reconstruct causal PD-array bounds from scale-free setup geometry."""
+              features = candidate.feature_row
+              try:
+                  atr = float(features.get("atr"))
+                  width_atr = float(features.get("zone_width_atr"))
+                  distance_atr = float(features.get(
+                      "zone_midpoint_distance_atr",
+                      features.get("retest_midpoint_distance_atr", 0.0),
+                  ))
+              except (TypeError, ValueError):
+                  return None
+              if not (np.isfinite(atr) and atr > 0 and np.isfinite(width_atr) and width_atr > 0):
+                  return None
+              midpoint = float(candidate.entry_reference) - distance_atr * atr
+              half_width = 0.5 * width_atr * atr
+              lower, upper = midpoint - half_width, midpoint + half_width
+              return (lower, upper) if np.isfinite(lower) and np.isfinite(upper) and upper > lower else None
+
+
+          def _pd_array_failure_close(candidate: EventCandidate, bars: PreparedBars,
+                                      start: int, end: int) -> int | None:
+              bounds = _pd_array_bounds(candidate)
+              if bounds is None or start >= end:
+                  return None
+              lower, upper = bounds
+              view = bars.closes[start:end]
+              failed = view < lower if candidate.side > 0 else view > upper
+              positions = np.flatnonzero(failed)
+              return start + int(positions[0]) if positions.size else None
+
+
+          '''
+          if cross not in text:
+              raise SystemExit('cross block mismatch')
+          text = text.replace(cross, expanded, 1)
+
+          generic = '''    cap = target if abs(target - entry_price) <= 2.0 * risk_distance else entry_price + side * 2.0 * risk_distance
+              effective_target = target if exit_variant == "FULL_STRUCTURAL" else cap
+              stop_position = _cross(bars, entry_position, stop, side < 0, evaluation_limit)
+              target_position = _cross(bars, entry_position, effective_target, side > 0, evaluation_limit)
+              if stop_position is not None and (target_position is None or stop_position <= target_position):
+                  position = stop_position
+                  base = min(bars.opens[position], stop) if side > 0 else max(bars.opens[position], stop)
+                  exit_price = v1._market_fill(base, -side, config, stop=True)
+                  status = "STOP"
+              elif target_position is not None:
+                  position = target_position
+                  exit_price = v1._market_fill(effective_target, -side, config)
+                  status = "STRUCTURAL_TARGET" if effective_target == target else "CAP_2R"
+              else:
+                  position = max(entry_position, evaluation_limit - 1)
+                  exit_price = v1._market_fill(bars.closes[position], -side, config)
+                  status = "EVALUATION_MARK"
+          '''
+          repaired = '''    pd_failure_enabled = exit_variant == "PD_ARRAY_FAILURE"
+              cap = target if abs(target - entry_price) <= 2.0 * risk_distance else entry_price + side * 2.0 * risk_distance
+              effective_target = target if exit_variant in {"FULL_STRUCTURAL", "PD_ARRAY_FAILURE"} else cap
+              stop_position = _cross(bars, entry_position, stop, side < 0, evaluation_limit)
+              target_position = _cross(bars, entry_position, effective_target, side > 0, evaluation_limit)
+              failure_close = (
+                  _pd_array_failure_close(candidate, bars, entry_position, evaluation_limit)
+                  if pd_failure_enabled else None
+              )
+              # Stop and target remain live through the failure-confirmation bar.
+              if stop_position is not None and (
+                  (target_position is None or stop_position <= target_position)
+                  and (failure_close is None or stop_position <= failure_close)
+              ):
+                  position = stop_position
+                  base = min(bars.opens[position], stop) if side > 0 else max(bars.opens[position], stop)
+                  exit_price = v1._market_fill(base, -side, config, stop=True)
+                  status = "STOP"
+              elif target_position is not None and (failure_close is None or target_position <= failure_close):
+                  position = target_position
+                  exit_price = v1._market_fill(effective_target, -side, config)
+                  status = "STRUCTURAL_TARGET" if effective_target == target else "CAP_2R"
+              elif failure_close is not None:
+                  # Close confirmation plus fixed latency: next observable bar open.
+                  if failure_close + 1 < evaluation_limit:
+                      position = failure_close + 1
+                      base = bars.opens[position]
+                  else:
+                      position = failure_close
+                      base = bars.closes[position]
+                  exit_price = v1._market_fill(base, -side, config)
+                  status = "PD_ARRAY_CLOSE_FAILURE"
+              else:
+                  position = max(entry_position, evaluation_limit - 1)
+                  exit_price = v1._market_fill(bars.closes[position], -side, config)
+                  status = "EVALUATION_MARK"
+          '''
+          if generic not in text:
+              raise SystemExit('exit branch mismatch')
+          text = text.replace(generic, repaired, 1)
+
+          key = '''    def narrative_key(candidate: EventCandidate) -> tuple[Any, ...]:
+                  return (
+                      candidate.symbol, candidate.family.value, candidate.side,
+                      round(float(candidate.stop_reference), 8),
+                      round(float(candidate.target_reference), 8),
+                      round(float(candidate.structural_level), 8),
+                  )
+          '''
+          key_new = '''    def narrative_key(candidate: EventCandidate) -> tuple[Any, ...]:
+                  # Stop placement is management, not narrative identity.
+                  return (
+                      candidate.symbol, candidate.family.value, candidate.side,
+                      round(float(candidate.target_reference), 8),
+                      round(float(candidate.structural_level), 8),
+                  )
+          '''
+          if key not in text:
+              raise SystemExit('narrative key mismatch')
+          text = text.replace(key, key_new, 1)
+
+          loop = '''    for candidate in candidates:
+                  frame = prepared.get(candidate.symbol)
+                  if frame is None:
+                      continue
+                  for action in ("EARLY_PASSIVE", "CONFIRMED_MARKET"):
+                      for variant in variants:
+          '''
+          loop_new = '''    for candidate in candidates:
+                  frame = prepared.get(candidate.symbol)
+                  if frame is None:
+                      continue
+                  early_flag = float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5
+                  market_flag = float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5
+                  if early_flag or market_flag:
+                      candidate_actions = ((["EARLY_PASSIVE"] if early_flag else [])
+                                           + (["CONFIRMED_MARKET"] if market_flag else []))
+                  else:
+                      candidate_actions = ["EARLY_PASSIVE", "CONFIRMED_MARKET"]
+                  for action in candidate_actions:
+                      for variant in variants:
+          '''
+          if loop not in text:
+              raise SystemExit('candidate action loop mismatch')
+          text = text.replace(loop, loop_new, 1)
+          fast.write_text(text)
+
+          candidates = Path('research/yt_trinity_ml/system/causal_action_candidates.py')
+          text = candidates.read_text()
+          passive = '''            "entry_confirmation_kind": 0.0,
+                      "causal_pd_array_armed": 1.0,
+          '''
+          passive_new = '''            "entry_confirmation_kind": 0.0,
+                      "causal_pd_array_armed": 1.0,
+                      "passive_depth_fraction": 0.5,
+          '''
+          market = '''            "action_candidate_confirmed_market": 1.0,
+                      "causal_pd_array_armed": 1.0,
+          '''
+          market_new = '''            "action_candidate_confirmed_market": 1.0,
+                      "causal_pd_array_armed": 1.0,
+                      "passive_depth_fraction": 0.0,
+          '''
+          if passive not in text or market not in text:
+              raise SystemExit('action feature block mismatch')
+          text = text.replace(passive, passive_new, 1).replace(market, market_new, 1)
+          candidates.write_text(text)
+
+          test = Path('research/yt_trinity_ml/tests/test_causal_action_fast.py')
+          text = test.read_text()
+          text = text.replace(
+              'starts = pd.date_range("2023-01-01T00:05:00Z", periods=8, freq="1min")',
+              'starts = pd.date_range("2023-01-01T00:05:00Z", periods=20, freq="1min")',
+          ).replace(
+              'low = [101.0, 100.5, low_at_fill, 100.5, 101.0, 102.0, 103.0, 104.0]',
+              'low = [101.0, 100.5, low_at_fill, 100.5, 101.0, 102.0, 103.0, 104.0] + [101.0] * 12',
+          ).replace(
+              'high = [102.0, 101.5, 101.0, 102.0, 103.0, 105.0, 108.5, 109.0]',
+              'high = [102.0, 101.5, 101.0, 102.0, 103.0, 105.0, 108.5, 109.0] + [109.0] * 12',
+          ).replace(
+              '"open": [101.5] * 8,',
+              '"open": [101.5] * 20,',
+          ).replace(
+              '"close": [101.5, 101.0, 100.0, 101.5, 102.5, 104.5, 108.0, 108.5],',
+              '"close": [101.5, 101.0, 100.0, 101.5, 102.5, 104.5, 108.0, 108.5] + [108.5] * 12,',
+          )
+          test.write_text(text)
+          PY
+
+          cat > research/yt_trinity_ml/tests/test_pd_array_failure_exit.py <<'PY'
+          from __future__ import annotations
+          import numpy as np
+          import pandas as pd
+          from run_causal_action_fast import _label, _prepare
+          from run_causal_action_v1 import ScreenConfig
+          from system.core import EventCandidate, EventFamily
+
+          def candidate() -> EventCandidate:
+              return EventCandidate(
+                  pd.Timestamp('2023-01-01T00:00:00Z'), 'BTCUSDT',
+                  EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1, 102.0, 100.0,
+                  95.0, 110.0, 96.0,
+                  {'action_candidate_early_passive': 1.0,
+                   'action_candidate_confirmed_market': 0.0,
+                   'atr': 2.0, 'zone_width_atr': 2.0,
+                   'zone_midpoint_distance_atr': 0.0,
+                   'passive_depth_fraction': 0.5},
+              )
+
+          def bars(stop_on_failure: bool = False) -> pd.DataFrame:
+              starts = pd.date_range('2023-01-01T00:00:00Z', periods=6, freq='1min')
+              available = starts + pd.Timedelta(minutes=1)
+              low = np.asarray([101.0, 99.0, 96.5, 96.0, 96.5, 97.0])
+              if stop_on_failure:
+                  low[2] = 94.0
+              return pd.DataFrame({
+                  'bar_start': starts, 'available_at': available,
+                  'open': [102.0, 101.0, 99.0, 96.5, 96.8, 97.0],
+                  'high': [103.0, 102.0, 100.0, 98.0, 98.5, 99.0],
+                  'low': low,
+                  'close': [102.0, 100.0, 97.0, 96.8, 97.5, 98.0],
+              }, index=available)
+
+          def test_close_confirmed_pd_array_failure_exits_next_observable_open() -> None:
+              label = _label(candidate(), 'EARLY_PASSIVE', 'PD_ARRAY_FAILURE',
+                             _prepare(bars()), {}, pd.Timestamp('2023-01-02T00:00:00Z'),
+                             ScreenConfig())
+              assert label is not None and label.filled == 1
+              assert label.status == 'PD_ARRAY_CLOSE_FAILURE'
+              assert label.event_end == pd.Timestamp('2023-01-01T00:04:00Z')
+              assert label.net_pnl_per_unit < 0
+
+          def test_structural_stop_wins_on_failure_confirmation_bar() -> None:
+              label = _label(candidate(), 'EARLY_PASSIVE', 'PD_ARRAY_FAILURE',
+                             _prepare(bars(True)), {}, pd.Timestamp('2023-01-02T00:00:00Z'),
+                             ScreenConfig())
+              assert label is not None and label.filled == 1
+              assert label.status == 'STOP'
+          PY
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run focused causality and execution suite
+        run: |
+          set -euo pipefail
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pytest==8.3.5'
+          export PYTHONPATH=research/yt_trinity_ml
+          python -m py_compile \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py
+          pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py \
+            research/yt_trinity_ml/tests/test_causal_risk_domain.py \
+            research/yt_trinity_ml/tests/test_causal_action_history_model.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_entry_fill_guard.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+
+      - name: Commit one tested scientific transition
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py
+          git rm .github/workflows/yt-trinity-history-causality-repair.yml
+          git commit -m 'Repair causal passive transitions and PD-array failure exit'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
