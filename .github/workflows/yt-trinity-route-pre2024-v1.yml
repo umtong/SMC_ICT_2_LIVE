@@ -5,7 +5,6 @@ on:
   push:
     branches: [agent/r22-yt-trinity-ml-001]
     paths:
-      - .github/workflows/yt-trinity-route-pre2024-v1.yml
       - control/yt-trinity-route-pre2024-v1-trigger.json
 
 permissions:
@@ -100,7 +99,7 @@ jobs:
           def first_value(obj, names):
               if isinstance(obj, dict):
                   for name in names:
-                      if name in obj:
+                      if name in obj and obj[name] is not None:
                           return obj[name]
                   for value in obj.values():
                       found = first_value(value, names)
@@ -125,40 +124,52 @@ jobs:
           if selected is None:
               best_report = first_value(artifact_summary, ('best_report', 'selected_report'))
               selected = scalar_name(best_report)
-          if selected is None:
-              raise RuntimeError(f'could not identify frozen configuration from keys={list(artifact_summary)}')
 
           decision_text = str(decision or '').upper()
-          if any(token in decision_text for token in ('SWITCH', 'REJECT', 'FAIL', 'ABANDON')):
-              promote = False
-          elif any(token in decision_text for token in ('PROMOTE', 'GO_2024', 'CONTINUE', 'ADVANCE')):
+          explicit_promote = first_value(
+              artifact_summary,
+              ('promote_2024h1', 'advance_to_2024h1', 'promising'),
+          )
+          explicit_audit = first_value(
+              artifact_summary,
+              ('implementation_audit_required', 'implementation_repair_required'),
+          )
+          if any(token in decision_text for token in ('PROMOTE', 'GO_2024', 'CONTINUE', 'ADVANCE')):
               promote = True
+          elif explicit_promote is True:
+              promote = True
+          elif explicit_audit is True or explicit_promote is False:
+              promote = False
+          elif any(token in decision_text for token in ('SWITCH', 'REJECT', 'FAIL', 'ABANDON')):
+              promote = False
           else:
-              promising = first_value(
-                  artifact_summary,
-                  ('promising', 'promote_2024h1', 'advance_to_2024h1'),
-              )
-              if not isinstance(promising, bool):
-                  raise RuntimeError(f'ambiguous pre-2024 routing decision={decision!r}')
-              promote = promising
+              raise RuntimeError(f'ambiguous pre-2024 routing decision={decision!r}')
+
+          if promote and selected is None:
+              raise RuntimeError('a promoted pre-2024 result must freeze one configuration')
 
           route = {
-              'schema_version': 1,
+              'schema_version': 2,
               'pre2024_screen_run_id': pointer['run_id'],
               'pre2024_screen_source_sha': pointer['source_sha'],
               'pre2024_summary_sha256': actual,
               'original_decision': decision,
               'promote_to_2024h1': promote,
+              'implementation_audit_required': not promote,
+              'unrelated_alpha_switch_authorized': False,
               'frozen_configuration': selected,
               'selection_authority': 'PRE2024_2023H2_ONLY',
-              'rule': '2024H1 outcomes cannot alter the frozen configuration',
+              'rule': (
+                  '2024H1 outcomes cannot alter a frozen promoted configuration; '
+                  'a weak result requires unified-SMC implementation audit before premise rejection'
+              ),
           }
           Path('output/PRE2024_ROUTE_DECISION.json').write_text(
               json.dumps(route, indent=2, sort_keys=True) + '\n', encoding='utf-8'
           )
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
               handle.write(f"promote={'true' if promote else 'false'}\n")
-              handle.write(f"configuration={selected}\n")
+              handle.write(f"configuration={selected or ''}\n")
           print(json.dumps(route, indent=2, sort_keys=True))
           PY
 
@@ -326,7 +337,7 @@ jobs:
           print(json.dumps(result, indent=2, sort_keys=True))
           PY
 
-      - name: Record switch-alpha route without opening 2024H1
+      - name: Record implementation-audit route without opening 2024H1
         if: steps.decide.outputs.promote != 'true'
         run: |
           set -euo pipefail
@@ -335,14 +346,19 @@ jobs:
           from pathlib import Path
           route = json.loads(Path('output/PRE2024_ROUTE_DECISION.json').read_text())
           payload = {
-              'schema_version': 1,
-              'stage': 'PRE2024_SWITCH_ALPHA',
+              'schema_version': 2,
+              'stage': 'PRE2024_IMPLEMENTATION_AUDIT',
+              'narrative_id': 'YT-TRINITY-UNIFIED-SMC-NARRATIVE-V3',
               'reason': route['original_decision'],
               'frozen_configuration': route['frozen_configuration'],
               '2024H1_opened': False,
-              'next_action': 'materially different corpus-derived alpha, not adjacent threshold tuning',
+              'unrelated_alpha_switch_authorized': False,
+              'next_action': (
+                  'audit the earliest blocked liquidity-to-displacement-to-PD-array-to-trigger '
+                  'stage, repair faithful implementation, and rerun the same unified narrative'
+              ),
           }
-          Path('output/SWITCH_ALPHA_RESULT.json').write_text(
+          Path('output/IMPLEMENTATION_AUDIT_RESULT.json').write_text(
               json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8'
           )
           PY
@@ -356,7 +372,7 @@ jobs:
           import os
           from pathlib import Path
           payload = {
-              'schema_version': 1,
+              'schema_version': 2,
               'source_sha': os.environ['GITHUB_SHA'],
               'github_run_id': int(os.environ['GITHUB_RUN_ID']),
               'canonical_loader_commit': 'a2bb231966a517d29495bed7673e4d08ab8e30a9',
@@ -402,7 +418,7 @@ jobs:
           if log_path.exists():
               log_tail = '\n'.join(log_path.read_text(errors='replace').splitlines()[-100:])[-30000:]
           pointer = {
-              'schema_version': 1,
+              'schema_version': 2,
               'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
               'workflow': 'YT Trinity route pre-2024 result',
               'run_id': int(os.environ['GITHUB_RUN_ID']),
@@ -412,7 +428,7 @@ jobs:
               'artifact_name': f"yt-trinity-route-pre2024-v1-{os.environ['GITHUB_SHA']}",
               'route': read('PRE2024_ROUTE_DECISION.json'),
               'frozen_2024h1_result': read('FROZEN_2024H1_RESULT.json'),
-              'switch_alpha_result': read('SWITCH_ALPHA_RESULT.json'),
+              'implementation_audit_result': read('IMPLEMENTATION_AUDIT_RESULT.json'),
               'diagnostic_tail': log_tail,
           }
           target = Path('output/YT_TRINITY_ROUTE_POINTER.json')
