@@ -1,8 +1,8 @@
-name: YT Trinity tightened gate 2024H1 v1
+name: YT Trinity tightened gate 2024H1 isolated v1
 
 on:
   push:
-    branches: [agent/r22-yt-trinity-ml-001]
+    branches: [agent/yt-trinity-h1-iterative-001]
     paths:
       - research/yt_trinity_ml/run_quality_gate_ml_rank_tightened_v1.py
       - research/yt_trinity_ml/run_tightened_gate_pre2024_freeze_v1.py
@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: yt-trinity-tightened-gate-2024h1-v1
+  group: yt-trinity-tightened-gate-2024h1-isolated-v1
   cancel-in-progress: false
 
 jobs:
@@ -94,23 +94,23 @@ jobs:
             --initial-nav 10000 \
             --risk-fraction 0.17 \
             --maximum-leverage 20 \
-            --stage 2024_H1_TIGHTENED_QUALITY_GATE_ML_RANK_COARSE_PROVISIONAL \
+            --stage 2024_H1_TIGHTENED_QUALITY_GATE_ML_RANK_COARSE_PROVISIONAL_ISOLATED \
             | tee output/h1/STDOUT.log
       - name: Upload immutable evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: yt-trinity-tightened-gate-2024h1-v1-${{ github.sha }}
+          name: yt-trinity-tightened-gate-2024h1-isolated-v1-${{ github.sha }}
           path: output
           if-no-files-found: error
           retention-days: 90
-      - name: Persist result pointer
+      - name: Persist result pointer on isolated branch
         if: always()
         run: |
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
-          git fetch origin agent/r22-yt-trinity-ml-001
-          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          git fetch origin agent/yt-trinity-h1-iterative-001
+          git checkout -B agent/yt-trinity-h1-iterative-001 origin/agent/yt-trinity-h1-iterative-001
           SOURCE_SHA="${source_sha}" python - <<'PY'
           import hashlib, json, os
           from pathlib import Path
@@ -121,7 +121,7 @@ jobs:
           pointer = {
               'schema_version': 1,
               'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
-              'stage': '2024_H1_TIGHTENED_QUALITY_GATE_ML_RANK_COARSE_PROVISIONAL',
+              'stage': '2024_H1_TIGHTENED_QUALITY_GATE_ML_RANK_COARSE_PROVISIONAL_ISOLATED',
               'source_commit': os.environ['SOURCE_SHA'],
               'workflow_run_id': int(os.environ['GITHUB_RUN_ID']),
               'status': 'success' if pre is not None and h1 is not None else 'execution_failure_not_economic_failure',
@@ -131,18 +131,18 @@ jobs:
               'h1': h1,
               'ranking_effect': 'PROVISIONAL_COARSE_ONLY',
           }
-          Path('research/yt_trinity_ml/TIGHTENED_GATE_2024H1_POINTER.json').write_text(
+          Path('research/yt_trinity_ml/TIGHTENED_GATE_2024H1_ISOLATED_POINTER.json').write_text(
               json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True, default=str) + '\n'
           )
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add research/yt_trinity_ml/TIGHTENED_GATE_2024H1_POINTER.json
+          git add research/yt_trinity_ml/TIGHTENED_GATE_2024H1_ISOLATED_POINTER.json
           if ! git diff --cached --quiet; then
-            git commit -m "Record iterative tightened-gate 2024H1 ${GITHUB_RUN_ID}"
+            git commit -m "Record isolated tightened-gate 2024H1 ${GITHUB_RUN_ID}"
             for attempt in 1 2 3 4 5; do
-              git pull --rebase origin agent/r22-yt-trinity-ml-001
-              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+              git pull --rebase origin agent/yt-trinity-h1-iterative-001
+              if git push origin HEAD:agent/yt-trinity-h1-iterative-001; then exit 0; fi
               sleep $((attempt * 3))
             done
             exit 1
