@@ -26,6 +26,7 @@ from sklearn.pipeline import make_pipeline
 
 from run_research import PRIMARY, load_canonical_frames, load_instrument_rules
 from system.core import EventCandidate, FeatureConfig
+from system.causal_action_model import GroupedCausalActionValueModel
 from system.model import candidate_model_features
 from system.research_pipeline import generate_candidates_by_symbol
 
@@ -292,16 +293,25 @@ def _feature_columns(rows: pd.DataFrame) -> list[str]:
     return [name for name in rows.columns if name not in excluded and pd.api.types.is_numeric_dtype(rows[name])]
 
 
-def _fit(rows: pd.DataFrame, features: Sequence[str]):
-    model = make_pipeline(
-        SimpleImputer(strategy="median"),
-        HistGradientBoostingRegressor(
-            learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=30,
-            max_iter=250, l2_regularization=2.0, random_state=20260727,
-        ),
-    )
-    model.fit(rows[list(features)], rows["net_budget_r"].astype(float))
-    return model
+def _fit(rows: pd.DataFrame, features: Sequence[str]) -> GroupedCausalActionValueModel:
+    return GroupedCausalActionValueModel().fit(rows, features)
+
+
+def _score_rows(
+    model: GroupedCausalActionValueModel,
+    rows: pd.DataFrame,
+    features: Sequence[str],
+) -> pd.DataFrame:
+    scored = rows.copy()
+    predictions = model.predict(scored)
+    if len(predictions) != len(scored):
+        raise RuntimeError("grouped action model did not score every row")
+    for name in predictions.columns:
+        if name == "action":
+            continue
+        scored[name] = predictions.loc[scored.index, name]
+    scored["score"] = scored["lower_confidence_net_r"]
+    return scored
 
 
 def _account(rows: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp, threshold: float,
@@ -405,7 +415,7 @@ def run(args: argparse.Namespace) -> int:
         if len(train_variant) < 100 or len(validation_variant) < 50:
             continue
         model = _fit(train_variant, features)
-        validation_variant["score"] = model.predict(validation_variant[features])
+        validation_variant = _score_rows(model, validation_variant, features)
         for quantile in (0.50, 0.60, 0.70, 0.75, 0.80, 0.85, 0.90, 0.925, 0.95):
             threshold = float(validation_variant["score"].quantile(quantile))
             base = _account(validation_variant, h2_start, pre_end, threshold, 0.01, 5.0, rule_map)
@@ -461,7 +471,7 @@ def run(args: argparse.Namespace) -> int:
     )
     all_pre = rows_2023[(rows_2023["activation"] < pre_end) & (rows_2023["event_end"] < pre_end) & (rows_2023["exit_variant"] == selected["variant"])].copy()
     model = _fit(all_pre, features)
-    all_pre["score"] = model.predict(all_pre[features])
+    all_pre = _score_rows(model, all_pre, features)
     frozen_threshold = float(all_pre["score"].quantile(selected["quantile"]))
 
     decision_2024, execution_2024, funding_2024 = load_canonical_frames(
@@ -472,7 +482,7 @@ def run(args: argparse.Namespace) -> int:
         candidates_2024, execution_2024, funding_2024,
         pd.Timestamp("2024-07-01T00:00:00Z"), (selected["variant"],), screen,
     )
-    rows_2024["score"] = model.predict(rows_2024[features])
+    rows_2024 = _score_rows(model, rows_2024, features)
     result_2024 = _account(
         rows_2024, pd.Timestamp("2024-01-01T00:00:00Z"), pd.Timestamp("2024-07-01T00:00:00Z"),
         frozen_threshold, float(selected["risk_fraction"]), float(selected["maximum_leverage"]), rule_map,
@@ -500,6 +510,8 @@ def run(args: argparse.Namespace) -> int:
         ),
         "frozen_threshold": frozen_threshold,
         "feature_count": len(features),
+        "grouped_action_model_fingerprint": model.fingerprint(),
+        "grouped_action_model_diagnostics": model.diagnostics(),
         "result_2024_h1": result_2024,
         "decision": (
             "ADVANCE_EXACT_CAUSAL_ACTION_SURVIVOR_TO_EVENT_TAPE_AND_CONTINUOUS_EVALUATION"

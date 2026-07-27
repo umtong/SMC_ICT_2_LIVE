@@ -16,6 +16,7 @@ from run_causal_action_v1 import (
     _account,
     _feature_columns,
     _fit,
+    _score_rows,
     _jsonable,
     _rows,
 )
@@ -91,7 +92,7 @@ def run(args: argparse.Namespace) -> int:
     training = rows_2023[(rows_2023["activation"] < pre_end) & (rows_2023["event_end"] < pre_end)].copy()
     features = _feature_columns(training)
     model = _fit(training, features)
-    training["score"] = model.predict(training[features])
+    training = _score_rows(model, training, features)
     threshold = float(training["score"].quantile(quantile))
 
     decision, execution, funding = load_canonical_frames(
@@ -104,7 +105,7 @@ def run(args: argparse.Namespace) -> int:
     )
     if rows.empty:
         raise RuntimeError("no continuous evaluation action rows")
-    rows["score"] = model.predict(rows[features])
+    rows = _score_rows(model, rows, features)
     rows.to_parquet(args.output / "ACTION_LABELS_2024_2026H1.parquet", index=False)
 
     start = pd.Timestamp("2024-01-01T00:00:00Z")
@@ -146,6 +147,8 @@ def run(args: argparse.Namespace) -> int:
             "risk_fraction": risk_fraction,
             "maximum_leverage": maximum_leverage,
             "feature_count": len(features),
+            "grouped_action_model_fingerprint": model.fingerprint(),
+            "grouped_action_model_diagnostics": model.diagnostics(),
         },
         "candidate_count": len(candidates),
         "action_rows": len(rows),
