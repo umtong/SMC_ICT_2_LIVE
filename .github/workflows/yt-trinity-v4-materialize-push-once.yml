@@ -1,0 +1,139 @@
+name: YT Trinity v4 materialize push once
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-v4-materialize-push-once.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-v4-materialize-push-once
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Decode hash-bound unified SMC v4
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/v4-materialize
+          python - <<'PY' 2>&1 | tee artifact/v4-materialize/materialize.log
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          chunk_dir = Path('research/yt_trinity_ml/upgrade_chunks')
+          chunks = sorted(chunk_dir.glob('unified_smc_v4.*'))
+          expected = [f'unified_smc_v4.{i:02d}' for i in range(6)]
+          assert [p.name for p in chunks] == expected, [p.name for p in chunks]
+          encoded = ''.join(p.read_text(encoding='utf-8') for p in chunks)
+          assert len(encoded) == 42180, len(encoded)
+          assert hashlib.sha256(encoded.encode('ascii')).hexdigest() == '337d9fed927d27832b621ac9f19f072cae46d4828242313971a98dcfb28d951e'
+          raw = gzip.decompress(base64.b85decode(encoded.encode('ascii')))
+          assert hashlib.sha256(raw).hexdigest() == '0e37a5101d112abd1652ffbac4c647c3f902b3d19f46de7a10713c36dce8bccd'
+          files = json.loads(raw.decode('utf-8'))
+          expected_hashes = {
+              'research/yt_trinity_ml/system/corpus_alpha.py': '5bd7f343906672d02fcd792508fe4b9b219388fdf961efea61296c699872c929',
+              'research/yt_trinity_ml/system/research_pipeline.py': 'b11942b34067e263c1096e76bdb8f70d8828fc60dc914392dbc27c39499819b7',
+              'research/yt_trinity_ml/run_primary_screen.py': 'c4bd76dc24725ef3232fcd8468181593c0032d719074be2aa32e124acc29fc85',
+              'research/yt_trinity_ml/tests/test_corpus_alpha.py': '91c184c290b2ce6c5381cfc866c639df699354be791901c70a3c7fd97fafa3d8',
+              'research/yt_trinity_ml/SYSTEM_DESIGN.md': '29e4bc00c53c83c47decc255f8723fda3faa5d75c29f539e44bbdd6736a1f716',
+              'research/yt_trinity_ml/system_contract.json': '0fbe374c91e8f8d1d987f2035d5b608fe88629dfc6435d1be5cda1c365495d53',
+              '.github/workflows/yt-trinity-smc-fidelity-screen.yml': '55d6cc31eb3069aa7191bc44258e074447a85bfd9881624f0a3ef2a04f6762f0',
+              '.github/workflows/yt-trinity-source-snapshot.yml': '20e7700694ff9204761379f779e8e347f91d957c5c941cc88117ee26d0e17e2f',
+          }
+          assert set(files) == set(expected_hashes), sorted(files)
+          for relative, content in files.items():
+              raw_file = content.encode('utf-8')
+              assert hashlib.sha256(raw_file).hexdigest() == expected_hashes[relative], relative
+              path = Path(relative)
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(raw_file)
+          PY
+
+      - name: Apply audited fixes and compute-equivalent reductions
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_primary_screen.py')
+          text = path.read_text(encoding='utf-8')
+          old = '        symbols=sorted(rules),\n'
+          new = '        symbols=sorted(rule.symbol for rule in rules),\n'
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          python research/yt_trinity_ml/apply_v4_performance_patch.py
+
+      - name: Install deterministic tests
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' \
+            'pyarrow==19.0.1' 'requests==2.32.4' 'pytest==8.3.5' 'PyYAML==6.0.2'
+
+      - name: Prove causal and scale-free invariants
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          {
+            python -m py_compile research/yt_trinity_ml/system/*.py research/yt_trinity_ml/run_primary_screen.py
+            python -m json.tool research/yt_trinity_ml/system_contract.json >/dev/null
+            pytest -q research/yt_trinity_ml/tests \
+              --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
+          } 2>&1 | tee artifact/v4-materialize/test.log
+
+      - name: Persist exact tested v4 source
+        run: |
+          set -euo pipefail
+          rm -f research/yt_trinity_ml/upgrade_chunks/unified_smc_v4.*
+          rm -f control/yt-trinity-unified-smc-v4-materialize-trigger.json
+          rm -f control/yt-trinity-smc-v4-bootstrap-trigger.json
+          rm -f .github/workflows/yt-trinity-unified-smc-v4-materialize.yml
+          rm -f .github/workflows/yt-trinity-v4-materialize-push-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/research_pipeline.py \
+            research/yt_trinity_ml/run_primary_screen.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/SYSTEM_DESIGN.md \
+            research/yt_trinity_ml/system_contract.json \
+            research/yt_trinity_ml/apply_v4_performance_patch.py \
+            .github/workflows/yt-trinity-smc-fidelity-screen.yml \
+            .github/workflows/yt-trinity-source-snapshot.yml
+          git add -u research/yt_trinity_ml/upgrade_chunks control .github/workflows
+          git commit -m 'Materialize tested generation-aware unified SMC v4'
+          for attempt in 1 2 3 4 5 6 7 8; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then
+              git rev-parse HEAD | tee artifact/v4-materialize/commit.txt
+              exit 0
+            fi
+            sleep $((attempt * 3))
+          done
+          exit 1
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-v4-materialize-${{ github.sha }}
+          path: artifact/v4-materialize
+          if-no-files-found: warn
+          retention-days: 30
