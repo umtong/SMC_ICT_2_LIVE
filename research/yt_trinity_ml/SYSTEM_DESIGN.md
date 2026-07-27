@@ -1,86 +1,108 @@
-# YT Trinity causal ML system
+# YT Trinity unified causal SMC/ICT system
 
-Status: `DRAFT_PENDING_COMPLETE_CORPUS_DIGEST_AND_CANONICAL_DATA`
+Status: `DRAFT_IMPLEMENTATION_AUDIT_REQUIRED_BEFORE_RANKING`
 
-This directory implements the reusable system path for Work Claim
-`CLM-20260727-0346-YT-TRINITY-ML-001`. It does not claim a market result until the
-three-channel public-caption manifest is `PASS_COMPLETE`, the evidence ontology is
-bound by hash, and the exact frozen survivor is replayed on canonical Bybit data.
+The system is one coherent delivery narrative. “Reversal” and “continuation” are
+terminal diagnostic paths, not separately selected strategy families. A weak half-year
+cannot authorize an unrelated-alpha switch until the narrative has been shown to be
+causally and faithfully implemented.
 
-## Economic core
+## Economic narrative
 
-The initial hypothesis space is deliberately restricted to two payoff mechanisms.
+Price is modeled as moving between knowable liquidity pools. A candidate exists only
+when the complete causal chain is present:
 
-1. **Liquidity-sweep reversal**: price raids a previously knowable swing/day/week
-   liquidity level and closes back through it. That bar only arms the setup. A candidate
-   is emitted later, after a causal internal-structure shift with displacement and, by
-   default, a same-direction FVG. The stop is beyond the raid extreme and the target is
-   the next opposing external-liquidity level.
-2. **Displacement break/retest continuation**: a completed-bar structure break with
-   displacement/FVG only arms the setup. A candidate is emitted later, after the first
-   accepted retest closes back in the break direction. The stop is beyond the retest or
-   prior structure and the target is the next same-direction external-liquidity level.
+1. **Context and draw** — completed higher-timeframe structure, dealing range,
+   premium/discount location, session references, and a still-available external
+   liquidity pool define the draw on liquidity.
+2. **Liquidity event** — price either raids fresh external liquidity and closes back
+   through it, or makes the first close-accepted structure break in the direction of
+   the draw.
+3. **Displacement and structure** — a later completed bar breaks the protected internal
+   swing with directional body, range expansion, close location and displacement
+   efficiency. OHLC bars that raid both sides are not ordered without finer data.
+4. **PD array** — the entry zone must come from the confirming impulse: its newly
+   created FVG, the last opposite candle within that impulse, or their overlap. A
+   globally forward-filled arbitrary “order block” is not accepted.
+5. **Mitigation and trigger** — the first return arms the entry phase. A non-rejecting
+   touch does not automatically destroy the setup. Entry occurs only after a causal
+   close back out of the array or a later CISD-style break of the retest candle.
+6. **Structural risk and target** — reversal risk is beyond the raid extreme;
+   continuation risk is beyond the protected swing. The opposing external-liquidity
+   target is frozen before entry and is never chased as new pivots appear.
 
-Indicators, patterns, session state, volume, volatility, positioning, basis and
-funding are model context. They are not independent named strategies.
+A setup ends only when its structural stop is breached, its frozen draw is taken before
+entry, a deeper same-draw raid supersedes it, or an entry is produced. Elapsed time is
+not a setup or position exit.
 
-## Causality
+## Liquidity and market structure
 
-- A decision row is indexed by the canonical `available_at_ms`, not source-bar start.
-- Pivots appear only after their right-side confirmation bars are complete.
-- Previous day/week levels are used only after those periods close.
-- Labels are first-passage outcomes with no elapsed-time strategy exit. Unresolved
-  observations are censored, never relabelled as losses.
-- Training rows become eligible only after all market and passive-fill outcomes are
-  available. The calibration split purges base rows whose outcome overlaps the
-  later calibration start.
-- The model active before a scheduled update remains active until the deterministic
-  training-completion lag has elapsed.
+The causal liquidity map combines confirmed equal highs/lows, confirmed internal and
+external swings, previous hour/four-hour/day/week extremes, completed Asia and London
+opening ranges, and completed one-hour/four-hour swing structure. A level is eligible
+only after it becomes knowable and before its first subsequent taking.
 
-## ML policy
+Higher-timeframe bars are resampled and joined to the decision frame only at their
+completion times. Pivots appear only after their right-side confirmation bars. The
+feature history must remain identical when unseen future rows are appended.
 
-A pooled histogram-gradient-boosting action-value model has separate heads for:
+## ML role
 
-- marketable target-before-stop probability and after-cost net-R;
-- passive-order fill probability;
-- passive conditional target-before-stop probability and after-cost net-R.
+ML does not invent entries from indicators. It ranks fully formed structural narratives
+and chooses among `ABSTAIN`, `MARKETABLE`, and `PASSIVE_RETEST` using action-specific,
+after-cost lower-confidence expected log growth. Its inputs include liquidity quality,
+raid depth, draw quality, higher-timeframe alignment, displacement efficiency,
+FVG/order-block geometry, mitigation depth, CISD delay, target/stop geometry, volume,
+volatility, positioning, session and execution state.
 
-A passive nonfill contributes zero realized account return; it never inherits the
-market-order label. Strictly later chronological tails calibrate probabilities. The
-global policy compares `ABSTAIN`, `MARKETABLE`, and `PASSIVE_RETEST` by action-specific
-lower-confidence expected log NAV increment after cost across BTC/ETH/SOL/XRP, and
-permits at most one pending or open entry across the whole account.
+Marketable and passive outcomes have separate labels. Passive nonfill is zero return,
+not a recycled market-order outcome. Training rows become available only after all
+relevant outcomes resolve, chronological calibration is purged, and the previous model
+remains active through the deterministic training-completion lag.
 
-## Risk and execution
+## Implementation audit before premise rejection
 
-Quantity starts from whole-account NAV times the selected risk fraction divided by
-expected per-unit loss, including entry-to-stop distance, fees, spread, slippage,
-impact and funding. Instrument quantity steps/minimums are mandatory run inputs and
-must be tied to a dataset snapshot. Risk fraction, leverage and order style are
-searched only after positive basic after-cost alpha; growth is never clipped at the
-1% project target.
+Every economic screen emits a stage funnel:
 
-The event-tape engine implements fixed 500 ms activation, bid/ask market fills,
-depth-dependent impact, resting-side queue-ahead passive fills, aggressor-direction
-filters, partial fills, nonfills, funding, stop-first same-timestamp ambiguity,
-structural invalidation inputs, liquidation invalidation and UTC daily NAV. Unknown
-aggressor volume is not credited to a passive fill. Any unfilled entry remainder is
-cancelled when the sibling position closes. Actual executable entry prices cap filled
-quantity to the planned whole-account loss budget. Without an explicit reduce-only
-target queue, targets cross the observable book with taker cost rather than receiving
-an exact full maker fill. Coarse stops use adverse gap opens. No order or position is
-closed solely because time elapsed.
+`external raid / first break → narrative with frozen draw → displacement/MSS → valid
+impulse PD array → first mitigation → CISD/rejection → resolved action label → account`
+
+A weak result is first classified as one of the following:
+
+- a missing or distorted SMC narrative stage;
+- wrong stop/target or draw-on-liquidity geometry;
+- coarse-bar ordering, fill, fee, funding or label error;
+- ML ranking or abstention error after valid candidates exist;
+- economically weak behavior after the preceding items are complete.
+
+The repair order follows that list. Reversal and continuation diagnostics may reveal
+where the system is incomplete, but neither is independently selected or discarded.
+Only a causally complete implementation with realistic execution can support a premise
+change.
+
+## Execution and account
+
+Orders activate 500 ms after the last information used by the decision. Event-tape
+replay uses observable bid/ask, depth-dependent impact, correct-side queue consumption,
+partial fills, nonfills, funding and stop-first same-timestamp ambiguity. Targets cross
+the observable book unless a reduce-only target queue is explicitly modeled.
+
+Quantity is whole-account NAV times the selected risk fraction divided by expected
+per-unit loss, including entry-to-stop distance, fees, spread, slippage, impact and
+funding. All symbols share one pending-or-open entry slot. Liquidation before the
+structural stop invalidates the configuration. No position is closed merely because
+elapsed time reached a limit.
 
 ## Evaluation path
 
-1. Bind the complete transcript corpus and rule ontology by SHA-256.
-2. Build causal events/labels on pre-2024 canonical data.
-3. Run the 2023 sequential coarse 1-minute screen at basic risk.
-4. Close the exact route if after-cost geometric growth is nonpositive; otherwise
-   test conditional symbols and then risk/leverage/order style.
-5. Replay the exact frozen survivor on the sub-minute event-tape lane.
-6. Only an event-tape-valid survivor may open 2024H1 and enter the Result Registry.
-7. Official intervals preserve one NAV path from 10,000 USDT with no half-year reset.
+1. Bind the complete 186-video corpus and ontology by digest.
+2. Build the unified narrative and its implementation funnel on pre-2024 canonical data.
+3. Repair the earliest missing structural stage before interpreting weak economics.
+4. When the causal narrative and basic after-cost possibility are present, freeze the
+   system and open 2024H1 without using 2024H1 to reselect it.
+5. A weak 2024H1 triggers the same implementation audit, not an automatic unrelated
+   strategy switch.
+6. Event-tape-valid candidates proceed through the continuous 2024-01-01 to 2026-06-30
+   NAV path with no half-year reset.
 
-The 1-minute screen is explicitly provisional and cannot change the cumulative
-strategy ranking.
+The one-minute lane remains provisional and cannot alter the cumulative strategy rank.

@@ -1,7 +1,7 @@
 {
-  "schema_version": 2,
-  "system_id": "YT-TRINITY-CAUSAL-ACTION-V2",
-  "status": "DRAFT_PENDING_COMPLETE_CORPUS_DIGEST_AND_CANONICAL_DATA",
+  "schema_version": 3,
+  "system_id": "YT-TRINITY-UNIFIED-SMC-NARRATIVE-V3",
+  "status": "DRAFT_IMPLEMENTATION_AUDIT_REQUIRED_BEFORE_RANKING",
   "objective": {
     "primary": "maximize realistic after-cost continuous-account geometric log growth",
     "target_geometric_daily_growth": 0.01,
@@ -29,44 +29,71 @@
     "same_bar_ambiguous_barrier_resolution": "event_tape_required_or_stop_first",
     "no_future_confirmed_pivots": true,
     "training_and_selection_cutoff_utc": "2023-12-31T23:59:59Z",
-    "candidate_timestamp": "later_confirmation_or_accepted_retest_availability_time"
+    "candidate_timestamp": "post_mitigation_rejection_or_cisd_availability_time",
+    "higher_timeframe_context": "asof_join_only_after_each_higher_timeframe_bar_is_complete"
   },
-  "candidate_families": [
-    {
-      "id": "LIQUIDITY_SWEEP_REVERSAL",
-      "economic_mechanism": "forced liquidity raid that fails, then reprices toward opposing external liquidity",
-      "required_sequence": [
-        "external_liquidity_location",
-        "sweep_and_reclaim",
-        "micro_structure_shift_or_displacement",
-        "entry_zone_or_confirmation"
-      ],
-      "structural_stop": "beyond raid extreme plus execution buffer",
-      "structural_target": "next opposing confirmed external liquidity pool",
-      "elapsed_time_exit_forbidden": true
+  "unified_narrative": {
+    "economic_mechanism": "price seeks knowable external liquidity, reprices with displacement after a raid or accepted structure break, mitigates the displacement-origin PD array, and continues toward the frozen opposing draw on liquidity",
+    "required_sequence": [
+      "knowable_fresh_liquidity_pool_and_dealing_range_context",
+      "frozen_opposing_draw_on_liquidity",
+      "liquidity_raid_or_first_close_accepted_structure_break",
+      "protected_internal_swing_break_with_displacement",
+      "displacement_origin_fvg_order_block_or_overlap_pd_array",
+      "causal_first_mitigation_without_automatic_consumption",
+      "post_mitigation_cisd_or_rejection_confirmation",
+      "structural_stop_and_frozen_liquidity_target"
+    ],
+    "liquidity_sources": [
+      "confirmed_equal_highs_and_equal_lows",
+      "confirmed_internal_and_external_swings",
+      "previous_hour_four_hour_day_and_week_extremes",
+      "completed_asia_and_london_open_ranges",
+      "completed_one_hour_and_four_hour_structure"
+    ],
+    "dealing_range": {
+      "equilibrium_used": true,
+      "premium_discount_is_context_and_ml_feature": true,
+      "draw_target_is_frozen_before_entry": true,
+      "target_chasing_after_setup_creation_forbidden": true
     },
-    {
-      "id": "DISPLACEMENT_BREAK_RETEST_CONTINUATION",
-      "economic_mechanism": "accepted structure break with displacement, followed by efficient repricing from a retest zone",
-      "required_sequence": [
-        "compression_or_trend_context",
-        "confirmed_structure_break",
-        "displacement_or_imbalance",
-        "retest_or_continuation_confirmation"
-      ],
-      "structural_stop": "beyond retest zone or broken structure invalidation",
-      "structural_target": "next same-direction confirmed external liquidity pool",
-      "elapsed_time_exit_forbidden": true
-    }
-  ],
+    "pd_array": {
+      "fvg_must_be_created_by_the_confirming_displacement": true,
+      "order_block_is_last_opposite_candle_inside_the_impulse_leg": true,
+      "global_forward_filled_order_block_forbidden": true,
+      "fvg_order_block_overlap_is_distinguished": true,
+      "first_touch_without_rejection_does_not_automatically_destroy_the_setup": true
+    },
+    "structural_invalidation": [
+      "raid_or_protected_swing_stop_is_breached",
+      "frozen_draw_on_liquidity_is_taken_before_entry",
+      "newer_deeper_same_draw_raid_structurally_supersedes_the_old_narrative"
+    ],
+    "elapsed_time_setup_or_position_exit_forbidden": true
+  },
+  "delivery_modes": {
+    "selection_authority": false,
+    "modes": [
+      {
+        "id": "LIQUIDITY_SWEEP_REVERSAL",
+        "role": "diagnostic terminal path inside the unified narrative"
+      },
+      {
+        "id": "DISPLACEMENT_BREAK_RETEST_CONTINUATION",
+        "role": "diagnostic terminal path inside the unified narrative"
+      }
+    ],
+    "separate_family_winner_selection_forbidden": true
+  },
   "feature_groups": [
-    "confirmed_liquidity_and_market_structure",
-    "imbalance_order_block_and_retest_geometry",
-    "support_resistance_pattern_geometry",
-    "trend_momentum_indicators",
-    "volatility_volume_and_positioning",
-    "multi_timeframe_and_session_context",
-    "execution_cost_and_fill_state"
+    "fresh_external_and_internal_liquidity",
+    "dealing_range_premium_discount_and_frozen_draw",
+    "confirmed_multitimeframe_structure",
+    "raid_displacement_and_protected_swing_geometry",
+    "displacement_origin_fvg_order_block_and_overlap",
+    "mitigation_depth_and_post_touch_cisd",
+    "session_and_completed_reference_ranges",
+    "volume_volatility_positioning_and_execution_context"
   ],
   "model": {
     "family": "pooled causal histogram gradient boosting with action-specific heads",
@@ -78,7 +105,7 @@
       "passive_conditional_after_cost_net_r_expectation"
     ],
     "calibration": "strictly later purged chronological folds",
-    "policy_score": "maximum action-specific lower-confidence expected log NAV increment after cost, including zero return on passive nonfill",
+    "policy_score": "maximum action-specific lower-confidence expected log NAV increment after cost including zero return on passive nonfill",
     "abstain_when_nonpositive": true,
     "selection_objective": "pre_2024_sequential_after_cost_account_log_growth",
     "action_space": [
@@ -132,6 +159,29 @@
     "actual_fill_quantity_capped_to_planned_loss_budget": true,
     "adverse_gap_stop_fill": true,
     "partial_entry_remainder_cancelled_on_position_close": true
+  },
+  "implementation_audit": {
+    "required_before_premise_rejection": true,
+    "stage_funnel": [
+      "external_liquidity_raid_or_first_break",
+      "narrative_armed_with_opposing_draw",
+      "displacement_structure_confirmation",
+      "valid_displacement_origin_pd_array",
+      "first_mitigation",
+      "post_mitigation_entry_confirmation",
+      "resolved_action_specific_label",
+      "realized_sequential_account_result"
+    ],
+    "weak_2024h1_does_not_authorize_immediate_alpha_switch": true,
+    "repair_priority": "earliest_missing_or_distorted_stage_then_target_stop_geometry_then_labels_execution_then_ml_policy",
+    "unrelated_alpha_switch_from_a_single_weak_half_year_forbidden": true
+  },
+  "evaluation": {
+    "coarse_one_minute_screen_rankable": false,
+    "positive_basic_alpha_next_step": "exact_event_tape_replay_then_risk_leverage_order_style_search",
+    "weak_result_next_step": "same_system_implementation_audit_and_core_narrative_repair",
+    "official_intervals_use_one_continuous_nav_path": true,
+    "half_year_nav_reset_forbidden": true
   },
   "corpus_binding": {
     "required_manifest_decision": "PASS_COMPLETE",
