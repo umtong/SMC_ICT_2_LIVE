@@ -21,6 +21,9 @@ class ModelConfig:
     random_state: int = 20260727
     calibration_fraction: float = 0.20
     lower_confidence_penalty: float = 0.35
+    conditional_return_min_samples: int = 20
+    return_clip_lower_quantile: float = 0.02
+    return_clip_upper_quantile: float = 0.98
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,13 @@ class ScoredCandidate:
     market_lower_confidence_score: float | None = None
     passive_lower_confidence_score: float | None = None
     preferred_action: str | None = None
+    market_winner_net_r: float | None = None
+    market_loser_net_r: float | None = None
+    passive_winner_net_r: float | None = None
+    passive_loser_net_r: float | None = None
+    passive_conditional_expected_net_r: float | None = None
+    market_unconditional_expected_net_r: float | None = None
+    passive_unconditional_expected_net_r: float | None = None
 
 
 def candidate_model_features(candidate: EventCandidate) -> dict[str, float]:
@@ -75,6 +85,13 @@ class ChronologicalEventModel:
     the after-cost first-passage result of an immediately executable entry. The
     passive heads predict fill probability and conditional after-cost outcome; a
     nonfill contributes zero account return rather than inheriting the market label.
+
+    Win probability alone is not action value. Two candidates with the same win
+    probability but different structural reward-to-risk must not receive the same
+    expected growth. Conditional winner and loser return heads therefore estimate
+    the candidate-specific after-cost payoff magnitudes used by the log-growth
+    objective. An unconditional return head remains as an independent disagreement
+    check rather than replacing those payoff estimates with a global median.
     """
 
     def __init__(self, config: ModelConfig = ModelConfig()) -> None:
@@ -85,8 +102,21 @@ class ChronologicalEventModel:
         self.fill_model = self._classifier()
         self.passive_win_model = self._classifier()
         self.passive_r_model = self._regressor()
+        self.market_win_r_model = self._regressor()
+        self.market_loss_r_model = self._regressor()
+        self.passive_win_r_model = self._regressor()
+        self.passive_loss_r_model = self._regressor()
         self.calibrator = IsotonicRegression(out_of_bounds="clip")
+        self.fill_calibrator = IsotonicRegression(out_of_bounds="clip")
         self.passive_calibrator = IsotonicRegression(out_of_bounds="clip")
+        self._market_win_r_fitted = False
+        self._market_loss_r_fitted = False
+        self._passive_win_r_fitted = False
+        self._passive_loss_r_fitted = False
+        self._market_win_bounds = (0.01, np.inf)
+        self._market_loss_bounds = (-np.inf, -0.01)
+        self._passive_win_bounds = (0.01, np.inf)
+        self._passive_loss_bounds = (-np.inf, -0.01)
         self._passive_outcome_fitted = False
         self._fitted = False
 
@@ -132,6 +162,37 @@ class ChronologicalEventModel:
             )
         return result
 
+    def _return_bounds(self, values: pd.Series, winner: bool) -> tuple[float, float]:
+        clean = pd.to_numeric(values, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+        if clean.empty:
+            return (0.01, np.inf) if winner else (-np.inf, -0.01)
+        lower_q = min(max(float(self.config.return_clip_lower_quantile), 0.0), 1.0)
+        upper_q = min(max(float(self.config.return_clip_upper_quantile), lower_q), 1.0)
+        lower = float(clean.quantile(lower_q))
+        upper = float(clean.quantile(upper_q))
+        if winner:
+            lower = max(0.001, lower)
+            upper = max(lower, upper)
+        else:
+            upper = min(-0.001, upper)
+            lower = min(lower, upper)
+        return lower, upper
+
+    def _fit_return_head(
+        self,
+        model: HistGradientBoostingRegressor,
+        rows: pd.DataFrame,
+        return_column: str,
+    ) -> tuple[bool, tuple[float, float]]:
+        minimum = max(2, int(self.config.conditional_return_min_samples), int(self.config.min_samples_leaf))
+        usable = rows[rows[return_column].notna()]
+        if len(usable) < minimum:
+            return False, (-np.inf, np.inf)
+        x_values = usable[self.feature_names].replace([np.inf, -np.inf], np.nan)
+        model.fit(x_values, usable[return_column].astype(float))
+        winner = bool((usable[return_column].astype(float) > 0).mean() >= 0.5)
+        return True, self._return_bounds(usable[return_column], winner)
+
     def fit(self, rows: pd.DataFrame) -> "ChronologicalEventModel":
         required = {"event_start", "event_end", "passive_filled"}
         missing = required - set(rows.columns)
@@ -171,13 +232,27 @@ class ChronologicalEventModel:
         if not self.feature_names:
             raise ValueError("no numeric feature columns")
         x_base = base[self.feature_names].replace([np.inf, -np.inf], np.nan)
+        x_calibration = calibration[self.feature_names].replace([np.inf, -np.inf], np.nan)
         self.win_model.fit(x_base, base["market_target_before_stop"].astype(int))
         self.r_model.fit(x_base, base["market_net_r"].astype(float))
         self.fill_model.fit(x_base, base["passive_filled"].astype(int))
-        raw_calibration = self._positive_probability(
-            self.win_model, calibration[self.feature_names].replace([np.inf, -np.inf], np.nan)
-        )
+        raw_calibration = self._positive_probability(self.win_model, x_calibration)
         self.calibrator.fit(raw_calibration, calibration["market_target_before_stop"].astype(int).to_numpy())
+        raw_fill = self._positive_probability(self.fill_model, x_calibration)
+        self.fill_calibrator.fit(raw_fill, calibration["passive_filled"].astype(int).to_numpy())
+
+        market_wins = base[
+            base["market_target_before_stop"].astype(int).eq(1) & base["market_net_r"].notna()
+        ]
+        market_losses = base[
+            base["market_target_before_stop"].astype(int).eq(0) & base["market_net_r"].notna()
+        ]
+        self._market_win_r_fitted, self._market_win_bounds = self._fit_return_head(
+            self.market_win_r_model, market_wins, "market_net_r"
+        )
+        self._market_loss_r_fitted, self._market_loss_bounds = self._fit_return_head(
+            self.market_loss_r_model, market_losses, "market_net_r"
+        )
 
         passive_base = base[
             base["passive_filled"].astype(int).eq(1)
@@ -201,6 +276,14 @@ class ChronologicalEventModel:
             self.passive_calibrator.fit(
                 raw_passive,
                 passive_calibration["passive_target_before_stop"].astype(int).to_numpy(),
+            )
+            passive_wins = passive_base[passive_base["passive_target_before_stop"].astype(int).eq(1)]
+            passive_losses = passive_base[passive_base["passive_target_before_stop"].astype(int).eq(0)]
+            self._passive_win_r_fitted, self._passive_win_bounds = self._fit_return_head(
+                self.passive_win_r_model, passive_wins, "passive_net_r"
+            )
+            self._passive_loss_r_fitted, self._passive_loss_bounds = self._fit_return_head(
+                self.passive_loss_r_model, passive_losses, "passive_net_r"
             )
             self._passive_outcome_fitted = True
         self._fitted = True
@@ -229,6 +312,27 @@ class ChronologicalEventModel:
             return -np.inf
         return probability * log(1 + win_return) + (1 - probability) * log(1 + loss_return)
 
+    @staticmethod
+    def _conditional_return(
+        model: HistGradientBoostingRegressor,
+        vector: pd.DataFrame,
+        fitted: bool,
+        bounds: tuple[float, float],
+        fallback: float,
+        winner: bool,
+    ) -> float:
+        if not fitted:
+            return float(fallback)
+        prediction = float(model.predict(vector)[0])
+        if not np.isfinite(prediction):
+            return float(fallback)
+        prediction = float(np.clip(prediction, bounds[0], bounds[1]))
+        if winner and prediction <= 0:
+            return float(fallback)
+        if not winner and prediction >= 0:
+            return float(fallback)
+        return prediction
+
     def score(
         self,
         candidate: EventCandidate,
@@ -248,20 +352,58 @@ class ChronologicalEventModel:
         ).replace([np.inf, -np.inf], np.nan)
         raw_market_p = float(self._positive_probability(self.win_model, vector)[0])
         market_p = float(self.calibrator.predict([raw_market_p])[0])
-        market_expected_r = float(self.r_model.predict(vector)[0])
-        fill = float(self._positive_probability(self.fill_model, vector)[0])
+        market_unconditional_r = float(self.r_model.predict(vector)[0])
+        raw_fill = float(self._positive_probability(self.fill_model, vector)[0])
+        fill = float(self.fill_calibrator.predict([raw_fill])[0])
 
         if self._passive_outcome_fitted:
             raw_passive_p = float(self._positive_probability(self.passive_win_model, vector)[0])
             passive_p = float(self.passive_calibrator.predict([raw_passive_p])[0])
-            passive_conditional_r = float(self.passive_r_model.predict(vector)[0])
+            passive_unconditional_r = float(self.passive_r_model.predict(vector)[0])
         else:
             passive_p = market_p
-            passive_conditional_r = market_expected_r
+            passive_unconditional_r = market_unconditional_r
 
-        passive_winner = winner_net_r if passive_winner_net_r is None else passive_winner_net_r
-        passive_loser = loser_net_r if passive_loser_net_r is None else passive_loser_net_r
-        market_log = self._expected_log(market_p, risk_fraction, winner_net_r, loser_net_r, fixed_cost_fraction)
+        fallback_passive_winner = winner_net_r if passive_winner_net_r is None else passive_winner_net_r
+        fallback_passive_loser = loser_net_r if passive_loser_net_r is None else passive_loser_net_r
+        market_winner = self._conditional_return(
+            self.market_win_r_model,
+            vector,
+            self._market_win_r_fitted,
+            self._market_win_bounds,
+            winner_net_r,
+            True,
+        )
+        market_loser = self._conditional_return(
+            self.market_loss_r_model,
+            vector,
+            self._market_loss_r_fitted,
+            self._market_loss_bounds,
+            loser_net_r,
+            False,
+        )
+        passive_winner = self._conditional_return(
+            self.passive_win_r_model,
+            vector,
+            self._passive_outcome_fitted and self._passive_win_r_fitted,
+            self._passive_win_bounds,
+            fallback_passive_winner,
+            True,
+        )
+        passive_loser = self._conditional_return(
+            self.passive_loss_r_model,
+            vector,
+            self._passive_outcome_fitted and self._passive_loss_r_fitted,
+            self._passive_loss_bounds,
+            fallback_passive_loser,
+            False,
+        )
+
+        market_expected_r = market_p * market_winner + (1 - market_p) * market_loser
+        passive_conditional_r = passive_p * passive_winner + (1 - passive_p) * passive_loser
+        market_log = self._expected_log(
+            market_p, risk_fraction, market_winner, market_loser, fixed_cost_fraction
+        )
         passive_conditional_log = self._expected_log(
             passive_p,
             risk_fraction,
@@ -271,13 +413,17 @@ class ChronologicalEventModel:
         )
         passive_log = fill * passive_conditional_log  # no fill => zero account return
 
-        market_disagreement = abs(market_expected_r - (market_p * winner_net_r + (1 - market_p) * loser_net_r))
+        market_disagreement = abs(market_unconditional_r - market_expected_r)
         market_uncertainty = market_p * (1 - market_p)
-        market_lower = market_log - self.config.lower_confidence_penalty * (market_uncertainty + market_disagreement) * risk_fraction
+        market_lower = market_log - self.config.lower_confidence_penalty * (
+            market_uncertainty + market_disagreement
+        ) * risk_fraction
 
-        passive_disagreement = abs(passive_conditional_r - (passive_p * passive_winner + (1 - passive_p) * passive_loser))
+        passive_disagreement = abs(passive_unconditional_r - passive_conditional_r)
         passive_uncertainty = fill * passive_p * (1 - passive_p) + fill * (1 - fill)
-        passive_lower = passive_log - self.config.lower_confidence_penalty * (passive_uncertainty + fill * passive_disagreement) * risk_fraction
+        passive_lower = passive_log - self.config.lower_confidence_penalty * (
+            passive_uncertainty + fill * passive_disagreement
+        ) * risk_fraction
 
         if passive_lower > market_lower:
             chosen_log = passive_log
@@ -300,4 +446,11 @@ class ChronologicalEventModel:
             market_lower_confidence_score=market_lower,
             passive_lower_confidence_score=passive_lower,
             preferred_action=preferred,
+            market_winner_net_r=market_winner,
+            market_loser_net_r=market_loser,
+            passive_winner_net_r=passive_winner,
+            passive_loser_net_r=passive_loser,
+            passive_conditional_expected_net_r=passive_conditional_r,
+            market_unconditional_expected_net_r=market_unconditional_r,
+            passive_unconditional_expected_net_r=passive_unconditional_r,
         )
