@@ -1,0 +1,119 @@
+name: YT Trinity candidate speed equivalence
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/apply_candidate_speed_patch.py
+      - .github/workflows/yt-trinity-candidate-speed-equivalence.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-candidate-speed-equivalence
+  cancel-in-progress: false
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1' 'pytest==8.3.5'
+      - name: Apply exact-output speed patch
+        run: |
+          set -euo pipefail
+          python research/yt_trinity_ml/apply_candidate_speed_patch.py
+          python -m py_compile research/yt_trinity_ml/system/corpus_alpha.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q research/yt_trinity_ml/tests --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
+      - name: Download immutable 2023 data and old candidate checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fetch_artifact() {
+            curl --fail --silent --show-error --location -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${GH_TOKEN}" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"
+          }
+          mkdir -p inputs/data/PRE_2024_2023/{BTCUSDT,ETHUSDT} inputs/reference output
+          fetch_artifact 8636781702 /tmp/btc.zip
+          fetch_artifact 8636761741 /tmp/eth.zip
+          fetch_artifact 8643507433 /tmp/reference.zip
+          unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2023/BTCUSDT
+          unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2023/ETHUSDT
+          unzip -q /tmp/reference.zip -d inputs/reference
+      - name: Prove full-2023 candidate and diagnostic equivalence
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip, hashlib, json, pickle, time
+          from pathlib import Path
+          import numpy as np
+          from run_research import PRIMARY, load_canonical_frames
+          from system.core import FeatureConfig
+          from system.corpus_alpha import build_corpus_features, generate_corpus_candidates_with_diagnostics
+
+          with gzip.open('inputs/reference/CANDIDATES.pkl.gz','rb') as fh:
+              expected = pickle.load(fh)
+          expected_manifest = json.loads(Path('inputs/reference/MANIFEST.json').read_text())
+          decision, _, _ = load_canonical_frames(Path('inputs/data'), Path('canonical_repo'), PRIMARY, ('PRE_2024_2023',))
+          actual=[]; diagnostics={}; timings={}
+          for symbol,frame in sorted(decision.items()):
+              started=time.perf_counter()
+              features=build_corpus_features(frame,FeatureConfig())
+              rows,diag=generate_corpus_candidates_with_diagnostics(features,symbol)
+              timings[symbol]=time.perf_counter()-started
+              actual.extend(rows);diagnostics[symbol]=diag
+          actual.sort(key=lambda x:(x.timestamp,x.symbol,x.family.value,x.side))
+
+          def same_float(a,b):
+              if np.isnan(a) and np.isnan(b): return True
+              return a == b
+          assert len(actual)==len(expected),(len(actual),len(expected))
+          for index,(left,right) in enumerate(zip(actual,expected,strict=True)):
+              assert left.timestamp==right.timestamp,(index,left,right)
+              assert left.symbol==right.symbol and left.family==right.family and left.side==right.side,(index,left,right)
+              for name in ('decision_price','entry_reference','stop_reference','target_reference','structural_level'):
+                  assert same_float(float(getattr(left,name)),float(getattr(right,name))),(index,name,getattr(left,name),getattr(right,name))
+              assert left.feature_row.keys()==right.feature_row.keys(),(index,'feature keys')
+              for name in left.feature_row:
+                  assert same_float(float(left.feature_row[name]),float(right.feature_row[name])),(index,name,left.feature_row[name],right.feature_row[name])
+          assert diagnostics==expected_manifest['diagnostics'],(diagnostics,expected_manifest['diagnostics'])
+          result={'schema_version':1,'candidate_count':len(actual),'diagnostics_equal':True,'all_candidate_fields_equal':True,'timings_seconds':timings,'reference_artifact_id':8643507433}
+          Path('output/CANDIDATE_SPEED_EQUIVALENCE.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          PY
+      - name: Commit tested equivalent implementation
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp output/CANDIDATE_SPEED_EQUIVALENCE.json research/yt_trinity_ml/CANDIDATE_SPEED_EQUIVALENCE.json
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/CANDIDATE_SPEED_EQUIVALENCE.json
+          git commit -m "Speed candidate generation without changing 2023 outputs"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt*3))
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-candidate-speed-equivalence-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 30
