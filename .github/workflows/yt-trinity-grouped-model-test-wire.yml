@@ -1,0 +1,80 @@
+name: YT Trinity grouped action-value model test wire
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-grouped-model-test-wire.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-grouped-model-test-wire
+  cancel-in-progress: false
+
+jobs:
+  test-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run grouped model regressions
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/tests/test_grouped_causal_action_model.py')
+          text=p.read_text().replace('for i in range(180):','for i in range(260):',1)
+          p.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/causal_action_model.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_grouped_causal_action_model.py
+      - name: Wire model source and tests into economic authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/yt-trinity-causal-action-v1.yml')
+          text=p.read_text()
+          head=text.split('permissions:')[0]
+          if 'system/causal_action_model.py' not in head:
+              anchor='      - research/yt_trinity_ml/system/causal_action_candidates.py\n'
+              text=text.replace(anchor,anchor+'      - research/yt_trinity_ml/system/causal_action_model.py\n',1)
+          if 'test_grouped_causal_action_model.py' not in head:
+              anchor='      - research/yt_trinity_ml/tests/test_pd_array_failure_exit.py\n'
+              text=text.replace(anchor,anchor+'      - research/yt_trinity_ml/tests/test_grouped_causal_action_model.py\n',1)
+          compile_anchor='            research/yt_trinity_ml/system/causal_action_candidates.py \\\n'
+          compile_body=text[text.index('python -m py_compile'):text.index('pytest -q')]
+          if 'system/causal_action_model.py' not in compile_body:
+              text=text.replace(compile_anchor,compile_anchor+'            research/yt_trinity_ml/system/causal_action_model.py \\\n',1)
+          body=text[text.index('pytest -q'):]
+          if 'test_grouped_causal_action_model.py' not in body:
+              anchor='            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py \\\n'
+              text=text.replace(anchor,anchor+'            research/yt_trinity_ml/tests/test_grouped_causal_action_model.py \\\n',1)
+          p.write_text(text)
+          PY
+          git rm .github/workflows/yt-trinity-grouped-model-test-wire.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/yt-trinity-causal-action-v1.yml \
+            research/yt_trinity_ml/tests/test_grouped_causal_action_model.py
+          git commit -m 'Require grouped causal action-value regressions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
