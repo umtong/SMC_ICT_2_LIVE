@@ -52,12 +52,72 @@ class ScoredCandidate:
     passive_unconditional_expected_net_r: float | None = None
 
 
+_RAW_MODEL_FEATURES = {
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "turnover",
+    "trade_count",
+    "atr",
+    "body",
+    "ema_fast",
+    "ema_slow",
+    "ema_long",
+    "vwap",
+    "mark_close",
+    "index_close",
+    "premium_close",
+    "premium_atr",
+    "open_interest",
+    "mark_price",
+    "index_price",
+    "equal_high_liquidity",
+    "equal_low_liquidity",
+}
+_RAW_LEVEL_PREFIXES = (
+    "previous_",
+    "current_",
+    "last_",
+    "micro_",
+    "internal_",
+    "confirmed_",
+    "htf_",
+    "dealing_range_",
+)
+_RAW_LEVEL_SUFFIXES = (
+    "_price",
+    "_level",
+    "_lower",
+    "_upper",
+    "_equilibrium",
+)
+
+
+def _eligible_model_feature_name(name: str) -> bool:
+    """Reject absolute price/time identity while preserving normalized SMC geometry."""
+    key = str(name)
+    if key in _RAW_MODEL_FEATURES:
+        return False
+    lowered = key.lower()
+    if "timestamp" in lowered or lowered.endswith(("_ms", "_ns")):
+        return False
+    if lowered.endswith(_RAW_LEVEL_SUFFIXES):
+        return False
+    if lowered.startswith(_RAW_LEVEL_PREFIXES) and lowered.endswith(("_high", "_low", "_open", "_close")):
+        return False
+    return True
+
+
 def candidate_model_features(candidate: EventCandidate) -> dict[str, float]:
-    """Return the exact numeric feature vector used for both fitting and scoring."""
+    """Return one scale-free feature vector for both fitting and live scoring."""
     row = {
         str(key): float(value)
         for key, value in candidate.feature_row.items()
-        if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(value)
+        if _eligible_model_feature_name(str(key))
+        and isinstance(value, (int, float, np.integer, np.floating))
+        and np.isfinite(value)
     }
     row.update(
         {
@@ -234,7 +294,9 @@ class ChronologicalEventModel:
         self.feature_names = [
             name
             for name in ordered.columns
-            if name not in leakage_columns and pd.api.types.is_numeric_dtype(ordered[name])
+            if name not in leakage_columns
+            and _eligible_model_feature_name(name)
+            and pd.api.types.is_numeric_dtype(ordered[name])
         ]
         if not self.feature_names:
             raise ValueError("no numeric feature columns")

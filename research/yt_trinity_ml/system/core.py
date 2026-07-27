@@ -217,7 +217,6 @@ def build_causal_features(frame: pd.DataFrame, config: FeatureConfig = FeatureCo
     optional = {
         "mark_close": "basis_mark_atr",
         "index_close": "basis_index_atr",
-        "premium_close": "premium_atr",
         "open_interest": "open_interest_change",
         "long_short_ratio": "long_short_ratio_z",
         "funding_rate": "funding_rate",
@@ -228,7 +227,7 @@ def build_causal_features(frame: pd.DataFrame, config: FeatureConfig = FeatureCo
             out[destination] = np.nan
             continue
         values = pd.to_numeric(raw[source], errors="coerce")
-        if source in {"mark_close", "index_close", "premium_close"}:
+        if source in {"mark_close", "index_close"}:
             out[destination] = (values - out["close"]) / out["atr"]
         elif source == "open_interest":
             out[destination] = np.log(values.replace(0, np.nan)).diff()
@@ -238,6 +237,24 @@ def build_causal_features(frame: pd.DataFrame, config: FeatureConfig = FeatureCo
             out[destination] = (values - mean) / std_value.replace(0, np.nan)
         else:
             out[destination] = values
+
+    # Bybit premium-index klines contain a premium rate, not a tradable price.
+    # Treating that rate as a price and subtracting the contract close creates a
+    # scale-dependent value hundreds or thousands of ATRs from zero.
+    if "premium_close" in raw.columns:
+        premium_rate = pd.to_numeric(raw["premium_close"], errors="coerce")
+        premium_mean = premium_rate.rolling(100, min_periods=30).mean()
+        premium_std = premium_rate.rolling(100, min_periods=30).std(ddof=0)
+        out["premium_rate"] = premium_rate
+        out["premium_bps"] = premium_rate * 10_000.0
+        out["premium_rate_z"] = (premium_rate - premium_mean) / premium_std.replace(0, np.nan)
+    else:
+        out["premium_rate"] = np.nan
+        out["premium_bps"] = np.nan
+        out["premium_rate_z"] = np.nan
+    # Keep the legacy column non-informative so old manifests fail safely instead
+    # of silently learning the invalid price-minus-rate calculation.
+    out["premium_atr"] = np.nan
 
     out["utc_hour_sin"] = np.sin(2 * np.pi * time_basis.hour / 24)
     out["utc_hour_cos"] = np.cos(2 * np.pi * time_basis.hour / 24)
