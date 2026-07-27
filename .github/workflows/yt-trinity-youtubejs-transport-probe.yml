@@ -42,12 +42,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .transport-node
-          cd .transport-node
+          mkdir -p transport-node
+          cd transport-node
           npm init -y >/dev/null
           npm install --no-audit --no-fund --save-exact \
             youtubei.js@17.0.1 \
-            @nadimtuhin/ytranscript@latest
+            @nadimtuhin/ytranscript@1.3.0
           ln -s "$PWD/node_modules" "$GITHUB_WORKSPACE/node_modules"
           npm ls --depth=0 > "$GITHUB_WORKSPACE/dependency-${RUNNER_OS}.txt"
 
@@ -80,37 +80,49 @@ jobs:
           ]
           out = pathlib.Path("artifact") / f"ytranscript-{os.environ['RUNNER_OS']}"
           out.mkdir(parents=True, exist_ok=True)
+          executable = pathlib.Path("transport-node/node_modules/.bin/ytranscript")
           rows = []
           for channel_slug, video_id in samples:
               started = time.monotonic()
               row = {"channel_slug": channel_slug, "video_id": video_id}
-              try:
-                  proc = subprocess.run(
-                      [
-                          "node",
-                          ".transport-node/node_modules/@nadimtuhin/ytranscript/dist/cli.js",
-                          "get",
-                          video_id,
-                      ],
-                      capture_output=True,
-                      text=True,
-                      timeout=120,
-                      check=False,
-                  )
-                  row.update(
-                      returncode=proc.returncode,
-                      stdout=proc.stdout,
-                      stderr=proc.stderr,
-                      nonempty=bool(proc.stdout.strip()),
-                  )
-              except subprocess.TimeoutExpired as exc:
+              if not executable.exists():
                   row.update(
                       returncode=None,
-                      stdout=(exc.stdout or "") if isinstance(exc.stdout, str) else "",
-                      stderr=(exc.stderr or "") if isinstance(exc.stderr, str) else "",
+                      stdout="",
+                      stderr=f"missing executable: {executable}",
                       nonempty=False,
-                      timeout=True,
                   )
+              else:
+                  try:
+                      proc = subprocess.run(
+                          [
+                              str(executable),
+                              "get",
+                              video_id,
+                              "--lang",
+                              "ko",
+                              "--format",
+                              "json",
+                          ],
+                          capture_output=True,
+                          text=True,
+                          timeout=120,
+                          check=False,
+                      )
+                      row.update(
+                          returncode=proc.returncode,
+                          stdout=proc.stdout,
+                          stderr=proc.stderr,
+                          nonempty=proc.returncode == 0 and bool(proc.stdout.strip()),
+                      )
+                  except subprocess.TimeoutExpired as exc:
+                      row.update(
+                          returncode=None,
+                          stdout=(exc.stdout or "") if isinstance(exc.stdout, str) else "",
+                          stderr=(exc.stderr or "") if isinstance(exc.stderr, str) else "",
+                          nonempty=False,
+                          timeout=True,
+                      )
               row["elapsed_seconds"] = round(time.monotonic() - started, 3)
               rows.append(row)
               (out / f"{video_id}.json").write_text(
