@@ -1,0 +1,76 @@
+name: YT Trinity capture repaired explicit-history run
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-history-run-capture.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Capture run for repaired scientific commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_HEAD: ea3b99af9fea966ab948458ef4d9a98f429fdbf1
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/yt-trinity-history-model-screen.yml/runs?branch=agent/r22-yt-trinity-ml-001&per_page=50" \
+              > /tmp/runs.json
+            if python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads(Path('/tmp/runs.json').read_text())
+          matches=[r for r in data.get('workflow_runs',[]) if r.get('head_sha')==os.environ['EXPECTED_HEAD']]
+          if not matches:
+              raise SystemExit(1)
+          run=max(matches,key=lambda r:r['created_at'])
+          payload={
+              'schema_version':1,
+              'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'scientific_source_commit':os.environ['EXPECTED_HEAD'],
+              'run_id':int(run['id']),
+              'run_attempt':int(run.get('run_attempt',1)),
+              'status':run.get('status'),
+              'conclusion':run.get('conclusion'),
+              'event':run.get('event'),
+              'created_at':run.get('created_at'),
+              'updated_at':run.get('updated_at'),
+          }
+          Path('research/yt_trinity_ml/HISTORY_RUN_CAPTURE.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+            then
+              break
+            fi
+            sleep 5
+          done
+          test -f research/yt_trinity_ml/HISTORY_RUN_CAPTURE.json
+      - name: Persist pointer and remove carrier
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/HISTORY_RUN_CAPTURE.json
+          git rm .github/workflows/yt-trinity-history-run-capture.yml
+          git commit -m 'Capture repaired explicit-history evaluation run'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
