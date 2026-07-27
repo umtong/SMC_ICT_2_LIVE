@@ -1,0 +1,133 @@
+name: YT Trinity internal-liquidity exit actions v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-structural-target-actions-v1.yml
+      - research/yt_trinity_ml/run_entry_exit_action_ml_v2.py
+      - research/yt_trinity_ml/system/corpus_alpha.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-structural-target-actions-v1
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Add structural internal-target management actions
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_entry_exit_action_ml_v2.py')
+          text = path.read_text()
+          dataclass_anchor = '''    partial_r: float | None = None\n    partial_fraction: float = 0.0\n'''
+          dataclass_new = '''    partial_r: float | None = None\n    partial_mode: str = \"FIXED_R\"\n    partial_fraction: float = 0.0\n'''
+          if 'partial_mode: str = "FIXED_R"' not in text:
+              if dataclass_anchor not in text:
+                  raise SystemExit('Action dataclass anchor missing')
+              text = text.replace(dataclass_anchor, dataclass_new, 1)
+
+          management_anchor = '''        ('P50_1_BE_PDFAIL', None, 1.0, 0.5, True, True),\n    ]\n'''
+          management_new = '''        ('P50_1_BE_PDFAIL', None, 1.0, 0.5, True, True),\n        ('INTERNAL50_BE', None, None, 0.5, True, False),\n        ('INTERNAL50_BE_PDFAIL', None, None, 0.5, True, True),\n        ('INTERNAL75_BE', None, None, 0.75, True, False),\n        ('INTERNAL75_BE_PDFAIL', None, None, 0.75, True, True),\n    ]\n'''
+          if "('INTERNAL50_BE'" not in text:
+              if management_anchor not in text:
+                  raise SystemExit('action management anchor missing')
+              text = text.replace(management_anchor, management_new, 1)
+
+          action_construct = '''                partial_r=partial_r,\n                partial_fraction=fraction,\n'''
+          action_construct_new = '''                partial_r=partial_r,\n                partial_mode=(\"INTERNAL_TARGET\" if name.startswith(\"INTERNAL\") else \"FIXED_R\"),\n                partial_fraction=fraction,\n'''
+          if 'name.startswith("INTERNAL")' not in text:
+              if action_construct not in text:
+                  raise SystemExit('Action construction anchor missing')
+              text = text.replace(action_construct, action_construct_new, 1)
+
+          signature_anchor = '''def simulate(candidate: Candidate, bars: Bars, action: Action, costs: CostContract, evaluation_end: pd.Timestamp) -> ActionOutcome:\n'''
+          signature_new = '''def simulate(\n    candidate: Candidate,\n    bars: Bars,\n    action: Action,\n    costs: CostContract,\n    evaluation_end: pd.Timestamp,\n    internal_target: float | None = None,\n) -> ActionOutcome:\n'''
+          if 'internal_target: float | None = None' not in text:
+              if signature_anchor not in text:
+                  raise SystemExit('simulate signature anchor missing')
+              text = text.replace(signature_anchor, signature_new, 1)
+
+          partial_anchor = '''        if action.partial_r is not None and not partial_hit:\n            level = entry + candidate.side * action.partial_r * stop_distance\n            touched = bars.high[pos] >= level if candidate.side > 0 else bars.low[pos] <= level\n'''
+          partial_new = '''        partial_enabled = action.partial_r is not None or action.partial_mode == \"INTERNAL_TARGET\"\n        if partial_enabled and not partial_hit:\n            if action.partial_mode == \"INTERNAL_TARGET\":\n                level = internal_target\n                if level is None or not np.isfinite(float(level)):\n                    level = None\n                elif candidate.side * (float(level) - entry) <= 0 or candidate.side * (target - float(level)) < 0:\n                    level = None\n            else:\n                level = entry + candidate.side * float(action.partial_r) * stop_distance\n            touched = (\n                False if level is None else\n                bars.high[pos] >= float(level) if candidate.side > 0 else bars.low[pos] <= float(level)\n            )\n'''
+          if 'partial_enabled = action.partial_r is not None' not in text:
+              if partial_anchor not in text:
+                  raise SystemExit('partial execution anchor missing')
+              text = text.replace(partial_anchor, partial_new, 1)
+
+          fill_anchor = '''                exit_price = target_fill(level, candidate.side, bars.spread[pos], costs)\n'''
+          if 'exit_price = target_fill(float(level)' not in text:
+              if fill_anchor not in text:
+                  raise SystemExit('partial fill anchor missing')
+              text = text.replace(fill_anchor, '                exit_price = target_fill(float(level), candidate.side, bars.spread[pos], costs)\n', 1)
+
+          model_action_anchor = '''    for name in ('target_cap_r', 'partial_r', 'partial_fraction', 'break_even_after_partial', 'pd_array_failure_exit'):\n        matrix[f'action_{name}'] = pd.to_numeric(action_rows[name], errors='coerce').fillna(0.0).astype(float).to_numpy()\n'''
+          model_action_new = '''    for name in ('target_cap_r', 'partial_r', 'partial_fraction', 'break_even_after_partial', 'pd_array_failure_exit'):\n        matrix[f'action_{name}'] = pd.to_numeric(action_rows[name], errors='coerce').fillna(0.0).astype(float).to_numpy()\n    matrix['action_partial_internal_target'] = action_rows['partial_mode'].eq('INTERNAL_TARGET').astype(float).to_numpy()\n'''
+          if 'action_partial_internal_target' not in text:
+              if model_action_anchor not in text:
+                  raise SystemExit('model action feature anchor missing')
+              text = text.replace(model_action_anchor, model_action_new, 1)
+
+          run_anchor = '''    candidates = reconstruct_candidates(labels)\n    bars = {'BTCUSDT': Bars(pd.read_parquet(args.btc_bars)), 'ETHUSDT': Bars(pd.read_parquet(args.eth_bars))}\n'''
+          run_new = '''    candidates = reconstruct_candidates(labels)\n    internal_targets = {\n        int(index): (\n            float(value) if pd.notna(value) and np.isfinite(float(value)) else None\n        )\n        for index, value in labels.get(\n            'execution_internal_target_reference',\n            pd.Series(np.nan, index=labels.index),\n        ).items()\n    }\n    bars = {'BTCUSDT': Bars(pd.read_parquet(args.btc_bars)), 'ETHUSDT': Bars(pd.read_parquet(args.eth_bars))}\n'''
+          if 'internal_targets = {' not in text:
+              if run_anchor not in text:
+                  raise SystemExit('run candidate anchor missing')
+              text = text.replace(run_anchor, run_new, 1)
+
+          simulate_call = '''            outcome = simulate(candidate, bars[candidate.symbol], action, costs, evaluation_end)\n'''
+          simulate_call_new = '''            outcome = simulate(\n                candidate, bars[candidate.symbol], action, costs, evaluation_end,\n                internal_target=internal_targets.get(candidate.row_id),\n            )\n'''
+          if 'internal_target=internal_targets.get(candidate.row_id)' not in text:
+              if simulate_call not in text:
+                  raise SystemExit('simulate call anchor missing')
+              text = text.replace(simulate_call, simulate_call_new, 1)
+          path.write_text(text)
+          PY
+      - name: Add action construction regression
+        run: |
+          cat > research/yt_trinity_ml/tests/test_structural_target_actions.py <<'PY'
+          from __future__ import annotations
+
+          from run_entry_exit_action_ml_v2 import actions
+
+
+          def test_internal_target_actions_are_present_and_distinct() -> None:
+              mapping = {action.identifier: action for action in actions()}
+              action = mapping['MARKET_CONFIRM__INTERNAL50_BE']
+              assert action.partial_mode == 'INTERNAL_TARGET'
+              assert action.partial_fraction == 0.5
+              assert action.break_even_after_partial
+              assert action.partial_r is None
+          PY
+      - name: Install and test action policy
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q research/yt_trinity_ml/tests/test_structural_target_actions.py
+      - name: Commit tested structural target actions
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_entry_exit_action_ml_v2.py research/yt_trinity_ml/tests/test_structural_target_actions.py
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add internal-liquidity partial and runner actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
