@@ -1,0 +1,58 @@
+name: YT Trinity structural passive supersession
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-passive-supersession.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-passive-supersession
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Cancel pending limits on stronger causal narrative
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text=p.read_text()
+          old='''    market_times: dict[tuple[Any, ...], list[pd.Timestamp]] = {}\n    for candidate in candidates:\n        if float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5:\n            market_times.setdefault(narrative_key(candidate), []).append(pd.Timestamp(candidate.timestamp))\n    for values in market_times.values():\n        values.sort()\n    rows: list[dict[str, Any]] = []\n'''
+          new='''    market_times: dict[tuple[Any, ...], list[pd.Timestamp]] = {}\n    passive_by_symbol: dict[str, list[EventCandidate]] = {}\n    for candidate in candidates:\n        if float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5:\n            market_times.setdefault(narrative_key(candidate), []).append(pd.Timestamp(candidate.timestamp))\n        if float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5:\n            passive_by_symbol.setdefault(candidate.symbol, []).append(candidate)\n    for values in market_times.values():\n        values.sort()\n    for values in passive_by_symbol.values():\n        values.sort(key=lambda item: item.timestamp)\n\n    def structural_cancel_at(candidate: EventCandidate) -> pd.Timestamp | None:\n        times = [\n            time for time in market_times.get(narrative_key(candidate), [])\n            if time > candidate.timestamp\n        ]\n        target_tolerance = max(abs(float(candidate.target_reference)) * 1e-8, 1e-12)\n        for later in passive_by_symbol.get(candidate.symbol, []):\n            if later.timestamp <= candidate.timestamp:\n                continue\n            same_draw = abs(float(later.target_reference) - float(candidate.target_reference)) <= target_tolerance\n            stronger_same_side = False\n            if later.side == candidate.side and later.family == candidate.family and same_draw:\n                if candidate.family.value == "LIQUIDITY_SWEEP_REVERSAL":\n                    stronger_same_side = (\n                        float(later.stop_reference) < float(candidate.stop_reference)\n                        if candidate.side > 0\n                        else float(later.stop_reference) > float(candidate.stop_reference)\n                    )\n                else:\n                    stronger_same_side = True\n            opposing_delivery = (\n                later.side == -candidate.side\n                and candidate.side * (float(later.decision_price) - float(candidate.entry_reference)) < 0\n            )\n            if stronger_same_side or opposing_delivery:\n                times.append(pd.Timestamp(later.timestamp))\n        return min(times) if times else None\n\n    rows: list[dict[str, Any]] = []\n'''
+          if old not in text:
+              raise SystemExit('candidate timing block not found')
+          text=text.replace(old,new,1)
+          old='''                cancel_at = None\n                if action == "EARLY_PASSIVE":\n                    later = [time for time in market_times.get(narrative_key(candidate), []) if time > candidate.timestamp]\n                    cancel_at = later[0] if later else None\n'''
+          new='''                cancel_at = structural_cancel_at(candidate) if action == "EARLY_PASSIVE" else None\n'''
+          if old not in text:
+              raise SystemExit('per-candidate cancel block not found')
+          p.write_text(text.replace(old,new,1))
+          PY
+          python -m py_compile research/yt_trinity_ml/run_causal_action_fast.py
+          git rm .github/workflows/yt-trinity-passive-supersession.yml
+      - name: Commit structural supersession
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_causal_action_fast.py
+          git commit -m 'Cancel stale limits on stronger SMC narrative'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
