@@ -1,7 +1,13 @@
 name: YT Trinity v4 source export fast
-# rerun: 2026-07-27 causal-2024H1-iteration-1
+# rerun: 2026-07-27 causal-2024H1-iteration-2
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-v4-source-export-fast.yml
+      - research/yt_trinity_ml/upgrade_chunks/unified_smc_v4.*
+      - research/yt_trinity_ml/apply_v4_performance_patch.py
   push:
     branches: [agent/r22-yt-trinity-ml-001]
     paths:
@@ -11,7 +17,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-v4-source-export-fast
+  group: yt-trinity-v4-source-export-fast-${{ github.event_name }}-${{ github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -57,6 +63,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Persist export pointer
+        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           python - <<'PY'
