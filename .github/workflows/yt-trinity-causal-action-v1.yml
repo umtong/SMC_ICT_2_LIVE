@@ -1,0 +1,185 @@
+name: YT Trinity causal PD-array action v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-causal-action-v1.yml
+      - research/yt_trinity_ml/run_causal_action_v1.py
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-causal-action-v1-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  causal-action-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout exact causal-action source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout canonical loader
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+
+      - name: Download immutable 2023 and 2024H1 BTC/ETH shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/data output
+          fetch_named_artifact() {
+            local name="$1" target="$2"
+            local metadata id digest
+            metadata="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100")"
+            id="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["id"])' <<<"${metadata}")"
+            digest="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["digest"])' <<<"${metadata}")"
+            mkdir -p "${target}"
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              -o "/tmp/${id}.zip"
+            unzip -q "/tmp/${id}.zip" -d "${target}"
+            printf '%s\t%s\t%s\n' "${name}" "${id}" "${digest}" >> output/DATA_ARTIFACTS.tsv
+          }
+          fetch_named_artifact canonical-bybit-PRE_2024_2023-BTCUSDT inputs/data/PRE_2024_2023/BTCUSDT
+          fetch_named_artifact canonical-bybit-PRE_2024_2023-ETHUSDT inputs/data/PRE_2024_2023/ETHUSDT
+          fetch_named_artifact canonical-bybit-2024_H1-BTCUSDT inputs/data/2024_H1/BTCUSDT
+          fetch_named_artifact canonical-bybit-2024_H1-ETHUSDT inputs/data/2024_H1/ETHUSDT
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              test -f "inputs/data/${segment}/${symbol}/DATASET_MANIFEST.json"
+              test -f "inputs/data/${segment}/${symbol}/trade_bars/1m.parquet"
+              test -f "inputs/data/${segment}/${symbol}/trade_bars/5m.parquet"
+            done
+          done
+
+      - name: Verify causal source and regressions
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/canonical_adapter.py \
+            research/yt_trinity_ml/system/model.py \
+            research/yt_trinity_ml/system/research_pipeline.py
+          pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_action_value_model.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_entry_fill_guard.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+
+      - name: Freeze on 2023 and evaluate untouched 2024H1
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          python research/yt_trinity_ml/run_causal_action_v1.py \
+            --repo-root canonical_repo \
+            --data-root inputs/data \
+            --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.json \
+            --output output \
+            2>&1 | tee output/STDOUT.log
+          code=${PIPESTATUS[0]}
+          echo "${code}" > output/EXIT_CODE.txt
+          exit 0
+
+      - name: Bind immutable result and persist compact pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os, platform, sys
+          from pathlib import Path
+          output = Path('output')
+          result_path = output / 'CAUSAL_ACTION_RESULT.json'
+          result = json.loads(result_path.read_text()) if result_path.exists() else None
+          log = (output / 'STDOUT.log').read_text(errors='replace') if (output / 'STDOUT.log').exists() else ''
+          exit_code = int((output / 'EXIT_CODE.txt').read_text()) if (output / 'EXIT_CODE.txt').exists() else 99
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'source_commit': os.environ['GITHUB_SHA'],
+              'workflow_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'stage': '2024_H1_CAUSAL_ACTION_COARSE_NOT_RANKABLE',
+              'exit_code': exit_code,
+              'job_status': 'success' if exit_code == 0 else 'execution_failure_not_economic_failure',
+              'result': result,
+              'result_sha256': hashlib.sha256(result_path.read_bytes()).hexdigest() if result_path.exists() else None,
+              'stdout_tail': log[-12000:],
+              'python': sys.version,
+              'platform': platform.platform(),
+              'ranking_effect': 'NONE_COARSE_1M_NOT_RANKABLE',
+          }
+          target = output / 'CAUSAL_ACTION_POINTER.json'
+          target.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
+          Path('/tmp/CAUSAL_ACTION_POINTER.json').write_bytes(target.read_bytes())
+          PY
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          cp /tmp/CAUSAL_ACTION_POINTER.json research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record causal PD-array action result ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then break; fi
+              sleep $((attempt * 3))
+            done
+          fi
+
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-causal-action-v1-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail only after evidence is preserved
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
