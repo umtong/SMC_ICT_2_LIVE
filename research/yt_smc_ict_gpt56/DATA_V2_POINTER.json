@@ -1,0 +1,410 @@
+{
+  "artifact_name": "yt-smc-ict-bybit-data-v2-gpt56-0bc91095b714567e303bb3bf0de6d8b68de9f2f6",
+  "branch": "agent/yt-smc-ict-causal-ml-gpt56-20260727",
+  "cache_hit": "false",
+  "cache_key": "yt-smc-ict-gpt56-bybit-linear-5m-btceth-20210101-20260701-v2",
+  "data_id": "BYBIT-LINEAR-5M-BTCETH-20210101-20260630-GPT56-V2",
+  "download_status": 0,
+  "failure": null,
+  "failure_sha256": null,
+  "manifest": {
+    "category": "linear",
+    "downloaded_at": "2026-07-27T09:08:04.679102+00:00",
+    "end_ms_exclusive": 1782864000000,
+    "end_utc_exclusive": "2026-07-01T00:00:00+00:00",
+    "endpoint_probes": [
+      {
+        "base_url": "https://api.bybit.nl",
+        "elapsed_seconds": 0.193115,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.tr",
+        "elapsed_seconds": 0.33535,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.kz",
+        "elapsed_seconds": 0.557983,
+        "error": "HTTP 403: <!doctype html><html lang=zh-CN><meta charset=UTF-8><meta content=\"width=device-width,initial-scale=1\" name=viewport><title></title><style>*{margin:0;padding:0;box-sizing:border-box}html{background:#fff;font-family:\"PingFang SC\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif}.a1{position:relative;width:207px;height:130px}.a2{position:absolute;top:0;left:0;width:51px;height:32px;background:#a6caff}.a3{position:absolute;top:12px;left:12px;width:195px;height:11",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybitgeorgia.ge",
+        "elapsed_seconds": 0.242227,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.ae",
+        "elapsed_seconds": 0.200763,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.id",
+        "elapsed_seconds": 0.234752,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.manepa.jp",
+        "elapsed_seconds": 1.112339,
+        "error": null,
+        "ok": true,
+        "ret_code": 0,
+        "ret_msg": "OK",
+        "status_code": 200
+      }
+    ],
+    "interval_minutes": 5,
+    "official_base_url": "https://api.manepa.jp",
+    "schema_version": 2,
+    "source": "Bybit V5 public market API",
+    "start_ms": 1609459200000,
+    "start_utc": "2021-01-01T00:00:00+00:00",
+    "symbols": {
+      "BTCUSDT": {
+        "bars": {
+          "expected_rows": 578016,
+          "fetch": {
+            "base_url": "https://api.manepa.jp",
+            "endpoint": "/v5/market/kline",
+            "errors": [],
+            "pages": 579,
+            "request_seconds": 178.06693112399975,
+            "retries": 0,
+            "rows_raw": 578016,
+            "symbol": "BTCUSDT"
+          },
+          "first_utc": "2021-01-01T00:00:00+00:00",
+          "last_utc": "2026-06-30T23:55:00+00:00",
+          "missing_count": 0,
+          "missing_first_utc": [],
+          "path": "BTCUSDT_5m.parquet",
+          "rows": 578016,
+          "sha256": "da8b7ad637ca05e3ab22d500353b3a6fa4410fecc84c6f050c993da41f3c9911"
+        },
+        "funding": {
+          "fetch": {
+            "base_url": "https://api.manepa.jp",
+            "endpoint": "/v5/market/funding/history",
+            "errors": [],
+            "pages": 31,
+            "request_seconds": 8.98650807599995,
+            "retries": 0,
+            "rows_raw": 6021,
+            "symbol": "BTCUSDT"
+          },
+          "first_utc": "2021-01-01T00:00:00+00:00",
+          "last_utc": "2026-06-30T16:00:00+00:00",
+          "path": "BTCUSDT_funding.parquet",
+          "rows": 6021,
+          "sha256": "bf42df0ed322f6fd5399d47826b5c99ef9d06dce832c12dc995bbca822a4dd65"
+        },
+        "instrument": {
+          "fetch": {
+            "base_url": "https://api.manepa.jp",
+            "endpoint": "/v5/market/instruments-info",
+            "errors": [],
+            "pages": 0,
+            "request_seconds": 0.6909209080000096,
+            "retries": 0,
+            "rows_raw": 0,
+            "symbol": "BTCUSDT"
+          },
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "100.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "150.000",
+            "maxOrderQty": "1500.000",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.001",
+            "postOnlyMaxOrderQty": "1500.000",
+            "qtyStep": "0.001"
+          },
+          "path": "BTCUSDT_instrument.json",
+          "priceFilter": {
+            "maxPrice": "1999999.80",
+            "minPrice": "0.10",
+            "tickSize": "0.10"
+          },
+          "priceScale": "2",
+          "sha256": "7b8a60eace5db1d155502cd6274f860cc6eb2574b820e184f8ee9f10a79f2cd6"
+        }
+      },
+      "ETHUSDT": {
+        "bars": {
+          "expected_rows": 578016,
+          "fetch": {
+            "base_url": "https://api.manepa.jp",
+            "endpoint": "/v5/market/kline",
+            "errors": [],
+            "pages": 558,
+            "request_seconds": 165.78795060100003,
+            "retries": 0,
+            "rows_raw": 556992,
+            "symbol": "ETHUSDT"
+          },
+          "first_utc": "2021-03-15T00:00:00+00:00",
+          "last_utc": "2026-06-30T23:55:00+00:00",
+          "missing_count": 21024,
+          "missing_first_utc": [
+            "2021-01-01T00:00:00+00:00",
+            "2021-01-01T00:05:00+00:00",
+            "2021-01-01T00:10:00+00:00",
+            "2021-01-01T00:15:00+00:00",
+            "2021-01-01T00:20:00+00:00",
+            "2021-01-01T00:25:00+00:00",
+            "2021-01-01T00:30:00+00:00",
+            "2021-01-01T00:35:00+00:00",
+            "2021-01-01T00:40:00+00:00",
+            "2021-01-01T00:45:00+00:00",
+            "2021-01-01T00:50:00+00:00",
+            "2021-01-01T00:55:00+00:00",
+            "2021-01-01T01:00:00+00:00",
+            "2021-01-01T01:05:00+00:00",
+            "2021-01-01T01:10:00+00:00",
+            "2021-01-01T01:15:00+00:00",
+            "2021-01-01T01:20:00+00:00",
+            "2021-01-01T01:25:00+00:00",
+            "2021-01-01T01:30:00+00:00",
+            "2021-01-01T01:35:00+00:00",
+            "2021-01-01T01:40:00+00:00",
+            "2021-01-01T01:45:00+00:00",
+            "2021-01-01T01:50:00+00:00",
+            "2021-01-01T01:55:00+00:00",
+            "2021-01-01T02:00:00+00:00",
+            "2021-01-01T02:05:00+00:00",
+            "2021-01-01T02:10:00+00:00",
+            "2021-01-01T02:15:00+00:00",
+            "2021-01-01T02:20:00+00:00",
+            "2021-01-01T02:25:00+00:00",
+            "2021-01-01T02:30:00+00:00",
+            "2021-01-01T02:35:00+00:00",
+            "2021-01-01T02:40:00+00:00",
+            "2021-01-01T02:45:00+00:00",
+            "2021-01-01T02:50:00+00:00",
+            "2021-01-01T02:55:00+00:00",
+            "2021-01-01T03:00:00+00:00",
+            "2021-01-01T03:05:00+00:00",
+            "2021-01-01T03:10:00+00:00",
+            "2021-01-01T03:15:00+00:00",
+            "2021-01-01T03:20:00+00:00",
+            "2021-01-01T03:25:00+00:00",
+            "2021-01-01T03:30:00+00:00",
+            "2021-01-01T03:35:00+00:00",
+            "2021-01-01T03:40:00+00:00",
+            "2021-01-01T03:45:00+00:00",
+            "2021-01-01T03:50:00+00:00",
+            "2021-01-01T03:55:00+00:00",
+            "2021-01-01T04:00:00+00:00",
+            "2021-01-01T04:05:00+00:00",
+            "2021-01-01T04:10:00+00:00",
+            "2021-01-01T04:15:00+00:00",
+            "2021-01-01T04:20:00+00:00",
+            "2021-01-01T04:25:00+00:00",
+            "2021-01-01T04:30:00+00:00",
+            "2021-01-01T04:35:00+00:00",
+            "2021-01-01T04:40:00+00:00",
+            "2021-01-01T04:45:00+00:00",
+            "2021-01-01T04:50:00+00:00",
+            "2021-01-01T04:55:00+00:00",
+            "2021-01-01T05:00:00+00:00",
+            "2021-01-01T05:05:00+00:00",
+            "2021-01-01T05:10:00+00:00",
+            "2021-01-01T05:15:00+00:00",
+            "2021-01-01T05:20:00+00:00",
+            "2021-01-01T05:25:00+00:00",
+            "2021-01-01T05:30:00+00:00",
+            "2021-01-01T05:35:00+00:00",
+            "2021-01-01T05:40:00+00:00",
+            "2021-01-01T05:45:00+00:00",
+            "2021-01-01T05:50:00+00:00",
+            "2021-01-01T05:55:00+00:00",
+            "2021-01-01T06:00:00+00:00",
+            "2021-01-01T06:05:00+00:00",
+            "2021-01-01T06:10:00+00:00",
+            "2021-01-01T06:15:00+00:00",
+            "2021-01-01T06:20:00+00:00",
+            "2021-01-01T06:25:00+00:00",
+            "2021-01-01T06:30:00+00:00",
+            "2021-01-01T06:35:00+00:00",
+            "2021-01-01T06:40:00+00:00",
+            "2021-01-01T06:45:00+00:00",
+            "2021-01-01T06:50:00+00:00",
+            "2021-01-01T06:55:00+00:00",
+            "2021-01-01T07:00:00+00:00",
+            "2021-01-01T07:05:00+00:00",
+            "2021-01-01T07:10:00+00:00",
+            "2021-01-01T07:15:00+00:00",
+            "2021-01-01T07:20:00+00:00",
+            "2021-01-01T07:25:00+00:00",
+            "2021-01-01T07:30:00+00:00",
+            "2021-01-01T07:35:00+00:00",
+            "2021-01-01T07:40:00+00:00",
+            "2021-01-01T07:45:00+00:00",
+            "2021-01-01T07:50:00+00:00",
+            "2021-01-01T07:55:00+00:00",
+            "2021-01-01T08:00:00+00:00",
+            "2021-01-01T08:05:00+00:00",
+            "2021-01-01T08:10:00+00:00",
+            "2021-01-01T08:15:00+00:00"
+          ],
+          "path": "ETHUSDT_5m.parquet",
+          "rows": 556992,
+          "sha256": "fd6c3df5bef1140dfe689b75c00160ea3fb521b3b7994527138d009e6e62a46c"
+        },
+        "funding": {
+          "fetch": {
+            "base_url": "https://api.manepa.jp",
+            "endpoint": "/v5/market/funding/history",
+            "errors": [],
+            "pages": 31,
+            "request_seconds": 8.318004428000052,
+            "retries": 0,
+            "rows_raw": 6021,
+            "symbol": "ETHUSDT"
+          },
+          "first_utc": "2021-01-01T00:00:00+00:00",
+          "last_utc": "2026-06-30T16:00:00+00:00",
+          "path": "ETHUSDT_funding.parquet",
+          "rows": 6021,
+          "sha256": "0e9329b3daa112b1ca7ac857aa0581a368adc71414b9fa3e94424a96646dfa16"
+        },
+        "instrument": {
+          "fetch": {
+            "base_url": "https://api.manepa.jp",
+            "endpoint": "/v5/market/instruments-info",
+            "errors": [],
+            "pages": 0,
+            "request_seconds": 0.8364998920000062,
+            "retries": 0,
+            "rows_raw": 0,
+            "symbol": "ETHUSDT"
+          },
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "100.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "2000.00",
+            "maxOrderQty": "10000.00",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.01",
+            "postOnlyMaxOrderQty": "10000.00",
+            "qtyStep": "0.01"
+          },
+          "path": "ETHUSDT_instrument.json",
+          "priceFilter": {
+            "maxPrice": "199999.98",
+            "minPrice": "0.01",
+            "tickSize": "0.01"
+          },
+          "priceScale": "2",
+          "sha256": "ca0ee1a640cfedb054180e15e27e79f1922e4e629199c87666d2735fc245d904"
+        }
+      }
+    }
+  },
+  "manifest_sha256": "110c559c3774f48259f176a6e285720d97a2f1e1efcdb565d77921e1caad7baa",
+  "probe": {
+    "probed_at": "2026-07-27T09:08:04.678392+00:00",
+    "probes": [
+      {
+        "base_url": "https://api.bybit.nl",
+        "elapsed_seconds": 0.193115,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.tr",
+        "elapsed_seconds": 0.33535,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.kz",
+        "elapsed_seconds": 0.557983,
+        "error": "HTTP 403: <!doctype html><html lang=zh-CN><meta charset=UTF-8><meta content=\"width=device-width,initial-scale=1\" name=viewport><title></title><style>*{margin:0;padding:0;box-sizing:border-box}html{background:#fff;font-family:\"PingFang SC\",-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif}.a1{position:relative;width:207px;height:130px}.a2{position:absolute;top:0;left:0;width:51px;height:32px;background:#a6caff}.a3{position:absolute;top:12px;left:12px;width:195px;height:11",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybitgeorgia.ge",
+        "elapsed_seconds": 0.242227,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.ae",
+        "elapsed_seconds": 0.200763,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.bybit.id",
+        "elapsed_seconds": 0.234752,
+        "error": "HTTP 403: {     error:The Amazon CloudFront distribution is configured to block access from your country }",
+        "ok": false,
+        "ret_code": null,
+        "ret_msg": null,
+        "status_code": 403
+      },
+      {
+        "base_url": "https://api.manepa.jp",
+        "elapsed_seconds": 1.112339,
+        "error": null,
+        "ok": true,
+        "ret_code": 0,
+        "ret_msg": "OK",
+        "status_code": 200
+      }
+    ],
+    "schema_version": 1,
+    "selected": "https://api.manepa.jp"
+  },
+  "run_attempt": 1,
+  "run_id": 30251236596,
+  "schema_version": 2,
+  "source_sha": "0bc91095b714567e303bb3bf0de6d8b68de9f2f6",
+  "validate_status": 1
+}
