@@ -1,0 +1,32 @@
+name: Package YouTube SMC ICT research source
+
+on:
+  push:
+    branches:
+      - agent/youtube-smc-ict-ml-core-20260727
+    paths:
+      - .github/workflows/package-youtube-smc-ict-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package executable research source
+        run: |
+          mkdir -p package/research package/tests
+          cp -R research/youtube_smc_ict_ml package/research/
+          cp tests/test_youtube_smc_ict_ml.py package/tests/
+          cp pyproject.toml package/
+          tar -C package -czf youtube-smc-ict-source.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: youtube-smc-ict-source-${{ github.run_id }}
+          path: youtube-smc-ict-source.tgz
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
