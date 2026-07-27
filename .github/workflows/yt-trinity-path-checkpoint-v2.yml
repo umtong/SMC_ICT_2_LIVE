@@ -29,10 +29,11 @@ jobs:
           import json, os
           from pathlib import Path
           payload={
-            'schema_version':2,
+            'schema_version':3,
             'run_id':int(os.environ['GITHUB_RUN_ID']),
             'source_sha':os.environ['GITHUB_SHA'],
-            'artifact_name':f"yt-trinity-path-checkpoint-v2-{os.environ['GITHUB_SHA']}",
+            'artifact_name_2023':f"yt-trinity-path-checkpoint-v2-{os.environ['GITHUB_SHA']}",
+            'artifact_name_2022':f"yt-trinity-path-checkpoint-2022-{os.environ['GITHUB_SHA']}",
             'status':'in_progress',
           }
           Path('research/yt_trinity_ml/PATH_CHECKPOINT_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
@@ -48,7 +49,7 @@ jobs:
           done
           exit 1
 
-  checkpoint:
+  checkpoint_2023:
     needs: announce
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -88,7 +89,7 @@ jobs:
           unzip -q /tmp/corpus.zip -d inputs/corpus
           unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2023/BTCUSDT
           unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2023/ETHUSDT
-      - name: Materialize candidate and price paths
+      - name: Materialize 2023 candidate and price paths
         env:
           PYTHONPATH: research/yt_trinity_ml
         run: |
@@ -98,7 +99,6 @@ jobs:
           from run_research import PRIMARY, load_canonical_frames
           from system.core import FeatureConfig
           from system.corpus_alpha import build_corpus_features, generate_corpus_candidates_with_diagnostics
-
           decision, execution, funding = load_canonical_frames(Path('inputs/data'),Path('canonical_repo'),PRIMARY,('PRE_2024_2023',))
           candidates=[]; diagnostics={}
           for symbol,frame in sorted(decision.items()):
@@ -110,7 +110,7 @@ jobs:
           execution={symbol:frame[[c for c in keep if c in frame.columns]].copy() for symbol,frame in execution.items()}
           for name,obj in {'CANDIDATES.pkl.gz':candidates,'EXECUTION_FRAMES.pkl.gz':execution,'FUNDING.pkl.gz':funding}.items():
               with gzip.open(Path('output')/name,'wb',compresslevel=6) as fh: pickle.dump(obj,fh,pickle.HIGHEST_PROTOCOL)
-          manifest={'schema_version':2,'source_commit':'d08e0f7f2aa3ea983cc719a16a1569ad61005bbe','candidate_count':len(candidates),'diagnostics':diagnostics,'files':{}}
+          manifest={'schema_version':3,'period':'2023','source_commit':'d08e0f7f2aa3ea983cc719a16a1569ad61005bbe','candidate_count':len(candidates),'diagnostics':diagnostics,'files':{}}
           for path in sorted(Path('output').glob('*')): manifest['files'][path.name]={'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
           Path('output/MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
           PY
@@ -121,3 +121,76 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+
+  checkpoint_2022:
+    needs: announce
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout current unified SMC source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - name: Checkout canonical data loader
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1' 'gdown==5.2.0'
+      - name: Download hash-pinned 2022 Bybit canonical shards
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/data/PRE_2024_2022/BTCUSDT inputs/data/PRE_2024_2022/ETHUSDT output
+          python -m gdown --id 1lEZQCE-T4OXcGVaLN9HFAekCnXaUmeQ6 -O /tmp/btc.zip
+          python -m gdown --id 1bP0MizmZhSwhEOkf6YodfuCxbMZZYYu7 -O /tmp/eth.zip
+          echo '273995bf7efd905c147237ff14978b92ef65f4703b290986ba6fab5fe5e3e42c  /tmp/btc.zip' | sha256sum -c -
+          echo '681cb5c21826f05a12e40b25818c40d1be46cf4b394676998d8a6856180271da  /tmp/eth.zip' | sha256sum -c -
+          unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2022/BTCUSDT
+          unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2022/ETHUSDT
+      - name: Materialize 2022 candidates labels and paths
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip, hashlib, json, pickle
+          from collections import Counter
+          from pathlib import Path
+          from run_research import PRIMARY, load_canonical_frames
+          from system.coarse import CoarseExecutionConfig
+          from system.core import FeatureConfig
+          from system.corpus_alpha import build_corpus_features, generate_corpus_candidates_with_diagnostics
+          from system.research_pipeline import label_event_dataset
+          decision, execution, funding = load_canonical_frames(Path('inputs/data'),Path('canonical_repo'),PRIMARY,('PRE_2024_2022',))
+          candidates=[]; diagnostics={}; shapes={}
+          for symbol,frame in sorted(decision.items()):
+              features=build_corpus_features(frame,FeatureConfig())
+              rows,diag=generate_corpus_candidates_with_diagnostics(features,symbol)
+              candidates.extend(rows); diagnostics[symbol]=diag
+              shapes[symbol]={'rows':len(features),'columns':len(features.columns),'first':features.index.min().isoformat(),'last':features.index.max().isoformat()}
+          candidates.sort(key=lambda x:(x.timestamp,x.symbol,x.family.value,x.side))
+          labels=label_event_dataset(candidates,execution,CoarseExecutionConfig())
+          labels.to_pickle('output/EVENT_LABELS.pkl.gz',compression='gzip')
+          keep=('bar_start','open','high','low','close','mark_close','spread_bps','available_at_ms')
+          execution={symbol:frame[[c for c in keep if c in frame.columns]].copy() for symbol,frame in execution.items()}
+          for name,obj in {'CANDIDATES.pkl.gz':candidates,'EXECUTION_FRAMES.pkl.gz':execution,'FUNDING.pkl.gz':funding}.items():
+              with gzip.open(Path('output')/name,'wb',compresslevel=6) as fh: pickle.dump(obj,fh,pickle.HIGHEST_PROTOCOL)
+          manifest={'schema_version':3,'period':'2022','source_commit':'${{ github.sha }}','candidate_count':len(candidates),'candidate_family_counts':dict(sorted(Counter(x.family.value for x in candidates).items())),'resolved_label_count':len(labels),'diagnostics':diagnostics,'feature_shapes':shapes,'input_sha256':{'BTCUSDT':'273995bf7efd905c147237ff14978b92ef65f4703b290986ba6fab5fe5e3e42c','ETHUSDT':'681cb5c21826f05a12e40b25818c40d1be46cf4b394676998d8a6856180271da'},'files':{}}
+          for path in sorted(Path('output').glob('*')): manifest['files'][path.name]={'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+          Path('output/MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(manifest,indent=2,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-path-checkpoint-2022-${{ github.sha }}
+          path: output
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 30
