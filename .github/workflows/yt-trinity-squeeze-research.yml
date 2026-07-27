@@ -64,14 +64,28 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifact/data artifact/result
-          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt \
-            -O artifact/data/BTCUSDT.zip
-          python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR \
-            -O artifact/data/ETHUSDT.zip
-          python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 \
-            -O artifact/data/SOLUSDT.zip
-          python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk \
-            -O artifact/data/XRPUSDT.zip
+          cp /tmp/run_squeeze_research.py artifact/result/SOURCE.py
+          cp dependency-freeze.txt artifact/result/
+          : > artifact/result/DOWNLOAD.log
+          download_one() {
+            local id="$1" out="$2"
+            for attempt in 1 2 3; do
+              echo "download ${out} attempt=${attempt}" | tee -a artifact/result/DOWNLOAD.log
+              if python -m gdown --fuzzy "https://drive.google.com/file/d/${id}/view?usp=sharing" \
+                   -O "${out}" 2>&1 | tee -a artifact/result/DOWNLOAD.log; then
+                if [[ -s "${out}" ]]; then
+                  return 0
+                fi
+              fi
+              rm -f "${out}"
+              sleep $((attempt * 4))
+            done
+            return 1
+          }
+          download_one 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt artifact/data/BTCUSDT.zip
+          download_one 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR artifact/data/ETHUSDT.zip
+          download_one 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 artifact/data/SOLUSDT.zip
+          download_one 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk artifact/data/XRPUSDT.zip
           cat > artifact/data/SHA256SUMS <<'EOF'
           ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46  BTCUSDT.zip
           87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322  ETHUSDT.zip
@@ -88,8 +102,6 @@ jobs:
       - name: Run action-specific causal squeeze evaluation
         run: |
           set -euo pipefail
-          cp /tmp/run_squeeze_research.py artifact/result/SOURCE.py
-          cp dependency-freeze.txt artifact/result/
           set -o pipefail
           python /tmp/run_squeeze_research.py \
             --data-root artifact/data \
