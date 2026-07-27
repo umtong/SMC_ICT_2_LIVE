@@ -2,6 +2,13 @@ name: Re-evaluate transcript-grounded SMC ICT ML on pinned data
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/youtube_smc_ict_ml/**
+      - tests/test_youtube_smc_ict_ml.py
+      - .github/workflows/reuse-youtube-smc-ict-data.yml
   push:
     branches:
       - agent/youtube-smc-ict-eval-20260727
