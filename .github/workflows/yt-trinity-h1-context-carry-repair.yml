@@ -1,0 +1,99 @@
+name: YT Trinity 2024H1 causal context carry repair
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-h1-context-carry-repair.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-h1-context-carry-repair
+  cancel-in-progress: false
+
+jobs:
+  repair-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Repair evaluation boundary state carry
+        run: |
+          set -euo pipefail
+          test "$(git hash-object research/yt_trinity_ml/run_causal_action_history.py)" = "2c34a35393b5d5c74a9ccb43787663f89e466bdd"
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('research/yt_trinity_ml/run_causal_action_history.py')
+          text=path.read_text()
+          old='''    decision_2024, execution_2024, funding_2024 = load_canonical_frames(\n        args.data_root,\n        args.repo_root,\n        PRIMARY,\n        ("2024_H1",),\n    )\n    _, candidates_2024, diagnostics_2024 = generate_causal_action_candidates_by_symbol(\n        decision_2024,\n        FeatureConfig(),\n    )\n    rows_2024 = _rows_fast(\n        candidates_2024,\n        execution_2024,\n        funding_2024,\n        EVALUATION_END,\n        (variant,),\n        screen,\n    )\n'''
+          new='''    # Rebuild the exact information state available at 2024-01-01. Loading the\n    # evaluation shard alone would reset rolling indicators, prior-session liquidity\n    # and still-valid SMC narrative states at the boundary. Pre-2024 rows warm the\n    # causal state machine, but only actions whose activation is inside H1 may trade.\n    evaluation_context_segments = (*PRE2024_SEGMENTS, "2024_H1")\n    decision_context, execution_context, funding_context = load_canonical_frames(\n        args.data_root,\n        args.repo_root,\n        PRIMARY,\n        evaluation_context_segments,\n    )\n    _, candidates_context, diagnostics_context = generate_causal_action_candidates_by_symbol(\n        decision_context,\n        FeatureConfig(),\n    )\n    candidates_2024 = [\n        candidate for candidate in candidates_context\n        if EVALUATION_START <= pd.Timestamp(candidate.timestamp) < EVALUATION_END\n    ]\n    rows_2024 = _rows_fast(\n        candidates_2024,\n        execution_context,\n        funding_context,\n        EVALUATION_END,\n        (variant,),\n        screen,\n    )\n    diagnostics_2024 = {\n        "context_segments": list(evaluation_context_segments),\n        "full_context_candidate_count": len(candidates_context),\n        "evaluation_candidate_count": len(candidates_2024),\n        "by_symbol": diagnostics_context,\n    }\n'''
+          if old not in text:
+              raise SystemExit('2024 context block mismatch')
+          path.write_text(text.replace(old,new,1))
+          PY
+          cat > research/yt_trinity_ml/tests/test_history_boundary_context.py <<'PY'
+          from __future__ import annotations
+          import numpy as np
+          import pandas as pd
+          from system.core import FeatureConfig
+          from system.corpus_alpha import build_corpus_features
+
+          def test_pre2024_rows_carry_completed_day_context_into_h1() -> None:
+              index = pd.date_range('2023-12-30T00:00:00Z', '2024-01-02T00:00:00Z', freq='5min', inclusive='left')
+              base = 100.0 + np.linspace(0.0, 5.0, len(index))
+              frame = pd.DataFrame({
+                  'open': base,
+                  'high': base + 1.0,
+                  'low': base - 1.0,
+                  'close': base + 0.2,
+                  'volume': np.full(len(index), 100.0),
+              }, index=index)
+              config = FeatureConfig(atr_window=5, fast_ema=5, slow_ema=8, long_ema=13, volume_window=5)
+              full = build_corpus_features(frame, config)
+              h1_only = build_corpus_features(frame.loc[frame.index >= pd.Timestamp('2024-01-01T00:00:00Z')], config)
+              first_h1 = pd.Timestamp('2024-01-01T00:00:00Z')
+              assert pd.notna(full.loc[first_h1, 'previous_day_high'])
+              assert pd.isna(h1_only.loc[first_h1, 'previous_day_high'])
+              assert pd.notna(full.loc[first_h1, 'ema_slow'])
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run boundary and causal regression suite
+        run: |
+          set -euo pipefail
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pytest==8.3.5'
+          export PYTHONPATH=research/yt_trinity_ml
+          python -m py_compile research/yt_trinity_ml/run_causal_action_history.py
+          pytest -q \
+            research/yt_trinity_ml/tests/test_history_boundary_context.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py \
+            research/yt_trinity_ml/tests/test_causal_risk_domain.py \
+            research/yt_trinity_ml/tests/test_causal_action_history_model.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_entry_fill_guard.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested boundary repair
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_causal_action_history.py research/yt_trinity_ml/tests/test_history_boundary_context.py
+          git rm .github/workflows/yt-trinity-h1-context-carry-repair.yml
+          git commit -m 'Carry causal pre-2024 state into 2024H1 evaluation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
