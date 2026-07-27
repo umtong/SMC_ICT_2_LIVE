@@ -1,0 +1,86 @@
+name: YT Trinity explicit-history model fingerprint
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-history-model-fingerprint.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-history-model-fingerprint
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bind model fingerprint to rows and calibration predictions
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/causal_action_history_model.py')
+          text=p.read_text()
+          text=text.replace(
+              '        self.heads: dict[str, _Head] = {}\n        self.fitted = False\n',
+              '        self.heads: dict[str, _Head] = {}\n        self.base_rows_digest: str | None = None\n        self.calibration_rows_digest: str | None = None\n        self.calibration_prediction_digest: str | None = None\n        self.fitted = False\n',
+              1,
+          )
+          anchor='''    def _classifier(self) -> Any:\n'''
+          helper='''    @staticmethod\n    def _rows_digest(rows: pd.DataFrame, feature_names: Sequence[str]) -> str:\n        columns = [\n            name\n            for name in (\n                "activation", "event_end", "action", "filled", "net_budget_r",\n                *feature_names,\n            )\n            if name in rows.columns\n        ]\n        ordered = rows[columns].copy().sort_values(\n            [name for name in ("activation", "event_end", "action") if name in columns],\n            kind="stable",\n        ).reset_index(drop=True)\n        hashed = pd.util.hash_pandas_object(ordered, index=True).to_numpy(dtype="uint64")\n        return sha256(hashed.tobytes()).hexdigest()\n\n    @staticmethod\n    def _prediction_digest(predictions: pd.DataFrame) -> str:\n        ordered = predictions.sort_index().copy()\n        hashed = pd.util.hash_pandas_object(ordered, index=True).to_numpy(dtype="uint64")\n        return sha256(hashed.tobytes()).hexdigest()\n\n'''
+          if '_rows_digest' not in text:
+              if anchor not in text: raise SystemExit('classifier anchor missing')
+              text=text.replace(anchor,helper+anchor,1)
+          marker='''        self.feature_names = list(feature_names)\n        if not self.feature_names:\n            raise ValueError("no causal action features")\n'''
+          replacement='''        self.feature_names = list(feature_names)\n        if not self.feature_names:\n            raise ValueError("no causal action features")\n        self.base_rows_digest = self._rows_digest(base_rows, self.feature_names)\n        self.calibration_rows_digest = self._rows_digest(\n            calibration_rows, self.feature_names\n        )\n'''
+          if marker not in text: raise SystemExit('feature assignment marker missing')
+          text=text.replace(marker,replacement,1)
+          marker='''        self.fitted = True\n        return self\n\n    def _predict_head'''
+          replacement='''        self.fitted = True\n        calibration_predictions = self.predict(calibration_rows)\n        self.calibration_prediction_digest = self._prediction_digest(\n            calibration_predictions\n        )\n        return self\n\n    def _predict_head'''
+          if marker not in text: raise SystemExit('fit completion marker missing')
+          text=text.replace(marker,replacement,1)
+          marker='''            "feature_count": len(self.feature_names),\n            "actions": {\n'''
+          replacement='''            "feature_count": len(self.feature_names),\n            "base_rows_digest": self.base_rows_digest,\n            "calibration_rows_digest": self.calibration_rows_digest,\n            "calibration_prediction_digest": self.calibration_prediction_digest,\n            "actions": {\n'''
+          if marker not in text: raise SystemExit('diagnostic marker missing')
+          text=text.replace(marker,replacement,1)
+          p.write_text(text)
+
+          test=Path('research/yt_trinity_ml/tests/test_causal_action_history_model.py')
+          t=test.read_text()
+          t += '''\n\ndef test_training_row_mutation_changes_model_fingerprint() -> None:\n    base, calibration = _base_calibration()\n    config = HistoryActionModelConfig(\n        min_samples_leaf=15, max_iter=120, minimum_base_rows=100,\n        minimum_outcome_rows=40, lower_confidence_penalty=0.10,\n    )\n    first = ExplicitHistoryActionValueModel(config).fit(\n        base, calibration, ["quality", "passive_depth_fraction"]\n    )\n    changed = base.copy()\n    changed.loc[0, "net_budget_r"] = float(changed.loc[0, "net_budget_r"]) + 0.125\n    second = ExplicitHistoryActionValueModel(config).fit(\n        changed, calibration, ["quality", "passive_depth_fraction"]\n    )\n    assert first.base_rows_digest != second.base_rows_digest\n    assert first.fingerprint() != second.fingerprint()\n'''
+          test.write_text(t)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/causal_action_history_model.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_causal_action_history_model.py
+          git rm .github/workflows/yt-trinity-history-model-fingerprint.yml
+      - name: Commit bound model identity
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/causal_action_history_model.py \
+            research/yt_trinity_ml/tests/test_causal_action_history_model.py
+          git commit -m 'Bind explicit-history model to rows and predictions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
