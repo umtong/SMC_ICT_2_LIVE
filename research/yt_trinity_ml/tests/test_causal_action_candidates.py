@@ -3,7 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from system.causal_action_candidates import generate_causal_action_candidates
+from system.causal_action_candidates import (
+    PASSIVE_DEPTH_FRACTIONS,
+    generate_causal_action_candidates,
+)
 
 
 def _features(rows: list[dict[str, float]]) -> pd.DataFrame:
@@ -88,12 +91,14 @@ def test_pd_array_arming_emits_passive_without_future_retest() -> None:
     events, diagnostics = generate_causal_action_candidates(frame, "BTCUSDT")
     passive = [row for row in events if row.feature_row["action_candidate_early_passive"] == 1.0]
     market = [row for row in events if row.feature_row["action_candidate_confirmed_market"] == 1.0]
-    assert len(passive) == 1
+    assert len(passive) == 5
     assert market == []
-    assert passive[0].timestamp == frame.index[4]
-    assert passive[0].entry_reference == 102.5
-    assert passive[0].target_reference == 95.0
-    assert diagnostics["causal_passive_actions"] == 1
+    assert all(row.timestamp == frame.index[4] for row in passive)
+    assert sorted(row.entry_reference for row in passive) == [102.0, 102.25, 102.5, 102.75, 103.0]
+    assert sorted(row.feature_row["passive_depth_fraction"] for row in passive) == list(PASSIVE_DEPTH_FRACTIONS)
+    assert all(row.target_reference == 95.0 for row in passive)
+    assert diagnostics["causal_passive_actions"] == 5
+    assert diagnostics["causal_pd_arrays_armed"] == 1
 
 
 def test_later_rejection_adds_separate_market_action() -> None:
@@ -112,9 +117,11 @@ def test_later_rejection_adds_separate_market_action() -> None:
     events, diagnostics = generate_causal_action_candidates(frame, "BTCUSDT")
     passive = [row for row in events if row.feature_row["action_candidate_early_passive"] == 1.0]
     market = [row for row in events if row.feature_row["action_candidate_confirmed_market"] == 1.0]
-    assert len(passive) == 1
+    assert len(passive) == 5
     assert len(market) == 1
-    assert passive[0].timestamp < market[0].timestamp
-    assert passive[0].entry_reference != market[0].entry_reference
-    assert diagnostics["causal_passive_actions"] == 1
+    assert all(row.timestamp < market[0].timestamp for row in passive)
+    assert all(row.entry_reference != market[0].entry_reference for row in passive)
+    assert sorted(row.feature_row["passive_depth_fraction"] for row in passive) == list(PASSIVE_DEPTH_FRACTIONS)
+    assert market[0].feature_row["passive_depth_fraction"] == -1.0
+    assert diagnostics["causal_passive_actions"] == 5
     assert diagnostics["confirmed_market_actions"] == 1

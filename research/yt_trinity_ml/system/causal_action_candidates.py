@@ -21,48 +21,70 @@ from .corpus_alpha import (
 )
 
 
-def _passive_event(
+# Proximal, inner quartiles, consequent encroachment and distal mitigation.
+# Every action is knowable when the displacement-origin PD array is armed.
+PASSIVE_DEPTH_FRACTIONS: tuple[float, ...] = (0.0, 0.25, 0.50, 0.75, 1.0)
+
+
+def _passive_events(
     state: _NarrativeState,
     row: pd.Series,
     timestamp: pd.Timestamp,
     symbol: str,
     pos: int,
-) -> EventCandidate | None:
-    """Create the limit action exactly when displacement arms its PD array."""
+) -> list[EventCandidate]:
+    """Create every predeclared causal mitigation action at PD-array arming."""
 
     if state.phase != "AWAIT_RETEST":
-        return None
+        return []
     if state.stop is None or state.zone_lower is None or state.zone_upper is None:
-        return None
-    entry = (float(state.zone_lower) + float(state.zone_upper)) / 2.0
+        return []
+    lower = float(state.zone_lower)
+    upper = float(state.zone_upper)
     stop = float(state.stop)
     target = float(state.draw_target)
-    if (state.side > 0 and not stop < entry < target) or (
-        state.side < 0 and not target < entry < stop
-    ):
-        return None
-    features = _setup_features(row, state, pos, entry, stop)
-    features.update(
-        {
-            "action_candidate_early_passive": 1.0,
-            "action_candidate_confirmed_market": 0.0,
-            "entry_confirmation_kind": 0.0,
-            "causal_pd_array_armed": 1.0,
-            "passive_depth_fraction": 0.5,
-        }
-    )
-    return EventCandidate(
-        timestamp=timestamp,
-        symbol=symbol,
-        family=state.family,
-        side=state.side,
-        decision_price=float(row["close"]),
-        entry_reference=entry,
-        stop_reference=stop,
-        target_reference=target,
-        structural_level=float(state.structural_level),
-        feature_row=features,
-    )
+    width = upper - lower
+    if not np.isfinite(width) or width <= 0:
+        return []
+    events: list[EventCandidate] = []
+    for depth in PASSIVE_DEPTH_FRACTIONS:
+        entry = (
+            upper - depth * width
+            if state.side > 0
+            else lower + depth * width
+        )
+        if (state.side > 0 and not stop < entry < target) or (
+            state.side < 0 and not target < entry < stop
+        ):
+            continue
+        features = _setup_features(row, state, pos, entry, stop)
+        features.update(
+            {
+                "action_candidate_early_passive": 1.0,
+                "action_candidate_confirmed_market": 0.0,
+                "entry_confirmation_kind": 0.0,
+                "causal_pd_array_armed": 1.0,
+                "passive_depth_fraction": float(depth),
+                "passive_is_proximal": float(depth == 0.0),
+                "passive_is_consequent_encroachment": float(depth == 0.5),
+                "passive_is_distal": float(depth == 1.0),
+            }
+        )
+        events.append(
+            EventCandidate(
+                timestamp=timestamp,
+                symbol=symbol,
+                family=state.family,
+                side=state.side,
+                decision_price=float(row["close"]),
+                entry_reference=float(entry),
+                stop_reference=stop,
+                target_reference=target,
+                structural_level=float(state.structural_level),
+                feature_row=features,
+            )
+        )
+    return events
 
 
 def _market_event(event: EventCandidate) -> EventCandidate:
@@ -72,7 +94,10 @@ def _market_event(event: EventCandidate) -> EventCandidate:
             "action_candidate_early_passive": 0.0,
             "action_candidate_confirmed_market": 1.0,
             "causal_pd_array_armed": 1.0,
-            "passive_depth_fraction": 0.0,
+            "passive_depth_fraction": -1.0,
+            "passive_is_proximal": 0.0,
+            "passive_is_consequent_encroachment": 0.0,
+            "passive_is_distal": 0.0,
         }
     )
     return EventCandidate(
@@ -141,10 +166,11 @@ def generate_causal_action_candidates(
                 state, features, pos, timestamp, symbol, config, diagnostics
             )
             if phase_before == "AWAIT_DISPLACEMENT" and updated is not None and updated.phase == "AWAIT_RETEST":
-                passive = _passive_event(updated, row, timestamp, symbol, pos)
-                if passive is not None:
-                    events.append(passive)
-                    diagnostics["causal_passive_actions"] += 1
+                passive_rows = _passive_events(updated, row, timestamp, symbol, pos)
+                events.extend(passive_rows)
+                diagnostics["causal_passive_actions"] += len(passive_rows)
+                if passive_rows:
+                    diagnostics["causal_pd_arrays_armed"] += 1
             if market is not None:
                 events.append(_market_event(market))
                 diagnostics["confirmed_market_actions"] += 1
@@ -163,10 +189,11 @@ def generate_causal_action_candidates(
             )
             if continuation is not None:
                 states.append(continuation)
-                passive = _passive_event(continuation, row, timestamp, symbol, pos)
-                if passive is not None:
-                    events.append(passive)
-                    diagnostics["causal_passive_actions"] += 1
+                passive_rows = _passive_events(continuation, row, timestamp, symbol, pos)
+                events.extend(passive_rows)
+                diagnostics["causal_passive_actions"] += len(passive_rows)
+                if passive_rows:
+                    diagnostics["causal_pd_arrays_armed"] += 1
 
         atr = float(row["atr"])
         high_pools = _liquidity_pools(
