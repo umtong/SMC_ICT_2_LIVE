@@ -1,0 +1,123 @@
+name: YT Trinity path checkpoint v2
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-path-checkpoint-v2.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-path-checkpoint-v2
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Persist observable run identity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload={
+            'schema_version':2,
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'source_sha':os.environ['GITHUB_SHA'],
+            'artifact_name':f"yt-trinity-path-checkpoint-v2-{os.environ['GITHUB_SHA']}",
+            'status':'in_progress',
+          }
+          Path('research/yt_trinity_ml/PATH_CHECKPOINT_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/PATH_CHECKPOINT_POINTER.json
+          git commit -m "Announce YT Trinity path checkpoint ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
+
+  checkpoint:
+    needs: announce
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout frozen SMC source
+        uses: actions/checkout@v4
+        with:
+          ref: d08e0f7f2aa3ea983cc719a16a1569ad61005bbe
+          fetch-depth: 1
+      - name: Checkout canonical data loader
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1'
+      - name: Download immutable inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fetch_artifact() {
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"
+          }
+          mkdir -p inputs/corpus inputs/data/PRE_2024_2023/BTCUSDT inputs/data/PRE_2024_2023/ETHUSDT output
+          fetch_artifact 8637502720 /tmp/corpus.zip
+          fetch_artifact 8636781702 /tmp/btc.zip
+          fetch_artifact 8636761741 /tmp/eth.zip
+          unzip -q /tmp/corpus.zip -d inputs/corpus
+          unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2023/BTCUSDT
+          unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2023/ETHUSDT
+      - name: Materialize candidate and price paths
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python - <<'PY'
+          import gzip, hashlib, json, pickle
+          from pathlib import Path
+          from run_research import PRIMARY, load_canonical_frames
+          from system.core import FeatureConfig
+          from system.corpus_alpha import build_corpus_features, generate_corpus_candidates_with_diagnostics
+
+          decision, execution, funding = load_canonical_frames(Path('inputs/data'),Path('canonical_repo'),PRIMARY,('PRE_2024_2023',))
+          candidates=[]; diagnostics={}
+          for symbol,frame in sorted(decision.items()):
+              features=build_corpus_features(frame,FeatureConfig())
+              rows,diag=generate_corpus_candidates_with_diagnostics(features,symbol)
+              candidates.extend(rows); diagnostics[symbol]=diag
+          candidates.sort(key=lambda x:(x.timestamp,x.symbol,x.family.value,x.side))
+          keep=('bar_start','open','high','low','close','mark_close','spread_bps','available_at_ms')
+          execution={symbol:frame[[c for c in keep if c in frame.columns]].copy() for symbol,frame in execution.items()}
+          for name,obj in {'CANDIDATES.pkl.gz':candidates,'EXECUTION_FRAMES.pkl.gz':execution,'FUNDING.pkl.gz':funding}.items():
+              with gzip.open(Path('output')/name,'wb',compresslevel=6) as fh: pickle.dump(obj,fh,pickle.HIGHEST_PROTOCOL)
+          manifest={'schema_version':2,'source_commit':'d08e0f7f2aa3ea983cc719a16a1569ad61005bbe','candidate_count':len(candidates),'diagnostics':diagnostics,'files':{}}
+          for path in sorted(Path('output').glob('*')): manifest['files'][path.name]={'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+          Path('output/MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-path-checkpoint-v2-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
