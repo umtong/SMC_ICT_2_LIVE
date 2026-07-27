@@ -24,106 +24,113 @@ env:
 jobs:
   export:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-
-      - name: Install pinned export dependencies
-        run: |
-          python -m pip install -q --disable-pip-version-check \
-            "numpy==2.3.5" "pandas==2.2.3" "pyarrow==25.0.0"
-          python -m py_compile research/yt_trinity_ml/export_canonical_npz.py
-
-      - name: Download canonical 2023 BTC
-        uses: actions/download-artifact@v4
+      - name: Install parquet export dependency
+        run: python -m pip install -q --disable-pip-version-check "numpy==2.3.5" "pandas==2.2.3" "pyarrow==25.0.0"
+      - uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-PRE_2024_2023-BTCUSDT
-          path: canonical-data/PRE_2024_2023/BTCUSDT
+          path: downloads/PRE_2024_2023/BTCUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
-
-      - name: Download canonical 2023 ETH
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-PRE_2024_2023-ETHUSDT
-          path: canonical-data/PRE_2024_2023/ETHUSDT
+          path: downloads/PRE_2024_2023/ETHUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
-
-      - name: Download canonical 2024H1 BTC
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-SOLUSDT
+          path: downloads/PRE_2024_2023/SOLUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-XRPUSDT
+          path: downloads/PRE_2024_2023/XRPUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-2024_H1-BTCUSDT
-          path: canonical-data/2024_H1/BTCUSDT
+          path: downloads/2024_H1/BTCUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
-
-      - name: Download canonical 2024H1 ETH
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-2024_H1-ETHUSDT
-          path: canonical-data/2024_H1/ETHUSDT
+          path: downloads/2024_H1/ETHUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
-
-      - name: Export causal research arrays
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-SOLUSDT
+          path: downloads/2024_H1/SOLUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-XRPUSDT
+          path: downloads/2024_H1/XRPUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Materialize portable causal arrays
         run: |
-          mkdir -p artifact/canonical-npz
           python research/yt_trinity_ml/export_canonical_npz.py \
-            --data-root canonical-data \
-            --output artifact/canonical-npz \
-            --segments PRE_2024_2023 2024_H1 \
-            --symbols BTCUSDT ETHUSDT \
-            | tee artifact/NPZ_EXPORT_STDOUT.json
-
-      - name: Upload immutable NPZ export
-        uses: actions/upload-artifact@v4
+            --source downloads \
+            --output artifact/canonical-npz
+          (
+            cd artifact/canonical-npz
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+      - uses: actions/upload-artifact@v4
         with:
           name: yt-trinity-canonical-npz-${{ github.sha }}
-          path: artifact
+          path: artifact/canonical-npz
           if-no-files-found: error
-          compression-level: 0
+          compression-level: 6
           retention-days: 30
-
       - name: Persist compact export pointer
         run: |
           python - <<'PY'
-          import hashlib
-          import json
-          import os
+          import hashlib, json, os
           from pathlib import Path
-
-          manifest_path = Path('artifact/canonical-npz/NPZ_EXPORT_MANIFEST.json')
-          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-          pointer = {
-              'schema_version': 1,
-              'run_id': int(os.environ['GITHUB_RUN_ID']),
-              'source_sha': os.environ['GITHUB_SHA'],
-              'artifact_name': f"yt-trinity-canonical-npz-{os.environ['GITHUB_SHA']}",
-              'manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
-              'file_count': len(manifest['files']),
-              'segments': manifest['segments'],
-              'symbols': manifest['symbols'],
+          root=Path('artifact/canonical-npz')
+          manifest=json.loads((root/'MANIFEST.json').read_text())
+          pointer={
+            'schema_version': 1,
+            'workflow': 'YT Trinity canonical NPZ export',
+            'run_id': int(os.environ['GITHUB_RUN_ID']),
+            'source_sha': os.environ['GITHUB_SHA'],
+            'artifact_name': f"yt-trinity-canonical-npz-{os.environ['GITHUB_SHA']}",
+            'manifest': manifest,
           }
-          destination = Path('research/yt_trinity_ml/CANONICAL_NPZ_POINTER.json')
-          destination.write_text(json.dumps(pointer, indent=2, sort_keys=True) + '\n', encoding='utf-8')
-          print(json.dumps(pointer, indent=2, sort_keys=True))
+          raw=(json.dumps(pointer,ensure_ascii=False,indent=2,sort_keys=True)+'\n').encode()
+          pointer['pointer_sha256_before_field']=hashlib.sha256(raw).hexdigest()
+          Path('research/yt_trinity_ml/CANONICAL_NPZ_POINTER.json').write_text(json.dumps(pointer,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
           PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add research/yt_trinity_ml/CANONICAL_NPZ_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record canonical NPZ export ${GITHUB_RUN_ID}"
           for attempt in 1 2 3 4; do
             git pull --rebase origin "${GITHUB_REF_NAME}"
