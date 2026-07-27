@@ -5,12 +5,12 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - research/yt_trinity_squeeze/payloads/squeeze_research.py.gz.b64
+      - research/yt_trinity_squeeze/payloads/chunks/**
       - .github/workflows/yt-trinity-squeeze-research.yml
   push:
     branches: [agent/r23-yt-squeeze-alpha-001]
     paths:
-      - research/yt_trinity_squeeze/payloads/squeeze_research.py.gz.b64
+      - research/yt_trinity_squeeze/payloads/chunks/**
       - .github/workflows/yt-trinity-squeeze-research.yml
 
 permissions:
@@ -50,7 +50,11 @@ jobs:
       - name: Materialize and verify frozen research source
         run: |
           set -euo pipefail
-          base64 --decode research/yt_trinity_squeeze/payloads/squeeze_research.py.gz.b64 \
+          cat research/yt_trinity_squeeze/payloads/chunks/00 \
+              research/yt_trinity_squeeze/payloads/chunks/01 \
+              research/yt_trinity_squeeze/payloads/chunks/02 \
+              research/yt_trinity_squeeze/payloads/chunks/03 \
+            | base64 --decode \
             | gzip --decompress --stdout > /tmp/run_squeeze_research.py
           echo "ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa  /tmp/run_squeeze_research.py" \
             | sha256sum --check --strict
