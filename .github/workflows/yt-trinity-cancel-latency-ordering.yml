@@ -1,0 +1,82 @@
+name: YT Trinity cancel replace ordering at 500ms
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-cancel-latency-ordering.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-cancel-latency-ordering
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply exact cancel latency and conservative intrabar ordering
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text = path.read_text()
+          old = '''        transition_cancel = None\n        if cancel_at is not None:\n            transition_cancel = int(np.searchsorted(bars.starts_ns, pd.Timestamp(cancel_at).value, side="left"))\n            if transition_cancel >= evaluation_limit:\n                transition_cancel = None\n        boundary_rows = [value for value in (invalidation, target_before_fill, transition_cancel) if value is not None]\n        boundary = min(boundary_rows, default=None)\n        if fill is None or (boundary is not None and boundary <= fill):\n            end_position = boundary if boundary is not None else evaluation_limit - 1\n            status = "CANCELLED_ON_CONFIRMED_TRANSITION" if transition_cancel is not None and boundary == transition_cancel else "CANCELLED_OR_UNFILLED"\n            return v1.ActionLabel(\n                activation, bars.available[end_position], candidate.symbol, action, exit_variant, 0,\n                entry_reference, max(abs(entry_reference - stop), 1e-12), 0.0,\n                v1._candidate_features(candidate, action, entry_reference), status,\n            )\n'''
+          new = '''        transition_cancel = None\n        cancel_effective = None\n        if cancel_at is not None:\n            cancel_effective = pd.Timestamp(cancel_at) + pd.Timedelta(\n                milliseconds=config.activation_latency_ms\n            )\n            # A trade-through observed only in the one-minute bar containing the\n            # cancellation cannot be proven to precede the cancel. Cancel wins.\n            transition_cancel = int(\n                np.searchsorted(bars.starts_ns, cancel_effective.value, side="right") - 1\n            )\n            if transition_cancel < start or transition_cancel >= evaluation_limit:\n                transition_cancel = None\n                cancel_effective = None\n        boundary_rows = [\n            value\n            for value in (invalidation, target_before_fill, transition_cancel)\n            if value is not None\n        ]\n        boundary = min(boundary_rows, default=None)\n        if fill is None or (boundary is not None and boundary <= fill):\n            end_position = boundary if boundary is not None else evaluation_limit - 1\n            transition_won = (\n                transition_cancel is not None and boundary == transition_cancel\n            )\n            status = (\n                "CANCELLED_ON_CONFIRMED_TRANSITION"\n                if transition_won\n                else "CANCELLED_OR_UNFILLED"\n            )\n            event_end = (\n                cancel_effective\n                if transition_won and cancel_effective is not None\n                else bars.available[end_position]\n            )\n            return v1.ActionLabel(\n                activation, event_end, candidate.symbol, action, exit_variant, 0,\n                entry_reference, max(abs(entry_reference - stop), 1e-12), 0.0,\n                v1._candidate_features(candidate, action, entry_reference), status,\n            )\n'''
+          if old not in text:
+              raise SystemExit('transition cancellation block missing')
+          path.write_text(text.replace(old, new, 1))
+
+          for test_name in (
+              'research/yt_trinity_ml/tests/test_passive_transition_cancel.py',
+              'research/yt_trinity_ml/tests/test_passive_supersession.py',
+          ):
+              test = Path(test_name)
+              value = test.read_text()
+              value = value.replace(
+                  'pd.Timestamp("2023-01-01T00:11:00Z")',
+                  'pd.Timestamp("2023-01-01T00:10:00.500Z")',
+              )
+              value = value.replace(
+                  'pd.Timestamp("2023-01-01T00:13:00Z")',
+                  'pd.Timestamp("2023-01-01T00:12:00.500Z")',
+              )
+              test.write_text(value)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/run_causal_action_fast.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py
+          git rm .github/workflows/yt-trinity-cancel-latency-ordering.yml
+      - name: Commit exact cancel replace ordering
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py
+          git commit -m 'Model causal cancel replace at fixed latency'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
