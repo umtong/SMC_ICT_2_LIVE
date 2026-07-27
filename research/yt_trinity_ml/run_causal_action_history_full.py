@@ -187,24 +187,39 @@ def run(args: argparse.Namespace) -> int:
     if model.fingerprint() != source_result["production_refit_contract"]["model_fingerprint"]:
         raise RuntimeError("pre-2024 production model fingerprint mismatch")
 
-    decision_eval, execution_eval, funding_eval = load_canonical_frames(
+    # Reconstruct the continuous state that exists at 2024-01-01 instead of
+    # resetting indicators, liquidity provenance and active SMC narratives at the
+    # evaluation boundary. Pre-2024 rows are context only; the account starts flat at
+    # 10,000 USDT and only post-2024 action activations may trade.
+    evaluation_context_segments = (*PRE2024_SEGMENTS, *EVALUATION_SEGMENTS)
+    decision_context, execution_context, funding_context = load_canonical_frames(
         args.data_root,
         args.repo_root,
         PRIMARY,
-        EVALUATION_SEGMENTS,
+        evaluation_context_segments,
     )
-    _, candidates_eval, diagnostics_eval = generate_causal_action_candidates_by_symbol(
-        decision_eval,
+    _, candidates_context, diagnostics_context = generate_causal_action_candidates_by_symbol(
+        decision_context,
         FeatureConfig(),
     )
+    candidates_eval = [
+        candidate for candidate in candidates_context
+        if EVALUATION_START <= pd.Timestamp(candidate.timestamp) < EVALUATION_END
+    ]
     rows_eval = _rows_fast(
         candidates_eval,
-        execution_eval,
-        funding_eval,
+        execution_context,
+        funding_context,
         EVALUATION_END,
         (variant,),
         screen,
     )
+    diagnostics_eval = {
+        "context_segments": list(evaluation_context_segments),
+        "full_context_candidate_count": len(candidates_context),
+        "evaluation_candidate_count": len(candidates_eval),
+        "by_symbol": diagnostics_context,
+    }
     scored_eval = _score(model, rows_eval)
     scored_eval.to_parquet(
         args.output / "SCORED_ACTIONS_2024_2026H1.parquet",
