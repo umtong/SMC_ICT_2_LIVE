@@ -1,0 +1,157 @@
+name: YT Trinity integrated SMC fidelity readiness
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/system/corpus_alpha.py
+      - research/yt_trinity_ml/system/smt.py
+      - research/yt_trinity_ml/system/model.py
+      - research/yt_trinity_ml/system/research_pipeline.py
+      - research/yt_trinity_ml/tests/**
+      - .github/workflows/yt-trinity-core-fidelity-readiness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-core-fidelity-readiness
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install deterministic dependencies
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+      - name: Inspect integrated feature contracts
+        run: |
+          set +e
+          mkdir -p output
+          python - <<'PY' 2>&1 | tee output/CONTRACTS.log
+          import json
+          from pathlib import Path
+          core = Path('research/yt_trinity_ml/system/corpus_alpha.py').read_text()
+          model = Path('research/yt_trinity_ml/system/model.py').read_text()
+          pipeline = Path('research/yt_trinity_ml/system/research_pipeline.py').read_text()
+          smt_path = Path('research/yt_trinity_ml/system/smt.py')
+          required = {
+              'liquidity_first_continuation': 'continuation_requires_liquidity_raid',
+              'session_amd': 'require_session_amd',
+              'new_york_reference_time': '_new_york_reference_columns',
+              'pd_array_range': 'order_block_range_mode',
+              'impulse_fvg': 'fvg_search_mode',
+              'delivery_open_cisd': 'cisd_confirmation_mode',
+              'smt_confirmation': 'smt_confirmation_mode',
+              'liquidity_generation': 'source_identity',
+              'ote_confluence': 'ote_pd_array_mode',
+              'structural_internal_target': 'internal_target',
+              'armed_setup_export': 'NarrativeSetup',
+              'cost_budget_labels': 'market_budget_r',
+              'execution_reference_preservation': 'startswith("execution_")',
+              'execution_feature_exclusion': 'not str(key).startswith("execution_")',
+          }
+          status = {}
+          for name, token in required.items():
+              haystack = core + model + pipeline
+              status[name] = token in haystack
+          status['smt_module'] = smt_path.exists() and 'add_pair_smt_features' in smt_path.read_text()
+          payload = {
+              'schema_version': 1,
+              'source_commit': __import__('os').environ['GITHUB_SHA'],
+              'contracts': status,
+              'all_contracts_present': all(status.values()),
+              'missing': sorted(name for name, present in status.items() if not present),
+          }
+          Path('output/CONTRACT_STATUS.json').write_text(json.dumps(payload, indent=2, sort_keys=True) + '\n')
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          raise SystemExit(0 if payload['all_contracts_present'] else 2)
+          PY
+          code=${PIPESTATUS[0]}
+          echo "$code" > output/CONTRACT_EXIT_CODE.txt
+          exit 0
+      - name: Compile and run integrated regressions
+        run: |
+          set +e
+          python -m py_compile \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/smt.py \
+            research/yt_trinity_ml/system/model.py \
+            research/yt_trinity_ml/system/research_pipeline.py \
+            2>&1 | tee output/COMPILE.log
+          compile_code=${PIPESTATUS[0]}
+          PYTHONPATH=research/yt_trinity_ml pytest -q research/yt_trinity_ml/tests \
+            --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py \
+            2>&1 | tee output/PYTEST.log
+          test_code=${PIPESTATUS[0]}
+          echo "$compile_code" > output/COMPILE_EXIT_CODE.txt
+          echo "$test_code" > output/PYTEST_EXIT_CODE.txt
+          exit 0
+      - name: Persist readiness pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          out = Path('output')
+          contract = json.loads((out / 'CONTRACT_STATUS.json').read_text()) if (out / 'CONTRACT_STATUS.json').exists() else None
+          contract_code = int((out / 'CONTRACT_EXIT_CODE.txt').read_text().strip()) if (out / 'CONTRACT_EXIT_CODE.txt').exists() else 99
+          compile_code = int((out / 'COMPILE_EXIT_CODE.txt').read_text().strip()) if (out / 'COMPILE_EXIT_CODE.txt').exists() else 99
+          test_code = int((out / 'PYTEST_EXIT_CODE.txt').read_text().strip()) if (out / 'PYTEST_EXIT_CODE.txt').exists() else 99
+          pytest_log = (out / 'PYTEST.log').read_text(errors='replace') if (out / 'PYTEST.log').exists() else ''
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage': 'INTEGRATED_SMC_FIDELITY_CORE_READINESS',
+              'source_commit': os.environ['GITHUB_SHA'],
+              'workflow_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'contract_exit_code': contract_code,
+              'compile_exit_code': compile_code,
+              'pytest_exit_code': test_code,
+              'contract_status': contract,
+              'job_status': 'success' if contract_code == compile_code == test_code == 0 else 'integration_incomplete_not_economic_failure',
+              'pytest_tail': pytest_log[-12000:],
+              'ranking_effect': 'NONE_COMPONENT_VALIDATION',
+          }
+          Path('research/yt_trinity_ml/CORE_FIDELITY_READINESS.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/CORE_FIDELITY_READINESS.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record integrated SMC core readiness ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then break; fi
+              sleep $((attempt * 2))
+            done
+          fi
+      - name: Hash and upload evidence
+        if: always()
+        run: (cd output && find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-core-fidelity-readiness-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: always()
+        run: |
+          test "$(cat output/CONTRACT_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
+          test "$(cat output/COMPILE_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
+          test "$(cat output/PYTEST_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
