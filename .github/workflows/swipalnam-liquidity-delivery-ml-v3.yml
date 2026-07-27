@@ -1,0 +1,184 @@
+name: Swipalnam liquidity-delivery SMC ICT ML V3
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v2.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v2_fixed.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3.py
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3_runner.py
+      - research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+      - .github/workflows/swipalnam-liquidity-delivery-ml-v3.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-liquidity-delivery-ml-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_ROOT: artifact/canonical
+  RESULT_ROOT: artifact/swipalnam_smc_ml_v3
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  causal-screen-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" "scikit-learn>=1.5" "requests>=2.32"
+      - name: Compile and run synthetic invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v2.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v2_fixed.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3.py \
+            research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3_runner.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3_runner.py --self-test
+      - name: Restore reusable canonical core
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-core-btceth-2023-2024h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+      - name: Restore artifacts or rebuild missing exact shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" --segment "$segment" --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" --symbol "$symbol" --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 --max-attempts 8 --min-request-interval 0.10 --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" | tee "$shard/RESEARCH_VERIFICATION_V3.json"
+            done
+          done
+      - name: Run V3 pre-2024 selection and 2024H1 replay
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v3_runner.py \
+            --data-root "$CANONICAL_ROOT" --output "$RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 50 2>&1 | tee "$RESULT_ROOT/STDOUT.log"
+      - name: Write step summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ['RESULT_ROOT']) / 'RUN_SUMMARY.json'
+          if not p.exists(): raise SystemExit('RUN_SUMMARY.json missing')
+          s = json.loads(p.read_text())
+          pre, h1 = s.get('pre2024_metrics') or {}, s.get('provisional_2024h1_metrics') or {}
+          lines = [
+              '## Swipalnam SMC/ICT ML V3',
+              f"- decision: `{s.get('decision')}`",
+              f"- target hit: `{s.get('target_hit_2024h1')}`",
+              f"- candidates: `{s.get('candidate_count')}`",
+              f"- selected timeframe: `{(s.get('selected_structural_configuration') or {}).get('timeframe_min')}`",
+              f"- retraining: `{s.get('selected_retraining_policy')}`",
+              f"- pre-2024 g/day: `{pre.get('geometric_daily_growth')}`",
+              f"- pre-2024 multiple: `{pre.get('account_multiple')}`",
+              f"- pre-2024 trades: `{pre.get('completed_trades')}`",
+              f"- 2024H1 g/day: `{h1.get('geometric_daily_growth')}`",
+              f"- 2024H1 multiple: `{h1.get('account_multiple')}`",
+              f"- 2024H1 MDD: `{h1.get('max_drawdown')}`",
+              f"- 2024H1 trades: `{h1.get('completed_trades')}`",
+          ]
+          Path(os.environ['GITHUB_STEP_SUMMARY']).open('a').write('\n'.join(lines)+'\n')
+          PY
+      - name: Upload immutable V3 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-liquidity-delivery-ml-v3-${{ github.sha }}
+          path: artifact/swipalnam_smc_ml_v3
+          if-no-files-found: error
+          retention-days: 90
+      - name: Persist V3 pointer
+        if: success()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          src = Path(os.environ['RESULT_ROOT']) / 'RUN_SUMMARY.json'
+          s = json.loads(src.read_text())
+          pointer = {
+              'schema_version': 3,
+              'system_id': s.get('system_id'),
+              'source_sha': os.environ['SOURCE_SHA'],
+              'workflow_run_id': int(os.environ['RUN_ID']),
+              'workflow_run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'artifact_name': f"swipalnam-liquidity-delivery-ml-v3-{os.environ['SOURCE_SHA']}",
+              'run_summary_sha256': hashlib.sha256(src.read_bytes()).hexdigest(),
+              'decision': s.get('decision'),
+              'target_hit_2024h1': s.get('target_hit_2024h1'),
+              'candidate_count': s.get('candidate_count'),
+              'selected_structural_configuration': s.get('selected_structural_configuration'),
+              'selected_retraining_policy': s.get('selected_retraining_policy'),
+              'selected_ml_score_threshold': s.get('selected_ml_score_threshold'),
+              'selected_account_configuration': s.get('selected_account_configuration'),
+              'pre2024_metrics': s.get('pre2024_metrics'),
+              'provisional_2024h1_metrics': s.get('provisional_2024h1_metrics'),
+          }
+          out = Path('research/swipalnam_smc_ml/RUN_POINTER_V3.json')
+          out.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True)+'\n')
+          h1 = pointer['provisional_2024h1_metrics'] or {}
+          Path('artifact/v3-commit-message.txt').write_text(
+              f"Record Swipalnam V3 H1 g={h1.get('geometric_daily_growth')} multiple={h1.get('account_multiple')} trades={h1.get('completed_trades')}\n"
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_POINTER_V3.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -F artifact/v3-commit-message.txt
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$BRANCH_NAME"
+            if git push origin "HEAD:$BRANCH_NAME"; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
