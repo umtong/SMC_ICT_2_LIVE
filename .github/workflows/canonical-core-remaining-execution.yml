@@ -1,0 +1,65 @@
+name: Canonical core remaining execution
+
+on:
+  pull_request:
+    branches:
+      - agent/r22-canonical-halfyear-market-data-001
+    paths:
+      - .github/workflows/canonical-core-remaining-execution.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canonical-core-remaining-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        segment:
+          - PRE_2024_2021
+          - PRE_2024_2022
+          - 2024_H2
+          - 2025_H1
+          - 2025_H2
+          - 2026_H1
+        symbol: [BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install .
+      - name: Build official core shard
+        run: |
+          python scripts/market_data/build_canonical_bybit.py \
+            --segment "${{ matrix.segment }}" \
+            --symbol "${{ matrix.symbol }}" \
+            --base-url "$BYBIT_PUBLIC_BASE_URL" \
+            --timeout 30 \
+            --max-attempts 8 \
+            --min-request-interval 0.10 \
+            --out artifact
+      - name: Verify immutable shard
+        run: |
+          python scripts/market_data/verify_canonical_bybit.py \
+            "artifact/${{ matrix.segment }}/${{ matrix.symbol }}" \
+            | tee "artifact/${{ matrix.segment }}/${{ matrix.symbol }}/VERIFICATION.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-core-${{ matrix.segment }}-${{ matrix.symbol }}
+          path: artifact/${{ matrix.segment }}/${{ matrix.symbol }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
