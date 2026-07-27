@@ -1,0 +1,41 @@
+name: YT Trinity export DuckDB CLI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-oi-holdout-001]
+    paths:
+      - .github/workflows/yt-trinity-duckdb-cli.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-duckdb-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Download verified DuckDB CLI
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          curl --fail --location --retry 3 \
+            https://github.com/duckdb/duckdb/releases/download/v1.5.5/duckdb_cli-linux-amd64.zip \
+            --output /tmp/duckdb.zip
+          unzip -q /tmp/duckdb.zip -d artifact
+          chmod +x artifact/duckdb
+          artifact/duckdb --version | tee artifact/VERSION.txt
+          sha256sum /tmp/duckdb.zip artifact/duckdb > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-duckdb-cli-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 3
