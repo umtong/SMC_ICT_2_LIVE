@@ -57,7 +57,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p inputs/corpus inputs/data/PRE_2024_2023/BTCUSDT inputs/data/PRE_2024_2023/ETHUSDT
+          mkdir -p output inputs/corpus inputs/data/PRE_2024_2023/BTCUSDT inputs/data/PRE_2024_2023/ETHUSDT
           fetch_artifact() {
             local id="$1" target="$2"
             curl --fail --silent --show-error --location \
@@ -77,32 +77,52 @@ jobs:
           unzip -q /tmp/btc.zip -d inputs/data/PRE_2024_2023/BTCUSDT
           unzip -q /tmp/eth.zip -d inputs/data/PRE_2024_2023/ETHUSDT
 
-      - name: Verify corpus, market shards, actual instrument rules and regressions
+      - name: Verify corpus, canonical manifests, actual instrument rules and regressions
         env:
           PYTHONPATH: research/yt_trinity_ml
         run: |
-          set -euo pipefail
-          python - <<'PY'
+          set +e
+          {
+            python - <<'PY'
           import json
           from pathlib import Path
+
           corpus = json.loads(Path('inputs/corpus/yt-trinity-complete-corpus/manifest.json').read_text())
-          assert corpus['decision'] == 'PASS_COMPLETE'
-          assert corpus['unique_public_video_count'] == 186
-          assert corpus['caption_status_counts'] == {'ok': 186}
+          assert corpus['decision'] == 'PASS_COMPLETE', corpus
+          assert corpus['inventory_count'] == 186, corpus
+          assert corpus['transcript_video_count'] == 186, corpus
+          assert corpus['status_counts'] == {'ok': 186}, corpus
+
           rules = json.loads(Path('research/yt_trinity_ml/INSTRUMENT_RULES.json').read_text())
+          required_streams = (
+              'trade_price_1m', 'mark_price_1m', 'index_price_1m',
+              'premium_index_1m', 'open_interest_5m', 'account_ratio_5m',
+          )
           for symbol in ('BTCUSDT', 'ETHUSDT'):
-              row = rules[symbol]
-              assert float(row['quantity_step']) > 0
-              assert float(row['minimum_quantity']) > 0
+              rule = rules[symbol]
+              assert float(rule['quantity_step']) > 0, (symbol, rule)
+              assert float(rule['minimum_quantity']) > 0, (symbol, rule)
               manifest = json.loads(Path(f'inputs/data/PRE_2024_2023/{symbol}/DATASET_MANIFEST.json').read_text())
-              assert manifest['status'] == 'PASS_COMPLETE'
-              assert manifest['segment'] == 'PRE_2024_2023'
+              assert manifest['symbol'] == symbol, manifest
+              assert manifest['physical_segment'] == 'PRE_2024_2023', manifest
+              assert manifest['start'] == '2023-01-01T00:00:00Z', manifest
+              assert manifest['end_exclusive'] == '2024-01-01T00:00:00Z', manifest
+              for name in required_streams:
+                  coverage = manifest['coverage'][name]
+                  assert int(coverage['missing_rows']) == 0, (symbol, name, coverage)
+                  assert float(coverage['coverage']) == 1.0, (symbol, name, coverage)
+              assert int(manifest['coverage']['funding_events']['rows']) > 0, manifest
           PY
-          python -m py_compile \
-            research/yt_trinity_ml/system/corpus_alpha.py \
-            research/yt_trinity_ml/run_primary_screen.py
-          pytest -q research/yt_trinity_ml/tests \
-            --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
+            python -m py_compile \
+              research/yt_trinity_ml/system/corpus_alpha.py \
+              research/yt_trinity_ml/system/canonical_adapter.py \
+              research/yt_trinity_ml/run_primary_screen.py
+            pytest -q research/yt_trinity_ml/tests \
+              --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
+          } 2>&1 | tee output/VERIFY.log
+          code=${PIPESTATUS[0]}
+          echo "$code" > output/VERIFY_EXIT_CODE.txt
+          exit "$code"
 
       - name: Execute causal 2023H2 unified SMC account screen
         env:
@@ -131,23 +151,34 @@ jobs:
           python - <<'PY'
           import hashlib, json, os, platform, sys
           from pathlib import Path
+
           output = Path('output')
           output.mkdir(exist_ok=True)
+          verify_code = int((output / 'VERIFY_EXIT_CODE.txt').read_text().strip()) if (output / 'VERIFY_EXIT_CODE.txt').exists() else 99
           exit_code = int((output / 'EXIT_CODE.txt').read_text().strip()) if (output / 'EXIT_CODE.txt').exists() else 99
           summary_path = output / 'PRIMARY_SCREEN_SUMMARY.json'
           summary = json.loads(summary_path.read_text()) if summary_path.exists() else None
-          log = (output / 'STDOUT.log').read_text(errors='replace') if (output / 'STDOUT.log').exists() else ''
+          verify_log = (output / 'VERIFY.log').read_text(errors='replace') if (output / 'VERIFY.log').exists() else ''
+          run_log = (output / 'STDOUT.log').read_text(errors='replace') if (output / 'STDOUT.log').exists() else ''
+          if verify_code != 0:
+              job_status = 'verification_failure_not_economic_failure'
+          elif exit_code != 0:
+              job_status = 'execution_failure_not_economic_failure'
+          else:
+              job_status = 'success'
           pointer = {
-              'schema_version': 2,
+              'schema_version': 3,
               'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
               'stage': 'PRE2024_UNIFIED_SMC_COARSE_1M_NOT_RANKABLE',
               'source_commit': os.environ['GITHUB_SHA'],
               'workflow_run_id': os.environ['GITHUB_RUN_ID'],
+              'verification_exit_code': verify_code,
               'exit_code': exit_code,
-              'job_status': 'success' if exit_code == 0 else 'execution_failure_not_economic_failure',
+              'job_status': job_status,
               'summary': summary,
               'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
-              'stdout_tail': log[-8000:],
+              'verification_tail': verify_log[-8000:],
+              'stdout_tail': run_log[-8000:],
               'python': sys.version,
               'platform': platform.platform(),
               'ranking_effect': 'NONE_COARSE_SCREEN_NOT_RANKABLE',
@@ -184,4 +215,6 @@ jobs:
 
       - name: Fail only after preserving execution evidence
         if: always()
-        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
+        run: |
+          test "$(cat output/VERIFY_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
+          test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
