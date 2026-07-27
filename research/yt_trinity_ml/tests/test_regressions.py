@@ -9,6 +9,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from system.canonical_adapter import causal_asof_join  # noqa: E402
 from system.coarse import CoarseEventReplay, CoarseExecutionConfig  # noqa: E402
 from system.core import EventCandidate, EventFamily, RiskConfig  # noqa: E402
 from system.model import ChronologicalEventModel, ScoredCandidate  # noqa: E402
@@ -128,3 +129,25 @@ def test_coarse_replay_cannot_use_barrier_after_evaluation_cutoff() -> None:
     assert account.position is not None
     assert account.position.opened_at == pd.Timestamp("2023-01-01T00:01:00Z")
     assert account.cash == 10000.0
+
+
+def test_causal_asof_join_normalizes_nullable_and_numpy_epoch_keys() -> None:
+    base = pd.DataFrame(
+        {
+            "available_at_ms": pd.array([300_000, 600_000], dtype="Int64"),
+            "close": [101.0, 102.0],
+        },
+        index=pd.to_datetime(["1970-01-01T00:05:00Z", "1970-01-01T00:10:00Z"]),
+    )
+    auxiliary = pd.DataFrame(
+        {
+            "available_at_ms": np.asarray([299_999, 600_001], dtype=np.int64),
+            "mark_close": [100.5, 102.5],
+        },
+        index=pd.to_datetime(["1970-01-01T00:04:00Z", "1970-01-01T00:09:00Z"]),
+    )
+
+    joined = causal_asof_join(base, auxiliary)
+
+    assert joined["available_at_ms"].dtype == np.dtype("int64")
+    assert joined["mark_close"].tolist() == [100.5, 100.5]
