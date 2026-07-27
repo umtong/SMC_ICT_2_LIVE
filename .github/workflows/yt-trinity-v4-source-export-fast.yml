@@ -1,0 +1,79 @@
+name: YT Trinity v4 source export fast
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-v4-source-export-fast.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-v4-source-export-fast
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Decode and verify source
+        run: |
+          set -euo pipefail
+          mkdir -p output/source
+          python - <<'PY'
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          chunks=sorted(Path('research/yt_trinity_ml/upgrade_chunks').glob('unified_smc_v4.*'))
+          assert [p.name for p in chunks] == [f'unified_smc_v4.{i:02d}' for i in range(6)]
+          encoded=''.join(p.read_text() for p in chunks)
+          assert hashlib.sha256(encoded.encode()).hexdigest() == '337d9fed927d27832b621ac9f19f072cae46d4828242313971a98dcfb28d951e'
+          raw=gzip.decompress(base64.b85decode(encoded.encode()))
+          assert hashlib.sha256(raw).hexdigest() == '0e37a5101d112abd1652ffbac4c647c3f902b3d19f46de7a10713c36dce8bccd'
+          files=json.loads(raw.decode())
+          for relative,content in files.items():
+              path=Path(relative); path.parent.mkdir(parents=True,exist_ok=True); path.write_text(content)
+          path=Path('research/yt_trinity_ml/run_primary_screen.py')
+          text=path.read_text(); old='        symbols=sorted(rules),\n'; new='        symbols=sorted(rule.symbol for rule in rules),\n'
+          assert text.count(old)==1; path.write_text(text.replace(old,new,1))
+          PY
+          python research/yt_trinity_ml/apply_v4_performance_patch.py
+          cp -a research/yt_trinity_ml output/source/
+          printf '%s\n' "${GITHUB_SHA}" > output/source/TRIGGER_SHA.txt
+          (cd output/source && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-v4-source-fast-${{ github.sha }}
+          path: output/source
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist export pointer
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          payload={'schema_version':1,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'artifact_name':f"yt-trinity-v4-source-fast-{os.environ['GITHUB_SHA']}",'payload_sha256':'0e37a5101d112abd1652ffbac4c647c3f902b3d19f46de7a10713c36dce8bccd','status':'success'}
+          Path('/tmp/V4_SOURCE_EXPORT_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          PY
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          cp /tmp/V4_SOURCE_EXPORT_POINTER.json research/yt_trinity_ml/V4_SOURCE_EXPORT_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/V4_SOURCE_EXPORT_POINTER.json
+          git commit -m "Record v4 source export ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
