@@ -7,6 +7,12 @@ on:
         description: Optional minimum caption coverage ratio (0 disables the gate)
         required: false
         default: "0"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - tools/youtube_corpus/**
+      - .github/workflows/collect-smc-ict-youtube-corpus.yml
   push:
     branches:
       - agent/youtube-smc-ict-ml-core-20260727
@@ -15,7 +21,7 @@ on:
       - .github/workflows/collect-smc-ict-youtube-corpus.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: youtube-corpus-${{ github.ref }}
@@ -31,8 +37,6 @@ jobs:
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -51,7 +55,7 @@ jobs:
 
       - name: Collect all public channel tabs and captions
         env:
-          MIN_COVERAGE: ${{ github.event.inputs.min_coverage || '0' }}
+          MIN_COVERAGE: ${{ inputs.min_coverage || '0' }}
         run: |
           rm -rf artifacts/youtube_corpus
           python tools/youtube_corpus/collect_channels.py \
@@ -88,63 +92,3 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
           compression-level: 0
-
-      - name: Publish run locator and audit summary
-        if: always()
-        env:
-          RUN_ID: ${{ github.run_id }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-          HEAD_SHA: ${{ github.sha }}
-          REF_NAME: ${{ github.ref_name }}
-          SERVER_URL: ${{ github.server_url }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          mkdir -p research/youtube_smc_ict_corpus
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          target = Path("research/youtube_smc_ict_corpus")
-          locator = {
-              "schema_version": 1,
-              "run_id": int(os.environ["RUN_ID"]),
-              "run_attempt": int(os.environ["RUN_ATTEMPT"]),
-              "head_sha": os.environ["HEAD_SHA"],
-              "branch": os.environ["REF_NAME"],
-              "artifact_name": f"youtube-smc-ict-caption-corpus-{os.environ['RUN_ID']}",
-              "run_url": f"{os.environ['SERVER_URL']}/{os.environ['REPOSITORY']}/actions/runs/{os.environ['RUN_ID']}",
-          }
-          manifest_path = Path("artifacts/youtube_corpus/manifest.json")
-          if manifest_path.exists():
-              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-              locator["collector_status"] = "manifest_available"
-              locator["coverage"] = {
-                  "discovered_video_count": manifest.get("discovered_video_count"),
-                  "transcript_success_count": manifest.get("transcript_success_count"),
-                  "transcript_failure_count": manifest.get("transcript_failure_count"),
-                  "coverage_ratio": manifest.get("coverage_ratio"),
-              }
-              (target / "latest_manifest.json").write_text(
-                  json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                  encoding="utf-8",
-              )
-          else:
-              locator["collector_status"] = "manifest_missing"
-          (target / "latest_run.json").write_text(
-              json.dumps(locator, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          summary_path = Path("artifacts/youtube_corpus/summary.md")
-          if summary_path.exists():
-              (target / "latest_summary.md").write_text(summary_path.read_text(encoding="utf-8"), encoding="utf-8")
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/youtube_smc_ict_corpus/latest_run.json
-          git add -f research/youtube_smc_ict_corpus/latest_manifest.json research/youtube_smc_ict_corpus/latest_summary.md 2>/dev/null || true
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "Record YouTube corpus run ${RUN_ID}"
-          git push origin "HEAD:${REF_NAME}"
