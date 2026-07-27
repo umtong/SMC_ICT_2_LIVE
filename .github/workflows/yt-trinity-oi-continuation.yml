@@ -8,6 +8,12 @@ on:
     paths:
       - research/yt_trinity_ml/run_oi_continuation.py
       - .github/workflows/yt-trinity-oi-continuation.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/yt_trinity_ml/run_oi_continuation.py
+      - .github/workflows/yt-trinity-oi-continuation.yml
 
 permissions:
   contents: read
@@ -23,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -75,11 +81,7 @@ jobs:
               with zipfile.ZipFile(zip_path) as archive:
                   archive.extractall(destination)
               manifest = json.loads((destination / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
-              rows.append({
-                  "symbol": symbol,
-                  "zip_sha256": digest,
-                  "manifest": manifest,
-              })
+              rows.append({"symbol": symbol, "zip_sha256": digest, "manifest": manifest})
           Path("data/DATA_DEPENDENCIES.json").write_text(
               json.dumps(rows, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
               encoding="utf-8",
