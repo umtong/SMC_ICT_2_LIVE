@@ -1,0 +1,223 @@
+name: YT Trinity conditional four-symbol explicit-history screen
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-multisymbol-history-screen.yml
+      - research/yt_trinity_ml/CONDITIONAL_ALT_HISTORY_READY.json
+      - research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json
+      - research/yt_trinity_ml/HISTORY_STACK_STATUS.json
+      - research/yt_trinity_ml/run_causal_action_history_multisymbol.py
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-multisymbol-history-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  TARGET_BRANCH: agent/r22-yt-trinity-ml-001
+  CANONICAL_COMMIT: a2bb231966a517d29495bed7673e4d08ab8e30a9
+
+jobs:
+  conditional-multisymbol-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Authorize current conditional history and audited source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source = json.loads(Path('research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json').read_text())
+          alt = json.loads(Path('research/yt_trinity_ml/CONDITIONAL_ALT_HISTORY_READY.json').read_text())
+          stack = json.loads(Path('research/yt_trinity_ml/HISTORY_STACK_STATUS.json').read_text())
+          assert source['job_status'] == 'success' and int(source['exit_code']) == 0, source
+          assert not bool((source.get('result') or {}).get('target_exceeded_coarse')), source
+          assert alt['status'] == 'PASS_COMPLETE', alt
+          assert alt['source_btc_eth_result_sha256'] == source['result_sha256'], (alt, source)
+          assert stack['status'] == 'PASS', stack
+          Path('/tmp/audited-source').write_text(str(stack['source_commit']))
+          PY
+          audited_source="$(cat /tmp/audited-source)"
+          git cat-file -e "${audited_source}^{commit}"
+          git diff --quiet "${audited_source}"..HEAD -- \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/system/causal_action_history_model.py \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/run_causal_action_history.py \
+            research/yt_trinity_ml/run_causal_action_history_multisymbol.py
+
+      - uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: ${{ env.CANONICAL_COMMIT }}
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+
+      - name: Download immutable four-symbol history and 2024H1 matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/data output
+          fetch_named_artifact() {
+            local name="$1" target="$2"
+            local metadata id digest
+            metadata="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100")"
+            id="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["id"])' <<<"${metadata}")"
+            digest="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["digest"])' <<<"${metadata}")"
+            mkdir -p "${target}"
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              -o "/tmp/${id}.zip"
+            unzip -q "/tmp/${id}.zip" -d "${target}"
+            printf '%s\t%s\t%s\n' "${name}" "${id}" "${digest}" >> output/DATA_ARTIFACTS.tsv
+          }
+          for segment in PRE_2024_2021 PRE_2024_2022 PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT SOLUSDT XRPUSDT; do
+              fetch_named_artifact \
+                "canonical-bybit-${segment}-${symbol}" \
+                "inputs/data/${segment}/${symbol}"
+            done
+          done
+
+      - name: Verify matrix and run conditional symbol-set screen
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          {
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          expected = {
+              'PRE_2024_2021': ('2021-01-01T00:00:00Z', '2022-01-01T00:00:00Z'),
+              'PRE_2024_2022': ('2022-01-01T00:00:00Z', '2023-01-01T00:00:00Z'),
+              'PRE_2024_2023': ('2023-01-01T00:00:00Z', '2024-01-01T00:00:00Z'),
+              '2024_H1': ('2024-01-01T00:00:00Z', '2024-07-01T00:00:00Z'),
+          }
+          for segment, (start, end) in expected.items():
+              for symbol in ('BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT'):
+                  manifest = json.loads(Path(f'inputs/data/{segment}/{symbol}/DATASET_MANIFEST.json').read_text())
+                  assert manifest['symbol'] == symbol
+                  assert manifest['physical_segment'] == segment
+                  assert manifest['start'] == start
+                  assert manifest['end_exclusive'] == end
+                  for stream in ('trade_price_1m','mark_price_1m','index_price_1m','premium_index_1m','open_interest_5m','account_ratio_5m'):
+                      assert int(manifest['coverage'][stream]['missing_rows']) == 0
+                      assert float(manifest['coverage'][stream]['coverage']) == 1.0
+          PY
+            python -m py_compile \
+              research/yt_trinity_ml/run_causal_action_history_multisymbol.py
+            pytest -q \
+              research/yt_trinity_ml/tests/test_causal_action_history_model.py \
+              research/yt_trinity_ml/tests/test_history_feature_contract.py \
+              research/yt_trinity_ml/tests/test_liquidity_identity_time.py \
+              research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+              research/yt_trinity_ml/tests/test_causal_action_fast.py
+            python research/yt_trinity_ml/run_causal_action_history_multisymbol.py \
+              --repo-root canonical_repo \
+              --data-root inputs/data \
+              --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.json \
+              --source-pointer research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json \
+              --alt-ready research/yt_trinity_ml/CONDITIONAL_ALT_HISTORY_READY.json \
+              --output output
+          } 2>&1 | tee output/STDOUT.log
+          code=${PIPESTATUS[0]}
+          echo "$code" > output/EXIT_CODE.txt
+          exit 0
+
+      - name: Bind and publish conditional result pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os,platform,sys
+          from pathlib import Path
+          output=Path('output'); output.mkdir(exist_ok=True)
+          result_path=output/'CAUSAL_ACTION_MULTISYMBOL_RESULT.json'
+          result=json.loads(result_path.read_text()) if result_path.exists() else None
+          exit_code=int((output/'EXIT_CODE.txt').read_text()) if (output/'EXIT_CODE.txt').exists() else 99
+          log=(output/'STDOUT.log').read_text(errors='replace') if (output/'STDOUT.log').exists() else ''
+          pointer={
+              'schema_version':1,
+              'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage':'CONDITIONAL_MULTISYMBOL_2024H1_COARSE_NOT_RANKABLE',
+              'source_commit':os.environ['GITHUB_SHA'],
+              'workflow_run_id':int(os.environ['GITHUB_RUN_ID']),
+              'canonical_loader_commit':os.environ['CANONICAL_COMMIT'],
+              'exit_code':exit_code,
+              'job_status':'success' if exit_code==0 else 'execution_failure_not_economic_failure',
+              'result':result,
+              'result_sha256':hashlib.sha256(result_path.read_bytes()).hexdigest() if result_path.exists() else None,
+              'stdout_tail':log[-16000:],
+              'python':sys.version,
+              'platform':platform.platform(),
+              'ranking_effect':'NONE_COARSE_1M_NOT_RANKABLE',
+          }
+          target=output/'CAUSAL_ACTION_MULTISYMBOL_POINTER.json'
+          target.write_text(json.dumps(pointer,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          Path('/tmp/CAUSAL_ACTION_MULTISYMBOL_POINTER.json').write_bytes(target.read_bytes())
+          PY
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+          git fetch origin "$TARGET_BRANCH"
+          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          cp /tmp/CAUSAL_ACTION_MULTISYMBOL_POINTER.json research/yt_trinity_ml/CAUSAL_ACTION_MULTISYMBOL_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/CAUSAL_ACTION_MULTISYMBOL_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record conditional multisymbol result ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin "$TARGET_BRANCH"
+              if git push origin "HEAD:$TARGET_BRANCH"; then break; fi
+              sleep $((attempt * 3))
+            done
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-multisymbol-history-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail after evidence preservation
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
