@@ -29,8 +29,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: yt-trinity-system-${{ github.ref }}
-  cancel-in-progress: true
+  group: yt-trinity-system-${{ github.event.pull_request.number || github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   test:
