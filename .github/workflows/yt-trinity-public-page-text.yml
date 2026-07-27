@@ -1,0 +1,205 @@
+name: YT Trinity public authored page text
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/collect_public_page_text.py
+      - control/yt-trinity-public-page-text-trigger.json
+      - .github/workflows/yt-trinity-public-page-text.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-public-page-text-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build exact inventory
+        run: |
+          python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+          python research/yt_trinity_ml/build_public_inventory_union.py
+          mkdir -p artifact/inventory
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl artifact/inventory/
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json artifact/inventory/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-page-text-inventory-${{ github.sha }}
+          path: artifact/inventory
+          if-no-files-found: error
+          retention-days: 30
+
+  collect:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-page-text-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - name: Install Chromium collector
+        run: |
+          python -m pip install -q --upgrade playwright
+          python -m playwright install --with-deps chromium
+      - name: Collect authored text without media
+        run: |
+          mkdir -p "artifact/shard-${{ matrix.shard }}"
+          python research/yt_trinity_ml/collect_public_page_text.py \
+            --inventory artifact/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl \
+            --output "artifact/shard-${{ matrix.shard }}" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count 8 \
+            2>&1 | tee "artifact/shard-${{ matrix.shard }}/STDOUT.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-page-text-shard-${{ matrix.shard }}-${{ github.sha }}
+          path: artifact/shard-${{ matrix.shard }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, collect]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-page-text-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-page-text-shard-*-${{ github.sha }}
+          path: artifact/shards
+          merge-multiple: false
+      - name: Merge exact authored-text ledger
+        run: |
+          mkdir -p artifact/page-text
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+          inventory_path = Path('artifact/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl')
+          inventory = [json.loads(line) for line in inventory_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+          expected = {row['video_id']: row for row in inventory}
+          rows = {}
+          manifests = []
+          for wrapper in sorted(Path('artifact/shards').glob('*')):
+              for path in wrapper.rglob('pages.jsonl'):
+                  manifest_path = path.parent / 'manifest.json'
+                  if manifest_path.exists(): manifests.append(json.loads(manifest_path.read_text(encoding='utf-8')))
+                  for line in path.read_text(encoding='utf-8').splitlines():
+                      if not line.strip(): continue
+                      row = json.loads(line)
+                      video_id = row['video_id']
+                      if video_id in rows: raise RuntimeError(f'duplicate page result: {video_id}')
+                      rows[video_id] = row
+          missing = sorted(set(expected) - set(rows))
+          for video_id in missing:
+              rows[video_id] = {**expected[video_id], 'page_status': 'missing_shard_result'}
+          ordered = [rows[row['video_id']] for row in inventory]
+          raw = ''.join(json.dumps(row, ensure_ascii=False, sort_keys=True) + '\n' for row in ordered)
+          output = Path('artifact/page-text')
+          (output / 'pages.jsonl').write_text(raw, encoding='utf-8')
+          counts = Counter(row.get('page_status') for row in ordered)
+          manifest = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'inventory_count': len(inventory),
+              'result_count': len(ordered),
+              'status_counts': dict(sorted(counts.items())),
+              'challenge_count': sum(bool(row.get('challenge_detected')) for row in ordered),
+              'authored_title_count': sum(bool(row.get('title')) for row in ordered),
+              'authored_description_count': sum(bool(row.get('short_description') or row.get('meta_description') or row.get('description_dom')) for row in ordered),
+              'chaptered_video_count': sum(bool(row.get('chapters')) for row in ordered),
+              'pages_sha256': hashlib.sha256(raw.encode('utf-8')).hexdigest(),
+              'inventory_sha256': hashlib.sha256(inventory_path.read_bytes()).hexdigest(),
+              'built_at_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'media_loaded': False,
+              'shard_manifests': manifests,
+          }
+          (output / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+          (
+            cd artifact/page-text
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-public-page-text-${{ github.sha }}
+          path: artifact/page-text
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact authored-text pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          root = Path('artifact/page-text')
+          manifest_path = root / 'manifest.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity public authored page text',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-public-page-text-{os.environ['GITHUB_SHA']}",
+              'manifest': manifest,
+              'manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest() if manifest_path.exists() else None,
+          }
+          Path('research/yt_trinity_ml/PUBLIC_PAGE_TEXT_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/PUBLIC_PAGE_TEXT_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record all-channel public authored page text ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
