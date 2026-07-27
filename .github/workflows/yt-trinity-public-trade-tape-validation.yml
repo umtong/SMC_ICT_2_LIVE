@@ -1,0 +1,200 @@
+name: YT Trinity full public trade-tape validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/EVENT_TAPE_AUTHORITY_POINTER.json
+      - research/yt_trinity_ml/EVENT_TAPE_SOURCE_DISCOVERY.json
+      - research/yt_trinity_ml/run_public_trade_tape_validation.py
+      - .github/workflows/yt-trinity-public-trade-tape-validation.yml
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: yt-trinity-public-trade-tape-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+      matrix: ${{ steps.gate.outputs.matrix }}
+      reason: ${{ steps.gate.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - id: gate
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          authority_path = Path('research/yt_trinity_ml/EVENT_TAPE_AUTHORITY_POINTER.json')
+          source_path = Path('research/yt_trinity_ml/EVENT_TAPE_SOURCE_DISCOVERY.json')
+          authorities = []
+          source_ok = False
+          reasons = []
+          if authority_path.exists():
+              payload = json.loads(authority_path.read_text(encoding='utf-8'))
+              if payload.get('decision') == 'EVENT_TAPE_AUTHORITIES_READY':
+                  for row in payload.get('authorities') or []:
+                      if row.get('run_id') and row.get('artifact_name') and row.get('authority_key'):
+                          authorities.append({
+                              'key': row['authority_key'],
+                              'run_id': int(row['run_id']),
+                              'artifact_name': row['artifact_name'],
+                              'strategy_id': row.get('strategy_id'),
+                          })
+              else:
+                  reasons.append(f"authority={payload.get('decision')}")
+          else:
+              reasons.append('authority pointer missing')
+          if source_path.exists():
+              source = json.loads(source_path.read_text(encoding='utf-8'))
+              samples = source.get('usable_public_samples') or []
+              source_ok = any('/trading/' in str(row.get('url') or '') and int(row.get('status_code') or 0) in {200, 206} for row in samples)
+              if not source_ok:
+                  reasons.append('public Bybit trade archive sample not validated')
+          else:
+              reasons.append('event-tape source discovery missing')
+          authorized = bool(authorities) and source_ok
+          matrix = json.dumps({'authority': authorities}, separators=(',', ':'))
+          reason = '; '.join(reasons) or 'authorized'
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"authorized={'true' if authorized else 'false'}\n")
+              handle.write(f"matrix={matrix}\n")
+              handle.write(f"reason={reason}\n")
+          print(json.dumps({'authorized': authorized, 'authorities': authorities, 'source_ok': source_ok, 'reason': reason}, indent=2))
+          PY
+
+  validate:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.authorize.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install chronological tape stack
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest playwright
+      - name: Compile and run execution invariants
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python -m py_compile research/yt_trinity_ml/run_public_trade_tape_validation.py
+          pytest -q research/yt_trinity_ml/tests
+      - name: Download exact frozen coarse authority artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifact/source
+          gh run download "${{ matrix.authority.run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name "${{ matrix.authority.artifact_name }}" \
+            --dir artifact/source
+          find artifact/source -type f -maxdepth 6 -print
+      - uses: actions/cache@v4
+        with:
+          path: artifact/tape-cache
+          key: yt-trinity-public-bybit-trades-and-marks-v1-${{ matrix.authority.key }}
+          restore-keys: |
+            yt-trinity-public-bybit-trades-and-marks-v1-
+      - name: Replay frozen signals on chronological public trades
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -o pipefail
+          mkdir -p artifact/tape-cache "artifact/result-${{ matrix.authority.key }}"
+          python research/yt_trinity_ml/run_public_trade_tape_validation.py \
+            --source artifact/source \
+            --cache-dir artifact/tape-cache \
+            --output "artifact/result-${{ matrix.authority.key }}" \
+            2>&1 | tee "artifact/result-${{ matrix.authority.key }}/STDOUT.log"
+      - name: Hash immutable tape evidence
+        if: always()
+        run: |
+          root="artifact/result-${{ matrix.authority.key }}"
+          if [[ -d "$root" ]]; then
+            (
+              cd "$root"
+              find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-public-trade-tape-${{ matrix.authority.key }}-${{ github.sha }}
+          path: artifact/result-${{ matrix.authority.key }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact tape result pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          key = '${{ matrix.authority.key }}'
+          summary_path = Path(f'artifact/result-{key}/RUN_SUMMARY.json')
+          summary = json.loads(summary_path.read_text(encoding='utf-8')) if summary_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity full public trade-tape validation',
+              'authority_key': key,
+              'source_authority_run_id': int('${{ matrix.authority.run_id }}'),
+              'source_authority_artifact': '${{ matrix.authority.artifact_name }}',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-public-trade-tape-{key}-{os.environ['GITHUB_SHA']}",
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
+              'decision': summary.get('decision') if isinstance(summary, dict) else 'EXECUTION_FAILED_NO_SUMMARY',
+              'strategy_id': summary.get('source_strategy_id') if isinstance(summary, dict) else '${{ matrix.authority.strategy_id }}',
+              'route_key': summary.get('source_route_key') if isinstance(summary, dict) else None,
+              'metrics': summary.get('metrics') if isinstance(summary, dict) else None,
+              'evidence': summary.get('evidence') if isinstance(summary, dict) else None,
+              'rankable': False,
+          }
+          target = Path(f'research/yt_trinity_ml/PUBLIC_TRADE_TAPE_RESULT_{key}.json')
+          target.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "research/yt_trinity_ml/PUBLIC_TRADE_TAPE_RESULT_${{ matrix.authority.key }}.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record ${{ matrix.authority.key }} public trade-tape validation ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+  skip:
+    needs: authorize
+    if: needs.authorize.outputs.authorized != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Trade-tape validation not authorized: ${{ needs.authorize.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"
