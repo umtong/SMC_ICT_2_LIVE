@@ -1,0 +1,207 @@
+name: YT Trinity selected raw contract integrated ML
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/PRE2024_SMC_ROUTE.json
+      - research/yt_trinity_ml/run_integrated_ml_from_labels.py
+      - .github/workflows/yt-trinity-selected-contract-integrated-ml.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-selected-contract-integrated-ml
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Resolve selected raw contract
+        run: |
+          set -euo pipefail
+          mkdir -p output input/evidence input/PRE_2024_2023/BTCUSDT input/PRE_2024_2023/ETHUSDT
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          route = json.loads(Path('research/yt_trinity_ml/PRE2024_SMC_ROUTE.json').read_text())
+          selected = route.get('selected') or {}
+          supported = (
+              route.get('decision') == 'ADVANCE_SELECTED_RAW_CONTRACT_TO_INTEGRATED_ML_ACCOUNT'
+              and selected.get('source') not in {'EXIT_GEOMETRY_V1'}
+              and float(selected.get('geometric_daily_growth', -1)) > 0
+          )
+          payload = {
+              'supported': supported,
+              'source': selected.get('source'),
+              'run_id': selected.get('workflow_run_id'),
+              'identifier': (selected.get('frozen_contract') or {}).get('identifier'),
+              'action': (selected.get('frozen_contract') or {}).get('action', 'any'),
+              'selected': selected,
+          }
+          Path('/tmp/resolved.json').write_text(json.dumps(payload))
+          print(json.dumps(payload, indent=2))
+          PY
+      - name: Install deterministic dependencies
+        if: ${{ hashFiles('/tmp/never') == '' }}
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1'
+      - name: Download selected evidence and canonical data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          supported="$(python -c 'import json; print(str(json.load(open("/tmp/resolved.json"))["supported"]).lower())')"
+          if [[ "$supported" != true ]]; then
+            echo 0 > output/SKIPPED.txt
+            exit 0
+          fi
+          run_id="$(python -c 'import json; print(json.load(open("/tmp/resolved.json"))["run_id"])')"
+          curl --fail --silent --show-error \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts?per_page=100" \
+            > /tmp/artifacts.json
+          python - <<'PY' > /tmp/artifact_ids
+          import json
+          for row in json.load(open('/tmp/artifacts.json'))['artifacts']:
+              if not row.get('expired'):
+                  print(row['id'])
+          PY
+          while read -r artifact_id; do
+            test -n "$artifact_id" || continue
+            curl --fail --silent --show-error --location \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+              -o "/tmp/${artifact_id}.zip"
+            unzip -q -o "/tmp/${artifact_id}.zip" -d input/evidence
+          done < /tmp/artifact_ids
+          fetch() {
+            curl --fail --silent --show-error --location \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"
+          }
+          fetch 8636781702 /tmp/btc.zip
+          fetch 8636761741 /tmp/eth.zip
+          unzip -q /tmp/btc.zip -d input/PRE_2024_2023/BTCUSDT
+          unzip -q /tmp/eth.zip -d input/PRE_2024_2023/ETHUSDT
+          for symbol in BTCUSDT ETHUSDT; do
+            root="input/PRE_2024_2023/${symbol}"
+            if [[ ! -f "${root}/DATASET_MANIFEST.json" ]]; then
+              manifest="$(find "${root}" -name DATASET_MANIFEST.json -print -quit)"
+              test -n "${manifest}"
+              source_dir="$(dirname "${manifest}")"
+              tmp="${root}.flat"
+              mv "${source_dir}" "${tmp}"
+              rm -rf "${root}"
+              mv "${tmp}" "${root}"
+            fi
+          done
+          identifier="$(python -c 'import json; print(json.load(open("/tmp/resolved.json"))["identifier"])')"
+          find input/evidence -name "${identifier}_LABELS.parquet" -print -quit > /tmp/labels_path
+          test -s /tmp/labels_path
+      - name: Execute integrated chronological ML H2 gate
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          supported="$(python -c 'import json; print(str(json.load(open("/tmp/resolved.json"))["supported"]).lower())')"
+          if [[ "$supported" != true ]]; then
+            echo 0 > output/EXIT_CODE.txt
+            exit 0
+          fi
+          action="$(python -c 'import json; print(str(json.load(open("/tmp/resolved.json"))["action"]).lower())')"
+          python research/yt_trinity_ml/run_integrated_ml_from_labels.py \
+            --labels "$(cat /tmp/labels_path)" \
+            --repo-root canonical_repo \
+            --data-root input \
+            --segments PRE_2024_2023 \
+            --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.json \
+            --action "$action" \
+            --output output \
+            2>&1 | tee output/STDOUT.log
+          code=${PIPESTATUS[0]}
+          echo "$code" > output/EXIT_CODE.txt
+          exit 0
+      - name: Persist integrated gate pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          resolved = json.loads(Path('/tmp/resolved.json').read_text())
+          out = Path('output')
+          result_path = out / 'INTEGRATED_ML_RESULT.json'
+          code = int((out / 'EXIT_CODE.txt').read_text().strip()) if (out / 'EXIT_CODE.txt').exists() else 99
+          result = json.loads(result_path.read_text()) if result_path.exists() else None
+          log = (out / 'STDOUT.log').read_text(errors='replace') if (out / 'STDOUT.log').exists() else ''
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage': 'PRE2024_SELECTED_CONTRACT_INTEGRATED_ML_H2_NOT_RANKABLE',
+              'source_commit': os.environ['GITHUB_SHA'],
+              'workflow_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'resolved_route': resolved,
+              'exit_code': code,
+              'job_status': (
+                  'skipped_no_positive_raw_contract' if not resolved['supported'] else
+                  'success' if code == 0 else 'execution_failure_not_economic_failure'
+              ),
+              'result': result,
+              'result_sha256': hashlib.sha256(result_path.read_bytes()).hexdigest() if result_path.exists() else None,
+              'stdout_tail': log[-16000:],
+              'official_2024_open_authority': bool(result and result.get('official_2024_open_authority')),
+              'ranking_effect': 'NONE_PRE2024_NOT_RANKABLE',
+          }
+          Path('research/yt_trinity_ml/INTEGRATED_SELECTED_CONTRACT_ML_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/INTEGRATED_SELECTED_CONTRACT_ML_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record selected-contract integrated ML ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then break; fi
+              sleep $((attempt * 2))
+            done
+          fi
+      - name: Hash and upload evidence
+        if: always()
+        run: (cd output && find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-selected-contract-integrated-ml-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fail after evidence preservation
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
