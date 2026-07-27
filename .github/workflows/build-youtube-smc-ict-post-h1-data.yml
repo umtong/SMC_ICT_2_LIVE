@@ -1,0 +1,72 @@
+name: Build post-H1 canonical data for YouTube SMC ICT
+
+on:
+  push:
+    branches:
+      - agent/youtube-smc-ict-ml-core-20260727
+    paths:
+      - .github/workflows/build-youtube-smc-ict-post-h1-data.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: youtube-smc-ict-post-h1-data-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_DATA_SHA: 957430b826cd649c0c002f62d606f2549b1eea0f
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        segment: [2024_H2, 2025_H1, 2025_H2, 2026_H1]
+        symbol: [BTCUSDT, ETHUSDT]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check out pinned canonical implementation
+        run: |
+          git fetch --no-tags origin "$CANONICAL_DATA_SHA" --depth=1
+          git worktree add --detach /tmp/canonical-data "$CANONICAL_DATA_SHA"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pandas==2.2.3" "pyarrow==25.0.0" "requests==2.32.4"
+      - name: Build official causal shard
+        working-directory: /tmp/canonical-data
+        run: |
+          python scripts/market_data/build_canonical_bybit.py \
+            --segment "${{ matrix.segment }}" \
+            --symbol "${{ matrix.symbol }}" \
+            --base-url "$BYBIT_PUBLIC_BASE_URL" \
+            --timeout 30 \
+            --max-attempts 8 \
+            --min-request-interval 0.10 \
+            --out "$GITHUB_WORKSPACE/shard"
+      - name: Verify immutable shard
+        working-directory: /tmp/canonical-data
+        run: |
+          python scripts/market_data/verify_canonical_bybit.py \
+            "$GITHUB_WORKSPACE/shard/${{ matrix.segment }}/${{ matrix.symbol }}" \
+            | tee "$GITHUB_WORKSPACE/shard/${{ matrix.segment }}/${{ matrix.symbol }}/VERIFICATION.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-smc-post-h1-${{ matrix.segment }}-${{ matrix.symbol }}
+          path: shard
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
