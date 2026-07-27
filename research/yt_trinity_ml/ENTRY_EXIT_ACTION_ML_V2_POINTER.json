@@ -2,13 +2,23 @@
   "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
   "exit_code": 1,
   "job_status": "execution_failure_not_economic_failure",
+  "label_export_run_id": 30240846801,
+  "preflight": {
+    "bar_rows": {
+      "BTCUSDT": 525600,
+      "ETHUSDT": 525600
+    },
+    "candidate_rows": 3036,
+    "information_cutoff_ok": true,
+    "label_rows": 3036,
+    "latest_label_end": "2023-12-31 20:09:00+00:00"
+  },
   "ranking_effect": "NONE_PRE2024_NOT_RANKABLE",
-  "raw_alpha_run_id": 30245741688,
   "result": null,
   "result_sha256": null,
-  "schema_version": 1,
-  "source_commit": "d06803b8ce6d9fe46964368ee6777464c753bf27",
+  "schema_version": 2,
+  "source_commit": "035fa2acb0d39bea7af25e1c40461700f53867da",
   "stage": "PRE2024_CONTEXTUAL_PD_ARRAY_ENTRY_EXIT_ML_H1_H2_NOT_RANKABLE",
-  "stdout_tail": "Traceback (most recent call last):\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 403, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 399, in main\n    return run(parser.parse_args())\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 308, in run\n    candidates = reconstruct_candidates(labels)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_exit_geometry_v1.py\", line 95, in reconstruct_candidates\n    raise ValueError(f'cannot reconstruct entry for row {row_id}')\nValueError: cannot reconstruct entry for row 0\n",
-  "workflow_run_id": 30246955526
+  "stdout_tail": "Traceback (most recent call last):\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 440, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 436, in main\n    return run(parser.parse_args())\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 390, in run\n    metrics = account(selected, train_end, h1_end)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_entry_exit_action_ml_v2.py\", line 284, in account\n    action_counts[row.action] = action_counts.get(row.action, 0) + 1\n                                                  ^^^^^^^^^^\nAttributeError: 'Pandas' object has no attribute 'action'\n",
+  "workflow_run_id": 30248278726
 }
