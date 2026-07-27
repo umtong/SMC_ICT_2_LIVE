@@ -1,0 +1,86 @@
+name: YT Trinity exact isolated aggregate v2
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-exec-001]
+    paths:
+      - research/yt_trinity_ml/EXEC_STRUCTURAL_V2_POINTER.json
+      - research/yt_trinity_ml/EXEC_SMT_POINTER.json
+      - research/yt_trinity_ml/EXEC_SQUEEZE_POINTER.json
+      - research/yt_trinity_ml/EXEC_KILLZONE_POINTER.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-exec-aggregate-v2
+  cancel-in-progress: true
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-exec-001
+          fetch-depth: 0
+      - name: Normalize decision-ready evidence
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          root=Path('research/yt_trinity_ml')
+          def load(name):
+              p=root/name
+              return json.loads(p.read_text()) if p.exists() else None
+          pointers={
+              'structural':load('EXEC_STRUCTURAL_V2_POINTER.json'),
+              'smt':load('EXEC_SMT_POINTER.json'),
+              'squeeze':load('EXEC_SQUEEZE_POINTER.json'),
+              'killzone':load('EXEC_KILLZONE_POINTER.json'),
+          }
+          rows=[]
+          s=pointers['structural']
+          if s:
+              r=s.get('result') or {}; f=r.get('frozen_2024H1') or {}; m=f.get('growth') or {}
+              rows.append({'id':'QUALITY_STRUCTURAL_RUNNER_V2','valid':s.get('status')=='valid','stage':'2024H1' if m else 'PRE2024','metrics':m,'details':{'variant':r.get('selected_variant'),'validation':r.get('validation_2023H2'),'crosscheck':r.get('baseline_crosscheck')}})
+          s=pointers['smt']
+          if s:
+              summary=s.get('summary') or {}; candidates=[]
+              for key in ('official_2024h1','evaluation','frozen_2024h1','result'):
+                  value=summary.get(key)
+                  if isinstance(value,dict): candidates.append(value.get('metrics') if isinstance(value.get('metrics'),dict) else value)
+              metrics=next((x for x in candidates if isinstance(x,dict) and x.get('geometric_daily_growth') is not None),{})
+              rows.append({'id':'SMT_OPENING_RANGE_BPR','valid':s.get('status')=='success','stage':'2024H1' if metrics else 'PRE2024','metrics':metrics,'details':summary})
+          s=pointers['squeeze']
+          if s:
+              outputs=s.get('json_outputs') or {}; summary=outputs.get('RUN_SUMMARY.json') or outputs.get('SUMMARY.json') or {}; metrics=summary.get('metrics') or summary.get('evaluation_metrics') or {}
+              rows.append({'id':'OI_LIQUIDITY_SQUEEZE','valid':s.get('status')=='success','stage':summary.get('stage','PRE2024'),'metrics':metrics,'details':summary})
+          s=pointers['killzone']
+          if s:
+              r=s.get('result') or {}; metrics=r.get('official_2024h1') or {}
+              rows.append({'id':'KILLZONE_SMT_CISD_FIRST_RETRACE','valid':s.get('status')=='success','stage':'2024H1' if metrics else 'PRE2024','metrics':metrics,'details':{'h2_basic':r.get('h2_basic'),'selected_risk':r.get('selected_risk')}})
+          for row in rows:
+              m=row['metrics']; row['account_multiple']=m.get('account_multiple'); row['geometric_daily_growth']=m.get('geometric_daily_growth'); row['maximum_drawdown']=m.get('maximum_drawdown'); row['completed_trades']=m.get('completed_trades') or m.get('filled_trades')
+          def score(row):
+              g=row.get('geometric_daily_growth'); return float(g) if row['valid'] and isinstance(g,(int,float)) and math.isfinite(g) else -1e12
+          ranked=sorted(rows,key=lambda x:(score(x),x.get('account_multiple') or -1),reverse=True); best=ranked[0] if ranked and score(ranked[0])>-1e11 else None
+          core_complete=all(pointers[k] is not None for k in ('structural','smt','squeeze')); target_met=bool(best and best.get('geometric_daily_growth') is not None and best['geometric_daily_growth']>=0.01)
+          needs_killzone=bool(core_complete and not target_met and pointers['killzone'] is None); complete=bool(core_complete and (target_met or pointers['killzone'] is not None))
+          if target_met: next_action='ADVANCE_BEST_TO_EVENT_TAPE_AND_SEQUENTIAL_2024_2026'
+          elif needs_killzone: next_action='RUN_KILLZONE_SMT_CISD_FIRST_RETRACE'
+          elif complete: next_action='BUILD_NEXT_DISTINCT_ALPHA_OR_COMBINE_INDEPENDENT_SLOTS'
+          else: next_action='WAIT_FOR_CORE_EXECUTIONS'
+          payload={'schema_version':2,'core_complete':core_complete,'complete':complete,'target_met':target_met,'needs_killzone':needs_killzone,'best':best,'ranked':ranked,'next_action':next_action,'pointer_status':{k:(None if v is None else v.get('status')) for k,v in pointers.items()}}
+          (root/'EXEC_AGGREGATE_V2_POINTER.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2,sort_keys=True,default=str)+'\n')
+          lines=['# Exact isolated research aggregate v2','',f'- Core complete: `{core_complete}`',f'- Complete: `{complete}`',f'- Target met: `{target_met}`',f'- Next: `{next_action}`','']
+          for i,row in enumerate(ranked,1): lines += [f'## {i}. {row["id"]}',f'- Valid: `{row["valid"]}`',f'- Stage: `{row["stage"]}`',f'- Daily geometric growth: `{row.get("geometric_daily_growth")}`',f'- Multiple: `{row.get("account_multiple")}`',f'- MDD: `{row.get("maximum_drawdown")}`',f'- Trades: `{row.get("completed_trades")}`','']
+          (root/'EXEC_AGGREGATE_V2_REPORT.md').write_text('\n'.join(lines)+'\n')
+          print(json.dumps(payload,indent=2,default=str))
+          PY
+      - name: Commit aggregate
+        run: |
+          git config user.name github-actions[bot]; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/yt_trinity_ml/EXEC_AGGREGATE_V2_POINTER.json research/yt_trinity_ml/EXEC_AGGREGATE_V2_REPORT.md
+          if ! git diff --cached --quiet; then git commit -m "Aggregate exact isolated research ${GITHUB_RUN_ID}"; for i in 1 2 3 4 5; do git pull --rebase origin agent/r22-yt-trinity-ml-exec-001 && git push origin HEAD:agent/r22-yt-trinity-ml-exec-001 && break || sleep $((i*3)); done; fi
