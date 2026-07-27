@@ -1,0 +1,383 @@
+name: YT Trinity validated Cobalt transient-ASR content
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/COBALT_AUDIO_WINNER_Linux.json
+      - research/yt_trinity_ml/COBALT_AUDIO_WINNER_macOS.json
+      - research/yt_trinity_ml/harvest_cobalt_asr_content.py
+      - .github/workflows/yt-trinity-cobalt-asr-content.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-cobalt-asr-content-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  prepare:
+    runs-on: macos-14
+    timeout-minutes: 35
+    outputs:
+      winner_available: ${{ steps.select.outputs.available }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: select
+        name: Select highest-coverage validated Cobalt winner
+        run: |
+          mkdir -p artifact/control artifact/inventory
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          candidates = []
+          for path in Path('research/yt_trinity_ml').glob('COBALT_AUDIO_WINNER_*.json'):
+              try:
+                  payload = json.loads(path.read_text(encoding='utf-8'))
+                  winner = payload.get('winner') or {}
+                  score = (
+                      int(winner.get('target_success_count') or 0),
+                      int(bool((winner.get('control') or {}).get('usable'))),
+                      str(winner.get('base') or ''),
+                  )
+                  if score[0] > 0 and score[1] > 0:
+                      candidates.append((score, path, payload))
+              except Exception:
+                  continue
+          candidates.sort(key=lambda row: row[0], reverse=True)
+          if candidates:
+              score, source, payload = candidates[0]
+              Path('artifact/control/SELECTED_COBALT_WINNER.json').write_text(
+                  json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+                  encoding='utf-8',
+              )
+              Path('artifact/control/SELECTION.json').write_text(
+                  json.dumps({'source': str(source), 'score': score}, ensure_ascii=False, indent=2) + '\n',
+                  encoding='utf-8',
+              )
+              available = 'true'
+          else:
+              Path('artifact/control/NO_WINNER.txt').write_text(
+                  'No Cobalt instance passed both known-positive control and target-media tests.\n',
+                  encoding='utf-8',
+              )
+              available = 'false'
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f'available={available}\n')
+          print(json.dumps({'available': available, 'candidate_count': len(candidates)}))
+          PY
+      - name: Install exact public-inventory transport
+        if: steps.select.outputs.available == 'true'
+        run: python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+      - name: Build exact uploads/videos/shorts/streams union
+        if: steps.select.outputs.available == 'true'
+        run: |
+          python research/yt_trinity_ml/build_public_inventory_union.py
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl artifact/inventory/
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json artifact/inventory/
+          cp research/yt_trinity_ml/channels.json artifact/inventory/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-cobalt-content-control-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
+
+  harvest:
+    needs: prepare
+    if: needs.prepare.outputs.winner_available == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-cobalt-content-control-${{ github.sha }}
+          path: artifact/control-download
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: yt-trinity-faster-whisper-small-v1
+      - name: Install transient audio and Korean ASR stack
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade requests faster-whisper
+      - name: Complete exact Cobalt/ASR shard
+        continue-on-error: true
+        run: |
+          root="artifact/shard-${{ matrix.shard }}"
+          mkdir -p "$root"
+          python research/yt_trinity_ml/harvest_cobalt_asr_content.py \
+            --inventory artifact/control-download/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl \
+            --winner artifact/control-download/control/SELECTED_COBALT_WINNER.json \
+            --output "$root" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count 24 \
+            --asr-model small \
+            2>&1 | tee "$root/STDOUT.log"
+      - name: Hash timestamped text evidence
+        if: always()
+        run: |
+          root="artifact/shard-${{ matrix.shard }}"
+          if [[ -d "$root" ]]; then
+            (
+              cd "$root"
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-cobalt-content-shard-${{ matrix.shard }}-${{ github.sha }}
+          path: artifact/shard-${{ matrix.shard }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, harvest]
+    if: always() && needs.prepare.outputs.winner_available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-cobalt-content-control-${{ github.sha }}
+          path: artifact/control-download
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-cobalt-content-shard-*-${{ github.sha }}
+          path: artifact/shards
+          merge-multiple: false
+      - name: Merge exact Cobalt/ASR content corpus
+        run: |
+          mkdir -p artifact/yt-trinity-cobalt-content
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import shutil
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          inventory_path = Path('artifact/control-download/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl')
+          inventory = [json.loads(line) for line in inventory_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+          expected = {row['video_id']: row for row in inventory}
+          rows = {}
+          shard_manifests = []
+          output = Path('artifact/yt-trinity-cobalt-content')
+          transcript_root = output / 'transcripts'
+          transcript_root.mkdir(parents=True, exist_ok=True)
+          for wrapper in sorted(Path('artifact/shards').glob('*')):
+              for videos_path in wrapper.rglob('videos.jsonl'):
+                  root = videos_path.parent
+                  manifest_path = root / 'manifest.json'
+                  if manifest_path.exists():
+                      shard_manifests.append(json.loads(manifest_path.read_text(encoding='utf-8')))
+                  for line in videos_path.read_text(encoding='utf-8').splitlines():
+                      if not line.strip():
+                          continue
+                      row = json.loads(line)
+                      video_id = row['video_id']
+                      if video_id in rows:
+                          raise RuntimeError(f'duplicate shard video: {video_id}')
+                      rows[video_id] = row
+                  source = root / 'transcripts'
+                  if source.exists():
+                      for path in source.rglob('*'):
+                          if not path.is_file():
+                              continue
+                          destination = transcript_root / path.relative_to(source)
+                          destination.parent.mkdir(parents=True, exist_ok=True)
+                          if destination.exists() and destination.read_bytes() != path.read_bytes():
+                              raise RuntimeError(f'conflicting transcript: {destination}')
+                          shutil.copy2(path, destination)
+          missing = sorted(set(expected) - set(rows))
+          extra = sorted(set(rows) - set(expected))
+          if extra:
+              raise RuntimeError(f'unexpected video outcomes: {extra}')
+          for video_id in missing:
+              rows[video_id] = {
+                  **expected[video_id],
+                  'caption_status': 'fetch_failed',
+                  'caption_provider': None,
+                  'caption_language_code': None,
+                  'caption_segment_count': 0,
+                  'caption_char_count': 0,
+                  'transcript_jsonl': None,
+                  'caption_sha256': None,
+                  'caption_error': 'missing shard outcome',
+              }
+          ordered = [rows[row['video_id']] for row in inventory]
+          raw = ''.join(json.dumps(row, ensure_ascii=False, sort_keys=True) + '\n' for row in ordered)
+          (output / 'videos.jsonl').write_text(raw, encoding='utf-8')
+          shutil.copy2('artifact/control-download/inventory/channels.json', output / 'channels.json')
+          counts = Counter(str(row.get('caption_status') or '') for row in ordered)
+          providers = Counter(str(row.get('caption_provider') or '') for row in ordered if row.get('caption_provider'))
+          languages = Counter(str(row.get('caption_language_code') or '') for row in ordered if row.get('caption_language_code'))
+          complete = (
+              len(ordered) == len(inventory)
+              and counts.get('ok', 0) == len(inventory)
+              and sum(count for status, count in counts.items() if status != 'ok') == 0
+          )
+          canonical = [
+              {
+                  'video_id': row['video_id'],
+                  'channel_slug': row['channel_slug'],
+                  'caption_status': row.get('caption_status'),
+                  'caption_provider': row.get('caption_provider'),
+                  'caption_sha256': row.get('caption_sha256'),
+              }
+              for row in ordered
+          ]
+          manifest = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'built_at_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'inventory_complete': True,
+              'inventory_count': len(inventory),
+              'inventory_sha256': hashlib.sha256(inventory_path.read_bytes()).hexdigest(),
+              'caption_attempt_complete': complete,
+              'content_attempt_complete': complete,
+              'decision': 'PASS_COMPLETE' if complete else 'PARTIAL_REQUIRES_RETRY',
+              'caption_status_counts': dict(sorted(counts.items())),
+              'caption_provider_counts': dict(sorted(providers.items())),
+              'caption_language_counts': dict(sorted(languages.items())),
+              'unique_public_video_count': len(inventory),
+              'total_caption_segments': sum(int(row.get('caption_segment_count') or 0) for row in ordered),
+              'total_caption_characters': sum(int(row.get('caption_char_count') or 0) for row in ordered),
+              'videos_sha256': hashlib.sha256(raw.encode('utf-8')).hexdigest(),
+              'corpus_digest_sha256': hashlib.sha256(
+                  json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
+              ).hexdigest(),
+              'shard_manifests': shard_manifests,
+              'media_retained': False,
+              'transient_audio_only_for_asr': True,
+          }
+          (output / 'manifest.json').write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - name: Build timestamp-addressable concept and rule evidence
+        if: always()
+        run: |
+          if [[ -f artifact/yt-trinity-cobalt-content/videos.jsonl ]]; then
+            python research/yt_trinity_ml/build_concept_index.py \
+              --corpus artifact/yt-trinity-cobalt-content \
+              | tee artifact/CONCEPT_INDEX_STDOUT.json
+            python research/yt_trinity_ml/extract_rule_ontology.py \
+              --corpus artifact/yt-trinity-cobalt-content \
+              | tee artifact/RULE_ONTOLOGY_STDOUT.json
+          fi
+          (
+            cd artifact/yt-trinity-cobalt-content
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-cobalt-content-corpus-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact Cobalt content pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          root = Path('artifact/yt-trinity-cobalt-content')
+          manifest_path = root / 'manifest.json'
+          ontology_path = root / 'rule_ontology_candidates.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity validated Cobalt transient-ASR content',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-cobalt-content-corpus-{os.environ['GITHUB_SHA']}",
+              'manifest': manifest,
+              'manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest() if manifest_path.exists() else None,
+              'rule_ontology_sha256': hashlib.sha256(ontology_path.read_bytes()).hexdigest() if ontology_path.exists() else None,
+              'rankable': False,
+          }
+          Path('research/yt_trinity_ml/COBALT_CONTENT_CORPUS_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/COBALT_CONTENT_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record Cobalt-completed YT Trinity corpus ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - name: Enforce exact content completeness
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('artifact/yt-trinity-cobalt-content/manifest.json')
+          if not path.exists():
+              raise SystemExit('Cobalt content manifest missing')
+          manifest = json.loads(path.read_text(encoding='utf-8'))
+          if manifest.get('decision') != 'PASS_COMPLETE':
+              raise SystemExit(f"Cobalt content corpus incomplete: {manifest}")
+          PY
+
+  skip:
+    needs: prepare
+    if: needs.prepare.outputs.winner_available != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Cobalt ASR corpus not opened because no validated public Cobalt winner exists.' >> "$GITHUB_STEP_SUMMARY"
