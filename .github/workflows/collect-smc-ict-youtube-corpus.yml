@@ -25,7 +25,7 @@ permissions:
 
 concurrency:
   group: youtube-corpus-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   collect:
@@ -58,7 +58,7 @@ jobs:
           MIN_COVERAGE: ${{ inputs.min_coverage || '0' }}
         run: |
           rm -rf artifacts/youtube_corpus
-          python tools/youtube_corpus/collect_channels.py \
+          python tools/youtube_corpus/collect_channels_resilient.py \
             --output artifacts/youtube_corpus \
             --sleep 0.55 \
             --min-coverage "$MIN_COVERAGE"
