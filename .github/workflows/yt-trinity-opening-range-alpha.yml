@@ -1,0 +1,255 @@
+name: YT Trinity opening range BPR alpha
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-profit-run-001
+    paths:
+      - control/yt-trinity-opening-range-alpha-trigger.json
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-opening-range-alpha-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CORPUS_RUN_ID: "30221264134"
+  CORPUS_ARTIFACT: "yt-trinity-complete-native-caption-f02fb5008588f42aeee842059acee501a5717f36"
+  CANONICAL_RUN_ID: "30218767426"
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pinned research dependencies
+        run: |
+          python -m pip install -q --disable-pip-version-check \
+            "numpy==2.3.5" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.8.0" \
+            "pyarrow==25.0.0"
+          python -m pip freeze | LC_ALL=C sort > dependency-freeze.txt
+
+      - name: Materialize and compile the frozen opening-range alpha runner
+        run: |
+          python research/yt_trinity_ml/materialize_opening_range_alpha.py
+          python -m py_compile research/yt_trinity_ml/run_opening_range_alpha.py
+          test "$(sha256sum research/yt_trinity_ml/run_opening_range_alpha.py | cut -d' ' -f1)" = \
+            "f9295cf0c1b5b4a35c06ff89e267ceab4e6e827717b8387881723bb10a49c040"
+
+      - name: Download immutable complete transcript corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.CORPUS_ARTIFACT }}
+          path: downloads/corpus
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CORPUS_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Bind and verify the complete corpus
+        run: |
+          CORPUS_ROOT="$(dirname "$(find downloads/corpus -name manifest.json -print -quit)")"
+          test -n "$CORPUS_ROOT"
+          export CORPUS_ROOT
+          echo "CORPUS_ROOT=$CORPUS_ROOT" >> "$GITHUB_ENV"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path(os.environ['CORPUS_ROOT'])
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert manifest['inventory_count'] == 196, manifest
+          assert manifest['completed_count'] == 196, manifest
+          assert manifest['caption_classification_complete'] is True, manifest
+          assert manifest['decision'] == 'PASS_COMPLETE', manifest
+          assert manifest['corpus_digest_sha256'] == '975793370055afca2436dfad82745ed70a0ef247073ce8f9c4345d3e7bac3343', manifest
+          assert (root / 'rule_ontology_candidates.json').is_file()
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+
+      - name: Download canonical 2023 BTC shard
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-BTCUSDT
+          path: downloads/pre2024/canonical-bybit-PRE_2024_2023-BTCUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download canonical 2023 ETH shard
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-PRE_2024_2023-ETHUSDT
+          path: downloads/pre2024/canonical-bybit-PRE_2024_2023-ETHUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download canonical 2024H1 BTC shard
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-BTCUSDT
+          path: downloads/2024h1/canonical-bybit-2024_H1-BTCUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download canonical 2024H1 ETH shard
+        uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-2024_H1-ETHUSDT
+          path: downloads/2024h1/canonical-bybit-2024_H1-ETHUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Arrange and verify exact canonical inputs
+        run: |
+          set -euo pipefail
+          for symbol in BTCUSDT ETHUSDT; do
+            mkdir -p "canonical-data/PRE_2024_2023/$symbol" "canonical-data/2024_H1/$symbol"
+            pre="$(find downloads/pre2024 -type d -name "canonical-bybit-PRE_2024_2023-$symbol" -print -quit)"
+            h1="$(find downloads/2024h1 -type d -name "canonical-bybit-2024_H1-$symbol" -print -quit)"
+            test -n "$pre" && test -n "$h1"
+            cp -a "$pre/." "canonical-data/PRE_2024_2023/$symbol/"
+            cp -a "$h1/." "canonical-data/2024_H1/$symbol/"
+            python - <<PY
+          import hashlib, json
+          from pathlib import Path
+          for root in (Path('canonical-data/PRE_2024_2023/$symbol'), Path('canonical-data/2024_H1/$symbol')):
+              manifest_path = root / 'DATASET_MANIFEST.json'
+              expected = (root / 'DATASET_MANIFEST.sha256').read_text(encoding='utf-8').split()[0]
+              actual = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+              assert actual == expected, (root, actual, expected)
+              manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+              assert manifest['symbol'] == '$symbol', manifest
+              assert (root / 'trade_bars/5m.parquet').is_file()
+              assert (root / 'trade_bars/1m.parquet').is_file()
+              assert (root / 'streams/funding_events.parquet').is_file()
+              print(root, manifest['dataset_id'])
+          PY
+          done
+
+      - name: Run 2023 selection and restart official 2024H1 causally
+        id: research
+        continue-on-error: true
+        run: |
+          mkdir -p artifact/opening-range-alpha
+          python research/yt_trinity_ml/run_opening_range_alpha.py \
+            --data-root canonical-data \
+            --corpus "$CORPUS_ROOT" \
+            --instrument-rules research/yt_trinity_ml/FROZEN_INSTRUMENT_RULES_BTC_ETH.json \
+            --output artifact/opening-range-alpha \
+            2>&1 | tee artifact/OPENING_RANGE_ALPHA.log
+          cp dependency-freeze.txt artifact/opening-range-alpha/DEPENDENCIES.txt
+          (
+            cd artifact/opening-range-alpha
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload complete economic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-opening-range-alpha-${{ github.sha }}
+          path: |
+            artifact/opening-range-alpha
+            artifact/OPENING_RANGE_ALPHA.log
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact non-rerunning decision pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          result_path = Path('artifact/opening-range-alpha/FINAL_RESULT.json')
+          result = json.loads(result_path.read_text(encoding='utf-8')) if result_path.is_file() else None
+          compact = None
+          if result is not None:
+              pre = result.get('pre2024') or {}
+              official = result.get('official_2024h1') or {}
+              compact = {
+                  'decision': result.get('decision'),
+                  'target_gap': result.get('target_gap'),
+                  'frozen_system_sha256': result.get('frozen_system_sha256'),
+                  'pre2024': {
+                      'selected_route': pre.get('selected_route'),
+                      'selected_threshold': pre.get('selected_threshold'),
+                      'base_metrics': pre.get('base_metrics'),
+                      'selected_risk': pre.get('selected_risk'),
+                      'selected_leverage': pre.get('selected_leverage'),
+                      'selected_risk_metrics': pre.get('selected_risk_metrics'),
+                      'economic_open': pre.get('economic_open'),
+                  },
+                  'official_2024h1': {
+                      'route': official.get('route'),
+                      'threshold': official.get('threshold'),
+                      'candidate_count': official.get('candidate_count'),
+                      'resolved_label_count': official.get('resolved_label_count'),
+                      'scored_candidate_count': official.get('scored_candidate_count'),
+                      'metrics': official.get('metrics'),
+                      'stress_metrics': official.get('stress_metrics'),
+                  } if official else None,
+              }
+          payload = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity opening range BPR alpha',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-opening-range-alpha-{os.environ['GITHUB_SHA']}",
+              'corpus_digest_sha256': '975793370055afca2436dfad82745ed70a0ef247073ce8f9c4345d3e7bac3343',
+              'result': compact,
+              'ranking_updated': False,
+          }
+          raw = (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n').encode('utf-8')
+          payload['pointer_sha256_before_field'] = hashlib.sha256(raw).hexdigest()
+          destination = Path('research/yt_trinity_ml/OPENING_RANGE_ALPHA_POINTER.json')
+          destination.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(destination.read_text(encoding='utf-8'))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/OPENING_RANGE_ALPHA_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record opening range BPR alpha run ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Enforce a completed causal decision
+        run: |
+          test -f artifact/opening-range-alpha/FINAL_RESULT.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('artifact/opening-range-alpha/FINAL_RESULT.json').read_text(encoding='utf-8'))
+          assert payload.get('decision'), payload
+          print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
