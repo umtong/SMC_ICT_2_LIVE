@@ -24,6 +24,8 @@ import requests
 BASE = "https://public.bybit.com"
 SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT")
 PERIODS = {
+    "PRE_2024_2021": (date(2021, 1, 1), date(2022, 1, 1)),
+    "PRE_2024_2022": (date(2022, 1, 1), date(2023, 1, 1)),
     "PRE_2024_2023": (date(2023, 1, 1), date(2024, 1, 1)),
     "2024_H1": (date(2024, 1, 1), date(2024, 7, 1)),
     "2024_H2": (date(2024, 7, 1), date(2025, 1, 1)),
@@ -115,7 +117,7 @@ def evenly_spaced(values: list[str], count: int = 5) -> list[str]:
 
 def inventory_symbol(symbol: str, timeout: int) -> dict[str, object]:
     session = requests.Session()
-    session.headers.update({"User-Agent": "SMC_ICT_2_LIVE canonical archive inventory/1"})
+    session.headers.update({"User-Agent": "SMC_ICT_2_LIVE canonical archive inventory/2"})
     trading_dir = f"{BASE}/trading/{symbol}/"
     html = get_text(session, trading_dir, timeout)
     daily_pattern = re.compile(rf'href="({re.escape(symbol)}(\d{{4}}-\d{{2}}-\d{{2}})\.csv\.gz)"')
@@ -161,7 +163,7 @@ def inventory_symbol(symbol: str, timeout: int) -> dict[str, object]:
         )
 
     kline: dict[str, object] = {}
-    for year in (2023, 2024):
+    for year in (2021, 2022, 2023, 2024):
         year_url = f"{BASE}/kline_for_metatrader4/{symbol}/{year}/"
         try:
             year_html = get_text(session, year_url, timeout)
@@ -172,24 +174,23 @@ def inventory_symbol(symbol: str, timeout: int) -> dict[str, object]:
             rf'href="({re.escape(symbol)}_1_(\d{{4}}-\d{{2}}-\d{{2}})_(\d{{4}}-\d{{2}}-\d{{2}})\.csv\.gz)"'
         )
         files = [
-            {
-                "url": f"{year_url}{filename}",
-                "start": start,
-                "end": end,
-            }
+            {"url": f"{year_url}{filename}", "start": start, "end": end}
             for filename, start, end in pattern.findall(year_html)
         ]
         kline[str(year)] = {"url": year_url, "status": 200, "files": files}
 
     schema_urls: list[str] = []
-    for target in (date(2023, 1, 1), date(2024, 1, 1), date(2025, 1, 1), date(2026, 6, 30)):
+    for target in (
+        date(2021, 1, 1), date(2022, 1, 1), date(2023, 1, 1),
+        date(2024, 1, 1), date(2025, 1, 1), date(2026, 6, 30),
+    ):
         if target in available:
             schema_urls.append(available[target])
     schema_samples: list[dict[str, object]] = []
     for url in schema_urls:
         try:
             schema_samples.append(read_gzip_prefix(session, url, timeout))
-        except Exception as exc:  # inventory must preserve failures as evidence
+        except Exception as exc:
             schema_samples.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
 
     return {
@@ -216,8 +217,8 @@ def main() -> None:
         symbols.append(inventory_symbol(symbol, args.timeout))
 
     result = {
-        "schema_version": 1,
-        "inventory_id": "INV-BYBIT-PUBLIC-4ASSET-HALFYEAR-20260727-R1",
+        "schema_version": 2,
+        "inventory_id": "INV-BYBIT-PUBLIC-4ASSET-CANONICAL-20260727-R2",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "base_url": BASE,
         "symbols": symbols,
