@@ -1,0 +1,111 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+  "frozen_before_first_2024h1_result": true,
+  "scientific_core_sha": "d08e0f7f2aa3ea983cc719a16a1569ad61005bbe",
+  "period_evaluator_sha": "d7486872efccf0b67b7209baeadfd12ff35b56d0",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "conditional_symbols": ["SOLUSDT", "XRPUSDT"],
+  "global_entry_slots": 1,
+  "decision_timeframe": "5m",
+  "execution_timeframe": "1m_coarse_then_event_tape_for_rankability",
+  "activation_latency_ms": 500,
+  "quality_gate": {
+    "liquidity_sweep_reversal": {
+      "target_distance_atr_min": 5.5,
+      "sweep_depth_atr_min": 1.2,
+      "external_reward_risk_min": 1.0
+    },
+    "displacement_break_retest_continuation": {
+      "stop_distance_atr_min": 4.0,
+      "path_excursion_atr_min": 6.0,
+      "external_reward_risk_min": 1.25
+    }
+  },
+  "action_model": {
+    "type": "HistGradientBoostingRegressor_two_action_heads",
+    "targets": ["market_planned_loss_budget_r", "passive_planned_loss_budget_r"],
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 40,
+    "max_iter": 100,
+    "learning_rate": 0.05,
+    "l2_regularization": 5.0,
+    "random_state": 20260727,
+    "action_threshold_budget_r": -0.2,
+    "features": [
+      "raw_reward_risk",
+      "atr_fraction",
+      "stop_distance_atr",
+      "target_distance_atr",
+      "path_excursion_atr",
+      "sweep_depth_atr",
+      "liquidity_quality",
+      "draw_target_quality",
+      "htf_bias_alignment",
+      "dealing_range_side_alignment",
+      "session_code",
+      "killzone",
+      "pd_array_kind",
+      "entry_confirmation_kind",
+      "zone_width_atr",
+      "zone_midpoint_distance_atr",
+      "retest_depth_fraction",
+      "narrative_age_bars",
+      "confirmation_age_bars",
+      "ob_search_age_bars",
+      "mitigation_count",
+      "volume_z",
+      "confirmation_volume_z",
+      "bollinger_bandwidth",
+      "realized_vol_20",
+      "compression_ratio_96",
+      "range_expansion_ratio_20",
+      "side",
+      "family_liquidity_sweep",
+      "symbol_btc",
+      "utc_hour_sin",
+      "utc_hour_cos"
+    ]
+  },
+  "model_update_contract": {
+    "cadence": "UTC_half_year_boundary",
+    "training_start": "15_minutes_before_boundary",
+    "label_information_cutoff": "event_end_at_or_before_training_start",
+    "activation": "at_boundary_after_fixed_15_minute_training_window",
+    "model_used_during_training": "previous_active_model",
+    "within_half_year_updates": false,
+    "threshold_reselection_after_2023": false,
+    "feature_reselection_after_2023": false,
+    "gate_reselection_after_2023": false
+  },
+  "account": {
+    "initial_nav_usdt": 10000.0,
+    "risk_fraction": 0.17,
+    "maximum_leverage": 20.0,
+    "quantity_steps": {
+      "BTCUSDT": 0.001,
+      "ETHUSDT": 0.01,
+      "SOLUSDT": 0.1,
+      "XRPUSDT": 0.1
+    }
+  },
+  "execution_costs": {
+    "maker_fee_rate": 0.0002,
+    "taker_fee_rate": 0.00055,
+    "market_slippage_bps": 2.0,
+    "stop_slippage_bps": 4.0,
+    "minimum_spread_bps": 0.5,
+    "passive_requires_trade_through": true
+  },
+  "exit_contract": {
+    "hard_time_exit": false,
+    "structural_stop": true,
+    "frozen_draw_on_liquidity_target": true,
+    "evaluation_boundary_position": "mark_to_realistic_closeout_for_NAV_only"
+  },
+  "promotion_contract": {
+    "coarse_result_is_rankable": false,
+    "positive_survivor_next_stage": "event_tape_replay",
+    "official_account_path": "2024-01-01_to_2026-06-30_continuous_NAV_without_reset"
+  }
+}
