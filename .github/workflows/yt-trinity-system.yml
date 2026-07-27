@@ -52,7 +52,7 @@ jobs:
           python -m pip install -q --upgrade pip
           python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
 
-      - name: Materialize unified SMC/ICT implementation
+      - name: Materialize unified SMC/ICT core implementation
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -75,46 +75,12 @@ jobs:
               '.github/workflows/yt-trinity-system.yml',
           }
           assert set(files) == expected, sorted(files)
-
-          stable_workflow = files['.github/workflows/yt-trinity-system.yml']
-          old_test = 'pytest -q -x --junitxml=artifact/system-test/junit.xml research/yt_trinity_ml/tests'
-          new_test = '''pytest -q -x --junitxml=artifact/system-test/junit.xml \\
-              research/yt_trinity_ml/tests/test_corpus_alpha.py \\
-              research/yt_trinity_ml/tests/test_entry_fill_guard.py \\
-              research/yt_trinity_ml/tests/test_execution_realism.py \\
-              research/yt_trinity_ml/tests/test_public_archive.py \\
-              research/yt_trinity_ml/tests/test_regressions.py \\
-              research/yt_trinity_ml/tests/test_yt_trinity_system.py'''
-          if old_test not in stable_workflow:
-              raise RuntimeError('stable workflow test anchor missing')
-          files['.github/workflows/yt-trinity-system.yml'] = stable_workflow.replace(old_test, new_test)
-
           for relative, content in files.items():
+              if relative.startswith('.github/'):
+                  continue
               path = Path(relative)
               path.parent.mkdir(parents=True, exist_ok=True)
               path.write_text(content, encoding='utf-8')
-
-          route_path = Path('.github/workflows/yt-trinity-route-pre2024-v1.yml')
-          route = route_path.read_text(encoding='utf-8')
-          replacements = {
-              "      - .github/workflows/yt-trinity-route-pre2024-v1.yml\n      - control/yt-trinity-route-pre2024-v1-trigger.json":
-                  "      - control/yt-trinity-route-pre2024-v1-trigger.json",
-              "Record switch-alpha route without opening 2024H1":
-                  "Record implementation-audit route without opening 2024H1",
-              "'stage': 'PRE2024_SWITCH_ALPHA'":
-                  "'stage': 'PRE2024_IMPLEMENTATION_AUDIT'",
-              "'next_action': 'materially different corpus-derived alpha, not adjacent threshold tuning'":
-                  "'next_action': 'audit the unified SMC/ICT stage funnel and repair implementation before premise rejection or unrelated-alpha routing'",
-              "Path('output/SWITCH_ALPHA_RESULT.json')":
-                  "Path('output/IMPLEMENTATION_AUDIT_RESULT.json')",
-              "'switch_alpha_result': read('SWITCH_ALPHA_RESULT.json')":
-                  "'implementation_audit_result': read('IMPLEMENTATION_AUDIT_RESULT.json')",
-          }
-          for old, new in replacements.items():
-              if old not in route:
-                  raise RuntimeError(f'missing route patch anchor: {old}')
-              route = route.replace(old, new)
-          route_path.write_text(route, encoding='utf-8')
           PY
 
       - name: Compile and test unified SMC causal invariants
@@ -141,11 +107,10 @@ jobs:
               research/yt_trinity_ml/tests/test_yt_trinity_system.py
           } 2>&1 | tee artifact/system-test/pytest.log
 
-      - name: Persist tested unified implementation
+      - name: Persist tested unified core implementation
         run: |
           set -euo pipefail
           rm -f research/yt_trinity_ml/upgrade_chunks/unified_smc_v3.*
-          rm -f .github/workflows/yt-trinity-unified-smc-v3-once.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
@@ -153,14 +118,12 @@ jobs:
             research/yt_trinity_ml/tests/test_corpus_alpha.py \
             research/yt_trinity_ml/run_primary_screen.py \
             research/yt_trinity_ml/system_contract.json \
-            research/yt_trinity_ml/SYSTEM_DESIGN.md \
-            .github/workflows/yt-trinity-system.yml \
-            .github/workflows/yt-trinity-route-pre2024-v1.yml
-          git add -u research/yt_trinity_ml/upgrade_chunks .github/workflows/yt-trinity-unified-smc-v3-once.yml
+            research/yt_trinity_ml/SYSTEM_DESIGN.md
+          git add -u research/yt_trinity_ml/upgrade_chunks
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'Unify SMC narrative and audit implementation before alpha switching'
+          git commit -m 'Unify SMC narrative before implementation verdict'
           TARGET_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin "${TARGET_BRANCH}"
