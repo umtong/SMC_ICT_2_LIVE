@@ -1,0 +1,264 @@
+name: YT Trinity liquidity-delivery router ML v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/yt-trinity-liquidity-route-ml-v1]
+    paths:
+      - research/yt_trinity_liquidity_route/**
+      - .github/workflows/yt-trinity-liquidity-route-ml-v1.yml
+      - control/yt-trinity-liquidity-route-ml-v1-trigger.json
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-liquidity-route-ml-v1-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_SOURCE_SHA: 957430b826cd649c0c002f62d606f2549b1eea0f
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Checkout exact canonical data implementation
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: 957430b826cd649c0c002f62d606f2549b1eea0f
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
+
+      - name: Materialize and verify transcript-grounded source
+        run: |
+          python research/yt_trinity_liquidity_route/materialize_source.py
+          python -m py_compile research/yt_trinity_liquidity_route/liquidity_route.py
+          PYTHONPATH=research/yt_trinity_ml \
+            python research/yt_trinity_liquidity_route/liquidity_route.py --self-test
+          test "$(sha256sum research/yt_trinity_liquidity_route/liquidity_route.py | awk '{print $1}')" = \
+            "7728855a94ce3ab8264605b2a8cccf76cbe0e0a153eb4dcce09a01480ad6cdca"
+
+      - name: Restore canonical shard cache
+        uses: actions/cache@v4
+        with:
+          path: inputs/data
+          key: yt-trinity-liquidity-route-canonical-btceth-2021-2024h1-v1
+
+      - name: Materialize exact canonical BTC and ETH shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: canonical_repo/scripts/market_data
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/data artifact/result
+          python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          import shutil
+          import subprocess
+          import tempfile
+          import zipfile
+          from pathlib import Path
+          from urllib.parse import quote
+
+          import requests
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+          segments = ("PRE_2024_2021", "PRE_2024_2022", "PRE_2024_2023", "2024_H1")
+          symbols = ("BTCUSDT", "ETHUSDT")
+          data_root = Path("inputs/data")
+
+          def latest_artifact(name: str):
+              url = f"https://api.github.com/repos/{repository}/actions/artifacts?name={quote(name)}&per_page=100"
+              response = requests.get(url, headers=headers, timeout=60)
+              response.raise_for_status()
+              rows = [row for row in response.json().get("artifacts", []) if not row.get("expired")]
+              return max(rows, key=lambda row: row.get("created_at", ""), default=None)
+
+          def restore(name: str, destination: Path) -> bool:
+              artifact = latest_artifact(name)
+              if artifact is None:
+                  return False
+              response = requests.get(artifact["archive_download_url"], headers=headers, timeout=240, allow_redirects=True)
+              response.raise_for_status()
+              with tempfile.TemporaryDirectory() as temp_dir:
+                  archive = Path(temp_dir) / "artifact.zip"
+                  archive.write_bytes(response.content)
+                  extracted = Path(temp_dir) / "extracted"
+                  extracted.mkdir()
+                  with zipfile.ZipFile(archive) as handle:
+                      handle.extractall(extracted)
+                  manifests = list(extracted.rglob("DATASET_MANIFEST.json"))
+                  if len(manifests) != 1:
+                      raise RuntimeError(f"{name}: expected one manifest, found {len(manifests)}")
+                  source_root = manifests[0].parent
+                  if destination.exists():
+                      shutil.rmtree(destination)
+                  shutil.copytree(source_root, destination)
+              print(f"restored {name} artifact_id={artifact['id']} digest={artifact.get('digest')}")
+              return True
+
+          for segment in segments:
+              for symbol in symbols:
+                  destination = data_root / segment / symbol
+                  manifest = destination / "DATASET_MANIFEST.json"
+                  if not manifest.exists():
+                      name = f"canonical-bybit-core-{segment}-{symbol}"
+                      if not restore(name, destination):
+                          print(f"artifact {name} absent; rebuilding exact canonical shard")
+                          subprocess.run(
+                              [
+                                  "python",
+                                  "canonical_repo/scripts/market_data/build_canonical_bybit.py",
+                                  "--segment", segment,
+                                  "--symbol", symbol,
+                                  "--base-url", "https://api.manepa.jp",
+                                  "--timeout", "30",
+                                  "--max-attempts", "8",
+                                  "--min-request-interval", "0.10",
+                                  "--out", str(data_root),
+                              ],
+                              check=True,
+                          )
+                  subprocess.run(
+                      [
+                          "python",
+                          "canonical_repo/scripts/market_data/verify_canonical_bybit.py",
+                          str(destination),
+                      ],
+                      check=True,
+                  )
+          PY
+
+      - name: Execute causal 2023 selection and 2024H1 design-restart
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python research/yt_trinity_liquidity_route/liquidity_route.py \
+            --data-root inputs/data \
+            --canonical-repo canonical_repo \
+            --output artifact/result \
+            2>&1 | tee artifact/result/STDOUT.log
+
+      - name: Bind immutable execution identity
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import sys
+          from pathlib import Path
+
+          output = Path("artifact/result")
+          output.mkdir(parents=True, exist_ok=True)
+          summary = output / "RUN_SUMMARY.json"
+          identity = {
+              "schema_version": 1,
+              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+              "system_id": "YT-TRINITY-LIQUIDITY-DELIVERY-ROUTER-ML-V1",
+              "source_sha": os.environ["GITHUB_SHA"],
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "canonical_source_sha": os.environ["CANONICAL_SOURCE_SHA"],
+              "strategy_source_sha256": "7728855a94ce3ab8264605b2a8cccf76cbe0e0a153eb4dcce09a01480ad6cdca",
+              "corpus_digest_sha256": "913aa9e98bb696b1c029b410cf3efd5158122f9cf1ff84adaeb536e31157cc53",
+              "python": sys.version,
+              "platform": platform.platform(),
+              "summary_sha256": hashlib.sha256(summary.read_bytes()).hexdigest() if summary.exists() else None,
+          }
+          (output / "RUN_IDENTITY.json").write_text(json.dumps(identity, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          (
+            cd artifact/result
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-liquidity-route-ml-v1-${{ github.sha }}
+          path: artifact/result
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact result pointer and decoded source
+        if: always()
+        run: |
+          test -f artifact/result/RUN_SUMMARY.json || exit 0
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          summary_path = Path("artifact/result/RUN_SUMMARY.json")
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          compact = {
+              "schema_version": 1,
+              "claim_id": summary.get("claim_id"),
+              "system_id": summary.get("system_id"),
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"yt-trinity-liquidity-route-ml-v1-{os.environ['GITHUB_SHA']}",
+              "summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              "candidate_count": summary.get("candidate_count"),
+              "base_positive_both_periods": summary.get("base_positive_both_periods"),
+              "selected_contract": summary.get("selected_contract"),
+              "restarted_2024h1": summary.get("restarted_2024h1"),
+              "decision": summary.get("decision"),
+              "ranking_effect": summary.get("ranking_effect"),
+          }
+          Path("research/yt_trinity_liquidity_route/RESULT_POINTER.json").write_text(
+              json.dumps(compact, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research/yt_trinity_liquidity_route/liquidity_route.py \
+            research/yt_trinity_liquidity_route/RESULT_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record YT Trinity liquidity-route ML result ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Enforce completed economic result
+        if: always()
+        run: |
+          test -f artifact/result/RUN_SUMMARY.json
