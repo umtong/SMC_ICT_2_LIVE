@@ -1,0 +1,201 @@
+name: YT SMC ICT node transcript probe gpt56
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/yt-smc-ict-causal-ml-gpt56-20260727
+    paths:
+      - .github/workflows/yt-smc-ict-node-transcript-probe-gpt56.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-smc-ict-node-transcript-probe-gpt56-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: /dev/null
+
+      - name: Install current transcript implementations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/node_transcript_probe/work
+          cd artifact/node_transcript_probe/work
+          npm init -y
+          npm install \
+            @nadimtuhin/ytranscript@latest \
+            @danielxceron/youtube-transcript@latest \
+            youtube-caption-extractor@latest \
+            extract-youtube@latest
+
+      - name: Probe three channel samples without proxies
+        shell: bash
+        run: |
+          set +e
+          root="$GITHUB_WORKSPACE/artifact/node_transcript_probe"
+          work="$root/work"
+          mkdir -p "$root/results"
+          cd "$work"
+          for id in -Tp2fhvVVGM 0h9lpMUBSlE 18U0aD4K21I; do
+            echo "=== ytranscript ${id} ===" | tee -a "$root/PROBE_STDOUT.log"
+            timeout 90s npx ytranscript get "$id" --lang ko --format json \
+              > "$root/results/ytranscript_${id}.json" \
+              2> "$root/results/ytranscript_${id}.err"
+            echo "$?" > "$root/results/ytranscript_${id}.status"
+
+            echo "=== extract-youtube ${id} ===" | tee -a "$root/PROBE_STDOUT.log"
+            timeout 90s npx extract-youtube "$id" -l ko,en -f json \
+              > "$root/results/extract_youtube_${id}.json" \
+              2> "$root/results/extract_youtube_${id}.err"
+            echo "$?" > "$root/results/extract_youtube_${id}.status"
+          done
+          exit 0
+
+      - name: Probe programmatic package APIs
+        shell: bash
+        run: |
+          cat > artifact/node_transcript_probe/work/probe.mjs <<'JS'
+          import fs from 'node:fs/promises';
+          import path from 'node:path';
+          import { fileURLToPath } from 'node:url';
+
+          const here = path.dirname(fileURLToPath(import.meta.url));
+          const root = path.resolve(here, '..');
+          const ids = ['-Tp2fhvVVGM', '0h9lpMUBSlE', '18U0aD4K21I'];
+          const records = [];
+
+          async function attempt(packageName, videoId, fn) {
+            const started = Date.now();
+            try {
+              const value = await Promise.race([
+                fn(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout after 90 seconds')), 90000)),
+              ]);
+              const text = JSON.stringify(value);
+              const record = {
+                package: packageName,
+                video_id: videoId,
+                ok: Boolean(value) && text.length > 100,
+                characters: text.length,
+                elapsed_ms: Date.now() - started,
+                preview: text.slice(0, 1200),
+              };
+              records.push(record);
+              await fs.writeFile(path.join(root, 'results', `${packageName}_${videoId}.json`), text + '\n');
+            } catch (error) {
+              records.push({
+                package: packageName,
+                video_id: videoId,
+                ok: false,
+                elapsed_ms: Date.now() - started,
+                error: `${error?.name || 'Error'}: ${error?.message || String(error)}`,
+                stack: String(error?.stack || '').slice(0, 3000),
+              });
+            }
+          }
+
+          let transcriptFork;
+          try { transcriptFork = await import('@danielxceron/youtube-transcript'); } catch (error) {
+            records.push({ package: '@danielxceron/youtube-transcript', import_error: String(error) });
+          }
+          let captionExtractor;
+          try { captionExtractor = await import('youtube-caption-extractor'); } catch (error) {
+            records.push({ package: 'youtube-caption-extractor', import_error: String(error) });
+          }
+
+          for (const id of ids) {
+            if (transcriptFork?.YoutubeTranscript?.fetchTranscript) {
+              await attempt('daniel_transcript', id, () => transcriptFork.YoutubeTranscript.fetchTranscript(id, { lang: 'ko' }));
+            }
+            if (captionExtractor?.getSubtitles) {
+              await attempt('caption_extractor', id, () => captionExtractor.getSubtitles({ videoID: id, lang: 'ko' }));
+            }
+          }
+          await fs.writeFile(path.join(root, 'PROGRAMMATIC_PROBE.json'), JSON.stringify(records, null, 2) + '\n');
+          console.log(JSON.stringify(records, null, 2));
+          JS
+          cd artifact/node_transcript_probe/work
+          node probe.mjs 2>&1 | tee ../PROGRAMMATIC_STDOUT.log
+
+      - name: Build compact result pointer
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path('artifact/node_transcript_probe')
+          results = []
+          programmatic = root / 'PROGRAMMATIC_PROBE.json'
+          if programmatic.exists():
+              results.extend(json.loads(programmatic.read_text(encoding='utf-8')))
+          for status_path in sorted((root / 'results').glob('*.status')):
+              stem = status_path.stem
+              output_path = status_path.with_suffix('.json')
+              error_path = status_path.with_suffix('.err')
+              output = output_path.read_text(encoding='utf-8', errors='replace') if output_path.exists() else ''
+              error = error_path.read_text(encoding='utf-8', errors='replace') if error_path.exists() else ''
+              results.append({
+                  'probe': stem,
+                  'status': int(status_path.read_text().strip()),
+                  'output_characters': len(output),
+                  'error_characters': len(error),
+                  'output_preview': output[:1200],
+                  'error_preview': error[:1200],
+                  'ok': len(output) > 100 and status_path.read_text().strip() == '0',
+              })
+          payload = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'results': results,
+          }
+          path = Path('research/yt_smc_ict_gpt56/NODE_TRANSCRIPT_PROBE.json')
+          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+
+      - name: Upload full probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-smc-ict-node-transcript-probe-gpt56-${{ github.sha }}
+          path: artifact/node_transcript_probe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit probe pointer
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_smc_ict_gpt56/NODE_TRANSCRIPT_PROBE.json
+          git commit -m "Record Node transcript probe ${GITHUB_RUN_ID}" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
