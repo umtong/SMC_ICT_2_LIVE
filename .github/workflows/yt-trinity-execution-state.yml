@@ -1,0 +1,222 @@
+name: YT Trinity current execution state
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/*POINTER*.json
+      - research/yt_trinity_ml/*RUN*.json
+      - research/yt_trinity_ml/*RESULT*.json
+      - research/yt_trinity_ml/*DISCOVERY*.json
+      - research/yt_trinity_ml/*CONTRACT*.json
+      - research/yt_trinity_ml/COBALT_AUDIO_*.json
+      - .github/workflows/yt-trinity-execution-state.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-current-execution-state-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Aggregate only current-claim pointers and CI conclusions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          root = Path('research/yt_trinity_ml')
+          allowed_names = {
+              'CORPUS_RUN_POINTER.json',
+              'FULL_CAPTION_CORPUS_POINTER.json',
+              'COMPLETE_CONTENT_CORPUS_POINTER.json',
+              'COBALT_CONTENT_CORPUS_POINTER.json',
+              'SELECTED_CONTENT_CORPUS_POINTER.json',
+              'PUBLIC_PAGE_TEXT_POINTER.json',
+              'CISD_BPR_IFVG_RUN_POINTER.json',
+              'COMPRESSION_BPR_RUN_POINTER.json',
+              'SMT_CISD_RUN_POINTER.json',
+              'IFVG_FAILURE_RUN_POINTER.json',
+              'HTF_OTE_RUN_POINTER.json',
+              'COARSE_SURVIVOR_POINTER.json',
+              'FULL_SEQUENTIAL_COARSE_POINTER.json',
+              'POOLED_TRINITY_RUN_POINTER.json',
+              'CORPUS_BOUND_SYSTEM_CONTRACT.json',
+              'CORPUS_BOUND_RUN_POINTER.json',
+              'EVENT_TAPE_SOURCE_DISCOVERY.json',
+              'EVENT_TAPE_AUTHORITY_POINTER.json',
+          }
+          paths = []
+          for path in root.glob('*.json'):
+              if (
+                  path.name in allowed_names
+                  or path.name.startswith('PUBLIC_TRADE_TAPE_RESULT_')
+                  or path.name.startswith('COBALT_AUDIO_FLEET_')
+                  or path.name.startswith('COBALT_AUDIO_WINNER_')
+              ):
+                  paths.append(path)
+
+          def compact(payload):
+              if not isinstance(payload, dict):
+                  return {'type': type(payload).__name__}
+              manifest = payload.get('manifest') if isinstance(payload.get('manifest'), dict) else None
+              selected = payload.get('selected') if isinstance(payload.get('selected'), dict) else None
+              official = payload.get('official_2024h1') if isinstance(payload.get('official_2024h1'), dict) else None
+              full = payload.get('official_full_period') if isinstance(payload.get('official_full_period'), dict) else None
+              metrics = payload.get('realistic_metrics') if isinstance(payload.get('realistic_metrics'), dict) else None
+              if metrics is None and isinstance(payload.get('metrics'), dict):
+                  metrics = payload.get('metrics')
+              if metrics is None and full and isinstance(full.get('realistic_metrics'), dict):
+                  metrics = full.get('realistic_metrics')
+              if metrics is None and official and isinstance(official.get('metrics'), dict):
+                  metrics = official.get('metrics')
+              return {
+                  'schema_version': payload.get('schema_version'),
+                  'decision': payload.get('decision'),
+                  'status': payload.get('status'),
+                  'stage': payload.get('stage'),
+                  'run_id': payload.get('run_id'),
+                  'source_sha': payload.get('source_sha'),
+                  'artifact_name': payload.get('artifact_name'),
+                  'strategy_id': payload.get('strategy_id'),
+                  'route_key': payload.get('route_key'),
+                  'candidate_count': payload.get('candidate_count'),
+                  'action_label_count': payload.get('action_label_count'),
+                  'eligible_family_keys': payload.get('eligible_family_keys'),
+                  'authority_count': payload.get('authority_count'),
+                  'manifest_decision': manifest.get('decision') if manifest else None,
+                  'manifest_count': (
+                      manifest.get('unique_public_video_count')
+                      or manifest.get('inventory_count')
+                      if manifest else None
+                  ),
+                  'manifest_status_counts': (
+                      manifest.get('caption_status_counts')
+                      or manifest.get('status_counts')
+                      if manifest else None
+                  ),
+                  'selected_pointer_file': selected.get('pointer_file') if selected else None,
+                  'selected_route_key': selected.get('route_key') if selected else None,
+                  'metrics': {
+                      key: metrics.get(key)
+                      for key in (
+                          'start_nav', 'end_nav', 'account_multiple', 'total_return',
+                          'geometric_daily_growth', 'maximum_drawdown',
+                          'completed_trades', 'win_rate', 'profit_factor',
+                          'liquidated_or_invalid', 'winner_removal_return',
+                          'top_five_positive_pnl_share',
+                      )
+                  } if metrics else None,
+              }
+
+          files = {}
+          for path in sorted(paths):
+              try:
+                  payload = json.loads(path.read_text(encoding='utf-8'))
+                  files[path.name] = {
+                      'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                      'bytes': path.stat().st_size,
+                      'compact': compact(payload),
+                  }
+              except Exception as exc:
+                  files[path.name] = {
+                      'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                      'bytes': path.stat().st_size,
+                      'error': f'{type(exc).__name__}: {exc}',
+                  }
+
+          command = [
+              'gh', 'run', 'list', '--repo', os.environ['GITHUB_REPOSITORY'],
+              '--branch', os.environ['GITHUB_REF_NAME'], '--limit', '100',
+              '--json', 'databaseId,name,workflowName,status,conclusion,headSha,createdAt,updatedAt,url',
+          ]
+          try:
+              runs = json.loads(subprocess.run(command, text=True, capture_output=True, check=True).stdout)
+          except Exception as exc:
+              runs = [{'error': f'{type(exc).__name__}: {exc}'}]
+          yt_runs = [
+              row for row in runs
+              if isinstance(row, dict) and 'YT Trinity' in str(row.get('workflowName') or row.get('name') or '')
+          ]
+          latest_by_workflow = {}
+          for row in yt_runs:
+              key = str(row.get('workflowName') or row.get('name'))
+              latest_by_workflow.setdefault(key, row)
+
+          target_decisions = {
+              'TARGET_EXCEEDED_COARSE_EVENT_TAPE_REQUIRED',
+              'TARGET_POSSIBLE_ONLY_WITH_EXECUTION_EDGE_EVENT_TAPE_REQUIRED',
+              'TARGET_EXCEEDED_CORPUS_BOUND_COARSE_EVENT_TAPE_REQUIRED',
+              'TARGET_POSSIBLE_ONLY_WITH_CORPUS_BOUND_EXECUTION_EDGE',
+              'TARGET_EXCEEDED_PUBLIC_TRADE_TAPE_PENDING_QUOTE_STRESS',
+          }
+          target_paths = []
+          for filename, row in files.items():
+              decision = ((row.get('compact') or {}).get('decision'))
+              if decision in target_decisions:
+                  target_paths.append({'file': filename, 'decision': decision, 'metrics': (row.get('compact') or {}).get('metrics')})
+
+          payload = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'built_at_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'head_sha': subprocess.run(['git', 'rev-parse', 'HEAD'], text=True, capture_output=True, check=True).stdout.strip(),
+              'files': files,
+              'latest_workflows': latest_by_workflow,
+              'target_paths': target_paths,
+              'target_path_count': len(target_paths),
+              'objective_exceeded_visible': any(
+                  isinstance(row.get('metrics'), dict)
+                  and float(row['metrics'].get('geometric_daily_growth') or -1) >= 0.01
+                  and not bool(row['metrics'].get('liquidated_or_invalid'))
+                  for row in target_paths
+              ),
+              'prior_project_strategy_results_inspected': False,
+          }
+          raw = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
+          Path('research/yt_trinity_ml/CURRENT_EXECUTION_STATE.json').write_text(raw, encoding='utf-8')
+          Path('research/yt_trinity_ml/CURRENT_EXECUTION_STATE.sha256').write_text(
+              f"{hashlib.sha256(raw.encode('utf-8')).hexdigest()}  CURRENT_EXECUTION_STATE.json\n",
+              encoding='utf-8',
+          )
+          print(json.dumps({
+              'head_sha': payload['head_sha'],
+              'file_count': len(files),
+              'workflow_count': len(latest_by_workflow),
+              'target_path_count': len(target_paths),
+              'objective_exceeded_visible': payload['objective_exceeded_visible'],
+          }, indent=2))
+          PY
+      - name: Persist current execution state without retriggering itself
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            research/yt_trinity_ml/CURRENT_EXECUTION_STATE.json \
+            research/yt_trinity_ml/CURRENT_EXECUTION_STATE.sha256
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record current YT Trinity execution state ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
