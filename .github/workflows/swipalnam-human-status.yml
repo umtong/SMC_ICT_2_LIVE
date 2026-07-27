@@ -1,0 +1,104 @@
+name: Swipalnam human readable status
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/CURRENT_BEST.json
+      - research/swipalnam_smc_ml/CANDIDATE_RANKING.json
+      - .github/workflows/swipalnam-human-status.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: swipalnam-human-status-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Render current result status
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research/swipalnam_smc_ml')
+          best_path = root / 'CURRENT_BEST.json'
+          ranking_path = root / 'CANDIDATE_RANKING.json'
+          if not best_path.exists() or not ranking_path.exists():
+              text = '# Swipalnam SMC/ICT ML status\n\n아직 판정 가능한 수치 결과가 없습니다. 실행 워크플로가 진행 중입니다.\n'
+              (root / 'RUN_STATUS.md').write_text(text, encoding='utf-8')
+              raise SystemExit(0)
+          best = json.loads(best_path.read_text())
+          ranking = json.loads(ranking_path.read_text())
+          g = best.get('geometric_daily_growth')
+          multiple = best.get('account_multiple')
+          stage = best.get('validation_stage')
+          result_id = best.get('result_id')
+          reason = best.get('selection_reason')
+          if g is None:
+              first = '현재 판정 가능한 1위 결과는 아직 없습니다.'
+          else:
+              first = (
+                  f"현재 1위는 {result_id}, 검증 단계는 {stage}, 비용 후 UTC 일평균 기하성장률은 {g:.6%}, "
+                  f"계좌배수는 {multiple:.6f}배이며, {reason} 때문에 선정되었습니다."
+              )
+          lines = [
+              '# Swipalnam SMC/ICT ML status',
+              '',
+              first,
+              '',
+              f"- 목표 1%/일 달성: `{bool(best.get('target_hit'))}`",
+              f"- 최대낙폭: `{best.get('max_drawdown')}`",
+              f"- 완료 거래: `{best.get('completed_trades')}`",
+              f"- 이익계수: `{best.get('profit_factor')}`",
+              f"- 상위 5개 손익 집중도: `{best.get('top_5_pnl_share')}`",
+              f"- 비교 신뢰도: `{best.get('comparison_confidence')}`",
+              f"- 결과 포인터: `{best.get('source_pointer')}`",
+              '',
+              '## 후보 순위',
+              '',
+              '|순위|Result ID|기간|검증 단계|g/day|배수|MDD|거래|신뢰도|',
+              '|---:|---|---|---|---:|---:|---:|---:|---|',
+          ]
+          for item in ranking.get('candidates', []):
+              lines.append(
+                  f"|{item.get('rank')}|{item.get('result_id')}|{item.get('period')}|{item.get('validation_stage')}|"
+                  f"{item.get('geometric_daily_growth'):.6%}|{item.get('account_multiple'):.6f}|"
+                  f"{item.get('max_drawdown')}|{item.get('completed_trades')}|{item.get('comparison_confidence')}|"
+              )
+          lines += [
+              '',
+              '## 핵심 시스템',
+              '',
+              '- 외부 유동성 스윕 → 변위/MSS → FVG·유효 OB 재진입 → 반대편 유동성 전달 또는 구조 무효화',
+              '- 5m/15m 상위 유동성 사건과 1m/3m 하위 실행을 함께 후보화하고 ML이 비용 후 기대값을 선택',
+              '- 모든 피벗·동일고저·HTF 상태는 확인 이후만 사용, 주문 활성화 지연 500ms, 전 종목 전역 슬롯 1개',
+              '- 포지션 시간강제종료 없음; 미체결 주문만 구조·세션 유동성 지도가 갱신될 때 취소',
+              '- V5부터 UTC 자정 현실적 청산가치 NAV를 사용',
+          ]
+          (root / 'RUN_STATUS.md').write_text('\n'.join(lines)+'\n', encoding='utf-8')
+          PY
+      - name: Commit status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_STATUS.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Render Swipalnam current result status"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
