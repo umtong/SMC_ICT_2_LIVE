@@ -1,0 +1,100 @@
+name: Re-evaluate transcript-grounded SMC ICT ML on pinned data
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/youtube-smc-ict-eval-20260727
+    paths:
+      - research/youtube_smc_ict_ml/**
+      - tests/test_youtube_smc_ict_ml.py
+      - .github/workflows/reuse-youtube-smc-ict-data.yml
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: youtube-smc-ict-evaluate-pinned-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out evaluation branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "numpy==2.3.5" \
+            "pandas==2.2.3" \
+            "pyarrow==25.0.0" \
+            "scikit-learn==1.8.0" \
+            "joblib>=1.4" \
+            "pytest==8.3.4"
+
+      - name: Download pinned canonical shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 30254790850
+          pattern: yt-smc-canonical-*
+          path: canonical_data
+          merge-multiple: true
+
+      - name: Verify pinned shard set
+        run: |
+          count=$(find canonical_data -name DATASET_MANIFEST.json | wc -l)
+          find canonical_data -name DATASET_MANIFEST.json -print | sort
+          test "$count" -eq 8
+          echo "Downloaded $count immutable canonical shards"
+
+      - name: Verify causal simulator tests
+        run: PYTHONPATH=. pytest -q tests/test_youtube_smc_ict_ml.py
+
+      - name: Run pre-2024 preparation and 2024H1 evaluation
+        id: research
+        continue-on-error: true
+        run: |
+          rm -rf artifacts/youtube_smc_ict_ml
+          mkdir -p artifacts/youtube_smc_ict_ml
+          set -o pipefail
+          PYTHONPATH=. python research/youtube_smc_ict_ml/run_research.py \
+            --data-root canonical_data \
+            --output artifacts/youtube_smc_ict_ml \
+            2>&1 | tee artifacts/youtube_smc_ict_ml/RUN.log
+
+      - name: Package complete evidence
+        if: always()
+        run: |
+          tar -C artifacts -czf youtube-smc-ict-ml-2024h1-evidence.tgz youtube_smc_ict_ml
+
+      - name: Upload result or failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-smc-ict-ml-pinned-2024h1-${{ github.run_id }}
+          path: |
+            youtube-smc-ict-ml-2024h1-evidence.tgz
+            artifacts/youtube_smc_ict_ml/**
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Fail workflow after evidence upload
+        if: steps.research.outcome == 'failure'
+        run: exit 1
