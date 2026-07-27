@@ -1,0 +1,30 @@
+name: Package local pyarrow wheel
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/package-local-pyarrow-wheel.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download Linux CPython 3.11 wheel
+        run: |
+          python -m pip download --only-binary=:all: --no-deps 'pyarrow==25.0.0' -d wheelhouse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pyarrow-cp311-linux-${{ github.run_id }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
