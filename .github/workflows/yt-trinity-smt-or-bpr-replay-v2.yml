@@ -1,0 +1,192 @@
+name: YT Trinity SMT opening-range BPR replay v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-smt-or-bpr-replay-v2.yml
+      - control/yt-trinity-smt-or-bpr-replay-v2-trigger.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-smt-or-bpr-replay-v2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install deterministic research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests
+
+      - name: Materialize frozen scientific source
+        run: |
+          set -euo pipefail
+          git cat-file -e bd266a0338eb4c376ec092ad12b862cbdb1c7a94^{commit}
+          git worktree add --detach scientific bd266a0338eb4c376ec092ad12b862cbdb1c7a94
+          PYTHONPATH=scientific/research/yt_trinity_ml \
+            python scientific/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py --self-test
+
+      - name: Restore immutable monthly public archive cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/cache
+          key: yt-trinity-bybit-mt4-1m-btc-eth-202102-2024h1-v2
+
+      - name: Execute causal pre-2024 selection and conditional 2024H1
+        id: execute
+        continue-on-error: true
+        env:
+          PYTHONPATH: scientific/research/yt_trinity_ml
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifact/screen
+          python scientific/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py \
+            --cache-root artifact/cache \
+            --output artifact/screen \
+            --corpus-pointer research/yt_trinity_ml/COMPLETE_CORPUS_POINTER.json \
+            --data-start 2021-02-01T00:00:00Z \
+            --selection-start 2022-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            2>&1 | tee artifact/screen/SCREEN_STDOUT.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Bind execution identity
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import sys
+          from pathlib import Path
+
+          output = Path('artifact/screen')
+          output.mkdir(parents=True, exist_ok=True)
+          summary_path = output / 'RUN_SUMMARY.json'
+          log_path = output / 'SCREEN_STDOUT.log'
+          payload = {
+              'schema_version': 2,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage': 'PRE2024_SMT_OR_BPR_COARSE_NOT_RANKABLE',
+              'scientific_source_commit': 'bd266a0338eb4c376ec092ad12b862cbdb1c7a94',
+              'scientific_source_blob': '8ef34cd2bc3357d873bfa8d073328b8681f2157f',
+              'workflow_source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'data_start': '2021-02-01T00:00:00Z',
+              'selection_start': '2022-01-01T00:00:00Z',
+              'evaluation_start': '2024-01-01T00:00:00Z',
+              'evaluation_end_exclusive': '2024-07-01T00:00:00Z',
+              'fixed_latency_ms': 500,
+              'python': sys.version,
+              'platform': platform.platform(),
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
+              'stdout_sha256': hashlib.sha256(log_path.read_bytes()).hexdigest() if log_path.exists() else None,
+          }
+          (output / 'RUN_IDENTITY.json').write_text(json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          (
+            cd artifact/screen
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-smt-or-bpr-replay-v2-${{ github.sha }}
+          path: artifact/screen
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact result pointer
+        if: always()
+        env:
+          EXECUTION_OUTCOME: ${{ steps.execute.outcome }}
+          EXECUTION_EXIT_CODE: ${{ steps.execute.outputs.exit_code }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path('artifact/screen')
+          summary_path = output / 'RUN_SUMMARY.json'
+          log_path = output / 'SCREEN_STDOUT.log'
+          summary = json.loads(summary_path.read_text(encoding='utf-8')) if summary_path.exists() else None
+          selected = summary.get('selected_configuration') if summary else None
+          if selected:
+              selected = {
+                  **{key: value for key, value in selected.items() if key != 'metrics'},
+                  'metrics': {key: value for key, value in selected.get('metrics', {}).items() if key not in {'trades', 'daily_nav'}},
+              }
+          provisional = summary.get('provisional_2024h1') if summary else None
+          if provisional:
+              provisional = {key: value for key, value in provisional.items() if key not in {'trades', 'daily_nav'}}
+          pointer = {
+              'schema_version': 2,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'workflow': 'YT Trinity SMT opening-range BPR replay v2',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-smt-or-bpr-replay-v2-{os.environ['GITHUB_SHA']}",
+              'scientific_source_commit': 'bd266a0338eb4c376ec092ad12b862cbdb1c7a94',
+              'scientific_source_blob': '8ef34cd2bc3357d873bfa8d073328b8681f2157f',
+              'execution_outcome': os.environ.get('EXECUTION_OUTCOME'),
+              'exit_code': os.environ.get('EXECUTION_EXIT_CODE'),
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
+              'decision': summary.get('decision') if summary else None,
+              'positive_basic_alpha': summary.get('positive_basic_alpha') if summary else None,
+              'candidate_count': summary.get('candidate_count') if summary else None,
+              'selected_configuration': selected,
+              'selected_half_year_metrics': summary.get('selected_half_year_metrics') if summary else None,
+              'provisional_2024h1': provisional,
+              'stdout_tail': log_path.read_text(encoding='utf-8', errors='replace')[-8000:] if log_path.exists() else '',
+          }
+          Path('research/yt_trinity_ml/SMT_OR_BPR_REPLAY_V2_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/SMT_OR_BPR_REPLAY_V2_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record SMT BPR replay v2 ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Enforce executable completion
+        if: always()
+        env:
+          EXECUTION_OUTCOME: ${{ steps.execute.outcome }}
+          EXECUTION_EXIT_CODE: ${{ steps.execute.outputs.exit_code }}
+        run: |
+          [[ "${EXECUTION_OUTCOME}" == "success" ]]
+          [[ "${EXECUTION_EXIT_CODE}" == "0" ]]
+          test -f artifact/screen/RUN_SUMMARY.json
