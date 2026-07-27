@@ -46,12 +46,12 @@ jobs:
             "pyarrow==25.0.0"
           python -m pip freeze | LC_ALL=C sort > dependency-freeze.txt
 
-      - name: Materialize and compile the frozen opening-range alpha runner
+      - name: Materialize corrected frozen opening-range runner
         run: |
           python research/yt_trinity_ml/materialize_opening_range_alpha.py
           python -m py_compile research/yt_trinity_ml/run_opening_range_alpha.py
           test "$(sha256sum research/yt_trinity_ml/run_opening_range_alpha.py | cut -d' ' -f1)" = \
-            "f9295cf0c1b5b4a35c06ff89e267ceab4e6e827717b8387881723bb10a49c040"
+            "2122602ec3f81bd845b881c345a40932a2b7834cddc5a46477066aeeb6302ed4"
 
       - name: Download immutable complete transcript corpus
         uses: actions/download-artifact@v4
@@ -62,59 +62,57 @@ jobs:
           run-id: ${{ env.CORPUS_RUN_ID }}
           github-token: ${{ github.token }}
 
-      - name: Bind and verify the complete corpus
+      - name: Bind complete corpus
         run: |
           CORPUS_ROOT="$(dirname "$(find downloads/corpus -name manifest.json -print -quit)")"
           test -n "$CORPUS_ROOT"
-          export CORPUS_ROOT
           echo "CORPUS_ROOT=$CORPUS_ROOT" >> "$GITHUB_ENV"
+          export CORPUS_ROOT
           python - <<'PY'
-          import json
-          import os
+          import json, os
           from pathlib import Path
           root = Path(os.environ['CORPUS_ROOT'])
           manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
-          assert manifest['inventory_count'] == 196, manifest
-          assert manifest['completed_count'] == 196, manifest
-          assert manifest['caption_classification_complete'] is True, manifest
-          assert manifest['decision'] == 'PASS_COMPLETE', manifest
-          assert manifest['corpus_digest_sha256'] == '975793370055afca2436dfad82745ed70a0ef247073ce8f9c4345d3e7bac3343', manifest
+          assert manifest['inventory_count'] == 196
+          assert manifest['completed_count'] == 196
+          assert manifest['caption_classification_complete'] is True
+          assert manifest['decision'] == 'PASS_COMPLETE'
+          assert manifest['corpus_digest_sha256'] == '975793370055afca2436dfad82745ed70a0ef247073ce8f9c4345d3e7bac3343'
           assert (root / 'rule_ontology_candidates.json').is_file()
-          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
           PY
 
-      - name: Download canonical 2023 BTC shard
+      - name: Download canonical 2023 BTC
         uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-PRE_2024_2023-BTCUSDT
-          path: downloads/pre2024/canonical-bybit-PRE_2024_2023-BTCUSDT
+          path: downloads/pre2024/BTCUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
 
-      - name: Download canonical 2023 ETH shard
+      - name: Download canonical 2023 ETH
         uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-PRE_2024_2023-ETHUSDT
-          path: downloads/pre2024/canonical-bybit-PRE_2024_2023-ETHUSDT
+          path: downloads/pre2024/ETHUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
 
-      - name: Download canonical 2024H1 BTC shard
+      - name: Download canonical 2024H1 BTC
         uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-2024_H1-BTCUSDT
-          path: downloads/2024h1/canonical-bybit-2024_H1-BTCUSDT
+          path: downloads/2024h1/BTCUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
 
-      - name: Download canonical 2024H1 ETH shard
+      - name: Download canonical 2024H1 ETH
         uses: actions/download-artifact@v4
         with:
           name: canonical-bybit-2024_H1-ETHUSDT
-          path: downloads/2024h1/canonical-bybit-2024_H1-ETHUSDT
+          path: downloads/2024h1/ETHUSDT
           repository: umtong/SMC_ICT_2_LIVE
           run-id: ${{ env.CANONICAL_RUN_ID }}
           github-token: ${{ github.token }}
@@ -124,11 +122,8 @@ jobs:
           set -euo pipefail
           for symbol in BTCUSDT ETHUSDT; do
             mkdir -p "canonical-data/PRE_2024_2023/$symbol" "canonical-data/2024_H1/$symbol"
-            pre="$(find downloads/pre2024 -type d -name "canonical-bybit-PRE_2024_2023-$symbol" -print -quit)"
-            h1="$(find downloads/2024h1 -type d -name "canonical-bybit-2024_H1-$symbol" -print -quit)"
-            test -n "$pre" && test -n "$h1"
-            cp -a "$pre/." "canonical-data/PRE_2024_2023/$symbol/"
-            cp -a "$h1/." "canonical-data/2024_H1/$symbol/"
+            cp -a "downloads/pre2024/$symbol/." "canonical-data/PRE_2024_2023/$symbol/"
+            cp -a "downloads/2024h1/$symbol/." "canonical-data/2024_H1/$symbol/"
             python - <<PY
           import hashlib, json
           from pathlib import Path
@@ -138,15 +133,14 @@ jobs:
               actual = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
               assert actual == expected, (root, actual, expected)
               manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-              assert manifest['symbol'] == '$symbol', manifest
+              assert manifest['symbol'] == '$symbol'
               assert (root / 'trade_bars/5m.parquet').is_file()
               assert (root / 'trade_bars/1m.parquet').is_file()
               assert (root / 'streams/funding_events.parquet').is_file()
-              print(root, manifest['dataset_id'])
           PY
           done
 
-      - name: Run 2023 selection and restart official 2024H1 causally
+      - name: Select only on 2023 and restart official 2024H1 causally
         id: research
         continue-on-error: true
         run: |
@@ -177,13 +171,11 @@ jobs:
           compression-level: 6
           retention-days: 90
 
-      - name: Persist compact non-rerunning decision pointer
+      - name: Persist compact decision pointer
         if: always()
         run: |
           python - <<'PY'
-          import hashlib
-          import json
-          import os
+          import hashlib, json, os
           from pathlib import Path
           result_path = Path('artifact/opening-range-alpha/FINAL_RESULT.json')
           result = json.loads(result_path.read_text(encoding='utf-8')) if result_path.is_file() else None
@@ -215,13 +207,14 @@ jobs:
                   } if official else None,
               }
           payload = {
-              'schema_version': 1,
+              'schema_version': 2,
               'workflow': 'YT Trinity opening range BPR alpha',
               'run_id': int(os.environ['GITHUB_RUN_ID']),
               'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
               'source_sha': os.environ['GITHUB_SHA'],
               'artifact_name': f"yt-trinity-opening-range-alpha-{os.environ['GITHUB_SHA']}",
               'corpus_digest_sha256': '975793370055afca2436dfad82745ed70a0ef247073ce8f9c4345d3e7bac3343',
+              'implementation_fix': 'RouteConfig selector uses attribute access',
               'result': compact,
               'ranking_updated': False,
           }
@@ -235,7 +228,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add research/yt_trinity_ml/OPENING_RANGE_ALPHA_POINTER.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Record opening range BPR alpha run ${GITHUB_RUN_ID}"
+          git commit -m "Record corrected opening range BPR alpha run ${GITHUB_RUN_ID}"
           for attempt in 1 2 3 4; do
             git pull --rebase origin "${GITHUB_REF_NAME}"
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
