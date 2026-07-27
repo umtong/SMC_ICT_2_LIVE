@@ -1,0 +1,101 @@
+name: YT Trinity negative-route graded displacement
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-negative-soft-displacement.yml
+      - research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-negative-soft-displacement
+  cancel-in-progress: false
+
+jobs:
+  conditional-refinement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require completed negative multi-array source
+        id: route
+        run: |
+          set +e
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json')
+          ok=False
+          if p.exists():
+              pointer=json.loads(p.read_text());result=pointer.get('result') or {};h1=result.get('result_2024_h1') or {}
+              source=str(pointer.get('source_commit') or '')
+              completed=pointer.get('job_status')=='success' and int(pointer.get('exit_code',99))==0
+              negative=result.get('decision')=='NO_POSITIVE_CAUSAL_ACTION_SURVIVOR' or (h1 and float(h1.get('geometric_daily_growth',0))<=0)
+              evaluated_multi=False
+              if source:
+                  try:
+                      content=subprocess.check_output(['git','show',f'{source}:research/yt_trinity_ml/system/causal_action_candidates.py'],text=True,stderr=subprocess.DEVNULL)
+                      evaluated_multi='pd_array_action_kind' in content
+                  except Exception:
+                      pass
+              ok=completed and negative and evaluated_multi
+          Path('/tmp/authorized').write_text('true' if ok else 'false')
+          PY
+          echo "authorized=$(cat /tmp/authorized)" >> "$GITHUB_OUTPUT"
+
+      - name: Grade displacement instead of using a hard quality wall
+        if: steps.route.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text=p.read_text()
+          text=text.replace('    displacement_body_atr: float = 0.55\n','    displacement_body_atr: float = 0.20\n',1)
+          text=text.replace('    displacement_range_atr: float = 0.90\n','    displacement_range_atr: float = 0.45\n',1)
+          text=text.replace('    displacement_close_location: float = 0.70\n','    displacement_close_location: float = 0.55\n',1)
+          text=text.replace('    minimum_displacement_efficiency: float = 0.50\n','    minimum_displacement_efficiency: float = 0.25\n',1)
+          marker='''            "displacement_efficiency_at_confirmation": float(state.displacement_efficiency),\n'''
+          add='''            "displacement_efficiency_at_confirmation": float(state.displacement_efficiency),\n            "displacement_strict_body": float(abs(state.confirmation_body_atr) >= 0.55),\n            "displacement_strict_efficiency": float(state.displacement_efficiency >= 0.50),\n            "displacement_strict_joint": float(\n                abs(state.confirmation_body_atr) >= 0.55\n                and state.displacement_efficiency >= 0.50\n            ),\n'''
+          if 'displacement_strict_joint' not in text:
+              if marker not in text: raise SystemExit('displacement feature marker missing')
+              text=text.replace(marker,add,1)
+          p.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/corpus_alpha.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py
+
+      - name: Commit graded displacement refinement
+        if: steps.route.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/yt-trinity-negative-soft-displacement.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py
+          git commit -m 'Grade causal displacement quality with ML'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
+
+      - name: Hold until multi-array result is evaluated
+        if: steps.route.outputs.authorized != 'true'
+        run: echo 'Awaiting a completed negative multi-array causal result.'
