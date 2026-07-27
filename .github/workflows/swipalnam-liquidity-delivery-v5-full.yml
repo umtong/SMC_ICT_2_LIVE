@@ -1,0 +1,187 @@
+name: Swipalnam V5 exact NAV full causal evaluation
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/RUN_POINTER_V5_NAV.json
+      - .github/workflows/swipalnam-liquidity-delivery-v5-full.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-v5-full-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CANONICAL_ROOT: artifact/canonical
+  RESULT_ROOT: artifact/swipalnam_smc_ml_v5_full
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    outputs:
+      run_full: ${{ steps.decide.outputs.run_full }}
+      reason: ${{ steps.decide.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - id: decide
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path('research/swipalnam_smc_ml/RUN_POINTER_V5_NAV.json')
+          run, reason = False, 'pointer_missing'
+          if path.exists():
+              p = json.loads(path.read_text())
+              h1 = p.get('provisional_2024h1_metrics') or {}
+              growth = float(h1.get('geometric_daily_growth') or -1)
+              trades = int(h1.get('completed_trades') or 0)
+              liquidations = int(h1.get('liquidation_events') or 0)
+              run = growth > 0 and trades >= 40 and liquidations == 0
+              reason = f"h1_growth={growth};trades={trades};liquidations={liquidations}"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:
+              handle.write(f"run_full={'true' if run else 'false'}\n")
+              handle.write(f"reason={reason}\n")
+          print(reason)
+          PY
+
+  full:
+    needs: qualify
+    if: needs.qualify.outputs.run_full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" "scikit-learn>=1.5" "requests>=2.32"
+      - name: Compile and self-test exact NAV system
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v5_nav.py --self-test
+      - name: Restore full canonical data
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-core-btceth-2023-2026h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+      - name: Restore artifacts or rebuild exact missing shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" --segment "$segment" --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" --symbol "$symbol" --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 --max-attempts 8 --min-request-interval 0.10 --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" > "$shard/RESEARCH_VERIFICATION_V5_FULL.json"
+            done
+          done
+      - name: Run one continuous exact-NAV 2024 through 2026H1 path
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v5_nav.py \
+            --data-root "$CANONICAL_ROOT" --output "$RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1 \
+            --train-start 2023-01-01T00:00:00Z --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2026-07-01T00:00:00Z \
+            --minimum-candidates 40 2>&1 | tee "$RESULT_ROOT/STDOUT.log"
+      - name: Upload full exact-NAV evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-liquidity-delivery-v5-full-${{ github.sha }}
+          path: artifact/swipalnam_smc_ml_v5_full
+          if-no-files-found: error
+          retention-days: 90
+      - name: Persist full exact-NAV pointer
+        if: success()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          src = Path(os.environ['RESULT_ROOT']) / 'RUN_SUMMARY.json'
+          s = json.loads(src.read_text())
+          full = s.get('provisional_2024h1_metrics') or {}
+          p = {
+              'schema_version': 5,
+              'result_id': 'R-SWIPALNAM-LIQUIDITY-DELIVERY-V5-FULL',
+              'system_id': 'SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V5-NAV',
+              'validation_stage': 'continuous_causal_2024_2026H1_exact_daily_liquidation_NAV',
+              'source_sha': os.environ['SOURCE_SHA'],
+              'workflow_run_id': int(os.environ['RUN_ID']),
+              'workflow_run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'artifact_name': f"swipalnam-liquidity-delivery-v5-full-{os.environ['SOURCE_SHA']}",
+              'run_summary_sha256': hashlib.sha256(src.read_bytes()).hexdigest(),
+              'target_hit_full_period': float(full.get('geometric_daily_growth') or -1) >= 0.01,
+              'candidate_count': s.get('candidate_count'),
+              'selected_structural_configuration': s.get('selected_structural_configuration'),
+              'selected_retraining_policy': s.get('selected_retraining_policy'),
+              'selected_ml_score_threshold': s.get('selected_ml_score_threshold'),
+              'selected_account_configuration': s.get('selected_account_configuration'),
+              'pre2024_metrics': s.get('pre2024_metrics'),
+              'full_period_metrics': full,
+          }
+          out = Path('research/swipalnam_smc_ml/RUN_POINTER_V5_FULL.json')
+          out.write_text(json.dumps(p, ensure_ascii=False, indent=2, sort_keys=True)+'\n')
+          Path('artifact/v5-full-commit-message.txt').write_text(
+              f"Record Swipalnam V5 full g={full.get('geometric_daily_growth')} multiple={full.get('account_multiple')} trades={full.get('completed_trades')}\n"
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_POINTER_V5_FULL.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -F artifact/v5-full-commit-message.txt
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$BRANCH_NAME"
+            if git push origin "HEAD:$BRANCH_NAME"; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
+
+  skipped:
+    needs: qualify
+    if: needs.qualify.outputs.run_full != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "V5 full evaluation skipped because ${{ needs.qualify.outputs.reason }}"
