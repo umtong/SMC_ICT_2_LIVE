@@ -1,13 +1,13 @@
 {
   "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
-  "exit_code": 99,
+  "exit_code": 1,
   "job_status": "execution_failure_not_economic_failure",
   "ranking_effect": "NONE_PRE2024_NOT_RANKABLE",
   "result": null,
   "result_sha256": null,
   "schema_version": 1,
-  "source_commit": "8fbca0e89cd51ad2affa21cb5a9e5d16e5310c53",
+  "source_commit": "b89488d1a6607c963e3100f52c559a82f64df40d",
   "stage": "PRE2024_EXIT_GEOMETRY_H1_DISCOVERY_H2_VALIDATION_NOT_RANKABLE",
-  "stdout_tail": "",
-  "workflow_run_id": 30245397236
+  "stdout_tail": "Traceback (most recent call last):\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_exit_geometry_v1.py\", line 421, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_exit_geometry_v1.py\", line 417, in main\n    return run(parser.parse_args())\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_exit_geometry_v1.py\", line 339, in run\n    'BTCUSDT': Bars(pd.read_parquet(args.btc_bars)),\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_exit_geometry_v1.py\", line 165, in __init__\n    frame = normalize_bars(frame)\n            ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/run_exit_geometry_v1.py\", line 159, in normalize_bars\n    out['spread_bps'] = pd.to_numeric(out.get('spread_bps', 0.5), errors='coerce').fillna(0.5)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'float' object has no attribute 'fillna'\n",
+  "workflow_run_id": 30245670416
 }
