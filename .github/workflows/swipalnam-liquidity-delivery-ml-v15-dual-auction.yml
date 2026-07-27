@@ -1,0 +1,335 @@
+name: Swipalnam V15 dual-auction causal ML exact NAV
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py
+      - research/swipalnam_smc_ml/tools/restore_canonical_artifact.py
+      - .github/workflows/swipalnam-liquidity-delivery-ml-v15-dual-auction.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: swipalnam-v15-dual-auction-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTHONHASHSEED: "0"
+  CANONICAL_ROOT: artifact/canonical
+  H1_RESULT_ROOT: artifact/swipalnam_v15_dual_auction_h1
+  FULL_RESULT_ROOT: artifact/swipalnam_v15_dual_auction_full
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  causal-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+
+      - name: Compile and validate causal V15 invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py --self-test
+
+      - name: Restore reusable canonical cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-canonical-v15-4sym-2023-2026h1-v1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+
+      - name: Restore BTC ETH pre-2024 and 2024H1 canonical shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                > "$shard/RESEARCH_VERIFICATION_V15.json"
+            done
+          done
+
+      - name: Run V15 pre-2024 selection and causal 2024H1 replay
+        id: h1
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$H1_RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$H1_RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates 50 \
+            2>&1 | tee "$H1_RESULT_ROOT/STDOUT.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Decide full-period advancement
+        id: advance
+        if: steps.h1.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path(os.environ["H1_RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          summary = json.loads(source.read_text(encoding="utf-8"))
+          metrics = summary.get("provisional_2024h1_metrics") or {}
+          advance = (
+              float(metrics.get("geometric_daily_growth") or -1) > 0
+              and int(metrics.get("completed_trades") or 0) >= 40
+              and int(metrics.get("liquidation_events") or 0) == 0
+              and float(metrics.get("final_nav") or 0) > 0
+          )
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"run_full={'true' if advance else 'false'}\n")
+          print(json.dumps({"advance_full": advance, "h1_metrics": metrics}, indent=2))
+          PY
+
+      - name: Restore remaining BTC ETH evaluation shards
+        if: steps.advance.outputs.run_full == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                > "$shard/RESEARCH_VERIFICATION_V15.json"
+            done
+          done
+
+      - name: Run continuous 2024 through 2026H1 exact-NAV replay
+        id: full
+        if: steps.advance.outputs.run_full == 'true'
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$FULL_RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$FULL_RESULT_ROOT" \
+            --symbols BTCUSDT ETHUSDT \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2026-07-01T00:00:00Z \
+            --minimum-candidates 50 \
+            2>&1 | tee "$FULL_RESULT_ROOT/STDOUT.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Persist result or failure status
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          H1_EXIT: ${{ steps.h1.outputs.exit_code }}
+          ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
+          FULL_EXIT: ${{ steps.full.outputs.exit_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("research/swipalnam_smc_ml")
+          root.mkdir(parents=True, exist_ok=True)
+
+          def load_summary(directory: str):
+              path = Path(directory) / "RUN_SUMMARY.json"
+              if not path.exists():
+                  return None, path
+              return json.loads(path.read_text(encoding="utf-8")), path
+
+          def compact_failure(directory: str) -> str:
+              path = Path(directory) / "STDOUT.log"
+              if not path.exists():
+                  return "log_missing"
+              lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+              return "\n".join(lines[-80:])[-12000:]
+
+          h1, h1_path = load_summary(os.environ["H1_RESULT_ROOT"])
+          full, full_path = load_summary(os.environ["FULL_RESULT_ROOT"])
+          status = {
+              "schema_version": 15,
+              "system_id": "SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V15-DUAL-AUCTION",
+              "source_sha": os.environ["SOURCE_SHA"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+              "h1_exit_code": os.environ.get("H1_EXIT"),
+              "advance_full": os.environ.get("ADVANCE_FULL") == "true",
+              "full_exit_code": os.environ.get("FULL_EXIT"),
+              "h1_summary_present": h1 is not None,
+              "full_summary_present": full is not None,
+          }
+          if h1 is None:
+              status["h1_failure_tail"] = compact_failure(os.environ["H1_RESULT_ROOT"])
+          if os.environ.get("ADVANCE_FULL") == "true" and full is None:
+              status["full_failure_tail"] = compact_failure(os.environ["FULL_RESULT_ROOT"])
+          status_path = root / "RUN_STATUS_V15_EXECUTION.json"
+          status_path.write_text(json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+          def pointer(summary, source_path, stage, result_id):
+              evaluation = summary.get("provisional_2024h1_metrics") or {}
+              return {
+                  "schema_version": 15,
+                  "result_id": result_id,
+                  "variant": "dual_auction_sweep_reversal_and_bos_first_mitigation_fill_adjusted_causal_ml_exact_nav",
+                  "system_id": "SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V15-DUAL-AUCTION",
+                  "validation_stage": stage,
+                  "source_sha": os.environ["SOURCE_SHA"],
+                  "workflow_run_id": int(os.environ["RUN_ID"]),
+                  "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+                  "run_summary_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+                  "decision": summary.get("decision"),
+                  "target_hit": bool(float(evaluation.get("geometric_daily_growth") or -1) >= 0.01),
+                  "candidate_count": summary.get("candidate_count"),
+                  "selected_structural_configuration": summary.get("selected_structural_configuration"),
+                  "selected_retraining_policy": summary.get("selected_retraining_policy"),
+                  "selected_ml_score_threshold": summary.get("selected_ml_score_threshold"),
+                  "selected_account_configuration": summary.get("selected_account_configuration"),
+                  "pre2024_metrics": summary.get("pre2024_metrics"),
+                  "evaluation_metrics": evaluation,
+                  "provisional_2024h1_metrics": evaluation if stage == "causal_2024H1_exact_NAV" else None,
+                  "full_period_metrics": evaluation if stage == "continuous_2024_2026H1_exact_NAV" else None,
+                  "known_limitations": [
+                      "funding is currently accrued from the causally known entry snapshot rather than every exact funding event",
+                      "minute-level ambiguous stop/target bars remain stop-first",
+                  ],
+              }
+
+          if h1 is not None:
+              (root / "RUN_POINTER_V15_DUAL_AUCTION_H1.json").write_text(
+                  json.dumps(pointer(h1, h1_path, "causal_2024H1_exact_NAV", "R-SWIPALNAM-V15-H1"), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                  encoding="utf-8",
+              )
+          if full is not None:
+              (root / "RUN_POINTER_V15_DUAL_AUCTION_FULL.json").write_text(
+                  json.dumps(pointer(full, full_path, "continuous_2024_2026H1_exact_NAV", "R-SWIPALNAM-V15-FULL"), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                  encoding="utf-8",
+              )
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/RUN_STATUS_V15_EXECUTION.json
+          git add research/swipalnam_smc_ml/RUN_POINTER_V15_DUAL_AUCTION_*.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Record V15 dual-auction causal evaluation status"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin "$GITHUB_REF_NAME"
+              if git push origin "HEAD:$GITHUB_REF_NAME"; then break; fi
+              if [[ "$attempt" == 5 ]]; then exit 1; fi
+              sleep $((attempt * 2))
+            done
+          fi
+
+      - name: Upload immutable V15 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-v15-dual-auction-${{ github.sha }}
+          path: |
+            artifact/swipalnam_v15_dual_auction_h1
+            artifact/swipalnam_v15_dual_auction_full
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 90
+
+      - name: Enforce evaluation outcome
+        if: always()
+        env:
+          H1_EXIT: ${{ steps.h1.outputs.exit_code }}
+          ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
+          FULL_EXIT: ${{ steps.full.outputs.exit_code }}
+        shell: bash
+        run: |
+          if [[ "${H1_EXIT:-1}" != "0" ]]; then
+            echo "V15 H1 evaluation failed"
+            exit 1
+          fi
+          if [[ "${ADVANCE_FULL:-false}" == "true" && "${FULL_EXIT:-1}" != "0" ]]; then
+            echo "V15 full-period evaluation failed"
+            exit 1
+          fi
