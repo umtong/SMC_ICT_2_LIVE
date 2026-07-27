@@ -2,6 +2,10 @@ name: YT Trinity DuckDB CLI bridge
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-duckdb-cli.yml
   push:
     branches: [agent/r23-yt-trinity-transport-001]
     paths:
