@@ -1,0 +1,53 @@
+name: YT Trinity causal action v1 hotfix
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-causal-action-v1-hotfix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-causal-action-v1-hotfix
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Patch canonical availability transport
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_causal_action_v1.py')
+          text = path.read_text()
+          old = '    return out.sort_values("bar_start", kind="stable").reset_index(drop=False).rename(columns={"index": "available_at"})\n'
+          new = '''    if "available_at" not in out.columns:\n        out["available_at"] = out.index\n    out["available_at"] = pd.to_datetime(out["available_at"], utc=True)\n    return out.sort_values("bar_start", kind="stable").reset_index(drop=True)\n'''
+          if old not in text:
+              raise SystemExit('expected _prepare_bars return not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          python -m py_compile research/yt_trinity_ml/run_causal_action_v1.py
+          git rm .github/workflows/yt-trinity-causal-action-v1-hotfix.yml
+      - name: Commit tested hotfix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_causal_action_v1.py
+          git commit -m 'Fix causal action canonical availability transport'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
