@@ -1,6 +1,14 @@
 name: Canonical Bybit sparse 500ms smoke
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/market_data/build_public_trade_compact.py
+      - scripts/market_data/load_public_trade_compact.py
+      - scripts/market_data/verify_public_trade_compact.py
+      - tests/test_public_trade_compact.py
+      - .github/workflows/canonical-bybit-public-compact-smoke.yml
   push:
     branches:
       - agent/r22-canonical-halfyear-market-data-001
@@ -13,7 +21,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: canonical-bybit-sparse500-smoke-${{ github.ref }}
+  group: canonical-bybit-sparse500-smoke-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
