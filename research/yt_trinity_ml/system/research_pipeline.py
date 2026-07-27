@@ -114,6 +114,33 @@ def encode_event_features(candidate: EventCandidate) -> dict[str, float]:
     return candidate_model_features(candidate)
 
 
+
+def estimated_action_loss_budget(
+    candidate: EventCandidate,
+    action: str,
+    config: CoarseExecutionConfig,
+) -> float:
+    """Planned per-unit loss in the same units used by NAV risk sizing.
+
+    The old labels divided PnL by raw stop distance while position sizing budgeted
+    stop distance plus entry/stop fees, spread and slippage.  That caused the ML
+    log-growth objective to treat a realized account-risk loss near -1R as roughly
+    -1.5 raw-stop R.  Use a causal pre-entry cost estimate so one model R maps to
+    one planned account-risk R.
+    """
+    if action not in {"MARKETABLE", "PASSIVE_RETEST"}:
+        raise ValueError(f"unknown action: {action}")
+    entry = abs(float(candidate.entry_reference))
+    stop = abs(float(candidate.stop_reference))
+    raw = float(candidate.stop_distance)
+    half_spread = float(config.minimum_spread_bps) / 20_000.0
+    if action == "MARKETABLE":
+        entry_rate = float(config.taker_fee_rate) + float(config.market_slippage_bps) / 10_000.0 + half_spread
+    else:
+        entry_rate = float(config.maker_fee_rate)
+    stop_rate = float(config.taker_fee_rate) + float(config.stop_slippage_bps) / 10_000.0 + half_spread
+    return raw + entry * entry_rate + stop * stop_rate
+
 def label_event_dataset(
     candidates: Sequence[EventCandidate],
     execution_bars_by_symbol: Mapping[str, pd.DataFrame],
@@ -148,9 +175,17 @@ def label_event_dataset(
             "net_r": float(market.net_r),
             "market_target_before_stop": int(market.target_before_stop),
             "market_net_r": float(market.net_r),
+            "market_budget_r": float(market.net_r) * candidate.stop_distance
+            / estimated_action_loss_budget(candidate, "MARKETABLE", config),
             "passive_filled": int(passive.passive_filled),
             "passive_target_before_stop": passive_target,
             "passive_net_r": passive_net_r,
+            "passive_budget_r": (
+                passive_net_r * candidate.stop_distance
+                / estimated_action_loss_budget(candidate, "PASSIVE_RETEST", config)
+                if passive.passive_filled
+                else 0.0
+            ),
             "market_status": market.status,
             "passive_status": passive.status,
             "symbol": candidate.symbol,
@@ -192,14 +227,16 @@ def _distribution(
 
 
 def _action_distributions(rows: pd.DataFrame) -> tuple[float, float, float, float]:
-    market_winner, market_loser = _distribution(rows)
+    market_return = "market_budget_r" if "market_budget_r" in rows.columns else "market_net_r"
+    passive_return = "passive_budget_r" if "passive_budget_r" in rows.columns else "passive_net_r"
+    market_winner, market_loser = _distribution(rows, "market_target_before_stop", market_return)
     passive_rows = rows[rows["passive_filled"].astype(int).eq(1)] if "passive_filled" in rows.columns else rows.iloc[0:0]
     if passive_rows.empty:
         return market_winner, market_loser, market_winner, market_loser
     passive_winner, passive_loser = _distribution(
         passive_rows,
         "passive_target_before_stop",
-        "passive_net_r",
+        passive_return,
     )
     return market_winner, market_loser, passive_winner, passive_loser
 

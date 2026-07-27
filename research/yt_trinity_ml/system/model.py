@@ -161,6 +161,10 @@ class ChronologicalEventModel:
                 result.get("market_net_r"),
                 0.0,
             )
+        if "market_budget_r" in result.columns:
+            result["market_net_r"] = result["market_budget_r"]
+        if "passive_budget_r" in result.columns:
+            result["passive_net_r"] = result["passive_budget_r"]
         return result
 
     def _return_bounds(self, values: pd.Series, winner: bool) -> tuple[float, float]:
@@ -224,6 +228,8 @@ class ChronologicalEventModel:
             "market_net_r",
             "passive_target_before_stop",
             "passive_net_r",
+            "market_budget_r",
+            "passive_budget_r",
         }
         self.feature_names = [
             name
