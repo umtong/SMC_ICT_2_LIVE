@@ -1,0 +1,116 @@
+name: YT Trinity negative-route multi PD-array refinement
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-negative-multi-pd-array.yml
+      - research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-negative-multi-pd-array
+  cancel-in-progress: false
+
+jobs:
+  conditional-refinement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Authorize only from a completed negative causal result
+        id: route
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/CAUSAL_ACTION_POINTER.json')
+          authorized=False
+          if p.exists():
+              pointer=json.loads(p.read_text())
+              result=pointer.get('result') or {}
+              h1=result.get('result_2024_h1') or {}
+              completed=(pointer.get('job_status')=='success' and int(pointer.get('exit_code',99))==0)
+              current=(bool(result.get('causal_armed_candidate_universe')) and bool(result.get('grouped_action_model_fingerprint')))
+              negative=(result.get('decision')=='NO_POSITIVE_CAUSAL_ACTION_SURVIVOR' or (h1 and float(h1.get('geometric_daily_growth',0.0))<=0))
+              authorized=completed and current and negative
+          Path('/tmp/authorized').write_text('true' if authorized else 'false')
+          PY
+          echo "authorized=$(cat /tmp/authorized)" >> "$GITHUB_OUTPUT"
+
+      - name: Emit FVG, OB and overlap as independent causal actions
+        if: steps.route.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text=p.read_text()
+          state_marker='''    fvg_width_atr: float = 0.0\n    ob_width_atr: float = 0.0\n'''
+          state_add='''    fvg_width_atr: float = 0.0\n    ob_width_atr: float = 0.0\n    fvg_zone_lower: float | None = None\n    fvg_zone_upper: float | None = None\n    ob_zone_lower: float | None = None\n    ob_zone_upper: float | None = None\n'''
+          if 'fvg_zone_lower' not in text:
+              if state_marker not in text: raise SystemExit('state zone marker missing')
+              text=text.replace(state_marker,state_add,1)
+          old_return='''    return lower, upper, kind, fvg_width, ob_width\n'''
+          new_return='''    return (\n        lower, upper, kind, fvg_width, ob_width,\n        None if fvg is None else float(fvg[0]),\n        None if fvg is None else float(fvg[1]),\n        None if ob is None else float(ob[0]),\n        None if ob is None else float(ob[1]),\n    )\n'''
+          if old_return in text:
+              text=text.replace(old_return,new_return,1)
+          old_unpack='''    lower, upper, kind, fvg_width, ob_width = zone\n'''
+          new_unpack='''    (\n        lower, upper, kind, fvg_width, ob_width,\n        fvg_lower, fvg_upper, ob_lower, ob_upper,\n    ) = zone\n'''
+          if old_unpack in text:
+              text=text.replace(old_unpack,new_unpack,1)
+          marker='''    state.fvg_width_atr = fvg_width\n    state.ob_width_atr = ob_width\n'''
+          add='''    state.fvg_width_atr = fvg_width\n    state.ob_width_atr = ob_width\n    state.fvg_zone_lower = fvg_lower\n    state.fvg_zone_upper = fvg_upper\n    state.ob_zone_lower = ob_lower\n    state.ob_zone_upper = ob_upper\n'''
+          if 'state.fvg_zone_lower = fvg_lower' not in text:
+              if marker not in text: raise SystemExit('state assignment marker missing')
+              text=text.replace(marker,add,1)
+          p.write_text(text)
+
+          c=Path('research/yt_trinity_ml/system/causal_action_candidates.py')
+          text=c.read_text()
+          start=text.index('def _passive_events(')
+          end=text.index('\n\ndef _market_event',start)
+          replacement='''def _passive_events(\n    state: _NarrativeState,\n    row: pd.Series,\n    timestamp: pd.Timestamp,\n    symbol: str,\n    pos: int,\n) -> list[EventCandidate]:\n    """Emit independent FVG, OB and overlap mitigation actions at arming."""\n\n    if state.phase != "AWAIT_RETEST" or state.stop is None:\n        return []\n    raw_arrays: list[tuple[float, float, int, str]] = []\n    if state.zone_lower is not None and state.zone_upper is not None:\n        raw_arrays.append((float(state.zone_lower), float(state.zone_upper), int(state.zone_kind), "PRIMARY"))\n    if state.fvg_zone_lower is not None and state.fvg_zone_upper is not None:\n        raw_arrays.append((float(state.fvg_zone_lower), float(state.fvg_zone_upper), 2, "FVG"))\n    if state.ob_zone_lower is not None and state.ob_zone_upper is not None:\n        raw_arrays.append((float(state.ob_zone_lower), float(state.ob_zone_upper), 1, "OB"))\n    if (\n        state.fvg_zone_lower is not None and state.fvg_zone_upper is not None\n        and state.ob_zone_lower is not None and state.ob_zone_upper is not None\n    ):\n        lower=max(float(state.fvg_zone_lower),float(state.ob_zone_lower))\n        upper=min(float(state.fvg_zone_upper),float(state.ob_zone_upper))\n        if upper>lower:\n            raw_arrays.append((lower,upper,3,"FVG_OB_OVERLAP"))\n    arrays: list[tuple[float,float,int,str]]=[]\n    seen:set[tuple[float,float]]=set()\n    for lower,upper,kind,name in raw_arrays:\n        key=(round(lower,10),round(upper,10))\n        if upper<=lower or key in seen:\n            continue\n        seen.add(key); arrays.append((lower,upper,kind,name))\n\n    stop=float(state.stop); target=float(state.draw_target); events:list[EventCandidate]=[]\n    for array_index,(lower,upper,kind,name) in enumerate(arrays):\n        for depth in (0.0,0.25,0.50,0.75,1.0):\n            entry=(upper-depth*(upper-lower) if state.side>0 else lower+depth*(upper-lower))\n            if (state.side>0 and not stop<entry<target) or (state.side<0 and not target<entry<stop):\n                continue\n            shadow=_NarrativeState(**state.__dict__)\n            shadow.zone_lower=lower; shadow.zone_upper=upper; shadow.zone_kind=kind\n            features=_setup_features(row,shadow,pos,entry,stop)\n            features.update({\n                "action_candidate_early_passive":1.0,\n                "action_candidate_confirmed_market":0.0,\n                "entry_confirmation_kind":0.0,\n                "causal_pd_array_armed":1.0,\n                "passive_depth_fraction":float(depth),\n                "passive_is_proximal":float(depth==0.0),\n                "passive_is_consequent_encroachment":float(depth==0.5),\n                "passive_is_distal":float(depth==1.0),\n                "pd_array_action_kind":float(kind),\n                "pd_array_action_index":float(array_index),\n                "pd_array_action_is_fvg":float(kind==2),\n                "pd_array_action_is_ob":float(kind==1),\n                "pd_array_action_is_overlap":float(kind==3),\n            })\n            events.append(EventCandidate(\n                timestamp=timestamp,symbol=symbol,family=state.family,side=state.side,\n                decision_price=float(row["close"]),entry_reference=float(entry),\n                stop_reference=stop,target_reference=target,\n                structural_level=float(state.structural_level),feature_row=features,\n            ))\n    return events\n'''
+          text=text[:start]+replacement+text[end:]
+          c.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py
+
+      - name: Commit negative-route refinement
+        if: steps.route.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/yt-trinity-negative-multi-pd-array.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py
+          git commit -m 'Emit independent causal FVG OB and overlap actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
+
+      - name: Leave conditional workflow installed until a decision exists
+        if: steps.route.outputs.authorized != 'true'
+        run: echo 'No completed negative current causal result; no scientific change.'
