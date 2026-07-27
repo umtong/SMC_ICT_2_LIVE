@@ -1,0 +1,152 @@
+name: YT Trinity cost-aware budget-R normalization
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-budget-r-normalization.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-budget-r-normalization
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Apply cost-aware action-return normalization
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('research/yt_trinity_ml')
+          pipeline = root / 'system/research_pipeline.py'
+          model = root / 'system/model.py'
+
+          p = pipeline.read_text()
+          helper = '''\n\ndef estimated_action_loss_budget(\n    candidate: EventCandidate,\n    action: str,\n    config: CoarseExecutionConfig,\n) -> float:\n    \"\"\"Planned per-unit loss in the same units used by NAV risk sizing.\n\n    The old labels divided PnL by raw stop distance while position sizing budgeted\n    stop distance plus entry/stop fees, spread and slippage.  That caused the ML\n    log-growth objective to treat a realized account-risk loss near -1R as roughly\n    -1.5 raw-stop R.  Use a causal pre-entry cost estimate so one model R maps to\n    one planned account-risk R.\n    \"\"\"\n    if action not in {\"MARKETABLE\", \"PASSIVE_RETEST\"}:\n        raise ValueError(f\"unknown action: {action}\")\n    entry = abs(float(candidate.entry_reference))\n    stop = abs(float(candidate.stop_reference))\n    raw = float(candidate.stop_distance)\n    half_spread = float(config.minimum_spread_bps) / 20_000.0\n    if action == \"MARKETABLE\":\n        entry_rate = float(config.taker_fee_rate) + float(config.market_slippage_bps) / 10_000.0 + half_spread\n    else:\n        entry_rate = float(config.maker_fee_rate)\n    stop_rate = float(config.taker_fee_rate) + float(config.stop_slippage_bps) / 10_000.0 + half_spread\n    return raw + entry * entry_rate + stop * stop_rate\n'''
+          anchor = '\ndef label_event_dataset(\n'
+          if 'def estimated_action_loss_budget(' not in p:
+              if anchor not in p:
+                  raise SystemExit('pipeline label anchor not found')
+              p = p.replace(anchor, helper + anchor, 1)
+
+          old = '''            \"market_target_before_stop\": int(market.target_before_stop),\n            \"market_net_r\": float(market.net_r),\n            \"passive_filled\": int(passive.passive_filled),\n            \"passive_target_before_stop\": passive_target,\n            \"passive_net_r\": passive_net_r,\n'''
+          new = '''            \"market_target_before_stop\": int(market.target_before_stop),\n            \"market_net_r\": float(market.net_r),\n            \"market_budget_r\": float(market.net_r) * candidate.stop_distance\n            / estimated_action_loss_budget(candidate, \"MARKETABLE\", config),\n            \"passive_filled\": int(passive.passive_filled),\n            \"passive_target_before_stop\": passive_target,\n            \"passive_net_r\": passive_net_r,\n            \"passive_budget_r\": (\n                passive_net_r * candidate.stop_distance\n                / estimated_action_loss_budget(candidate, \"PASSIVE_RETEST\", config)\n                if passive.passive_filled\n                else 0.0\n            ),\n'''
+          if '"market_budget_r"' not in p:
+              if old not in p:
+                  raise SystemExit('pipeline label row anchor not found')
+              p = p.replace(old, new, 1)
+
+          old_dist = '''def _action_distributions(rows: pd.DataFrame) -> tuple[float, float, float, float]:\n    market_winner, market_loser = _distribution(rows)\n    passive_rows = rows[rows[\"passive_filled\"].astype(int).eq(1)] if \"passive_filled\" in rows.columns else rows.iloc[0:0]\n    if passive_rows.empty:\n        return market_winner, market_loser, market_winner, market_loser\n    passive_winner, passive_loser = _distribution(\n        passive_rows,\n        \"passive_target_before_stop\",\n        \"passive_net_r\",\n    )\n'''
+          new_dist = '''def _action_distributions(rows: pd.DataFrame) -> tuple[float, float, float, float]:\n    market_return = \"market_budget_r\" if \"market_budget_r\" in rows.columns else \"market_net_r\"\n    passive_return = \"passive_budget_r\" if \"passive_budget_r\" in rows.columns else \"passive_net_r\"\n    market_winner, market_loser = _distribution(rows, \"market_target_before_stop\", market_return)\n    passive_rows = rows[rows[\"passive_filled\"].astype(int).eq(1)] if \"passive_filled\" in rows.columns else rows.iloc[0:0]\n    if passive_rows.empty:\n        return market_winner, market_loser, market_winner, market_loser\n    passive_winner, passive_loser = _distribution(\n        passive_rows,\n        \"passive_target_before_stop\",\n        passive_return,\n    )\n'''
+          if 'market_return = "market_budget_r"' not in p:
+              if old_dist not in p:
+                  raise SystemExit('action distribution anchor not found')
+              p = p.replace(old_dist, new_dist, 1)
+          pipeline.write_text(p)
+
+          m = model.read_text()
+          insert = '''        if \"market_budget_r\" in result.columns:\n            result[\"market_net_r\"] = result[\"market_budget_r\"]\n        if \"passive_budget_r\" in result.columns:\n            result[\"passive_net_r\"] = result[\"passive_budget_r\"]\n'''
+          anchor2 = '''        if \"passive_net_r\" not in result.columns:\n            result[\"passive_net_r\"] = np.where(\n                pd.to_numeric(result.get(\"passive_filled\", 0), errors=\"coerce\").fillna(0).astype(int).eq(1),\n                result.get(\"market_net_r\"),\n                0.0,\n            )\n        return result\n'''
+          if 'if "market_budget_r" in result.columns:' not in m:
+              if anchor2 not in m:
+                  raise SystemExit('model action-label anchor not found')
+              m = m.replace(anchor2, anchor2.replace('        return result\n', insert + '        return result\n'), 1)
+          leak_anchor = '''            \"passive_net_r\",\n'''
+          if '            "market_budget_r",\n' not in m:
+              if leak_anchor not in m:
+                  raise SystemExit('model leakage anchor not found')
+              m = m.replace(leak_anchor, leak_anchor + '            "market_budget_r",\n            "passive_budget_r",\n', 1)
+          model.write_text(m)
+          PY
+      - name: Add normalization regressions
+        run: |
+          cat > research/yt_trinity_ml/tests/test_budget_r_normalization.py <<'PY'
+          from __future__ import annotations
+
+          import numpy as np
+          import pandas as pd
+
+          from system.coarse import CoarseExecutionConfig
+          from system.core import EventCandidate, EventFamily
+          from system.model import ChronologicalEventModel
+          from system.research_pipeline import estimated_action_loss_budget
+
+
+          def candidate() -> EventCandidate:
+              return EventCandidate(
+                  pd.Timestamp('2023-01-01T00:00:00Z'), 'BTCUSDT',
+                  EventFamily.LIQUIDITY_SWEEP_REVERSAL, 1,
+                  100.0, 100.0, 99.0, 103.0, 99.5, {},
+              )
+
+
+          def test_budget_exceeds_raw_stop_and_market_exceeds_passive() -> None:
+              c = candidate()
+              cfg = CoarseExecutionConfig()
+              market = estimated_action_loss_budget(c, 'MARKETABLE', cfg)
+              passive = estimated_action_loss_budget(c, 'PASSIVE_RETEST', cfg)
+              assert market > passive > c.stop_distance
+
+
+          def test_budget_r_is_account_risk_unit() -> None:
+              c = candidate()
+              cfg = CoarseExecutionConfig()
+              budget = estimated_action_loss_budget(c, 'MARKETABLE', cfg)
+              raw_stop_r = -budget / c.stop_distance
+              normalized = raw_stop_r * c.stop_distance / budget
+              assert np.isclose(normalized, -1.0)
+
+
+          def test_model_prefers_budget_r_columns() -> None:
+              rows = pd.DataFrame({
+                  'event_start': pd.date_range('2023-01-01', periods=2, tz='UTC'),
+                  'event_end': pd.date_range('2023-01-02', periods=2, tz='UTC'),
+                  'passive_filled': [1, 1],
+                  'market_target_before_stop': [0, 1],
+                  'market_net_r': [-1.7, 2.0],
+                  'market_budget_r': [-1.0, 1.1],
+                  'passive_target_before_stop': [0, 1],
+                  'passive_net_r': [-1.4, 1.8],
+                  'passive_budget_r': [-1.0, 1.0],
+              })
+              normalized = ChronologicalEventModel._with_action_labels(rows)
+              assert normalized['market_net_r'].tolist() == [-1.0, 1.1]
+              assert normalized['passive_net_r'].tolist() == [-1.0, 1.0]
+          PY
+      - name: Install and test
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_budget_r_normalization.py \
+            research/yt_trinity_ml/tests/test_action_value_model.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested normalization
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/research_pipeline.py \
+                  research/yt_trinity_ml/system/model.py \
+                  research/yt_trinity_ml/tests/test_budget_r_normalization.py
+          git commit -m 'Normalize ML action returns to planned account-risk budget'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
