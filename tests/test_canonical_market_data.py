@@ -42,11 +42,12 @@ def test_derived_bar_invalidates_incomplete_window() -> None:
     assert int(out.loc[0, "available_at_ms"]) == 300_000
 
 
-def test_supported_segments_begin_in_2021() -> None:
+def test_supported_segments_start_at_declared_first_month() -> None:
     assert "PRE_2024_2021" in builder.SEGMENTS
     assert "PRE_2024_2022" in builder.SEGMENTS
     assert "PRE_2024_2023" in builder.SEGMENTS
-    assert all("2020" not in name for name in builder.SEGMENTS)
+    starts = [pd.Timestamp(bounds[0]) for bounds in builder.SEGMENTS.values()]
+    assert min(starts) == pd.Timestamp("2021-01-01T00:00:00Z")
 
 
 def test_evaluation_half_years_form_one_continuous_path() -> None:
