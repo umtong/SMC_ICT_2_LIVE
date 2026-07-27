@@ -14,6 +14,7 @@ on:
       - research/yt_trinity_ml/INSTRUMENT_RULES.json
       - research/yt_trinity_ml/tests/test_corpus_alpha.py
       - research/yt_trinity_ml/tests/test_action_value_model.py
+      - research/yt_trinity_ml/tests/test_regressions.py
 
 permissions:
   contents: write
@@ -220,6 +221,4 @@ jobs:
 
       - name: Fail only after preserving execution evidence
         if: always()
-        run: |
-          test "$(cat output/VERIFY_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
-          test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
+        run: test "$(cat output/VERIFY_EXIT_CODE.txt 2>/dev/null || echo 99)" = 0 -a "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
