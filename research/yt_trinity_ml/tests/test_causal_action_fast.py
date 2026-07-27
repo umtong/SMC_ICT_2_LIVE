@@ -30,10 +30,10 @@ def _candidate() -> EventCandidate:
 
 
 def _bars(low_at_fill: float = 99.9, simultaneous_stop: bool = False) -> pd.DataFrame:
-    starts = pd.date_range("2023-01-01T00:05:00Z", periods=8, freq="1min")
+    starts = pd.date_range("2023-01-01T00:05:00Z", periods=20, freq="1min")
     available = starts + pd.Timedelta(minutes=1)
-    low = [101.0, 100.5, low_at_fill, 100.5, 101.0, 102.0, 103.0, 104.0]
-    high = [102.0, 101.5, 101.0, 102.0, 103.0, 105.0, 108.5, 109.0]
+    low = [101.0, 100.5, low_at_fill, 100.5, 101.0, 102.0, 103.0, 104.0] + [101.0] * 12
+    high = [102.0, 101.5, 101.0, 102.0, 103.0, 105.0, 108.5, 109.0] + [109.0] * 12
     if simultaneous_stop:
         low[2] = 97.5
         high[2] = 101.0
@@ -41,10 +41,10 @@ def _bars(low_at_fill: float = 99.9, simultaneous_stop: bool = False) -> pd.Data
         {
             "bar_start": starts,
             "available_at": available,
-            "open": [101.5] * 8,
+            "open": [101.5] * 20,
             "high": high,
             "low": low,
-            "close": [101.5, 101.0, 100.0, 101.5, 102.5, 104.5, 108.0, 108.5],
+            "close": [101.5, 101.0, 100.0, 101.5, 102.5, 104.5, 108.0, 108.5] + [108.5] * 12,
         },
         index=available,
     )

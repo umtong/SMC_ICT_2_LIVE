@@ -48,6 +48,7 @@ def _passive_event(
             "action_candidate_confirmed_market": 0.0,
             "entry_confirmation_kind": 0.0,
             "causal_pd_array_armed": 1.0,
+            "passive_depth_fraction": 0.5,
         }
     )
     return EventCandidate(
@@ -71,6 +72,7 @@ def _market_event(event: EventCandidate) -> EventCandidate:
             "action_candidate_early_passive": 0.0,
             "action_candidate_confirmed_market": 1.0,
             "causal_pd_array_armed": 1.0,
+            "passive_depth_fraction": 0.0,
         }
     )
     return EventCandidate(

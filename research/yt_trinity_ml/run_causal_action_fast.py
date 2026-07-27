@@ -59,16 +59,55 @@ def _cross(bars: PreparedBars, start: int, level: float, upward: bool,
     return position if position is not None and position < end else None
 
 
+def _pd_array_bounds(candidate: EventCandidate) -> tuple[float, float] | None:
+    """Reconstruct causal PD-array bounds from scale-free setup geometry."""
+    features = candidate.feature_row
+    try:
+        atr = float(features.get("atr"))
+        width_atr = float(features.get("zone_width_atr"))
+        distance_atr = float(features.get(
+            "zone_midpoint_distance_atr",
+            features.get("retest_midpoint_distance_atr", 0.0),
+        ))
+    except (TypeError, ValueError):
+        return None
+    if not (np.isfinite(atr) and atr > 0 and np.isfinite(width_atr) and width_atr > 0):
+        return None
+    midpoint = float(candidate.entry_reference) - distance_atr * atr
+    half_width = 0.5 * width_atr * atr
+    lower, upper = midpoint - half_width, midpoint + half_width
+    return (lower, upper) if np.isfinite(lower) and np.isfinite(upper) and upper > lower else None
+
+
+def _pd_array_failure_close(candidate: EventCandidate, bars: PreparedBars,
+                            start: int, end: int) -> int | None:
+    bounds = _pd_array_bounds(candidate)
+    if bounds is None or start >= end:
+        return None
+    lower, upper = bounds
+    view = bars.closes[start:end]
+    failed = view < lower if candidate.side > 0 else view > upper
+    positions = np.flatnonzero(failed)
+    return start + int(positions[0]) if positions.size else None
+
+
 def _label(candidate: EventCandidate, action: str, exit_variant: str, bars: PreparedBars,
            funding: Mapping[str, list[tuple[pd.Timestamp, float]]], evaluation_end: pd.Timestamp,
            config: v1.ScreenConfig, cancel_at: pd.Timestamp | None = None) -> v1.ActionLabel | None:
     side = int(candidate.side)
     evaluation_limit = int(np.searchsorted(bars.starts_ns, evaluation_end.value, side="left"))
     if action == "EARLY_PASSIVE":
-        geometry = v1._early_geometry(candidate)
-        if geometry is None:
-            return None
-        signal_time, entry_reference = geometry
+        # A causal passive candidate exists when its displacement-origin
+        # PD array becomes knowable. Never reconstruct that order backward
+        # from later mitigation/CISD success.
+        if float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5:
+            signal_time = pd.Timestamp(candidate.timestamp)
+            entry_reference = float(candidate.entry_reference)
+        else:
+            geometry = v1._early_geometry(candidate)
+            if geometry is None:
+                return None
+            signal_time, entry_reference = geometry
         activation = signal_time + pd.Timedelta(milliseconds=config.activation_latency_ms)
     else:
         entry_reference = float(candidate.entry_reference)
@@ -177,19 +216,38 @@ def _label(candidate: EventCandidate, action: str, exit_variant: str, bars: Prep
             max(loss_budget, 1e-12), pnl, v1._candidate_features(candidate, action, entry_price), status,
         )
 
+    pd_failure_enabled = exit_variant == "PD_ARRAY_FAILURE"
     cap = target if abs(target - entry_price) <= 2.0 * risk_distance else entry_price + side * 2.0 * risk_distance
-    effective_target = target if exit_variant == "FULL_STRUCTURAL" else cap
+    effective_target = target if exit_variant in {"FULL_STRUCTURAL", "PD_ARRAY_FAILURE"} else cap
     stop_position = _cross(bars, entry_position, stop, side < 0, evaluation_limit)
     target_position = _cross(bars, entry_position, effective_target, side > 0, evaluation_limit)
-    if stop_position is not None and (target_position is None or stop_position <= target_position):
+    failure_close = (
+        _pd_array_failure_close(candidate, bars, entry_position, evaluation_limit)
+        if pd_failure_enabled else None
+    )
+    # Stop and target remain live through the failure-confirmation bar.
+    if stop_position is not None and (
+        (target_position is None or stop_position <= target_position)
+        and (failure_close is None or stop_position <= failure_close)
+    ):
         position = stop_position
         base = min(bars.opens[position], stop) if side > 0 else max(bars.opens[position], stop)
         exit_price = v1._market_fill(base, -side, config, stop=True)
         status = "STOP"
-    elif target_position is not None:
+    elif target_position is not None and (failure_close is None or target_position <= failure_close):
         position = target_position
         exit_price = v1._market_fill(effective_target, -side, config)
         status = "STRUCTURAL_TARGET" if effective_target == target else "CAP_2R"
+    elif failure_close is not None:
+        # Close confirmation plus fixed latency: next observable bar open.
+        if failure_close + 1 < evaluation_limit:
+            position = failure_close + 1
+            base = bars.opens[position]
+        else:
+            position = failure_close
+            base = bars.closes[position]
+        exit_price = v1._market_fill(base, -side, config)
+        status = "PD_ARRAY_CLOSE_FAILURE"
     else:
         position = max(entry_position, evaluation_limit - 1)
         exit_price = v1._market_fill(bars.closes[position], -side, config)
@@ -209,9 +267,9 @@ def _rows_fast(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.
     indexed_funding = v1._funding_index(funding)
     prepared = {symbol: _prepare(frame) for symbol, frame in execution.items()}
     def narrative_key(candidate: EventCandidate) -> tuple[Any, ...]:
+        # Stop placement is management, not narrative identity.
         return (
             candidate.symbol, candidate.family.value, candidate.side,
-            round(float(candidate.stop_reference), 8),
             round(float(candidate.target_reference), 8),
             round(float(candidate.structural_level), 8),
         )
@@ -260,7 +318,14 @@ def _rows_fast(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.
         frame = prepared.get(candidate.symbol)
         if frame is None:
             continue
-        for action in ("EARLY_PASSIVE", "CONFIRMED_MARKET"):
+        early_flag = float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5
+        market_flag = float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5
+        if early_flag or market_flag:
+            candidate_actions = ((["EARLY_PASSIVE"] if early_flag else [])
+                                 + (["CONFIRMED_MARKET"] if market_flag else []))
+        else:
+            candidate_actions = ["EARLY_PASSIVE", "CONFIRMED_MARKET"]
+        for action in candidate_actions:
             for variant in variants:
                 cancel_at = structural_cancel_at(candidate) if action == "EARLY_PASSIVE" else None
                 label = _label(
