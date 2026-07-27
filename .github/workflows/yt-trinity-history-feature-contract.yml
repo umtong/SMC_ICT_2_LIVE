@@ -1,0 +1,175 @@
+name: YT Trinity leak-safe explicit-history feature contract
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-history-feature-contract.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-history-feature-contract
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install explicit leak-safe feature selection
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_causal_action_history.py')
+          text = path.read_text()
+          text = text.replace(
+              '    _feature_columns,\n',
+              '',
+              1,
+          )
+          anchor = '''def _period(\n'''
+          helper = '''def _history_feature_columns(rows: pd.DataFrame) -> list[str]:\n    """Return only numeric information available when the action was created."""\n\n    forbidden_exact = {\n        "activation",\n        "event_end",\n        "symbol",\n        "action",\n        "exit_variant",\n        "filled",\n        "entry_price",\n        "loss_budget_per_unit",\n        "net_pnl_per_unit",\n        "net_budget_r",\n        "status",\n        "score",\n        "fill_probability",\n        "win_probability_given_fill",\n        "winner_net_r",\n        "loser_net_r",\n        "unconditional_net_r",\n        "conditional_expected_net_r",\n        "expected_net_r",\n        "lower_confidence_net_r",\n    }\n    forbidden_fragments = (\n        "realized_",\n        "future_",\n        "label_",\n        "outcome_",\n        "target_before_stop",\n        "maximum_favorable",\n        "maximum_adverse",\n    )\n    result: list[str] = []\n    for name in rows.columns:\n        if name in forbidden_exact:\n            continue\n        lowered = str(name).lower()\n        if any(fragment in lowered for fragment in forbidden_fragments):\n            continue\n        if pd.api.types.is_numeric_dtype(rows[name]):\n            result.append(str(name))\n    if not result:\n        raise ValueError("no leak-safe causal history features")\n    return sorted(result)\n\n\n'''
+          if '_history_feature_columns' not in text:
+              if anchor not in text:
+                  raise SystemExit('period function anchor missing')
+              text = text.replace(anchor, helper + anchor, 1)
+          text = text.replace(
+              '    feature_names = _feature_columns(rows_pre)\n',
+              '    feature_names = _history_feature_columns(rows_pre)\n',
+              1,
+          )
+          path.write_text(text)
+
+          full = Path('research/yt_trinity_ml/run_causal_action_history_full.py')
+          value = full.read_text()
+          value = value.replace(
+              '    _period,\n    _score,\n',
+              '    _history_feature_columns,\n    _period,\n    _score,\n',
+              1,
+          )
+          value = value.replace(
+              'from run_causal_action_v1 import ScreenConfig, _account, _feature_columns, _jsonable\n',
+              'from run_causal_action_v1 import ScreenConfig, _account, _jsonable\n',
+              1,
+          )
+          value = value.replace(
+              '    feature_names = _feature_columns(rows_pre)\n',
+              '    feature_names = _history_feature_columns(rows_pre)\n',
+              1,
+          )
+          full.write_text(value)
+          PY
+          cat > research/yt_trinity_ml/tests/test_history_feature_contract.py <<'PY'
+          from __future__ import annotations
+
+          import pandas as pd
+
+          from run_causal_action_history import _history_feature_columns
+
+
+          def test_outcome_and_execution_columns_are_never_features() -> None:
+              rows = pd.DataFrame(
+                  {
+                      "activation": pd.to_datetime(["2023-01-01T00:00:00Z"]),
+                      "event_end": pd.to_datetime(["2023-01-01T01:00:00Z"]),
+                      "filled": [1],
+                      "entry_price": [100.0],
+                      "net_pnl_per_unit": [2.0],
+                      "net_budget_r": [1.5],
+                      "status": ["TARGET"],
+                      "future_mfe": [5.0],
+                      "liquidity_quality": [6.0],
+                      "displacement_efficiency_at_confirmation": [0.7],
+                      "passive_depth_fraction": [0.5],
+                  }
+              )
+              features = _history_feature_columns(rows)
+              assert features == [
+                  "displacement_efficiency_at_confirmation",
+                  "liquidity_quality",
+                  "passive_depth_fraction",
+              ]
+
+
+          def test_mutating_labels_does_not_change_feature_matrix() -> None:
+              rows = pd.DataFrame(
+                  {
+                      "filled": [0, 1],
+                      "net_budget_r": [0.0, 2.0],
+                      "status": ["UNFILLED", "TARGET"],
+                      "liquidity_quality": [5.0, 6.0],
+                      "raw_structural_reward_risk": [2.0, 3.0],
+                  }
+              )
+              features = _history_feature_columns(rows)
+              changed = rows.copy()
+              changed["filled"] = [1, 0]
+              changed["net_budget_r"] = [-100.0, 100.0]
+              changed["status"] = ["STOP", "TARGET"]
+              assert features == _history_feature_columns(changed)
+              pd.testing.assert_frame_equal(rows[features], changed[features])
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile \
+            research/yt_trinity_ml/run_causal_action_history.py \
+            research/yt_trinity_ml/run_causal_action_history_full.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_history_feature_contract.py \
+            research/yt_trinity_ml/tests/test_causal_action_history_model.py
+          git rm .github/workflows/yt-trinity-history-feature-contract.yml
+      - name: Wire and commit explicit feature contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/yt-trinity-history-model-screen.yml')
+          text = workflow.read_text()
+          head = text.split('permissions:')[0]
+          if 'test_history_feature_contract.py' not in head:
+              anchor = '      - research/yt_trinity_ml/tests/test_liquidity_identity_time.py\n'
+              if anchor not in text:
+                  anchor = '      - research/yt_trinity_ml/tests/test_causal_action_history_model.py\n'
+              text = text.replace(
+                  anchor,
+                  anchor + '      - research/yt_trinity_ml/tests/test_history_feature_contract.py\n',
+                  1,
+              )
+          body = text[text.index('pytest -q'):]
+          if 'test_history_feature_contract.py' not in body:
+              anchor = '              research/yt_trinity_ml/tests/test_liquidity_identity_time.py \\\n'
+              if anchor not in text:
+                  anchor = '              research/yt_trinity_ml/tests/test_causal_action_history_model.py \\\n'
+              text = text.replace(
+                  anchor,
+                  anchor + '              research/yt_trinity_ml/tests/test_history_feature_contract.py \\\n',
+                  1,
+              )
+          workflow.write_text(text)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/yt-trinity-history-model-screen.yml \
+            research/yt_trinity_ml/run_causal_action_history.py \
+            research/yt_trinity_ml/run_causal_action_history_full.py \
+            research/yt_trinity_ml/tests/test_history_feature_contract.py
+          git commit -m 'Freeze leak-safe explicit-history feature contract'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
