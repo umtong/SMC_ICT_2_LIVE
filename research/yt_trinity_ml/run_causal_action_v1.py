@@ -285,6 +285,28 @@ def _rows(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.DataF
     return pd.DataFrame(rows).sort_values(["activation", "symbol", "action", "exit_variant"], kind="stable").reset_index(drop=True)
 
 
+def _causal_risk_grid(rows: pd.DataFrame) -> tuple[list[float], dict[str, float | None]]:
+    """Explore risk only below the observed pre-2024 single-trade ruin boundary."""
+
+    negative = pd.to_numeric(rows.get("net_budget_r"), errors="coerce")
+    negative = negative[np.isfinite(negative) & (negative < 0)]
+    worst_r = float(negative.min()) if len(negative) else -1.0
+    ruin_boundary = min(1.0, 1.0 / abs(worst_r)) if worst_r < 0 else 1.0
+    upper = max(0.0025, min(0.995, 0.98 * ruin_boundary))
+    if upper <= 0.0025:
+        values = [upper]
+    else:
+        values = np.geomspace(0.0025, upper, num=34).tolist()
+    values.extend([0.005, 0.01, 0.02, 0.04, 0.08, 0.12, 0.20, 0.30, 0.50, 0.75])
+    grid = sorted({float(value) for value in values if 0 < value <= upper + 1e-12})
+    return grid, {
+        "worst_selected_pre2024_net_budget_r": worst_r,
+        "single_trade_ruin_boundary": ruin_boundary,
+        "searched_upper_risk_fraction": upper,
+        "grid_size": float(len(grid)),
+    }
+
+
 def _feature_columns(rows: pd.DataFrame) -> list[str]:
     excluded = {
         "activation", "event_end", "symbol", "action", "exit_variant", "filled",
@@ -428,8 +450,11 @@ def run(args: argparse.Namespace) -> int:
             if base["filled_trades"] < 15 or base["geometric_daily_growth"] <= 0:
                 continue
             best_risk = None
-            for risk_fraction in (0.005, 0.01, 0.02, 0.04, 0.08, 0.12, 0.20):
-                for leverage in (5.0, 10.0, 20.0, 50.0, 100.0):
+            risk_grid, risk_domain = _causal_risk_grid(
+                validation_variant[validation_variant["score"] >= threshold]
+            )
+            for risk_fraction in risk_grid:
+                for leverage in (2.0, 5.0, 10.0, 20.0, 35.0, 50.0, 75.0, 100.0):
                     account = _account(validation_variant, h2_start, pre_end, threshold, risk_fraction, leverage, rule_map)
                     if account["ending_nav"] <= 0:
                         continue
@@ -441,6 +466,7 @@ def run(args: argparse.Namespace) -> int:
                 "base_account_h2": base,
                 "risk_fraction": best_risk[1], "maximum_leverage": best_risk[2],
                 "optimized_account_h2": best_risk[3],
+                "risk_domain": risk_domain,
             })
     if not selections:
         summary = {
