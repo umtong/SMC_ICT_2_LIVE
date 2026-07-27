@@ -1,0 +1,289 @@
+name: YT Trinity 2022 public-source SMC checkpoint
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-pre2024-2022-public-refetch.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pre2024-2022-public-refetch
+  cancel-in-progress: false
+
+jobs:
+  refetch-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout exact unified SMC source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install deterministic runtime
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' \
+            'scikit-learn==1.6.1' 'requests==2.32.4'
+
+      - name: Refetch exact 2022 BTC ETH trade paths and build SMC checkpoint
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          python - <<'PY'
+          from __future__ import annotations
+
+          import gzip
+          import hashlib
+          import json
+          import os
+          import pickle
+          import time
+          from collections import Counter
+          from pathlib import Path
+          from typing import Any
+
+          import numpy as np
+          import pandas as pd
+          import requests
+
+          from system.coarse import CoarseExecutionConfig
+          from system.core import FeatureConfig
+          from system.corpus_alpha import build_corpus_features, generate_corpus_candidates_with_diagnostics
+          from system.research_pipeline import label_event_dataset
+
+          BASE_URL = 'https://api.manepa.jp'
+          START_MS = int(pd.Timestamp('2022-01-01T00:00:00Z').timestamp() * 1000)
+          END_MS = int(pd.Timestamp('2023-01-01T00:00:00Z').timestamp() * 1000)
+          SYMBOLS = ('BTCUSDT', 'ETHUSDT')
+          session = requests.Session()
+          session.headers.update({'User-Agent': 'SMC-ICT-causal-research/2022-refetch'})
+
+          def request_page(params: dict[str, Any]) -> tuple[list[list[str]], str]:
+              error: Exception | None = None
+              for attempt in range(9):
+                  try:
+                      response = session.get(f'{BASE_URL}/v5/market/kline', params=params, timeout=45)
+                      response.raise_for_status()
+                      raw = response.content
+                      payload = response.json()
+                      if payload.get('retCode') != 0:
+                          raise RuntimeError(payload)
+                      rows = payload.get('result', {}).get('list', [])
+                      if not isinstance(rows, list):
+                          raise RuntimeError('non-list kline result')
+                      return rows, hashlib.sha256(raw).hexdigest()
+                  except Exception as exc:
+                      error = exc
+                      if attempt == 8:
+                          raise
+                      time.sleep(min(20.0, 0.75 * (2 ** attempt)))
+              raise RuntimeError(error)
+
+          def fetch_interval(symbol: str, interval: str, step_ms: int) -> tuple[pd.DataFrame, dict[str, Any]]:
+              cursor_end = END_MS - 1
+              records: dict[int, list[str]] = {}
+              page_hashes: list[str] = []
+              page_count = 0
+              while cursor_end >= START_MS:
+                  params = {
+                      'category': 'linear',
+                      'symbol': symbol,
+                      'interval': interval,
+                      'start': START_MS,
+                      'end': cursor_end,
+                      'limit': 1000,
+                  }
+                  rows, digest = request_page(params)
+                  page_count += 1
+                  page_hashes.append(digest)
+                  if not rows:
+                      break
+                  parsed = [(int(row[0]), row) for row in rows if START_MS <= int(row[0]) < END_MS]
+                  if not parsed:
+                      break
+                  for timestamp, row in parsed:
+                      records[timestamp] = row
+                  earliest = min(timestamp for timestamp, _ in parsed)
+                  next_end = earliest - 1
+                  if next_end >= cursor_end:
+                      raise RuntimeError((symbol, interval, cursor_end, earliest))
+                  cursor_end = next_end
+                  if earliest <= START_MS:
+                      break
+                  if page_count % 100 == 0:
+                      print(symbol, interval, 'pages', page_count, 'rows', len(records), 'cursor', cursor_end)
+                  time.sleep(0.025)
+
+              expected = np.arange(START_MS, END_MS, step_ms, dtype=np.int64)
+              actual = np.asarray(sorted(records), dtype=np.int64)
+              if len(actual) != len(expected) or not np.array_equal(actual, expected):
+                  missing = np.setdiff1d(expected, actual)
+                  extra = np.setdiff1d(actual, expected)
+                  raise RuntimeError({
+                      'symbol': symbol,
+                      'interval': interval,
+                      'expected': int(len(expected)),
+                      'actual': int(len(actual)),
+                      'missing_head': missing[:10].tolist(),
+                      'extra_head': extra[:10].tolist(),
+                  })
+              matrix = [records[int(timestamp)] for timestamp in actual]
+              frame = pd.DataFrame(
+                  {
+                      'start_time_ms': actual,
+                      'open': [float(row[1]) for row in matrix],
+                      'high': [float(row[2]) for row in matrix],
+                      'low': [float(row[3]) for row in matrix],
+                      'close': [float(row[4]) for row in matrix],
+                      'volume': [float(row[5]) for row in matrix],
+                      'turnover': [float(row[6]) for row in matrix],
+                  }
+              )
+              frame['bar_start'] = pd.to_datetime(frame['start_time_ms'], unit='ms', utc=True)
+              frame['available_at_ms'] = frame['start_time_ms'] + step_ms
+              frame.index = pd.to_datetime(frame['available_at_ms'], unit='ms', utc=True)
+              frame.index.name = 'decision_time'
+              identity = {
+                  'symbol': symbol,
+                  'interval': interval,
+                  'rows': int(len(frame)),
+                  'first_start_ms': int(actual[0]),
+                  'last_start_ms': int(actual[-1]),
+                  'page_count': page_count,
+                  'page_digest_sha256': hashlib.sha256(''.join(page_hashes).encode('ascii')).hexdigest(),
+                  'frame_digest_sha256': hashlib.sha256(
+                      pd.util.hash_pandas_object(
+                          frame[['start_time_ms', 'open', 'high', 'low', 'close', 'volume', 'turnover']],
+                          index=False,
+                      ).values.tobytes()
+                  ).hexdigest(),
+              }
+              return frame, identity
+
+          decision: dict[str, pd.DataFrame] = {}
+          execution: dict[str, pd.DataFrame] = {}
+          source_identity: dict[str, Any] = {}
+          for symbol in SYMBOLS:
+              one_minute, one_identity = fetch_interval(symbol, '1', 60_000)
+              five_minute, five_identity = fetch_interval(symbol, '5', 300_000)
+              one_minute['mark_close'] = one_minute['close']
+              one_minute['spread_bps'] = np.nan
+              execution[symbol] = one_minute[
+                  ['bar_start', 'open', 'high', 'low', 'close', 'mark_close', 'spread_bps', 'available_at_ms']
+              ].copy()
+              decision[symbol] = five_minute.copy()
+              source_identity[symbol] = {'1m': one_identity, '5m': five_identity}
+
+          candidates = []
+          diagnostics: dict[str, dict[str, int]] = {}
+          feature_shapes: dict[str, Any] = {}
+          for symbol in SYMBOLS:
+              features = build_corpus_features(decision[symbol], FeatureConfig())
+              rows, diag = generate_corpus_candidates_with_diagnostics(features, symbol)
+              candidates.extend(rows)
+              diagnostics[symbol] = diag
+              feature_shapes[symbol] = {
+                  'rows': int(len(features)),
+                  'columns': int(len(features.columns)),
+                  'first_available_at': features.index.min().isoformat(),
+                  'last_available_at': features.index.max().isoformat(),
+              }
+          candidates.sort(key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))
+          labels = label_event_dataset(candidates, execution, CoarseExecutionConfig())
+          labels.to_parquet('output/EVENT_LABELS.parquet', index=False)
+          labels.to_pickle('output/EVENT_LABELS.pkl.gz', compression='gzip')
+          for name, value in {
+              'CANDIDATES.pkl.gz': candidates,
+              'EXECUTION_FRAMES.pkl.gz': execution,
+          }.items():
+              with gzip.open(Path('output') / name, 'wb', compresslevel=6) as handle:
+                  pickle.dump(value, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+          manifest = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage': 'PRE2024_2022_PUBLIC_REFETCH_DEVELOPMENT_NOT_RANKABLE',
+              'source_sha': os.environ['GITHUB_SHA'],
+              'source_base_url': BASE_URL,
+              'evaluation_start': '2022-01-01T00:00:00Z',
+              'evaluation_end_exclusive': '2023-01-01T00:00:00Z',
+              'symbols': list(SYMBOLS),
+              'source_identity': source_identity,
+              'candidate_count': int(len(candidates)),
+              'candidate_family_counts': dict(sorted(Counter(row.family.value for row in candidates).items())),
+              'resolved_label_count': int(len(labels)),
+              'narrative_diagnostics': diagnostics,
+              'feature_shapes': feature_shapes,
+              'official_rank_authority': False,
+          }
+          Path('output/MANIFEST.json').write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+          (cd output && find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS)
+
+      - name: Upload immutable public-source checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-pre2024-2022-public-refetch-${{ github.sha }}
+          path: output
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 30
+
+      - name: Persist public-refetch pointer
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          manifest_path = Path('output/MANIFEST.json')
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'workflow': 'YT Trinity 2022 public-source SMC checkpoint',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+              'job_status': os.environ['JOB_STATUS'],
+              'artifact_name': f"yt-trinity-pre2024-2022-public-refetch-{os.environ['GITHUB_SHA']}",
+              'manifest': json.loads(manifest_path.read_text()) if manifest_path.exists() else None,
+          }
+          Path('/tmp/PRE2024_2022_PUBLIC_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          cp /tmp/PRE2024_2022_PUBLIC_POINTER.json research/yt_trinity_ml/PRE2024_2022_PUBLIC_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/PRE2024_2022_PUBLIC_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record 2022 public-source SMC checkpoint ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
