@@ -216,11 +216,45 @@ def _rows_fast(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.
             round(float(candidate.structural_level), 8),
         )
     market_times: dict[tuple[Any, ...], list[pd.Timestamp]] = {}
+    passive_by_symbol: dict[str, list[EventCandidate]] = {}
     for candidate in candidates:
         if float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5:
             market_times.setdefault(narrative_key(candidate), []).append(pd.Timestamp(candidate.timestamp))
+        if float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5:
+            passive_by_symbol.setdefault(candidate.symbol, []).append(candidate)
     for values in market_times.values():
         values.sort()
+    for values in passive_by_symbol.values():
+        values.sort(key=lambda item: item.timestamp)
+
+    def structural_cancel_at(candidate: EventCandidate) -> pd.Timestamp | None:
+        times = [
+            time for time in market_times.get(narrative_key(candidate), [])
+            if time > candidate.timestamp
+        ]
+        target_tolerance = max(abs(float(candidate.target_reference)) * 1e-8, 1e-12)
+        for later in passive_by_symbol.get(candidate.symbol, []):
+            if later.timestamp <= candidate.timestamp:
+                continue
+            same_draw = abs(float(later.target_reference) - float(candidate.target_reference)) <= target_tolerance
+            stronger_same_side = False
+            if later.side == candidate.side and later.family == candidate.family and same_draw:
+                if candidate.family.value == "LIQUIDITY_SWEEP_REVERSAL":
+                    stronger_same_side = (
+                        float(later.stop_reference) < float(candidate.stop_reference)
+                        if candidate.side > 0
+                        else float(later.stop_reference) > float(candidate.stop_reference)
+                    )
+                else:
+                    stronger_same_side = True
+            opposing_delivery = (
+                later.side == -candidate.side
+                and candidate.side * (float(later.decision_price) - float(candidate.entry_reference)) < 0
+            )
+            if stronger_same_side or opposing_delivery:
+                times.append(pd.Timestamp(later.timestamp))
+        return min(times) if times else None
+
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
         frame = prepared.get(candidate.symbol)
@@ -228,10 +262,7 @@ def _rows_fast(candidates: Sequence[EventCandidate], execution: Mapping[str, pd.
             continue
         for action in ("EARLY_PASSIVE", "CONFIRMED_MARKET"):
             for variant in variants:
-                cancel_at = None
-                if action == "EARLY_PASSIVE":
-                    later = [time for time in market_times.get(narrative_key(candidate), []) if time > candidate.timestamp]
-                    cancel_at = later[0] if later else None
+                cancel_at = structural_cancel_at(candidate) if action == "EARLY_PASSIVE" else None
                 label = _label(
                     candidate, action, variant, frame, indexed_funding, evaluation_end, config, cancel_at
                 )
