@@ -1,0 +1,98 @@
+name: Swipalnam V15 causal evaluation-boundary hotfix
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - .github/workflows/swipalnam-v15-evaluation-boundary-hotfix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: swipalnam-v15-evaluation-boundary-hotfix
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" "scikit-learn>=1.5" "requests>=2.32"
+      - name: Stop all account information exactly at the evaluation boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin "$GITHUB_REF_NAME"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py")
+          text = path.read_text(encoding="utf-8")
+
+          old_entry = '''        if not bool(row.filled):\n            slot_free = min(int(row.order_end_time_ms), end_ms)\n            continue\n\n        direction = int(row.direction)\n'''
+          new_entry = '''        if not bool(row.filled):\n            slot_free = min(int(row.order_end_time_ms), end_ms)\n            continue\n\n        entry_time = int(row.entry_time_ms)\n        if entry_time >= end_ms:\n            # A pre-boundary decision whose limit fills only after the boundary\n            # remains a pending order at the boundary; its future fill is hidden.\n            slot_free = end_ms\n            break\n\n        direction = int(row.direction)\n'''
+          if old_entry in text:
+              text = text.replace(old_entry, new_entry, 1)
+          elif new_entry not in text:
+              raise SystemExit("entry-boundary insertion target missing")
+
+          marker = '''        partial_time, tp1 = v5._partial_event(row, minute)\n'''
+          boundary_block = '''        strategy_exit_time = int(row.exit_time_ms)\n        if strategy_exit_time >= end_ms:\n            # The strategy remains open at the evaluation boundary.  Use only\n            # the executable boundary liquidation value; never its later exit.\n            partial_time, tp1 = v5._partial_event(row, minute)\n            if partial_time is not None and int(partial_time) >= end_ms:\n                partial_time = None\n            partial_fraction = 0.40 if partial_time is not None else 0.0\n            remaining_fraction = 1.0 - partial_fraction\n            boundary_mark = v5._mark_close(minute, end_ms)\n            boundary_impact = impact_rate_uncapped(\n                quantity * remaining_fraction * boundary_mark,\n                turnover_window_causal(minute, end_ms),\n                float(account.impact_bps),\n            )\n            executable_mark = boundary_mark * (\n                1 - direction * (embedded_slippage + boundary_impact)\n            )\n            partial_impact = (\n                impact_rate_uncapped(\n                    quantity * partial_fraction * tp1,\n                    turnover_window_causal(minute, int(partial_time)),\n                    float(account.impact_bps),\n                )\n                if partial_time is not None\n                else 0.0\n            )\n            partial_realized = (\n                quantity * partial_fraction * (tp1 - entry) * direction\n                if partial_time is not None\n                else 0.0\n            )\n            unrealized = (\n                quantity * remaining_fraction * (executable_mark - entry) * direction\n            )\n            gross = partial_realized + unrealized\n            entry_cost = quantity * entry * (fee_rate + entry_impact)\n            partial_cost = quantity * partial_fraction * tp1 * (\n                fee_rate + embedded_slippage + partial_impact\n            )\n            final_cost = quantity * remaining_fraction * executable_mark * fee_rate\n            funding_rate = (\n                float(row.funding) if np.isfinite(float(row.funding)) else 0.0\n            )\n            holding_days = max(0.0, (end_ms - entry_time) / v1.DAY_MS)\n            funding_cost = direction * notional * funding_rate * holding_days * 3.0\n            pnl = gross - entry_cost - partial_cost - final_cost - funding_cost\n            before = nav\n            nav += pnl\n            trades.append(\n                {\n                    "candidate_id": row.candidate_id,\n                    "symbol": row.symbol,\n                    "direction": direction,\n                    "decision_time_ms": decision,\n                    "entry_time_ms": entry_time,\n                    "exit_time_ms": end_ms,\n                    "entry_time": v1.iso_ms(entry_time),\n                    "exit_time": v1.iso_ms(end_ms),\n                    "exit_reason": "open_at_evaluation_end_mark",\n                    "completed": False,\n                    "entry_price": entry,\n                    "exit_price": executable_mark,\n                    "stop_price": stop_quote,\n                    "target_price": float(row.target_price),\n                    "partial_time_ms": partial_time,\n                    "partial_time": v1.iso_ms(partial_time),\n                    "partial_price": tp1 if partial_time is not None else None,\n                    "partial_fraction": partial_fraction,\n                    "remaining_fraction": remaining_fraction,\n                    "quantity": quantity,\n                    "notional": notional,\n                    "effective_leverage": effective_leverage,\n                    "planned_loss": planned_loss,\n                    "gross_pnl": gross,\n                    "entry_cost": entry_cost,\n                    "partial_cost": partial_cost,\n                    "final_cost": final_cost,\n                    "funding_cost": funding_cost,\n                    "net_pnl": pnl,\n                    "realized_r": pnl / max(planned_loss, v1.EPS),\n                    "nav_before": before,\n                    "nav_after": nav,\n                    "ml_score": float(row.ml_score),\n                    "funding_snapshot": funding_rate,\n                    "entry_impact_rate": entry_impact,\n                    "exit_impact_rate": boundary_impact,\n                }\n            )\n            slot_free = end_ms\n            if nav <= 0:\n                liquidation_events += 1\n                nav = 0.0\n            break\n\n        partial_time, tp1 = v5._partial_event(row, minute)\n'''
+          if boundary_block not in text:
+              if marker not in text:
+                  raise SystemExit("open-boundary branch insertion target missing")
+              text = text.replace(marker, boundary_block, 1)
+
+          old_completed = '''                "exit_reason": row.exit_reason,\n                "entry_price": entry,\n'''
+          new_completed = '''                "exit_reason": row.exit_reason,\n                "completed": True,\n                "entry_price": entry,\n'''
+          if old_completed in text:
+              text = text.replace(old_completed, new_completed, 1)
+          elif new_completed not in text:
+              raise SystemExit("completed-trade flag target missing")
+
+          text = text.replace(
+              '        while trade_cursor < len(trades) and int(trades[trade_cursor]["exit_time_ms"]) < boundary:\n',
+              '        while trade_cursor < len(trades) and int(trades[trade_cursor]["exit_time_ms"]) <= boundary:\n',
+              1,
+          )
+          text = text.replace(
+              '    pnl_values = np.array([float(trade["net_pnl"]) for trade in trades], dtype=float)\n',
+              '    completed = [trade for trade in trades if bool(trade.get("completed", True))]\n    pnl_values = np.array([float(trade["net_pnl"]) for trade in completed], dtype=float)\n',
+              1,
+          )
+          text = text.replace(
+              '        "completed_trades": len(trades),\n',
+              '        "completed_trades": len(completed),\n        "open_positions_at_end": int(any(not bool(trade.get("completed", True)) for trade in trades)),\n',
+              1,
+          )
+
+          path.write_text(text, encoding="utf-8")
+          PY
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py --self-test
+      - name: Persist tested boundary fix and remove the one-shot carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v15_dual_auction.py
+          git rm -f .github/workflows/swipalnam-v15-evaluation-boundary-hotfix.yml
+          git commit -m "Fix causal evaluation-boundary account state in V15"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
