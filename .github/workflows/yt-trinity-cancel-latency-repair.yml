@@ -1,0 +1,81 @@
+name: YT Trinity 500ms cancellation latency repair
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-cancel-latency-repair.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-cancel-latency-repair
+  cancel-in-progress: false
+
+jobs:
+  repair-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Verify and repair cancellation activation
+        run: |
+          set -euo pipefail
+          test "$(git hash-object research/yt_trinity_ml/run_causal_action_fast.py)" = "24d68f9634ddfcbf74e245a80ddec7f5c24bc426"
+          test "$(git hash-object research/yt_trinity_ml/tests/test_passive_transition_cancel.py)" = "bfe7e0772d398717a7c73b61cf758768b08f32c3"
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text=path.read_text()
+          old='''        if cancel_at is not None:\n            transition_cancel = int(np.searchsorted(bars.starts_ns, pd.Timestamp(cancel_at).value, side="left"))\n            if transition_cancel >= evaluation_limit:\n                transition_cancel = None\n'''
+          new='''        if cancel_at is not None:\n            cancel_activation = pd.Timestamp(cancel_at) + pd.Timedelta(\n                milliseconds=config.activation_latency_ms\n            )\n            transition_cancel = int(np.searchsorted(\n                bars.starts_ns, cancel_activation.value, side="left"\n            ))\n            if transition_cancel >= evaluation_limit:\n                transition_cancel = None\n'''
+          if old not in text:
+              raise SystemExit('cancel block mismatch')
+          path.write_text(text.replace(old,new,1))
+
+          test=Path('research/yt_trinity_ml/tests/test_passive_transition_cancel.py')
+          text=test.read_text()
+          old='''    assert label.event_end == pd.Timestamp("2023-01-01T00:11:00Z")\n'''
+          new='''    # Confirmation at 00:10 activates cancellation at 00:10:00.500.\n    # With one-minute execution data, the first observable post-latency bar is 00:11,\n    # whose declared availability is 00:12.\n    assert label.event_end == pd.Timestamp("2023-01-01T00:12:00Z")\n'''
+          if old not in text:
+              raise SystemExit('cancel test expectation mismatch')
+          test.write_text(text.replace(old,new,1))
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run causality regression suite
+        run: |
+          set -euo pipefail
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pytest==8.3.5'
+          export PYTHONPATH=research/yt_trinity_ml
+          pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py \
+            research/yt_trinity_ml/tests/test_causal_risk_domain.py \
+            research/yt_trinity_ml/tests/test_causal_action_history_model.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_entry_fill_guard.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested repair
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_causal_action_fast.py research/yt_trinity_ml/tests/test_passive_transition_cancel.py
+          git rm .github/workflows/yt-trinity-cancel-latency-repair.yml
+          git commit -m 'Apply fixed 500ms latency to passive cancellation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
