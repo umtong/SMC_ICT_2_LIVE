@@ -30,6 +30,7 @@ class Action:
     entry_mode: str = 'MARKET_CONFIRM'
     target_cap_r: float | None = None
     partial_r: float | None = None
+    partial_mode: str = "FIXED_R"
     partial_fraction: float = 0.0
     break_even_after_partial: bool = False
     pd_array_failure_exit: bool = False
@@ -59,6 +60,10 @@ def actions() -> list[Action]:
         ('P50_0_5_BE_PDFAIL', None, 0.5, 0.5, True, True),
         ('P50_1_BE', None, 1.0, 0.5, True, False),
         ('P50_1_BE_PDFAIL', None, 1.0, 0.5, True, True),
+        ('INTERNAL50_BE', None, None, 0.5, True, False),
+        ('INTERNAL50_BE_PDFAIL', None, None, 0.5, True, True),
+        ('INTERNAL75_BE', None, None, 0.75, True, False),
+        ('INTERNAL75_BE_PDFAIL', None, None, 0.75, True, True),
     ]
     result: list[Action] = []
     for entry_mode in ('MARKET_CONFIRM', 'LIMIT_PROXIMAL', 'LIMIT_CE', 'LIMIT_DEEP'):
@@ -70,6 +75,7 @@ def actions() -> list[Action]:
                 entry_mode=entry_mode,
                 target_cap_r=cap,
                 partial_r=partial_r,
+                partial_mode=("INTERNAL_TARGET" if name.startswith("INTERNAL") else "FIXED_R"),
                 partial_fraction=fraction,
                 break_even_after_partial=be,
                 pd_array_failure_exit=failure,
@@ -129,7 +135,14 @@ def first_cross(candidate: Candidate, bars: Bars, start: int, limit: float, end:
     return None, 'UNRESOLVED_NO_FILL'
 
 
-def simulate(candidate: Candidate, bars: Bars, action: Action, costs: CostContract, evaluation_end: pd.Timestamp) -> ActionOutcome:
+def simulate(
+    candidate: Candidate,
+    bars: Bars,
+    action: Action,
+    costs: CostContract,
+    evaluation_end: pd.Timestamp,
+    internal_target: float | None = None,
+) -> ActionOutcome:
     activation = candidate.event_start + pd.Timedelta(milliseconds=costs.activation_latency_ms)
     start = int(np.searchsorted(bars.time_ns, activation.value, side='left'))
     end = int(np.searchsorted(bars.time_ns, evaluation_end.value, side='left'))
@@ -186,11 +199,22 @@ def simulate(candidate: Candidate, bars: Bars, action: Action, costs: CostContra
             exit_price = target_fill(target, candidate.side, bars.spread[pos], costs)
             pnl += remaining * (candidate.side * (exit_price - entry) - exit_price * costs.taker_fee_rate)
             return ActionOutcome(candidate.row_id, action.identifier, bars.time[pos], bars.time[entry_pos], bars.time[pos], 'TARGET', pnl / budget, True)
-        if action.partial_r is not None and not partial_hit:
-            level = entry + candidate.side * action.partial_r * stop_distance
-            touched = bars.high[pos] >= level if candidate.side > 0 else bars.low[pos] <= level
+        partial_enabled = action.partial_r is not None or action.partial_mode == "INTERNAL_TARGET"
+        if partial_enabled and not partial_hit:
+            if action.partial_mode == "INTERNAL_TARGET":
+                level = internal_target
+                if level is None or not np.isfinite(float(level)):
+                    level = None
+                elif candidate.side * (float(level) - entry) <= 0 or candidate.side * (target - float(level)) < 0:
+                    level = None
+            else:
+                level = entry + candidate.side * float(action.partial_r) * stop_distance
+            touched = (
+                False if level is None else
+                bars.high[pos] >= float(level) if candidate.side > 0 else bars.low[pos] <= float(level)
+            )
             if touched:
-                exit_price = target_fill(level, candidate.side, bars.spread[pos], costs)
+                exit_price = target_fill(float(level), candidate.side, bars.spread[pos], costs)
                 pnl += action.partial_fraction * (candidate.side * (exit_price - entry) - exit_price * costs.taker_fee_rate)
                 remaining -= action.partial_fraction
                 partial_hit = True
@@ -231,6 +255,7 @@ def model_features(labels: pd.DataFrame, action_rows: pd.DataFrame) -> pd.DataFr
         matrix[f'action_entry_{mode.lower()}'] = action_rows['entry_mode'].eq(mode).astype(float).to_numpy()
     for name in ('target_cap_r', 'partial_r', 'partial_fraction', 'break_even_after_partial', 'pd_array_failure_exit'):
         matrix[f'action_{name}'] = pd.to_numeric(action_rows[name], errors='coerce').fillna(0.0).astype(float).to_numpy()
+    matrix['action_partial_internal_target'] = action_rows['partial_mode'].eq('INTERNAL_TARGET').astype(float).to_numpy()
     return matrix
 
 
@@ -306,13 +331,25 @@ def run(args: argparse.Namespace) -> int:
     labels['event_start'] = pd.to_datetime(labels['event_start'], utc=True)
     labels['event_end'] = pd.to_datetime(labels['event_end'], utc=True)
     candidates = reconstruct_candidates(labels)
+    internal_targets = {
+        int(index): (
+            float(value) if pd.notna(value) and np.isfinite(float(value)) else None
+        )
+        for index, value in labels.get(
+            'execution_internal_target_reference',
+            pd.Series(np.nan, index=labels.index),
+        ).items()
+    }
     bars = {'BTCUSDT': Bars(pd.read_parquet(args.btc_bars)), 'ETHUSDT': Bars(pd.read_parquet(args.eth_bars))}
     costs = CostContract()
     evaluation_end = pd.Timestamp('2024-01-01', tz='UTC')
     rows: list[dict[str, Any]] = []
     for action in actions():
         for candidate in candidates:
-            outcome = simulate(candidate, bars[candidate.symbol], action, costs, evaluation_end)
+            outcome = simulate(
+                candidate, bars[candidate.symbol], action, costs, evaluation_end,
+                internal_target=internal_targets.get(candidate.row_id),
+            )
             rows.append({
                 'candidate_id': candidate.row_id,
                 'event_start': candidate.event_start,
