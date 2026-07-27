@@ -6,6 +6,11 @@ on:
     paths:
       - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v18_density_robust.py
       - .github/workflows/swipalnam-v18-density-robust-evaluation.yml
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v18_density_robust.py
+      - .github/workflows/swipalnam-v18-density-robust-evaluation.yml
   workflow_dispatch:
 
 permissions:
@@ -13,7 +18,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: swipalnam-v18-density-robust-${{ github.ref }}
+  group: swipalnam-v18-density-robust-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 env:
@@ -48,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -212,7 +217,7 @@ jobs:
       - name: Write immutable execution status
         if: always()
         env:
-          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           RUN_ID: ${{ github.run_id }}
           H1_EXIT: ${{ steps.h1.outputs.exit_code }}
           ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
@@ -260,7 +265,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: swipalnam-v18-${{ matrix.cache_suffix }}-${{ github.sha }}
+          name: swipalnam-v18-${{ matrix.cache_suffix }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             ${{ env.H1_RESULT_ROOT }}
             ${{ env.FULL_RESULT_ROOT }}
