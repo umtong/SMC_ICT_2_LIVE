@@ -1,0 +1,86 @@
+name: YT Trinity causal PD-array failure exit
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-pd-array-failure-exit.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pd-array-failure-exit
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Add causal PD-array close invalidation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text=p.read_text()
+          text=text.replace(
+              '    extrema: _RangeExtremaIndex\n',
+              '    extrema: _RangeExtremaIndex\n    close_extrema: _RangeExtremaIndex\n',
+              1,
+          )
+          text=text.replace(
+              '        extrema=_RangeExtremaIndex(low, high),\n',
+              '        extrema=_RangeExtremaIndex(low, high),\n        close_extrema=_RangeExtremaIndex(out["close"].to_numpy(float), out["close"].to_numpy(float)),\n',
+              1,
+          )
+          marker='''    cap = target if abs(target - entry_price) <= 2.0 * risk_distance else entry_price + side * 2.0 * risk_distance\n    effective_target = target if exit_variant == "FULL_STRUCTURAL" else cap\n\n    if side > 0:\n'''
+          replacement='''    cap = target if abs(target - entry_price) <= 2.0 * risk_distance else entry_price + side * 2.0 * risk_distance\n    effective_target = target if exit_variant in {"FULL_STRUCTURAL", "PD_ARRAY_FAILURE"} else cap\n\n    zone_mid_distance = candidate.feature_row.get("zone_midpoint_distance_atr")\n    zone_width_atr = candidate.feature_row.get("zone_width_atr")\n    atr = candidate.feature_row.get("atr")\n    failure_decision = None\n    failure_exit = None\n    if (\n        exit_variant == "PD_ARRAY_FAILURE"\n        and zone_mid_distance is not None\n        and zone_width_atr is not None\n        and atr is not None\n    ):\n        zone_mid = entry_price - float(zone_mid_distance) * float(atr)\n        half_width = 0.5 * float(zone_width_atr) * float(atr)\n        zone_lower = zone_mid - half_width\n        zone_upper = zone_mid + half_width\n        if side > 0:\n            failure_decision = bars.close_extrema.first_low_lt(entry_position, zone_lower)\n        else:\n            failure_decision = bars.close_extrema.first_high_gt(entry_position, zone_upper)\n        if failure_decision is not None and failure_decision < evaluation_limit:\n            failure_exit = failure_decision + 1\n            if failure_exit >= evaluation_limit:\n                failure_exit = None\n\n    if side > 0:\n'''
+          if marker not in text:
+              raise SystemExit('target geometry marker not found')
+          text=text.replace(marker,replacement,1)
+          old='''    if stop_position is not None and (target_position is None or stop_position <= target_position):\n        position = stop_position\n        base = min(bars.opens[position], stop) if side > 0 else max(bars.opens[position], stop)\n        exit_price = v1._market_fill(base, -side, config, stop=True)\n        status = "STOP"\n    elif target_position is not None:\n        position = target_position\n        exit_price = v1._market_fill(effective_target, -side, config)\n        status = "STRUCTURAL_TARGET" if effective_target == target else "CAP_2R"\n    else:\n'''
+          new='''    barrier_position = min(\n        [value for value in (stop_position, target_position) if value is not None],\n        default=None,\n    )\n    if failure_exit is not None and (barrier_position is None or failure_exit < barrier_position):\n        position = failure_exit\n        exit_price = v1._market_fill(bars.opens[position], -side, config)\n        status = "PD_ARRAY_CLOSE_FAILURE"\n    elif stop_position is not None and (target_position is None or stop_position <= target_position):\n        position = stop_position\n        base = min(bars.opens[position], stop) if side > 0 else max(bars.opens[position], stop)\n        exit_price = v1._market_fill(base, -side, config, stop=True)\n        status = "STOP"\n    elif target_position is not None:\n        position = target_position\n        exit_price = v1._market_fill(effective_target, -side, config)\n        status = "STRUCTURAL_TARGET" if effective_target == target else "CAP_2R"\n    else:\n'''
+          if old not in text:
+              raise SystemExit('exit competition block not found')
+          p.write_text(text.replace(old,new,1))
+
+          v1=Path('research/yt_trinity_ml/run_causal_action_v1.py')
+          text=v1.read_text()
+          old='    variants = ("FULL_STRUCTURAL", "CAP_2R", "TP1_50_BE_STRUCT")\n'
+          new='    variants = ("FULL_STRUCTURAL", "CAP_2R", "TP1_50_BE_STRUCT", "PD_ARRAY_FAILURE")\n'
+          if old not in text:
+              raise SystemExit('variant tuple not found')
+          v1.write_text(text.replace(old,new,1))
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/run_causal_action_fast.py
+          git rm .github/workflows/yt-trinity-pd-array-failure-exit.yml
+      - name: Commit PD-array failure exit
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/run_causal_action_fast.py
+          git commit -m 'Exit causally on PD-array close invalidation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
