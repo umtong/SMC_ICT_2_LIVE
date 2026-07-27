@@ -9,16 +9,16 @@ on:
       - .github/workflows/yt-trinity-squeeze-research.yml
 
 permissions:
-  contents: read
-
-concurrency:
-  group: yt-trinity-squeeze-research-${{ github.ref }}
-  cancel-in-progress: false
+  contents: write
 
 env:
   PYTHONUNBUFFERED: "1"
   OMP_NUM_THREADS: "2"
   MKL_NUM_THREADS: "2"
+
+concurrency:
+  group: yt-trinity-squeeze-research-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   research:
@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
 
       - uses: actions/setup-python@v5
@@ -45,24 +45,22 @@ jobs:
       - name: Materialize and verify frozen research source
         run: |
           set -euo pipefail
+          mkdir -p artifact/result
           base64 --decode research/yt_trinity_ml/payloads/squeeze_research.py.gz.b64 \
             | gzip --decompress --stdout > /tmp/run_squeeze_research.py
           echo "ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa  /tmp/run_squeeze_research.py" \
             | sha256sum --check --strict
           python -m py_compile /tmp/run_squeeze_research.py
+          cp /tmp/run_squeeze_research.py artifact/result/SOURCE.py
 
       - name: Download immutable 2023 canonical Bybit shards
         run: |
           set -euo pipefail
           mkdir -p artifact/data artifact/result
-          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt \
-            -O artifact/data/BTCUSDT.zip
-          python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR \
-            -O artifact/data/ETHUSDT.zip
-          python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 \
-            -O artifact/data/SOLUSDT.zip
-          python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk \
-            -O artifact/data/XRPUSDT.zip
+          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt -O artifact/data/BTCUSDT.zip
+          python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR -O artifact/data/ETHUSDT.zip
+          python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 -O artifact/data/SOLUSDT.zip
+          python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk -O artifact/data/XRPUSDT.zip
           cat > artifact/data/SHA256SUMS <<'EOF'
           ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46  BTCUSDT.zip
           87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322  ETHUSDT.zip
@@ -78,21 +76,76 @@ jobs:
 
       - name: Run action-specific causal squeeze evaluation
         run: |
-          set -euo pipefail
-          cp /tmp/run_squeeze_research.py artifact/result/SOURCE.py
+          set +e
           cp dependency-freeze.txt artifact/result/
           set -o pipefail
           python /tmp/run_squeeze_research.py \
             --data-root artifact/data \
             --output artifact/result \
             2>&1 | tee artifact/result/RUN_STDOUT.log
+          code=${PIPESTATUS[0]}
+          echo "$code" > artifact/result/EXIT_CODE.txt
+          exit 0
 
-      - name: Upload immutable research evidence
+      - name: Hash and upload immutable research evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        run: |
+          (cd artifact/result && find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: yt-trinity-squeeze-research-${{ github.sha }}
           path: artifact/result
           if-no-files-found: error
           compression-level: 6
-          retention-days: 30
+          retention-days: 90
+
+      - name: Persist result pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('artifact/result')
+          code=int((root/'EXIT_CODE.txt').read_text().strip()) if (root/'EXIT_CODE.txt').exists() else 99
+          log=(root/'RUN_STDOUT.log').read_text(errors='replace') if (root/'RUN_STDOUT.log').exists() else ''
+          json_files={}
+          for path in sorted(root.glob('*.json')):
+              try: json_files[path.name]=json.loads(path.read_text())
+              except Exception: json_files[path.name]={'parse_error':True,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+          summary=json_files.get('RUN_SUMMARY.json') or json_files.get('SUMMARY.json')
+          pointer={
+              'schema_version':1,
+              'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage':'PRE2024_OI_SQUEEZE_COARSE_NOT_RANKABLE',
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'source_sha':os.environ['GITHUB_SHA'],
+              'frozen_source_sha256':'ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa',
+              'artifact_name':f"yt-trinity-squeeze-research-{os.environ['GITHUB_SHA']}",
+              'status':'success' if code==0 else 'execution_failure_not_economic_failure',
+              'exit_code':code,
+              'summary':summary,
+              'json_outputs':json_files,
+              'stdout_tail':log[-16000:],
+              'ranking_effect':'NONE_PRE2024_NOT_EVENT_TAPE_VALIDATED',
+          }
+          Path('research/yt_trinity_ml/SQUEEZE_RESEARCH_POINTER.json').write_text(json.dumps(pointer,ensure_ascii=False,indent=2,sort_keys=True,default=str)+'\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/SQUEEZE_RESEARCH_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record OI squeeze research ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then break; fi
+              sleep $((attempt*3))
+            done
+          fi
+
+      - name: Fail after evidence preservation
+        if: always()
+        run: test "$(cat artifact/result/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0
