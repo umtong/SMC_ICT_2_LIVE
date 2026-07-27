@@ -114,3 +114,24 @@ def test_unfitted_conditional_heads_preserve_distribution_fallback() -> None:
     assert scored.market_winner_net_r == 1.75
     assert scored.market_loser_net_r == -0.90
     assert np.isclose(scored.expected_net_r, 0.60 * 1.75 + 0.40 * -0.90)
+
+
+def test_unfitted_fill_calibrator_uses_raw_fill_probability() -> None:
+    model = ChronologicalEventModel(ModelConfig(lower_confidence_penalty=0.0))
+    model.feature_names = ["raw_reward_risk"]
+    model.win_model = _FixedClassifier(0.60)
+    model.calibrator = _IdentityCalibrator()
+    model.r_model = _FixedRegressor(0.5)
+    model.fill_model = _FixedClassifier(0.37)
+    model._fill_calibrator_fitted = False
+    model._fitted = True
+
+    scored = model.score(
+        _candidate(2.0),
+        risk_fraction=0.01,
+        winner_net_r=1.5,
+        loser_net_r=-1.0,
+        fixed_cost_fraction=0.0,
+    )
+
+    assert np.isclose(scored.passive_fill_probability, 0.37)
