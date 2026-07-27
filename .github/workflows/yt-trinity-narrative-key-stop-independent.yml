@@ -1,0 +1,129 @@
+name: YT Trinity stop-independent narrative transition key
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-narrative-key-stop-independent.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-narrative-key-stop-independent
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Remove stop action from narrative identity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text = path.read_text()
+          old = '''        return (\n            candidate.symbol, candidate.family.value, candidate.side,\n            round(float(candidate.stop_reference), 8),\n            round(float(candidate.target_reference), 8),\n            round(float(candidate.structural_level), 8),\n        )\n'''
+          new = '''        return (\n            candidate.symbol,\n            candidate.family.value,\n            candidate.side,\n            round(float(candidate.target_reference), 8),\n            round(float(candidate.structural_level), 8),\n        )\n'''
+          if old not in text:
+              raise SystemExit('narrative key marker missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          cat >> research/yt_trinity_ml/tests/test_passive_transition_cancel.py <<'PY'
+
+
+def test_confirmation_cancels_same_narrative_with_alternative_stop() -> None:
+    from run_causal_action_fast import _rows_fast
+
+    passive = EventCandidate(
+        timestamp=pd.Timestamp("2023-01-01T00:05:00Z"),
+        symbol="BTCUSDT",
+        family=EventFamily.LIQUIDITY_SWEEP_REVERSAL,
+        side=1,
+        decision_price=102.0,
+        entry_reference=100.0,
+        stop_reference=99.0,
+        target_reference=108.0,
+        structural_level=98.5,
+        feature_row={
+            "action_candidate_early_passive": 1.0,
+            "action_candidate_confirmed_market": 0.0,
+            "atr": 1.0,
+        },
+    )
+    market = EventCandidate(
+        timestamp=pd.Timestamp("2023-01-01T00:10:00Z"),
+        symbol="BTCUSDT",
+        family=EventFamily.LIQUIDITY_SWEEP_REVERSAL,
+        side=1,
+        decision_price=102.5,
+        entry_reference=102.5,
+        stop_reference=97.5,
+        target_reference=108.0,
+        structural_level=98.5,
+        feature_row={
+            "action_candidate_early_passive": 0.0,
+            "action_candidate_confirmed_market": 1.0,
+            "atr": 1.0,
+        },
+    )
+    starts = pd.date_range("2023-01-01T00:05:00Z", periods=20, freq="1min")
+    available = starts + pd.Timedelta(minutes=1)
+    frame = pd.DataFrame(
+        {
+            "bar_start": starts,
+            "available_at": available,
+            "open": 102.0,
+            "high": 103.0,
+            "low": 101.0,
+            "close": 102.0,
+        },
+        index=available,
+    )
+    rows = _rows_fast(
+        [passive, market],
+        {"BTCUSDT": frame},
+        {},
+        pd.Timestamp("2023-01-02T00:00:00Z"),
+        ("FULL_STRUCTURAL",),
+        ScreenConfig(),
+    )
+    passive_row = rows[rows["action"].eq("EARLY_PASSIVE")].iloc[0]
+    assert passive_row["status"] == "CANCELLED_ON_CONFIRMED_TRANSITION"
+    assert pd.Timestamp(passive_row["event_end"]) == pd.Timestamp(
+        "2023-01-01T00:10:00.500Z"
+    )
+PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/run_causal_action_fast.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py
+          git rm .github/workflows/yt-trinity-narrative-key-stop-independent.yml
+      - name: Commit stop-independent narrative key
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py
+          git commit -m 'Match state transitions across stop actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
