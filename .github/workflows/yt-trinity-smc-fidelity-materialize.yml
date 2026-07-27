@@ -1,6 +1,10 @@
 name: YT Trinity SMC fidelity atomic materialization
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-smc-fidelity-materialize.yml
   push:
     branches:
       - agent/r22-yt-trinity-ml-001
