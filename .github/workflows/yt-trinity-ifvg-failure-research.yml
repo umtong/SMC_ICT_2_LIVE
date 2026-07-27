@@ -1,0 +1,176 @@
+name: YT Trinity failed displacement IFVG screen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/POOLED_TRINITY_RUN_POINTER.json
+      - research/yt_trinity_ml/FULL_SEQUENTIAL_COARSE_POINTER.json
+      - research/yt_trinity_ml/run_ifvg_failure_research.py
+      - .github/workflows/yt-trinity-ifvg-failure-research.yml
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: yt-trinity-ifvg-failure-research-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+      reason: ${{ steps.gate.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - id: gate
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          target_decisions = {
+              'TARGET_EXCEEDED_COARSE_EVENT_TAPE_REQUIRED',
+              'TARGET_POSSIBLE_ONLY_WITH_EXECUTION_EDGE_EVENT_TAPE_REQUIRED',
+          }
+          acceptable_parent = {
+              'NO_PRE2024_POSITIVE_FAMILY_SWITCH_ALPHA',
+              'ECONOMIC_FAIL_SWITCH_ALPHA',
+              'H1_STRUCTURALLY_WEAK_SWITCH_ALPHA',
+              'POSITIVE_BUT_ZERO_COST_BELOW_TARGET_SWITCH_ALPHA',
+              'OFFICIAL_FULL_PERIOD_ECONOMIC_FAIL_SWITCH_ALPHA',
+              'ALL_THREE_ECONOMIC_FAIL_SWITCH_ALPHA',
+          }
+          decisions = {}
+          for filename in ('POOLED_TRINITY_RUN_POINTER.json', 'FULL_SEQUENTIAL_COARSE_POINTER.json'):
+              path = Path('research/yt_trinity_ml') / filename
+              if path.exists():
+                  payload = json.loads(path.read_text(encoding='utf-8'))
+                  decisions[filename] = str(payload.get('decision') or 'MISSING_DECISION')
+          any_target = any(value in target_decisions for value in decisions.values())
+          pooled = decisions.get('POOLED_TRINITY_RUN_POINTER.json')
+          full = decisions.get('FULL_SEQUENTIAL_COARSE_POINTER.json')
+          authorized = not any_target and (
+              pooled in acceptable_parent or full in acceptable_parent
+          )
+          reason = json.dumps(decisions, sort_keys=True, separators=(',', ':'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"authorized={'true' if authorized else 'false'}\n")
+              handle.write(f"reason={reason}\n")
+          print(json.dumps({'authorized': authorized, 'decisions': decisions}, indent=2))
+          PY
+
+  screen:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install and test causal stack
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
+          python -m py_compile \
+            research/yt_trinity_ml/run_cisd_bpr_ifvg_research.py \
+            research/yt_trinity_ml/run_ifvg_failure_research.py \
+            research/yt_trinity_ml/system/*.py
+          pytest -q research/yt_trinity_ml/tests
+      - uses: actions/cache@v4
+        with:
+          path: artifact/bybit-cache
+          key: yt-trinity-bybit-linear-1m-20220101-20240701-v1
+      - name: Run fixed failed-displacement pre-2024 screen
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -o pipefail
+          mkdir -p artifact/bybit-cache artifact/ifvg-failure-run
+          python research/yt_trinity_ml/run_ifvg_failure_research.py \
+            --cache-dir artifact/bybit-cache \
+            --output artifact/ifvg-failure-run \
+            --data-start 2022-01-01T00:00:00Z \
+            --pre2024-start 2023-01-01T00:00:00Z \
+            --official-start 2024-01-01T00:00:00Z \
+            --official-end-exclusive 2024-07-01T00:00:00Z \
+            2>&1 | tee artifact/ifvg-failure-run/STDOUT.log
+      - name: Hash run evidence
+        if: always()
+        run: |
+          if [[ -d artifact/ifvg-failure-run ]]; then
+            (
+              cd artifact/ifvg-failure-run
+              find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-ifvg-failure-${{ github.sha }}
+          path: artifact/ifvg-failure-run
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact route pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          summary_path = Path('artifact/ifvg-failure-run/RUN_SUMMARY.json')
+          summary = json.loads(summary_path.read_text(encoding='utf-8')) if summary_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity failed displacement IFVG screen',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-ifvg-failure-{os.environ['GITHUB_SHA']}",
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
+              'decision': summary.get('decision') if isinstance(summary, dict) else 'EXECUTION_FAILED_NO_SUMMARY',
+              'candidate_count': summary.get('candidate_count') if isinstance(summary, dict) else None,
+              'action_label_count': summary.get('action_label_count') if isinstance(summary, dict) else None,
+              'selected_basic': summary.get('selected_basic') if isinstance(summary, dict) else None,
+              'selected_risk': summary.get('selected_risk') if isinstance(summary, dict) else None,
+              'official_2024h1': summary.get('official_2024h1') if isinstance(summary, dict) else None,
+              'rankable': False,
+          }
+          Path('research/yt_trinity_ml/IFVG_FAILURE_RUN_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/IFVG_FAILURE_RUN_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record failed-displacement IFVG screen ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+  skip:
+    needs: authorize
+    if: needs.authorize.outputs.authorized != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'IFVG failure route blocked because a target-path survivor exists or parent results are incomplete.' >> "$GITHUB_STEP_SUMMARY"
