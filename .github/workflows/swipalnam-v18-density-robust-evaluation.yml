@@ -1,0 +1,280 @@
+name: Swipalnam V18 density robust causal evaluation
+
+on:
+  push:
+    branches: [agent/r23-swipalnam-liquidity-delivery-ml-001]
+    paths:
+      - research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v18_density_robust.py
+      - .github/workflows/swipalnam-v18-density-robust-evaluation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: swipalnam-v18-density-robust-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTHONHASHSEED: "0"
+  CANONICAL_ROOT: artifact/canonical
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  evaluate:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - universe: BTCETH
+            symbols: "BTCUSDT ETHUSDT"
+            minimum_candidates: 45
+            cache_suffix: btceth
+          - universe: FOUR_SYMBOL
+            symbols: "BTCUSDT ETHUSDT SOLUSDT XRPUSDT"
+            minimum_candidates: 70
+            cache_suffix: four-symbol
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    env:
+      H1_RESULT_ROOT: artifact/swipalnam_v18_${{ matrix.cache_suffix }}_h1
+      FULL_RESULT_ROOT: artifact/swipalnam_v18_${{ matrix.cache_suffix }}_full
+      STATUS_ROOT: artifact/swipalnam_v18_${{ matrix.cache_suffix }}_status
+      SYMBOLS: ${{ matrix.symbols }}
+      MINIMUM_CANDIDATES: ${{ matrix.minimum_candidates }}
+      UNIVERSE: ${{ matrix.universe }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy>=1.26" "pandas>=2.2" "pyarrow>=16" \
+            "scikit-learn>=1.5" "requests>=2.32"
+
+      - name: Compile and prove V18 causal invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python -m py_compile research/swipalnam_smc_ml/experiments/liquidity_delivery_ml*.py
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v18_density_robust.py --self-test
+
+      - name: Restore reusable canonical cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical
+          key: swipalnam-v18-${{ matrix.cache_suffix }}-2023-2026h1-${{ hashFiles('data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+
+      - name: Restore pre-2024 and 2024H1 canonical shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            for symbol in $SYMBOLS; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                > "$shard/RESEARCH_VERIFICATION_V18.json"
+            done
+          done
+
+      - name: Run pre-2024 selection and causal 2024H1 evaluation
+        id: h1
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$H1_RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v18_density_robust.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$H1_RESULT_ROOT" \
+            --symbols $SYMBOLS \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2024-07-01T00:00:00Z \
+            --minimum-candidates "$MINIMUM_CANDIDATES" \
+            2>&1 | tee "$H1_RESULT_ROOT/STDOUT.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Decide continuous full-period replay
+        id: advance
+        if: steps.h1.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          summary = json.loads((Path(os.environ["H1_RESULT_ROOT"]) / "RUN_SUMMARY.json").read_text())
+          metrics = summary.get("evaluation_metrics") or summary.get("provisional_2024h1_metrics") or {}
+          advance = (
+              int(metrics.get("completed_trades") or 0) >= 20
+              and int(metrics.get("liquidation_events") or 0) == 0
+              and float(metrics.get("final_nav") or 0) > 0
+          )
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"run_full={'true' if advance else 'false'}\n")
+          print(json.dumps({"universe": os.environ["UNIVERSE"], "advance_full": advance, "h1": metrics}, indent=2))
+          PY
+
+      - name: Restore remaining evaluation shards
+        if: steps.advance.outputs.run_full == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in $SYMBOLS; do
+              shard="$CANONICAL_ROOT/$segment/$symbol"
+              if [[ ! -f "$shard/DATASET_MANIFEST.json" ]]; then
+                python research/swipalnam_smc_ml/tools/restore_canonical_artifact.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --destination-root "$CANONICAL_ROOT" || \
+                python scripts/market_data/build_canonical_bybit.py \
+                  --segment "$segment" \
+                  --symbol "$symbol" \
+                  --base-url "$BYBIT_PUBLIC_BASE_URL" \
+                  --timeout 30 \
+                  --max-attempts 8 \
+                  --min-request-interval 0.10 \
+                  --out "$CANONICAL_ROOT"
+              fi
+              python scripts/market_data/verify_canonical_bybit.py "$shard" \
+                > "$shard/RESEARCH_VERIFICATION_V18.json"
+            done
+          done
+
+      - name: Run one continuous 2024 through 2026H1 NAV path
+        id: full
+        if: steps.advance.outputs.run_full == 'true'
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$FULL_RESULT_ROOT"
+          python research/swipalnam_smc_ml/experiments/liquidity_delivery_ml_v18_density_robust.py \
+            --data-root "$CANONICAL_ROOT" \
+            --output "$FULL_RESULT_ROOT" \
+            --symbols $SYMBOLS \
+            --train-segments PRE_2024_2023 \
+            --evaluation-segments 2024_H1 2024_H2 2025_H1 2025_H2 2026_H1 \
+            --train-start 2023-01-01T00:00:00Z \
+            --train-end-exclusive 2024-01-01T00:00:00Z \
+            --evaluation-start 2024-01-01T00:00:00Z \
+            --evaluation-end-exclusive 2026-07-01T00:00:00Z \
+            --minimum-candidates "$MINIMUM_CANDIDATES" \
+            2>&1 | tee "$FULL_RESULT_ROOT/STDOUT.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Write immutable execution status
+        if: always()
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          H1_EXIT: ${{ steps.h1.outputs.exit_code }}
+          ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
+          FULL_EXIT: ${{ steps.full.outputs.exit_code }}
+        shell: bash
+        run: |
+          mkdir -p "$STATUS_ROOT"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def tail(root):
+              path = Path(root) / "STDOUT.log"
+              if not path.exists():
+                  return "log_missing"
+              return "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[-160:])[-24000:]
+
+          h1_summary = Path(os.environ["H1_RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          full_summary = Path(os.environ["FULL_RESULT_ROOT"]) / "RUN_SUMMARY.json"
+          payload = {
+              "schema_version": 18,
+              "system_id": "SYS-SWIPALNAM-LIQUIDITY-DELIVERY-ML-V18-DENSITY-ROBUST",
+              "universe": os.environ["UNIVERSE"],
+              "symbols": os.environ["SYMBOLS"].split(),
+              "source_sha": os.environ["SOURCE_SHA"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "h1_exit_code": os.environ.get("H1_EXIT"),
+              "h1_summary_present": h1_summary.exists(),
+              "advance_full": os.environ.get("ADVANCE_FULL") == "true",
+              "full_exit_code": os.environ.get("FULL_EXIT"),
+              "full_summary_present": full_summary.exists(),
+          }
+          if not h1_summary.exists():
+              payload["h1_failure_tail"] = tail(os.environ["H1_RESULT_ROOT"])
+          if payload["advance_full"] and not full_summary.exists():
+              payload["full_failure_tail"] = tail(os.environ["FULL_RESULT_ROOT"])
+          (Path(os.environ["STATUS_ROOT"]) / "EXECUTION_STATUS.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload immutable V18 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swipalnam-v18-${{ matrix.cache_suffix }}-${{ github.sha }}
+          path: |
+            ${{ env.H1_RESULT_ROOT }}
+            ${{ env.FULL_RESULT_ROOT }}
+            ${{ env.STATUS_ROOT }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Enforce executable outcome
+        if: always()
+        env:
+          H1_EXIT: ${{ steps.h1.outputs.exit_code }}
+          ADVANCE_FULL: ${{ steps.advance.outputs.run_full }}
+          FULL_EXIT: ${{ steps.full.outputs.exit_code }}
+        run: |
+          if [[ "${H1_EXIT:-1}" != "0" ]]; then exit 1; fi
+          if [[ "${ADVANCE_FULL:-false}" == "true" && "${FULL_EXIT:-1}" != "0" ]]; then exit 1; fi
