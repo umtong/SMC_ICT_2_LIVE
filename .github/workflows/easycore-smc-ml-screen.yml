@@ -1,0 +1,195 @@
+name: EasyCore SMC ICT ML causal screen
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - research/easycore_smc_ml/easycore_smc_ml.py
+      - research/easycore_smc_ml/README.md
+      - .github/workflows/easycore-smc-ml-screen.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: easycore-smc-ml-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+  WORK_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+
+jobs:
+  causal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORK_BRANCH }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pinned research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q ".[dev]" "scikit-learn==1.6.1"
+
+      - name: Compile and test causal invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile research/easycore_smc_ml/easycore_smc_ml.py
+          python research/easycore_smc_ml/easycore_smc_ml.py --self-test
+
+      - name: Restore canonical core-data cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/cache
+          key: easycore-bybit-btc-2023-2024h1-v1-${{ hashFiles('scripts/market_data/*.py', 'data/contracts/canonical_bybit_usdt_linear_v1.json') }}
+
+      - name: Materialize only missing canonical BTC shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          for segment in PRE_2024_2023 2024_H1; do
+            manifest="artifact/cache/${segment}/BTCUSDT/DATASET_MANIFEST.json"
+            if [[ -s "$manifest" ]]; then
+              echo "reuse $manifest"
+              continue
+            fi
+            python scripts/market_data/build_canonical_bybit.py \
+              --segment "$segment" \
+              --symbol BTCUSDT \
+              --base-url "$BYBIT_PUBLIC_BASE_URL" \
+              --timeout 30 \
+              --max-attempts 10 \
+              --min-request-interval 0.09 \
+              --out artifact/cache
+            python scripts/market_data/verify_canonical_bybit.py \
+              "artifact/cache/${segment}/BTCUSDT" \
+              | tee "artifact/cache/${segment}/BTCUSDT/VERIFICATION.json"
+          done
+
+      - name: Run pre-2024 selection and causal 2024H1 evaluation
+        env:
+          PYTHONPATH: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifact/easycore
+          mkdir -p artifact/easycore
+          python research/easycore_smc_ml/easycore_smc_ml.py \
+            --data-root artifact/cache \
+            --output artifact/easycore \
+            --symbol BTCUSDT \
+            --train-segment PRE_2024_2023 \
+            --eval-segment 2024_H1 \
+            --taker-fee-bps 6.0 \
+            --slippage-bps 2.0 \
+            2>&1 | tee artifact/easycore/SCREEN_STDOUT.log
+
+      - name: Publish compact job summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          p = Path("artifact/easycore/RUN_SUMMARY.json")
+          if not p.exists():
+              raise SystemExit("RUN_SUMMARY.json missing")
+          s = json.loads(p.read_text())
+          w = s.get("winner") or {}
+          port = (w.get("selected_portfolio") or {}).get("result") or {}
+          lines = [
+              "## EasyCore SMC/ICT ML causal screen",
+              f"- result: `{s.get('result_id')}`",
+              f"- decision: `{s.get('decision')}`",
+              f"- pre-2024 selected rule: `{w.get('config_id')}`",
+              f"- 2024H1 geometric daily growth: `{port.get('geometric_daily_growth')}`",
+              f"- 2024H1 account multiple: `{port.get('account_multiple')}`",
+              f"- 2024H1 maximum drawdown: `{port.get('max_drawdown')}`",
+              f"- completed trades: `{port.get('completed_trades')}`",
+          ]
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as fh:
+              fh.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload immutable screen evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: easycore-smc-ml-${{ github.sha }}
+          path: artifact/easycore
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist recoverable result pointer
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -s artifact/easycore/RUN_SUMMARY.json ]]; then
+            exit 0
+          fi
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          src = Path("artifact/easycore/RUN_SUMMARY.json")
+          summary = json.loads(src.read_text())
+          winner = summary.get("winner") or {}
+          result = (winner.get("selected_portfolio") or {}).get("result") or {}
+          pointer = {
+              "schema_version": 1,
+              "claim_id": summary.get("claim_id"),
+              "system_id": summary.get("system_id"),
+              "result_id": summary.get("result_id"),
+              "decision": summary.get("decision"),
+              "selected_rule_config": winner.get("config_id"),
+              "selected_risk_fraction": (winner.get("selected_portfolio") or {}).get("risk_fraction"),
+              "selected_leverage": (winner.get("selected_portfolio") or {}).get("leverage"),
+              "metrics_2024h1": {
+                  key: result.get(key)
+                  for key in (
+                      "initial_nav", "final_nav", "account_multiple",
+                      "geometric_daily_growth", "max_drawdown", "completed_trades",
+                      "win_rate", "profit_factor", "top5_profit_concentration",
+                      "liquidations",
+                  )
+              },
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"easycore-smc-ml-{os.environ['GITHUB_SHA']}",
+              "summary_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+          }
+          out = Path("research/easycore_smc_ml/RUN_POINTER.json")
+          out.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/easycore_smc_ml/RUN_POINTER.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record EasyCore SMC ML screen ${GITHUB_RUN_ID} [skip ci]"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${WORK_BRANCH}"
+            if git push origin "HEAD:${WORK_BRANCH}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
