@@ -55,6 +55,8 @@ class _NarrativeState:
     swept_level_count: int
     sweep_depth_atr: float
     liquidity_quality: int
+    ob_search_start: int | None = None
+    raid_reclaimed_same_bar: bool = False
     phase: str = "AWAIT_DISPLACEMENT"
     confirmation_pos: int | None = None
     zone_lower: float | None = None
@@ -69,8 +71,10 @@ class _NarrativeState:
     fvg_width_atr: float = 0.0
     ob_width_atr: float = 0.0
     first_retest_pos: int | None = None
+    mitigation_count: int = 0
     retest_trigger: float | None = None
     retest_extreme: float | None = None
+    entry_confirmation_kind: int = 0
     path_high: float = -np.inf
     path_low: float = np.inf
 
@@ -88,10 +92,32 @@ def _bump(diagnostics: Counter[str] | None, key: str, amount: int = 1) -> None:
 
 
 def _numeric_row(row: pd.Series) -> dict[str, float]:
+    """Return only causal, scale-free context for the pooled cross-symbol ML model.
+
+    Absolute OHLC, raw volume and price-level columns let a pooled tree identify the
+    instrument and calendar regime instead of learning SMC setup quality. Structural
+    distances are added separately in ATR/R units below.
+    """
+
+    raw_exact = {
+        "open", "high", "low", "close", "volume", "turnover", "trade_count",
+        "buy_volume", "sell_volume", "open_interest", "mark_price", "index_price",
+    }
+    raw_suffixes = (
+        "_price", "_level", "_lower", "_upper", "_equilibrium",
+        "_high", "_low", "_open", "_close", "_volume", "_turnover",
+        "_trade_count", "_open_interest",
+    )
     result: dict[str, float] = {}
     for key, value in row.items():
-        if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(value):
-            result[str(key)] = float(value)
+        name = str(key)
+        if not isinstance(value, (int, float, np.integer, np.floating)) or not np.isfinite(value):
+            continue
+        if name in raw_exact or "timestamp" in name or name.endswith(("_ns", "_ms")):
+            continue
+        if name.endswith(raw_suffixes):
+            continue
+        result[name] = float(value)
     return result
 
 
@@ -368,9 +394,11 @@ def _liquidity_pools(row: pd.Series, high: bool, atr: float, tolerance_atr: floa
 
 
 def _pool_key(pool: _LiquidityPool) -> tuple[str, float]:
-    # Pool source labels can gain confluence later; consumption identity is price-based.
-    # Log-price quantization is scale-free across BTC, ETH, SOL and XRP.
-    return "LEVEL", round(float(np.log(pool.price)), 4)
+    # A touch of an internal swing must not permanently consume a later PDH/PWH or
+    # session pool merely because it formed at approximately the same price. Keep
+    # source provenance and use fine scale-free log-price quantization.
+    provenance = "+".join(sorted(part for part in pool.kind.split("+") if part)) or "LEVEL"
+    return provenance, round(float(np.log(pool.price)), 6)
 
 
 def _select_draw_target(
@@ -449,7 +477,11 @@ def _choose_pd_array(
 ) -> tuple[float, float, int, float, float] | None:
     row = features.iloc[pos]
     fvg = _fvg_zone(row, state.side)
-    ob_start = state.created_pos if state.created_pos < pos else max(0, pos - 12)
+    if state.ob_search_start is not None:
+        ob_start = int(state.ob_search_start)
+    else:
+        ob_start = state.created_pos if state.created_pos < pos else max(0, pos - 12)
+    ob_start = max(0, min(ob_start, max(0, pos - 1)))
     ob = _order_block_zone(features, ob_start, pos, state.side)
     fvg_width = ((fvg[1] - fvg[0]) / atr) if fvg else 0.0
     ob_width = ((ob[1] - ob[0]) / atr) if ob else 0.0
@@ -519,7 +551,15 @@ def _setup_features(
             "sweep_depth_atr": float(state.sweep_depth_atr),
             "swept_level_count": float(state.swept_level_count),
             "liquidity_quality": float(state.liquidity_quality),
+            "raid_reclaimed_same_bar": float(state.raid_reclaimed_same_bar),
             "draw_target_quality": float(state.draw_target_quality),
+            "ob_search_age_bars": float(
+                max(
+                    0,
+                    int(state.confirmation_pos or pos)
+                    - int(state.ob_search_start if state.ob_search_start is not None else state.created_pos),
+                )
+            ),
             "confirmation_body_atr": float(state.confirmation_body_atr),
             "confirmation_volume_z": float(state.confirmation_volume_z),
             "displacement_efficiency_at_confirmation": float(state.displacement_efficiency),
@@ -531,6 +571,8 @@ def _setup_features(
             "impulse_range_position": float(range_position),
             "retest_depth_fraction": float(retest_depth),
             "retest_wait_bars": float(pos - int(state.first_retest_pos or pos)),
+            "mitigation_count": float(state.mitigation_count),
+            "entry_confirmation_kind": float(state.entry_confirmation_kind),
             "stop_distance_atr": stop_distance / atr,
             "target_distance_atr": target_distance / atr,
             "raw_structural_reward_risk": target_distance / max(stop_distance, 1e-12),
@@ -582,7 +624,9 @@ def _entry_confirmation(
     row: pd.Series,
     previous: pd.Series,
     config: CorpusAlphaConfig,
-) -> bool:
+) -> int:
+    """Return 0=no entry, 1=zone rejection, 2=later CISD confirmation."""
+
     midpoint = (float(state.zone_lower) + float(state.zone_upper)) / 2.0
     close = float(row["close"])
     body = float(row.get("body_atr", 0.0)) if _finite(row.get("body_atr")) else 0.0
@@ -594,14 +638,18 @@ def _entry_confirmation(
             and close > max(float(state.retest_trigger or midpoint), float(previous["high"]))
             and body > 0
         )
-        return bool(same_bar_rejection or later_cisd)
-    same_bar_rejection = close < float(state.zone_lower) and body < 0 and location <= 1.0 - config.entry_close_location
-    later_cisd = (
-        state.first_retest_pos is not None
-        and close < min(float(state.retest_trigger or midpoint), float(previous["low"]))
-        and body < 0
-    )
-    return bool(same_bar_rejection or later_cisd)
+    else:
+        same_bar_rejection = close < float(state.zone_lower) and body < 0 and location <= 1.0 - config.entry_close_location
+        later_cisd = (
+            state.first_retest_pos is not None
+            and close < min(float(state.retest_trigger or midpoint), float(previous["low"]))
+            and body < 0
+        )
+    if same_bar_rejection:
+        return 1
+    if later_cisd:
+        return 2
+    return 0
 
 
 def _arm_displacement(
@@ -690,6 +738,7 @@ def _process_state(
     tolerance = config.retest_tolerance_atr * atr
     touched = float(row["low"]) <= float(state.zone_upper) + tolerance and float(row["high"]) >= float(state.zone_lower) - tolerance
     if touched:
+        state.mitigation_count += 1
         if state.first_retest_pos is None:
             state.first_retest_pos = pos
             _bump(diagnostics, "pd_array_first_mitigations")
@@ -708,10 +757,16 @@ def _process_state(
 
     if state.first_retest_pos is None:
         return state, None
-    if _entry_confirmation(state, row, previous, config):
+    confirmation_kind = _entry_confirmation(state, row, previous, config)
+    if confirmation_kind:
+        state.entry_confirmation_kind = confirmation_kind
         event = _event_from_state(state, row, timestamp, symbol, pos)
         if event is not None:
             _bump(diagnostics, "entry_confirmations")
+            _bump(
+                diagnostics,
+                "zone_rejection_entries" if confirmation_kind == 1 else "later_cisd_entries",
+            )
         return None, event
     return state, None
 
@@ -734,14 +789,12 @@ def _new_reversal_states(
         for pool in high_pools
         if _pool_key(pool) not in consumed_high
         and float(row["high"]) > pool.price + buffer
-        and float(row["close"]) < pool.price
     ]
     swept_lows = [
         pool
         for pool in low_pools
         if _pool_key(pool) not in consumed_low
         and float(row["low"]) < pool.price - buffer
-        and float(row["close"]) > pool.price
     ]
     if swept_highs and swept_lows:
         _bump(diagnostics, "ambiguous_two_sided_raid_bars")
@@ -778,6 +831,7 @@ def _new_reversal_states(
                     swept_level_count=sum(pool.confluence for pool in swept_highs),
                     sweep_depth_atr=(float(row["high"]) - selected.price) / atr,
                     liquidity_quality=selected.quality,
+                    raid_reclaimed_same_bar=bool(float(row["close"]) < selected.price),
                     stop=float(row["high"] + config.stop_buffer_atr * atr),
                     path_high=float(row["high"]),
                     path_low=float(row["low"]),
@@ -809,6 +863,7 @@ def _new_reversal_states(
                     swept_level_count=sum(pool.confluence for pool in swept_lows),
                     sweep_depth_atr=(selected.price - float(row["low"])) / atr,
                     liquidity_quality=selected.quality,
+                    raid_reclaimed_same_bar=bool(float(row["close"]) > selected.price),
                     stop=float(row["low"] - config.stop_buffer_atr * atr),
                     path_high=float(row["high"]),
                     path_low=float(row["low"]),
@@ -816,6 +871,24 @@ def _new_reversal_states(
             )
             _bump(diagnostics, "reversal_narratives_armed")
     return states
+
+
+def _last_level_origin_pos(
+    features: pd.DataFrame,
+    pos: int,
+    value: float,
+    side: int,
+) -> int:
+    """Locate the protected swing that owns a continuation OB search window."""
+
+    segment = features.iloc[: pos + 1]
+    series = segment["low"] if side > 0 else segment["high"]
+    atr = float(features.iloc[pos]["atr"])
+    tolerance = max(0.15 * atr, abs(float(value)) * 1e-8, 1e-12)
+    matches = np.flatnonzero((series - float(value)).abs().le(tolerance).to_numpy())
+    if len(matches):
+        return int(matches[-1])
+    return max(0, pos - 12)
 
 
 def _new_continuation_state(
@@ -855,6 +928,7 @@ def _new_continuation_state(
         return None
     if not _finite(stop_anchor):
         stop_anchor = float(row["low"] if side > 0 else row["high"])
+    ob_search_start = _last_level_origin_pos(features, pos, float(stop_anchor), side)
     state = _NarrativeState(
         family=EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION,
         side=side,
@@ -868,6 +942,7 @@ def _new_continuation_state(
         swept_level_count=0,
         sweep_depth_atr=0.0,
         liquidity_quality=0,
+        ob_search_start=ob_search_start,
         path_high=float(row["high"]),
         path_low=float(row["low"]),
     )

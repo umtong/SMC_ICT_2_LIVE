@@ -318,3 +318,91 @@ def test_diagnostics_expose_implementation_funnel() -> None:
     assert diagnostics["pd_array_states_armed"] >= 1
     assert diagnostics["pd_array_first_mitigations"] >= 1
     assert diagnostics["entry_confirmations"] == 1
+
+
+
+def test_reversal_can_confirm_after_raid_without_same_bar_reclaim() -> None:
+    frame = _features(
+        [
+            {"high": 101, "low": 99, "close": 100},
+            {"high": 102, "low": 99, "close": 101},
+            {"high": 104, "low": 100, "close": 103},
+            {
+                "open": 104, "high": 106, "low": 103, "close": 105.5,
+                "micro_last_swing_low": 100, "last_swing_high": 105,
+            },
+            {
+                "open": 105.5, "high": 105.8, "low": 98, "close": 99,
+                "body_atr": -6.5, "range_atr": 7.8, "close_location": 0.13,
+                "bear_fvg_lower": 102, "bear_fvg_upper": 103, "last_swing_low": 95,
+            },
+            {
+                "open": 102.0, "high": 102.7, "low": 101.8, "close": 102.4,
+                "body_atr": 0.4, "range_atr": 0.9, "close_location": 0.67,
+            },
+            {
+                "open": 102.2, "high": 102.3, "low": 100.7, "close": 101.0,
+                "body_atr": -1.2, "range_atr": 1.6, "close_location": 0.19,
+            },
+        ]
+    )
+    events = generate_corpus_candidates(frame, "BTCUSDT")
+    assert len(events) == 1
+    event = events[0]
+    assert event.timestamp == frame.index[6]
+    assert event.feature_row["raid_reclaimed_same_bar"] == 0.0
+    assert event.feature_row["entry_confirmation_kind"] == 1.0
+    assert event.feature_row["mitigation_count"] >= 1.0
+
+
+def test_pooled_ml_feature_row_excludes_raw_absolute_prices_and_volume() -> None:
+    frame = _features(
+        [
+            {"high": 101, "low": 99, "close": 100},
+            {"high": 102, "low": 99, "close": 101},
+            {"high": 104, "low": 100, "close": 103},
+            {"open": 104, "high": 106, "low": 102, "close": 104, "micro_last_swing_low": 100},
+            {
+                "open": 104, "high": 104.2, "low": 98, "close": 99,
+                "body_atr": -5.0, "range_atr": 6.2, "close_location": 0.16,
+                "bear_fvg_lower": 102, "bear_fvg_upper": 103,
+            },
+            {
+                "open": 102.4, "high": 102.8, "low": 101.5, "close": 101.6,
+                "body_atr": -0.8, "range_atr": 1.3, "close_location": 0.08,
+            },
+        ]
+    )
+    event = generate_corpus_candidates(frame, "BTCUSDT")[0]
+    for forbidden in (
+        "open", "high", "low", "close", "volume", "previous_day_high",
+        "previous_week_low", "micro_last_swing_high", "bear_fvg_lower",
+    ):
+        assert forbidden not in event.feature_row
+    assert "body_atr" in event.feature_row
+    assert "raw_structural_reward_risk" in event.feature_row
+
+
+def test_liquidity_consumption_identity_preserves_source_provenance() -> None:
+    from system.corpus_alpha import _LiquidityPool, _pool_key
+
+    internal = _LiquidityPool(price=100.0, quality=2, kind="INTERNAL_BSL")
+    external = _LiquidityPool(price=100.0, quality=6, kind="PDH")
+    assert _pool_key(internal) != _pool_key(external)
+
+
+def test_continuation_ob_search_begins_at_protected_swing() -> None:
+    from system.corpus_alpha import _last_level_origin_pos, _order_block_zone
+
+    frame = _features(
+        [
+            {"open": 110, "high": 111, "low": 108, "close": 109},
+            {"open": 109, "high": 110, "low": 98, "close": 108},
+            {"open": 99, "high": 101, "low": 98, "close": 100},
+            {"open": 100, "high": 102, "low": 99, "close": 101},
+            {"open": 101, "high": 105, "low": 101, "close": 104},
+        ]
+    )
+    origin = _last_level_origin_pos(frame, 4, 98.0, 1)
+    assert origin == 2
+    assert _order_block_zone(frame, origin, 4, 1) is None
