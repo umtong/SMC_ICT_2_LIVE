@@ -23,8 +23,9 @@ def write_trade_gzip(path, rows: list[str]) -> None:
 
 
 def test_month_range_rejects_earlier_years() -> None:
+    earlier_month = (pd.Timestamp(monthly.FIRST_MONTH) - pd.Timedelta(days=1)).strftime("%Y-%m")
     with pytest.raises(ValueError):
-        monthly.month_bounds("2020-12")
+        monthly.month_bounds(earlier_month)
     assert monthly.month_bounds("2021-01")[0] == datetime(2021, 1, 1, tzinfo=timezone.utc)
 
 
