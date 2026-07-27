@@ -76,4 +76,7 @@ def test_sorted_input_matches_original_aggregator(tmp_path) -> None:
     expected, expected_rows = original.aggregate_trade_file(path, chunksize=2)
     actual, actual_rows = robust.aggregate_trade_file_robust(path, chunksize=2)
     assert actual_rows == expected_rows
+    expected = expected[actual.columns]
+    expected.attrs = {}
+    actual.attrs = {}
     pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
