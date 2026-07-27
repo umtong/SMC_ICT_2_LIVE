@@ -1,0 +1,81 @@
+name: YT Trinity causal PD-array mitigation depths
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-pd-array-depths.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pd-array-depths
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Expand armed PD array into causal mitigation depths
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/causal_action_candidates.py')
+          text=p.read_text()
+          start=text.index('def _passive_event(')
+          end=text.index('\n\ndef _market_event',start)
+          replacement='''def _passive_events(\n    state: _NarrativeState,\n    row: pd.Series,\n    timestamp: pd.Timestamp,\n    symbol: str,\n    pos: int,\n) -> list[EventCandidate]:\n    """Create every predeclared mitigation depth when the PD array is armed."""\n\n    if state.phase != "AWAIT_RETEST":\n        return []\n    if state.stop is None or state.zone_lower is None or state.zone_upper is None:\n        return []\n    lower = float(state.zone_lower)\n    upper = float(state.zone_upper)\n    stop = float(state.stop)\n    target = float(state.draw_target)\n    events: list[EventCandidate] = []\n    for depth in (0.0, 0.25, 0.50, 0.75, 1.0):\n        entry = (\n            upper - depth * (upper - lower)\n            if state.side > 0\n            else lower + depth * (upper - lower)\n        )\n        if (state.side > 0 and not stop < entry < target) or (\n            state.side < 0 and not target < entry < stop\n        ):\n            continue\n        features = _setup_features(row, state, pos, entry, stop)\n        features.update(\n            {\n                "action_candidate_early_passive": 1.0,\n                "action_candidate_confirmed_market": 0.0,\n                "entry_confirmation_kind": 0.0,\n                "causal_pd_array_armed": 1.0,\n                "passive_depth_fraction": float(depth),\n                "passive_is_proximal": float(depth == 0.0),\n                "passive_is_consequent_encroachment": float(depth == 0.5),\n                "passive_is_distal": float(depth == 1.0),\n            }\n        )\n        events.append(\n            EventCandidate(\n                timestamp=timestamp,\n                symbol=symbol,\n                family=state.family,\n                side=state.side,\n                decision_price=float(row["close"]),\n                entry_reference=float(entry),\n                stop_reference=stop,\n                target_reference=target,\n                structural_level=float(state.structural_level),\n                feature_row=features,\n            )\n        )\n    return events\n'''
+          text=text[:start]+replacement+text[end:]
+          text=text.replace(
+              '                passive = _passive_event(updated, row, timestamp, symbol, pos)\n                if passive is not None:\n                    events.append(passive)\n                    diagnostics["causal_passive_actions"] += 1\n',
+              '                passive_rows = _passive_events(updated, row, timestamp, symbol, pos)\n                events.extend(passive_rows)\n                diagnostics["causal_passive_actions"] += len(passive_rows)\n                if passive_rows:\n                    diagnostics["causal_pd_arrays_armed"] += 1\n',
+              1,
+          )
+          text=text.replace(
+              '                passive = _passive_event(continuation, row, timestamp, symbol, pos)\n                if passive is not None:\n                    events.append(passive)\n                    diagnostics["causal_passive_actions"] += 1\n',
+              '                passive_rows = _passive_events(continuation, row, timestamp, symbol, pos)\n                events.extend(passive_rows)\n                diagnostics["causal_passive_actions"] += len(passive_rows)\n                if passive_rows:\n                    diagnostics["causal_pd_arrays_armed"] += 1\n',
+              1,
+          )
+          # Market actions have no passive mitigation-depth choice.
+          text=text.replace(
+              '            "causal_pd_array_armed": 1.0,\n',
+              '            "causal_pd_array_armed": 1.0,\n            "passive_depth_fraction": -1.0,\n            "passive_is_proximal": 0.0,\n            "passive_is_consequent_encroachment": 0.0,\n            "passive_is_distal": 0.0,\n',
+              1,
+          )
+          p.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/run_causal_action_fast.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py
+          git rm .github/workflows/yt-trinity-pd-array-depths.yml
+      - name: Commit tested depth actions
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/causal_action_candidates.py
+          git commit -m 'Emit causal PD-array mitigation depth actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
