@@ -1,16 +1,15 @@
 {
   "schema_version": 1,
   "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
-  "requested_action": "rerun unified SMC narrative v3 after canonical dtype and repeated-stream join repairs",
+  "requested_action": "rerun unified SMC narrative v3 after canonical join and label pipeline repairs",
   "narrative_id": "YT-TRINITY-UNIFIED-SMC-NARRATIVE-V3",
-  "rerun_revision": 4,
-  "required_commits": [
-    "a1a7bd2917d0f3061f6cc49e29ad1eed8fc66484",
-    "ff5f30741069ce02274f9302d47f2fbc3ccef77f",
-    "f1edd3380fa9fe830a680c088ae3c6aa4f240178",
-    "1e8cd1ce2fe1c588fdeadece117e51ba5ecd7d81"
+  "rerun_revision": 5,
+  "required_head_sha": "6e2b6013c9e360ccf76269a71181f9ea9c81238d",
+  "required_repairs": [
+    "canonical epoch-key normalization",
+    "unique source timestamp per auxiliary stream",
+    "numpy availability in action-specific label construction"
   ],
-  "local_regression_count": 37,
   "evaluation_start_utc": "2023-07-01T00:00:00Z",
   "evaluation_end_exclusive_utc": "2024-01-01T00:00:00Z",
   "unrelated_alpha_switch_authorized": false
