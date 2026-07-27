@@ -110,6 +110,66 @@ def _label(candidate: EventCandidate, action: str, exit_variant: str, bars: Prep
     estimated_stop = stop * (1.0 - side * (config.half_spread_bps + config.stop_slippage_bps) / 10000.0)
     loss_budget = abs(entry_price - estimated_stop) + entry_price * entry_fee + estimated_stop * config.taker_fee_rate
     risk_distance = abs(entry_price - stop)
+
+    if exit_variant == "TP1_50_BE_STRUCT" and abs(target - entry_price) > risk_distance:
+        tp1 = entry_price + side * risk_distance
+        stop_position = _cross(bars, entry_position, stop, side < 0, evaluation_limit)
+        tp1_position = _cross(bars, entry_position, tp1, side > 0, evaluation_limit)
+        if stop_position is not None and (tp1_position is None or stop_position <= tp1_position):
+            position = stop_position
+            base_price = min(bars.opens[position], stop) if side > 0 else max(bars.opens[position], stop)
+            exit_price = v1._market_fill(base_price, -side, config, stop=True)
+            end = bars.available[position]
+            pnl = side * (exit_price - entry_price) - entry_price * entry_fee - exit_price * config.taker_fee_rate
+            pnl += v1._funding_pnl_per_unit(candidate.symbol, side, entry_price, bars.available[entry_position], end, funding)
+            return v1.ActionLabel(
+                activation, end, candidate.symbol, action, exit_variant, 1, entry_price,
+                max(loss_budget, 1e-12), pnl, v1._candidate_features(candidate, action, entry_price),
+                "STOP_PRE_TP1",
+            )
+        if tp1_position is None:
+            position = max(entry_position, evaluation_limit - 1)
+            exit_price = v1._market_fill(bars.closes[position], -side, config)
+            end = bars.available[position]
+            pnl = side * (exit_price - entry_price) - entry_price * entry_fee - exit_price * config.taker_fee_rate
+            pnl += v1._funding_pnl_per_unit(candidate.symbol, side, entry_price, bars.available[entry_position], end, funding)
+            return v1.ActionLabel(
+                activation, end, candidate.symbol, action, exit_variant, 1, entry_price,
+                max(loss_budget, 1e-12), pnl, v1._candidate_features(candidate, action, entry_price),
+                "EVALUATION_MARK_PRE_TP1",
+            )
+
+        tp1_exit = v1._market_fill(tp1, -side, config)
+        pnl = (
+            0.5 * side * (tp1_exit - entry_price)
+            - entry_price * entry_fee
+            - 0.5 * tp1_exit * config.taker_fee_rate
+        )
+        tp1_time = bars.available[tp1_position]
+        cursor = tp1_position + 1
+        breakeven_position = _cross(bars, cursor, entry_price, side < 0, evaluation_limit)
+        target_position = _cross(bars, cursor, target, side > 0, evaluation_limit)
+        if breakeven_position is not None and (target_position is None or breakeven_position <= target_position):
+            position = breakeven_position
+            final_exit = v1._market_fill(entry_price, -side, config)
+            status = "TP1_THEN_BE"
+        elif target_position is not None:
+            position = target_position
+            final_exit = v1._market_fill(target, -side, config)
+            status = "TP1_THEN_STRUCTURAL_TARGET"
+        else:
+            position = max(cursor, evaluation_limit - 1)
+            final_exit = v1._market_fill(bars.closes[position], -side, config)
+            status = "TP1_THEN_EVALUATION_MARK"
+        end = bars.available[position]
+        pnl += 0.5 * side * (final_exit - entry_price) - 0.5 * final_exit * config.taker_fee_rate
+        pnl += v1._funding_pnl_per_unit(candidate.symbol, side, entry_price, bars.available[entry_position], tp1_time, funding)
+        pnl += 0.5 * v1._funding_pnl_per_unit(candidate.symbol, side, entry_price, tp1_time, end, funding)
+        return v1.ActionLabel(
+            activation, end, candidate.symbol, action, exit_variant, 1, entry_price,
+            max(loss_budget, 1e-12), pnl, v1._candidate_features(candidate, action, entry_price), status,
+        )
+
     cap = target if abs(target - entry_price) <= 2.0 * risk_distance else entry_price + side * 2.0 * risk_distance
     effective_target = target if exit_variant == "FULL_STRUCTURAL" else cap
     stop_position = _cross(bars, entry_position, stop, side < 0, evaluation_limit)

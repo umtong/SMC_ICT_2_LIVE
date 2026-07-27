@@ -361,7 +361,7 @@ def run(args: argparse.Namespace) -> int:
     rules = load_instrument_rules(args.instrument_rules, PRIMARY)
     rule_map = {row.symbol: (row.quantity_step, row.minimum_quantity) for row in rules}
     screen = ScreenConfig()
-    variants = ("FULL_STRUCTURAL", "CAP_2R")
+    variants = ("FULL_STRUCTURAL", "CAP_2R", "TP1_50_BE_STRUCT")
 
     decision_2023, execution_2023, funding_2023 = load_canonical_frames(
         args.data_root, args.repo_root, PRIMARY, ("PRE_2024_2023",)
