@@ -1,0 +1,211 @@
+name: YT Trinity DST-aware New York reference time
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-new-york-reference-time.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-new-york-reference-time
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install DST-aware reference-time feature contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+          anchor = '\ndef build_corpus_features(\n'
+          helper = r'''
+
+def _new_york_reference_columns(
+    out: pd.DataFrame,
+    time_basis: pd.DatetimeIndex,
+) -> None:
+    """Build causal ICT reference-time levels in America/New_York local time.
+
+    All source bars are UTC and converted with the IANA timezone, so DST changes
+    are deterministic. Previous-day/week ranges are shifted before mapping. Asia
+    and London ranges are visible only after their local session close.
+    """
+
+    local = time_basis.tz_convert('America/New_York')
+    local_day = local.normalize()
+    day_table = pd.DataFrame(
+        {
+            'day': local_day,
+            'open': out['open'].to_numpy(),
+            'high': out['high'].to_numpy(),
+            'low': out['low'].to_numpy(),
+            'close': out['close'].to_numpy(),
+        },
+        index=out.index,
+    )
+    daily = day_table.groupby('day', sort=True).agg(
+        open=('open', 'first'), high=('high', 'max'), low=('low', 'min'), close=('close', 'last')
+    )
+    previous_day = daily.shift(1)
+    day_series = pd.Series(local_day, index=out.index)
+    out['current_ny_midnight_open'] = day_series.map(daily['open'])
+    for name in ('open', 'high', 'low', 'close'):
+        out[f'previous_ny_day_{name}'] = day_series.map(previous_day[name])
+    # Use the NY levels as the active day contract for candidate generation.
+    out['previous_day_high'] = out['previous_ny_day_high']
+    out['previous_day_low'] = out['previous_ny_day_low']
+
+    naive_local = local.tz_localize(None)
+    week_key = pd.PeriodIndex(naive_local, freq='W-SUN')
+    week_table = pd.DataFrame(
+        {'week': week_key, 'high': out['high'].to_numpy(), 'low': out['low'].to_numpy()},
+        index=out.index,
+    )
+    weekly = week_table.groupby('week', sort=True).agg(high=('high', 'max'), low=('low', 'min'))
+    previous_week = weekly.shift(1)
+    week_series = pd.Series(week_key, index=out.index)
+    out['previous_ny_week_high'] = week_series.map(previous_week['high'])
+    out['previous_ny_week_low'] = week_series.map(previous_week['low'])
+    out['previous_week_high'] = out['previous_ny_week_high']
+    out['previous_week_low'] = out['previous_ny_week_low']
+
+    hour = local.hour + local.minute / 60.0
+    # Asia 20:00-00:00 NY belongs to the following NY calendar day.
+    asia_mask = hour >= 20.0
+    asia_day = local_day + pd.Timedelta(days=1)
+    asia_table = pd.DataFrame(
+        {
+            'session_day': asia_day[asia_mask],
+            'high': out.loc[asia_mask, 'high'].to_numpy(),
+            'low': out.loc[asia_mask, 'low'].to_numpy(),
+        }
+    )
+    if asia_table.empty:
+        out['current_asia_high'] = np.nan
+        out['current_asia_low'] = np.nan
+    else:
+        asia = asia_table.groupby('session_day', sort=True).agg(high=('high', 'max'), low=('low', 'min'))
+        out['current_asia_high'] = day_series.map(asia['high'])
+        out['current_asia_low'] = day_series.map(asia['low'])
+
+    # London manipulation range 02:00-05:00 NY, visible from 05:00 onward.
+    london_mask = (hour >= 2.0) & (hour < 5.0)
+    london_table = pd.DataFrame(
+        {
+            'day': local_day[london_mask],
+            'high': out.loc[london_mask, 'high'].to_numpy(),
+            'low': out.loc[london_mask, 'low'].to_numpy(),
+        }
+    )
+    if london_table.empty:
+        out['current_london_open_high'] = np.nan
+        out['current_london_open_low'] = np.nan
+    else:
+        london = london_table.groupby('day', sort=True).agg(high=('high', 'max'), low=('low', 'min'))
+        visible = hour >= 5.0
+        out['current_london_open_high'] = day_series.map(london['high']).where(visible)
+        out['current_london_open_low'] = day_series.map(london['low']).where(visible)
+
+    out['session_code'] = np.select(
+        [(hour >= 20.0), (hour >= 2.0) & (hour < 5.0), (hour >= 7.0) & (hour < 10.0)],
+        [1.0, 2.0, 3.0],
+        default=0.0,
+    )
+    out['killzone'] = out['session_code'].isin([2.0, 3.0]).astype(float)
+    radians = 2.0 * np.pi * hour / 24.0
+    out['ny_hour_sin'] = np.sin(radians)
+    out['ny_hour_cos'] = np.cos(radians)
+    out['reference_time_new_york'] = 1.0
+'''
+          if 'def _new_york_reference_columns(' not in text:
+              if anchor not in text:
+                  raise SystemExit('feature function anchor missing')
+              text = text.replace(anchor, helper + anchor, 1)
+
+          old_signature = '''def build_corpus_features(\n    frame: pd.DataFrame,\n    feature_config: FeatureConfig = FeatureConfig(),\n) -> pd.DataFrame:\n'''
+          new_signature = '''def build_corpus_features(\n    frame: pd.DataFrame,\n    feature_config: FeatureConfig = FeatureConfig(),\n    reference_time_mode: str = \"UTC\",\n) -> pd.DataFrame:\n'''
+          if 'reference_time_mode: str = "UTC"' not in text:
+              if old_signature not in text:
+                  raise SystemExit('build_corpus_features signature changed unexpectedly')
+              text = text.replace(old_signature, new_signature, 1)
+
+          return_anchor = '''    out[\"distance_current_4h_open_atr\"] = (out[\"close\"] - out[\"current_4h_open\"]) / out[\"atr\"]\n    return out\n'''
+          return_new = '''    out[\"distance_current_4h_open_atr\"] = (out[\"close\"] - out[\"current_4h_open\"]) / out[\"atr\"]\n    mode = str(reference_time_mode).upper()\n    if mode == \"NEW_YORK\":\n        _new_york_reference_columns(out, time_basis)\n    elif mode == \"UTC\":\n        out[\"reference_time_new_york\"] = 0.0\n    else:\n        raise ValueError(f\"unknown reference_time_mode: {reference_time_mode}\")\n    return out\n'''
+          if 'mode = str(reference_time_mode).upper()' not in text:
+              if return_anchor not in text:
+                  raise SystemExit('feature return anchor missing')
+              text = text.replace(return_anchor, return_new, 1)
+          path.write_text(text)
+          PY
+      - name: Add DST and causality regressions
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_new_york_reference_time_is_append_invariant_across_dst() -> None:
+    index = pd.date_range('2023-03-10T00:00:00Z', periods=6 * 24 * 12, freq='5min', tz='UTC')
+    close = 100.0 + np.cumsum(np.sin(np.arange(len(index)) / 17.0) * 0.02)
+    frame = pd.DataFrame(
+        {
+            'open': np.r_[close[0], close[:-1]],
+            'high': close + 0.1,
+            'low': close - 0.1,
+            'close': close,
+            'volume': 100.0,
+        },
+        index=index,
+    )
+    config = FeatureConfig(atr_window=5, fast_ema=5, slow_ema=8, long_ema=13, volume_window=5)
+    short = build_corpus_features(frame.iloc[:1000], config, reference_time_mode='NEW_YORK')
+    long = build_corpus_features(frame, config, reference_time_mode='NEW_YORK')
+    pd.testing.assert_frame_equal(short, long.loc[short.index], check_dtype=False)
+
+
+def test_new_york_asia_range_is_not_visible_before_local_midnight() -> None:
+    index = pd.date_range('2023-07-01T22:00:00Z', periods=120, freq='5min', tz='UTC')
+    close = np.linspace(100.0, 101.0, len(index))
+    frame = pd.DataFrame(
+        {'open': close, 'high': close + 0.2, 'low': close - 0.2, 'close': close, 'volume': 100.0},
+        index=index,
+    )
+    config = FeatureConfig(atr_window=5, fast_ema=5, slow_ema=8, long_ema=13, volume_window=5)
+    features = build_corpus_features(frame, config, reference_time_mode='NEW_YORK')
+    local = features.index.tz_convert('America/New_York')
+    before_midnight = (local.hour >= 20) & (local.hour <= 23)
+    assert features.loc[before_midnight, 'current_asia_high'].isna().all()
+PY
+      - name: Install and test causal feature contract
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py
+      - name: Commit tested reference-time features
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Add causal DST-aware New York ICT reference times'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
