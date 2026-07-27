@@ -1,0 +1,76 @@
+name: YT Trinity PD-depth feature schema hotfix
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-pd-depth-schema-hotfix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pd-depth-schema-hotfix
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Normalize depth features by action
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/causal_action_candidates.py')
+          text=p.read_text()
+          # Remove any accidental -1 depth fields from the passive action block; its
+          # later depth-specific fields are authoritative.
+          passive_start=text.index('def _passive_events(')
+          market_start=text.index('def _market_event(',passive_start)
+          passive=text[passive_start:market_start]
+          accidental='''            "passive_depth_fraction": -1.0,\n            "passive_is_proximal": 0.0,\n            "passive_is_consequent_encroachment": 0.0,\n            "passive_is_distal": 0.0,\n'''
+          passive=passive.replace(accidental,'')
+          text=text[:passive_start]+passive+text[market_start:]
+
+          market_start=text.index('def _market_event(')
+          market_end=text.index('\n\ndef generate_causal_action_candidates',market_start)
+          market=text[market_start:market_end]
+          marker='''            "causal_pd_array_armed": 1.0,\n'''
+          addition='''            "causal_pd_array_armed": 1.0,\n            "passive_depth_fraction": -1.0,\n            "passive_is_proximal": 0.0,\n            "passive_is_consequent_encroachment": 0.0,\n            "passive_is_distal": 0.0,\n'''
+          if '"passive_depth_fraction": -1.0' not in market:
+              if marker not in market:
+                  raise SystemExit('market causal marker not found')
+              market=market.replace(marker,addition,1)
+          text=text[:market_start]+market+text[market_end:]
+          p.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/causal_action_candidates.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py
+          git rm .github/workflows/yt-trinity-pd-depth-schema-hotfix.yml
+      - name: Commit normalized action schema
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/causal_action_candidates.py
+          git commit -m 'Normalize passive depth features across actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
