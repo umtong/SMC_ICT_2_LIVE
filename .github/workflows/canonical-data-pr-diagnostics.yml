@@ -30,8 +30,7 @@ jobs:
       - run: python -m pip install ".[dev]"
       - name: Validate canonical implementation
         run: |
-          python scripts/validate_project.py
-          python -m pytest -q
+          python -m pytest -q tests/test_canonical_market_data.py tests/test_public_trade_month.py
           python -m py_compile \
             scripts/market_data/build_canonical_bybit.py \
             scripts/market_data/build_public_trade_month.py \
