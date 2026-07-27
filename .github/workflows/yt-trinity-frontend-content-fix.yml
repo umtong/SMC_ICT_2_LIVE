@@ -1,0 +1,49 @@
+name: YT Trinity frontend content deterministic fix
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/apply_frontend_content_output_fix.py
+      - .github/workflows/yt-trinity-frontend-content-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-frontend-content-fix
+  cancel-in-progress: false
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Apply workflow fix
+        run: python research/yt_trinity_ml/apply_frontend_content_output_fix.py
+      - name: Validate workflow text
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/yt-trinity-public-frontend-content.yml')
+          text = path.read_text(encoding='utf-8')
+          assert "os.environ['GITHUB_OUTPUT']" in text
+          assert "open('${GITHUB_OUTPUT}'" not in text
+          PY
+      - name: Commit fix and remove materializer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/yt-trinity-public-frontend-content.yml
+          git rm -f research/yt_trinity_ml/apply_frontend_content_output_fix.py .github/workflows/yt-trinity-frontend-content-fix.yml
+          git commit -m "Fix frontend content winner gate output"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
