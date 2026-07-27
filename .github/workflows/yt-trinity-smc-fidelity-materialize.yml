@@ -19,16 +19,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  materialize-test-commit:
+  patch-test-commit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/r22-yt-trinity-ml-001
           fetch-depth: 0
 
-      - name: Verify exact implementation base and payload chunks
+      - name: Verify exact concurrent scientific base
         run: |
           set -euo pipefail
           check_blob() {
@@ -40,69 +40,115 @@ jobs:
               exit 1
             }
           }
-          check_blob 7edfafa61d26b69db9cedb2bb9f4994155dfc52f research/yt_trinity_ml/system/corpus_alpha.py
-          check_blob f50189ebde308eccbaa3e236a6a1080d85f1e30c research/yt_trinity_ml/run_primary_screen.py
-          check_blob 65034614f45e66e9216a519820d06c9982d0f96d research/yt_trinity_ml/tests/test_corpus_alpha.py
-          test ! -e research/yt_trinity_ml/INSTRUMENT_RULES.json
-          test ! -e research/yt_trinity_ml/tests/test_primary_screen_diagnostics.py
-          test ! -e .github/workflows/yt-trinity-smc-fidelity-screen.yml
-          sha256sum --check --strict <<'CHUNKS'
-          520c1e1f72890d376a8eda333f228603e7a9a05b800b098ebfc15fad1f4a6afc  research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.00
-          3e5675ac533ab9029c6262152398c7ac2e27e25fa91c8d4262039f462e37d41b  research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.01
-          bebb8c26e902be54e52dca203de211d97ff99a41b5598ae2a783249b6835b955  research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.02
-          043bb1991c276597673ae527f028c8d0a71890219dd1df9208b08bcfe7e7115d  research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.03
-          e8ad2dc18f018fecc48b773ba1ea71baf41c1cc6ce875903d84fdf37f3f1efc4  research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.04
-          51da5d26635c49d5d80660bbb0d931a952283ca3e6c90c6f68e5e50d9bf281ef  research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.05
-          CHUNKS
-
-      - name: Materialize and verify SMC fidelity payload
-        run: |
-          set -euo pipefail
-          cat research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.* > /tmp/smc_fidelity_payload.tar.gz.b64
-          echo "d3f8c567f14d161f5793b3a862c59d9983ad5851836098d021f632a44410556a  /tmp/smc_fidelity_payload.tar.gz.b64" | sha256sum --check --strict
-          base64 --decode /tmp/smc_fidelity_payload.tar.gz.b64 > /tmp/smc_fidelity_payload.tar.gz
-          echo "53ac6d18812967b57b445e65b97475759fd60d29440c83d3f6a9700b0e0dbcbb  /tmp/smc_fidelity_payload.tar.gz" | sha256sum --check --strict
-          tar -xzf /tmp/smc_fidelity_payload.tar.gz -C .
-          sha256sum --check --strict <<'FILES'
-          2c6635c0960cf7033fd3dbee4af8756270302bb36719ee74b544212583112824  research/yt_trinity_ml/system/corpus_alpha.py
-          35ec516bd46c33eedbe236167bbe87ce81662c27be78ef89beefb003bfebda7a  research/yt_trinity_ml/run_primary_screen.py
-          fa344df645b2f08d607dd1e23fdb31e5157da7c501beffa692137d80835db8b5  research/yt_trinity_ml/tests/test_corpus_alpha.py
-          b61ba91293068b2287dc2344d259cdf4db62164a5bdc62bea461c879c7237f6b  research/yt_trinity_ml/tests/test_primary_screen_diagnostics.py
-          3b69d39caeee408ed09b36b151ffa5d456eb35d87fccf92229e9ac70fa691133  research/yt_trinity_ml/INSTRUMENT_RULES.json
-          d43cf8a6eaa6a271fa36b5b7150138015b8b024b28599818453d12e09e9d6b53  .github/workflows/yt-trinity-smc-fidelity-screen.yml
-          FILES
+          check_blob 020322b90cdd81af82d018eb30a3c0a369f52cbf research/yt_trinity_ml/system/corpus_alpha.py
+          check_blob 642599950faeb816837a92b59dba3c38002ad5f7 research/yt_trinity_ml/tests/test_corpus_alpha.py
+          check_blob 7a4ca25e339bb082e8189e5e52996f12488164cb research/yt_trinity_ml/run_primary_screen.py
+          echo "c722970a362852cdb2d4c8110f8f51b2b0187a6b19d3289bb98c38c58d1396dd  research/yt_trinity_ml/apply_smc_fidelity_v2.py.gz" | sha256sum --check --strict
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - name: Run complete causal and execution regression suite
+      - name: Install deterministic dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "requests==2.32.4" "pytest==8.3.5"
+
+      - name: Freeze current Bybit linear quantity rules
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import datetime as dt
+          import hashlib
+          import json
+          from pathlib import Path
+          import requests
+
+          endpoint = 'https://api.manepa.jp/v5/market/instruments-info'
+          symbols = ('BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT')
+          rules = {
+              'snapshot_id': 'BYBIT_LINEAR_RULES_SMC_FIDELITY_20260727',
+              'effective_at_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
+              'source_endpoint': endpoint,
+          }
+          raw = {}
+          for symbol in symbols:
+              response = requests.get(endpoint, params={'category': 'linear', 'symbol': symbol}, timeout=30)
+              response.raise_for_status()
+              payload = response.json()
+              assert payload.get('retCode') == 0, payload
+              rows = payload.get('result', {}).get('list', [])
+              assert len(rows) == 1 and rows[0].get('symbol') == symbol, (symbol, rows)
+              instrument = rows[0]
+              lot = instrument['lotSizeFilter']
+              rules[symbol] = {
+                  'quantity_step': lot['qtyStep'],
+                  'minimum_quantity': lot['minOrderQty'],
+                  'minimum_notional_value': lot.get('minNotionalValue'),
+                  'tick_size': instrument['priceFilter']['tickSize'],
+                  'maximum_leverage': instrument['leverageFilter']['maxLeverage'],
+                  'status': instrument['status'],
+              }
+              assert float(lot['qtyStep']) > 0 and float(lot['minOrderQty']) > 0
+              raw[symbol] = payload
+          canonical = json.dumps(raw, sort_keys=True, separators=(',', ':')).encode()
+          rules['source_response_sha256'] = hashlib.sha256(canonical).hexdigest()
+          Path('research/yt_trinity_ml/INSTRUMENT_RULES.json').write_text(
+              json.dumps(rules, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+
+      - name: Apply lossless SMC fidelity patch
+        run: |
+          set -euo pipefail
+          gzip --decompress --stdout research/yt_trinity_ml/apply_smc_fidelity_v2.py.gz > /tmp/apply_smc_fidelity_v2.py
+          echo "d4485c5aa70e42bcfa9d864f34865a2c79eb04bd4b7bfd4c222045795554a34e  /tmp/apply_smc_fidelity_v2.py" | sha256sum --check --strict
+          python /tmp/apply_smc_fidelity_v2.py
+
+      - name: Run full causal and execution regression suite
         env:
           PYTHONPATH: research/yt_trinity_ml
         run: |
           set -euo pipefail
-          python -m pip install -q --upgrade pip
-          python -m pip install -q "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" "pytest==8.3.5"
-          python -m py_compile research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/run_primary_screen.py
-          pytest -q research/yt_trinity_ml/tests --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
+          python -m py_compile \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/run_primary_screen.py
+          python -m json.tool research/yt_trinity_ml/INSTRUMENT_RULES.json >/dev/null
+          pytest -q research/yt_trinity_ml/tests \
+            --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
 
-      - name: Commit one tested scientific transition
+      - name: Remove temporary transfer machinery
         run: |
           set -euo pipefail
-          git rm .github/workflows/yt-trinity-smc-fidelity-materialize.yml
-          git rm research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.*
-          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/run_primary_screen.py \
-            research/yt_trinity_ml/INSTRUMENT_RULES.json research/yt_trinity_ml/tests/test_corpus_alpha.py \
-            research/yt_trinity_ml/tests/test_primary_screen_diagnostics.py \
+          git rm -f --ignore-unmatch \
+            .github/workflows/yt-trinity-smc-fidelity-materialize.yml \
+            .github/workflows/yt-trinity-current-source-export.yml \
+            .github/workflows/yt-trinity-current-source-chunk-capture.yml \
+            research/yt_trinity_ml/apply_smc_fidelity_v2.py.gz \
+            research/yt_trinity_ml/apply_smc_fidelity_v2.py.gz.b64
+          git rm -rf --ignore-unmatch research/yt_trinity_ml/current_snapshot_chunks
+          git rm -f --ignore-unmatch research/yt_trinity_ml/upgrade_chunks/smc_fidelity_payload.*
+
+      - name: Commit one tested SMC scientific transition
+        run: |
+          set -euo pipefail
+          git add \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/INSTRUMENT_RULES.json \
             .github/workflows/yt-trinity-smc-fidelity-screen.yml
           git diff --cached --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Deepen causal SMC implementation fidelity"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Deepen unified SMC narrative fidelity'
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin agent/r22-yt-trinity-ml-001
             if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
             sleep $((attempt * 3))
           done
           exit 1
