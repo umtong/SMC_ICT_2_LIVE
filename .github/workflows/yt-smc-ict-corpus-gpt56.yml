@@ -12,6 +12,7 @@ on:
       - agent/yt-smc-ict-causal-ml-gpt56-20260727
     paths:
       - research/yt_smc_ict_gpt56/collect_corpus.py
+      - research/yt_smc_ict_gpt56/collect_corpus_v2.py
       - .github/workflows/yt-smc-ict-corpus-gpt56.yml
 
 permissions:
@@ -42,22 +43,26 @@ jobs:
           python -m pip install --upgrade yt-dlp youtube-transcript-api requests
 
       - name: Compile and test corpus collector
+        env:
+          PYTHONPATH: research/yt_smc_ict_gpt56
         run: |
           python -m py_compile research/yt_smc_ict_gpt56/collect_corpus.py
-          python research/yt_smc_ict_gpt56/collect_corpus.py --self-test
+          python -m py_compile research/yt_smc_ict_gpt56/collect_corpus_v2.py
+          python research/yt_smc_ict_gpt56/collect_corpus_v2.py --self-test
 
       - name: Enumerate every public upload and collect captions
         id: collect
         shell: bash
         env:
           INPUT_LIMIT: ${{ github.event.inputs.limit || '0' }}
+          PYTHONPATH: research/yt_smc_ict_gpt56
         run: |
           set +e
           rm -rf artifact/corpus
           mkdir -p artifact/corpus
-          python research/yt_smc_ict_gpt56/collect_corpus.py \
+          python research/yt_smc_ict_gpt56/collect_corpus_v2.py \
             --output artifact/corpus \
-            --workers 3 \
+            --workers 6 \
             --limit "${INPUT_LIMIT}" \
             2>&1 | tee artifact/corpus/COLLECT_STDOUT.log
           status=${PIPESTATUS[0]}
@@ -82,8 +87,8 @@ jobs:
           failures_path = Path("artifact/corpus/TRANSCRIPT_FAILURES.json")
           source_sha = os.environ["GITHUB_SHA"]
           pointer = {
-              "schema_version": 1,
-              "system_id": "YT-SMC-ICT-GPT56-CORPUS-001",
+              "schema_version": 2,
+              "system_id": "YT-SMC-ICT-GPT56-CORPUS-002",
               "run_id": int(os.environ["GITHUB_RUN_ID"]),
               "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
               "source_sha": source_sha,
