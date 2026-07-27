@@ -156,13 +156,23 @@ def caption_payload(url: str) -> dict[str, Any]:
         raw = response.content[:500_000]
         text = raw.decode("utf-8", "replace")
         meaningful = " ".join(text.split())
+        lowered = text.lower()
+        caption_syntax = (
+            "webvtt" in lowered
+            or "-->" in text
+            or "<text" in lowered
+            or "<tt" in lowered
+            or '"events"' in lowered
+            or '"start_ms"' in lowered
+        )
         return {
             "status": response.status_code,
             "bytes": len(raw),
             "characters": len(meaningful),
             "content_type": response.headers.get("content-type"),
             "sha256": hashlib.sha256(raw).hexdigest(),
-            "usable": response.status_code == 200 and len(meaningful) >= 80,
+            "caption_syntax": caption_syntax,
+            "usable": response.status_code == 200 and len(meaningful) >= 80 and caption_syntax,
         }
     except Exception as exc:
         return {"usable": False, "exception": f"{type(exc).__name__}: {exc}"}
