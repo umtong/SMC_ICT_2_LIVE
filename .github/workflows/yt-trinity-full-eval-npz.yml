@@ -1,0 +1,82 @@
+name: YT Trinity full evaluation NPZ
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-liquidation-reclaim-full-eval-001
+    paths:
+      - control/yt-trinity-full-eval-npz-trigger.json
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: yt-trinity-full-eval-npz-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  CANONICAL_RUN_ID: "30218767426"
+
+jobs:
+  export:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        segment: [PRE_2024_2023, 2024_H1, 2024_H2, 2025_H1, 2025_H2, 2026_H1]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pinned export dependencies
+        run: python -m pip install -q --disable-pip-version-check "numpy==2.3.5" "pandas==2.2.3" "pyarrow==25.0.0"
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-${{ matrix.segment }}-BTCUSDT
+          path: downloads/${{ matrix.segment }}/BTCUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-${{ matrix.segment }}-ETHUSDT
+          path: downloads/${{ matrix.segment }}/ETHUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-${{ matrix.segment }}-SOLUSDT
+          path: downloads/${{ matrix.segment }}/SOLUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-bybit-${{ matrix.segment }}-XRPUSDT
+          path: downloads/${{ matrix.segment }}/XRPUSDT
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: ${{ env.CANONICAL_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Export aligned 15m decisions and 5m execution arrays
+        run: |
+          python research/yt_trinity_ml/export_full_eval_npz.py \
+            --source downloads \
+            --output artifact \
+            --segment "${{ matrix.segment }}"
+          find artifact -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-full-eval-npz-${{ matrix.segment }}-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
