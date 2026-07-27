@@ -101,20 +101,37 @@ def normalize_stream(frame: pd.DataFrame, value_map: Mapping[str, str]) -> pd.Da
 
 
 def causal_asof_join(base: pd.DataFrame, auxiliary: pd.DataFrame) -> pd.DataFrame:
-    """Join only auxiliary rows available by each base decision timestamp."""
+    """Join only auxiliary rows available by each base decision timestamp.
+
+    Every auxiliary stream keeps its own causal source timestamp. A generic
+    ``source_timestamp`` column is insufficient because the symbol frame is built
+    by repeatedly joining mark, index, premium, open-interest, and ratio streams.
+    """
     if "available_at_ms" not in base.columns or "available_at_ms" not in auxiliary.columns:
         raise ValueError("both frames require available_at_ms")
+
+    value_columns = [name for name in auxiliary.columns if name != "available_at_ms"]
+    if not value_columns:
+        raise ValueError("auxiliary frame contains no value columns")
+
     left = base.reset_index(drop=True).copy()
+    overlap = sorted(set(value_columns) & set(left.columns))
+    if overlap:
+        raise ValueError(f"auxiliary values already joined: {overlap}")
     left["available_at_ms"] = _epoch_ms(left["available_at_ms"], label="base.available_at_ms")
     left = left.sort_values("available_at_ms", kind="stable")
+
+    source_column = f"{value_columns[0]}_source_timestamp"
+    if source_column in left.columns:
+        raise ValueError(f"auxiliary source timestamp already joined: {source_column}")
     index_column = auxiliary.index.name or "index"
-    right = auxiliary.reset_index(drop=False).rename(columns={index_column: "source_timestamp"})
+    right = auxiliary.reset_index(drop=False).rename(columns={index_column: source_column})
     right["available_at_ms"] = _epoch_ms(right["available_at_ms"], label="auxiliary.available_at_ms")
     right = right.sort_values("available_at_ms", kind="stable")
-    value_columns = [name for name in right.columns if name not in {"available_at_ms", "source_timestamp"}]
+
     joined = pd.merge_asof(
         left,
-        right[["available_at_ms", "source_timestamp", *value_columns]],
+        right[["available_at_ms", source_column, *value_columns]],
         on="available_at_ms",
         direction="backward",
         allow_exact_matches=True,
