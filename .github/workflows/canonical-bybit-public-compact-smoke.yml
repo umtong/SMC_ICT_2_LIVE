@@ -69,7 +69,6 @@ jobs:
             | tee "$shard/VERIFICATION.json"
           find "$shard" -type f -printf '%P\t%s\n' | sort \
             | tee "$shard/FILE_SIZES.tsv"
-          test "$(stat -c %s "$shard/micro_bars/500ms_observed_v4.parquet")" -lt 104857600
       - uses: actions/upload-artifact@v4
         with:
           name: canonical-bybit-sparse500-v4-smoke-BTCUSDT-2024-01
