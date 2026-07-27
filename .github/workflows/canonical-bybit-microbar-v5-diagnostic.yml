@@ -1,0 +1,59 @@
+name: Canonical Bybit V5 microbar diagnostic
+
+on:
+  push:
+    branches:
+      - agent/canonical-microbar-v5-execution-20260727
+    paths:
+      - .github/workflows/canonical-bybit-microbar-v5-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install .
+      - name: Reproduce and preserve all output
+        shell: bash
+        run: |
+          set +e
+          mkdir -p diagnostic artifact
+          python scripts/market_data/build_public_trade_compact.py \
+            --symbol BTCUSDT --month 2021-06 --out artifact \
+            > diagnostic/01-build.stdout 2> diagnostic/01-build.stderr
+          build_status=$?
+          echo "$build_status" > diagnostic/01-build.exit
+          shard="artifact/PRE_2024/BTCUSDT/2021-06"
+          if [[ "$build_status" -eq 0 ]]; then
+            python scripts/market_data/repack_public_trade_compact_v5.py "$shard" \
+              > diagnostic/02-repack.stdout 2> diagnostic/02-repack.stderr
+            repack_status=$?
+          else
+            repack_status=99
+          fi
+          echo "$repack_status" > diagnostic/02-repack.exit
+          if [[ "$repack_status" -eq 0 ]]; then
+            python scripts/market_data/verify_public_trade_compact_v5.py "$shard" \
+              > diagnostic/03-verify.stdout 2> diagnostic/03-verify.stderr
+            verify_status=$?
+          else
+            verify_status=99
+          fi
+          echo "$verify_status" > diagnostic/03-verify.exit
+          find artifact -type f -printf '%P\t%s\n' | sort > diagnostic/files.tsv 2>/dev/null
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-v5-diagnostic-BTCUSDT-2021-06
+          path: diagnostic
+          if-no-files-found: error
+          retention-days: 1
