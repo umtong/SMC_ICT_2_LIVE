@@ -53,7 +53,6 @@ jobs:
           python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
 
       - name: Materialize unified SMC/ICT implementation
-        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -143,7 +142,6 @@ jobs:
           } 2>&1 | tee artifact/system-test/pytest.log
 
       - name: Persist tested unified implementation
-        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           rm -f research/yt_trinity_ml/upgrade_chunks/unified_smc_v3.*
@@ -163,7 +161,7 @@ jobs:
             exit 0
           fi
           git commit -m 'Unify SMC narrative and audit implementation before alpha switching'
-          TARGET_BRANCH="${GITHUB_REF_NAME}"
+          TARGET_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin "${TARGET_BRANCH}"
             if git push origin "HEAD:${TARGET_BRANCH}"; then
