@@ -126,7 +126,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: independent-scld-live-${{ env.SOURCE_SHA }}
-          path: artifact/scld-screen
+          path: |
+            artifact/scld-screen
+            research/scld_independent/scld_system.py
           if-no-files-found: warn
           compression-level: 6
           retention-days: 90
