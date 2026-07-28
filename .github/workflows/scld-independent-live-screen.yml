@@ -50,7 +50,7 @@ jobs:
           python research/scld_independent/materialize_source.py \
             --output research/scld_independent/scld_system.py
           test "$(sha256sum research/scld_independent/scld_system.py | cut -d' ' -f1)" = \
-            "915aa754db20da992f37c51aadd058f5fad13151b5d6efb0fc459882b39fe498"
+            "1ae4df5dc6905a2e6c5b7956a028a4fa83489a6d35a0283f4f7838a9d7ec5578"
 
       - name: Compile and verify causal invariants
         env:
@@ -111,7 +111,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: independent-scld-live-${{ github.sha }}
+          name: independent-scld-live-${{ env.SOURCE_SHA }}
           path: artifact/scld-screen
           if-no-files-found: warn
           compression-level: 6
