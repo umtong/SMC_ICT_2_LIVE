@@ -52,7 +52,7 @@ jobs:
           cat runtime_bundle.b64.part* | base64 -d > runtime.tgz
           tar -xzf runtime.tgz
           cat runner_small.b64.part* | base64 -d | gzip -dc > runner.py
-          cat materializer_small.b64.part* | base64 -d | gzip -dc > materialize_canonical.py
+          cat materializer_v2_small.b64.part* | base64 -d | gzip -dc > materialize_canonical.py
           python -m py_compile parquet_flat.py materialize_canonical.py alds_engine.py alds_scale.py alds_csd.py runner.py
           python - <<'PY'
           from pathlib import Path
