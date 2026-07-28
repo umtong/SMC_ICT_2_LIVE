@@ -1,0 +1,246 @@
+name: Independent SCLD live-system causal screen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r30-scld-live-independent-001]
+    paths:
+      - research/scld_live/scld_screen.py
+      - .github/workflows/scld-live-independent-screen.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scld-live-independent-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow gdown
+
+      - name: Compile and test causal invariants
+        run: |
+          python -m py_compile research/scld_live/scld_screen.py
+          python research/scld_live/scld_screen.py --self-test
+
+      - name: Restore immutable canonical archive cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical-downloads
+          key: scld-canonical-btceth-2023-2024h1-v1
+
+      - name: Materialize verified canonical Bybit shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import shutil
+          import zipfile
+          from pathlib import Path
+
+          import gdown
+
+          archives = [
+              {
+                  "segment": "PRE_2024_2023",
+                  "symbol": "BTCUSDT",
+                  "id": "1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt",
+                  "sha256": "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46",
+              },
+              {
+                  "segment": "PRE_2024_2023",
+                  "symbol": "ETHUSDT",
+                  "id": "1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR",
+                  "sha256": "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322",
+              },
+              {
+                  "segment": "2024_H1",
+                  "symbol": "BTCUSDT",
+                  "id": "1RMgFypk0P4WX99WJRN1FWkqOJICf2VC3",
+                  "sha256": "95c932c4ce6e397738219e0bf5ad94defbbadb7dab215716fdd65438a4484eac",
+              },
+              {
+                  "segment": "2024_H1",
+                  "symbol": "ETHUSDT",
+                  "id": "19ZE-pM5YseslNAL99KLZGKqUuQtVP3Xa",
+                  "sha256": "58a10d224918d078b5738d37d9b0fbb20d9448f20a875e83b68d224ef3f9cef9",
+              },
+          ]
+          cache = Path("artifact/canonical-downloads")
+          root = Path("artifact/canonical")
+          cache.mkdir(parents=True, exist_ok=True)
+          root.mkdir(parents=True, exist_ok=True)
+
+          def sha256_file(path: Path) -> str:
+              digest = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(1 << 20), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          evidence = []
+          for item in archives:
+              filename = f"DS-BYBIT-LINEAR-{item['symbol']}-{item['segment']}-CANONICAL-V1.zip"
+              archive = cache / filename
+              if not archive.is_file() or sha256_file(archive) != item["sha256"]:
+                  archive.unlink(missing_ok=True)
+                  result = gdown.download(id=item["id"], output=str(archive), quiet=False)
+                  if not result:
+                      raise RuntimeError(f"Google Drive download failed: {filename}")
+              actual = sha256_file(archive)
+              if actual != item["sha256"]:
+                  raise RuntimeError(f"archive hash mismatch for {filename}: {actual}")
+              destination = root / item["segment"] / item["symbol"]
+              if destination.exists():
+                  shutil.rmtree(destination)
+              destination.mkdir(parents=True)
+              with zipfile.ZipFile(archive) as bundle:
+                  bundle.extractall(destination)
+              manifest = json.loads((destination / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
+              expected_id = f"DS-BYBIT-LINEAR-{item['symbol']}-{item['segment']}-CANONICAL-V1"
+              if manifest.get("dataset_id") != expected_id:
+                  raise RuntimeError(f"manifest identity mismatch for {filename}")
+              evidence.append({
+                  "dataset_id": expected_id,
+                  "archive_sha256": actual,
+                  "drive_file_id": item["id"],
+              })
+          Path("artifact/canonical/MATERIALIZATION.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Run pre-2024 selection and 2024H1 causal evaluation
+        env:
+          PYTHONPATH: .
+          OMP_NUM_THREADS: "2"
+          OPENBLAS_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifact/scld-live-v1
+          mkdir -p artifact/scld-live-v1
+          python research/scld_live/scld_screen.py \
+            --data-root artifact/canonical \
+            --output artifact/scld-live-v1 \
+            2>&1 | tee artifact/scld-live-v1/SCREEN_STDOUT.log
+
+      - name: Publish run summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("artifact/scld-live-v1/RUN_SUMMARY.json")
+          if not path.exists():
+              raise SystemExit("RUN_SUMMARY.json missing")
+          summary = json.loads(path.read_text(encoding="utf-8"))
+          selected = summary["pre_2024_oof_selection"]["metrics"]
+          evaluated = summary["evaluation_2024_h1"]["metrics"]
+          lines = [
+              "## Independent SCLD live-system causal screen",
+              f"- decision: `{summary['decision']}`",
+              f"- candidate rows: `{summary['candidate_rows']}`",
+              f"- pre-2024 OOF daily growth: `{selected['geometric_daily_growth']}`",
+              f"- pre-2024 OOF account multiple: `{selected['account_multiple']}`",
+              f"- pre-2024 OOF trades: `{selected['completed_trades']}`",
+              f"- 2024H1 daily growth: `{evaluated['geometric_daily_growth']}`",
+              f"- 2024H1 account multiple: `{evaluated['account_multiple']}`",
+              f"- 2024H1 max drawdown: `{evaluated['max_drawdown']}`",
+              f"- 2024H1 trades: `{evaluated['completed_trades']}`",
+              f"- 2024H1 top-10 profit share: `{evaluated['top_10_profit_share']}`",
+              f"- liquidations: `{evaluated['liquidations']}`",
+          ]
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
+              handle.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload immutable run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scld-live-independent-${{ github.sha }}
+          path: |
+            artifact/scld-live-v1
+            artifact/canonical/MATERIALIZATION.json
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact result pointer
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          summary_path = Path("artifact/scld-live-v1/RUN_SUMMARY.json")
+          summary = json.loads(summary_path.read_text(encoding="utf-8"))
+          evaluation = summary["evaluation_2024_h1"]
+          pointer = {
+              "schema_version": 1,
+              "system_id": summary["system_id"],
+              "decision": summary["decision"],
+              "workflow": "Independent SCLD live-system causal screen",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"scld-live-independent-{os.environ['GITHUB_SHA']}",
+              "summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              "independence_contract": summary["independence_contract"],
+              "data_verification": summary["data_verification"],
+              "candidate_rows": summary["candidate_rows"],
+              "candidate_counts": summary["candidate_counts"],
+              "selected_model": summary["selected_model"],
+              "selected_portfolio_config": summary["selected_portfolio_config"],
+              "pre_2024_oof_metrics": summary["pre_2024_oof_selection"]["metrics"],
+              "evaluation_2024_h1_metrics": evaluation["metrics"],
+              "evaluation_2024_h1_grouped": evaluation.get("grouped", {}),
+              "monthly_model_updates": summary["monthly_model_updates"],
+              "runtime_seconds": summary["runtime_seconds"],
+          }
+          path = Path("research/scld_live/LATEST_RESULT.json")
+          path.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/scld_live/LATEST_RESULT.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record independent SCLD causal screen ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
