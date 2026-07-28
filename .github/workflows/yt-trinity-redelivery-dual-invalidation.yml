@@ -1,0 +1,168 @@
+name: YT Trinity dual-invalidation redelivery screen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/redelivery_dual_invalidation_screen.py
+      - .github/workflows/yt-trinity-redelivery-dual-invalidation.yml
+      - control/yt-trinity-redelivery-dual-trigger.json
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: yt-trinity-redelivery-dual-invalidation
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.patch.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - id: patch
+        name: Enforce fail-closed prefill and positive geometry diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/redelivery_dual_invalidation_screen.py')
+          text = path.read_text(encoding='utf-8')
+          before = '''        if pending := (filled < planned and timestamp < expiry and open_quantity >= 0):
+            threshold = entry * (1 - side * THROUGH_PRICE)
+'''
+          after = '''        pre_target_hit = tape.high[i] >= target if side > 0 else tape.low[i] <= target
+        if open_quantity <= 0 and filled <= 0 and (hard_hit or pre_target_hit):
+            status = "HARD_STOP_BEFORE_FILL" if hard_hit else "TARGET_BEFORE_FILL"
+            break
+
+        if filled < planned and timestamp < expiry and open_quantity >= 0:
+            threshold = entry * (1 - side * THROUGH_PRICE)
+'''
+          if before in text:
+              text = text.replace(before, after, 1)
+          text = text.replace(
+              '''"pullback_depth_atr": side * (peak - pullback_extreme) / atr[confirm] if side > 0 else side * (pullback_extreme - trough) / atr[confirm],''',
+              '''"pullback_depth_atr": (peak - pullback_extreme) / atr[confirm] if side > 0 else (pullback_extreme - trough) / atr[confirm],''',
+          )
+          text = text.replace(
+              '''"macro_depth_atr": side * (float(lock["opening_low"]) - hard_stop) / atr[confirm] if side > 0 else side * (hard_stop - float(lock["opening_high"])) / atr[confirm],''',
+              '''"macro_depth_atr": (float(lock["opening_low"]) - hard_stop) / atr[confirm] if side > 0 else (hard_stop - float(lock["opening_high"])) / atr[confirm],''',
+          )
+          original = path.read_text(encoding='utf-8')
+          path.write_text(text, encoding='utf-8')
+          changed = original != text
+          with open(Path(__import__('os').environ['GITHUB_OUTPUT']), 'a', encoding='utf-8') as handle:
+              handle.write(f"changed={'true' if changed else 'false'}\n")
+          PY
+          if [[ "${{ steps.patch.outputs.changed }}" == "true" ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add research/yt_trinity_ml/redelivery_dual_invalidation_screen.py
+            git commit -m 'Fail closed redelivery orders after prefill invalidation'
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin agent/r22-yt-trinity-ml-001
+              if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+  screen:
+    needs: prepare
+    if: needs.prepare.outputs.changed != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install causal research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas pyarrow lightgbm scikit-learn gdown
+          python -m py_compile research/yt_trinity_ml/redelivery_dual_invalidation_screen.py
+          python -m pip freeze | sort > dependency-freeze.txt
+      - name: Download hash-registered canonical 2023 and 2024H1 archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p canonical
+          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt -O canonical/BTCUSDT_2023.zip
+          python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR -O canonical/ETHUSDT_2023.zip
+          python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 -O canonical/SOLUSDT_2023.zip
+          python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk -O canonical/XRPUSDT_2023.zip
+          python -m gdown --id 1RMgFypk0P4WX99WJRN1FWkqOJICf2VC3 -O canonical/BTCUSDT_2024H1.zip
+          python -m gdown --id 19ZE-pM5YseslNAL99KLZGKqUuQtVP3Xa -O canonical/ETHUSDT_2024H1.zip
+          python -m gdown --id 128K-J-WPlC3NPPHx5rlIru4QTMxGMfxX -O canonical/SOLUSDT_2024H1.zip
+          python -m gdown --id 1XX2NSgUb1bmUXevJdVFpHtmSMLzkhXrC -O canonical/XRPUSDT_2024H1.zip
+          sha256sum canonical/*.zip | sort > canonical/SHA256SUMS
+      - name: Run 2023 preparation and iterable 2024H1 causal screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/result
+          python research/yt_trinity_ml/redelivery_dual_invalidation_screen.py \
+            --data-root canonical \
+            --output artifact/result \
+            2>&1 | tee artifact/RUN_STDOUT.log
+          cp dependency-freeze.txt canonical/SHA256SUMS artifact/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-redelivery-dual-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
+      - name: Persist compact causal screen pointer
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -f artifact/result/summary.json ]]; then exit 0; fi
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          summary_path = Path('artifact/result/summary.json')
+          summary = json.loads(summary_path.read_text(encoding='utf-8'))
+          pointer = {
+              'schema_version': 1,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-redelivery-dual-{os.environ['GITHUB_SHA']}",
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              'summary': summary,
+          }
+          Path('research/yt_trinity_ml/REDELIVERY_DUAL_SCREEN_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/REDELIVERY_DUAL_SCREEN_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record dual-invalidation redelivery screen ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
