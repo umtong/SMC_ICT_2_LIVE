@@ -8,6 +8,12 @@ on:
       - research/scld_independent/materialize_source.py
       - research/scld_independent/source_payload/**
       - .github/workflows/scld-independent-live-screen.yml
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - research/scld_independent/materialize_source.py
+      - research/scld_independent/source_payload/**
+      - .github/workflows/scld-independent-live-screen.yml
 
 permissions:
   contents: write
@@ -19,11 +25,14 @@ concurrency:
 jobs:
   screen:
     runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -123,11 +132,11 @@ jobs:
           pointer = {
               "schema_version": 1,
               "system_id": summary.get("system_id"),
-              "source_sha": os.environ["GITHUB_SHA"],
+              "source_sha": os.environ["SOURCE_SHA"],
               "source_file_sha256": hashlib.sha256(Path("research/scld_independent/scld_system.py").read_bytes()).hexdigest(),
               "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
               "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
-              "artifact_name": f"independent-scld-live-{os.environ['GITHUB_SHA']}",
+              "artifact_name": f"independent-scld-live-{os.environ['SOURCE_SHA']}",
               "summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
               "decision": summary.get("decision"),
               "selected_pre_2024_contract": summary.get("selected_pre_2024_contract"),
@@ -149,8 +158,8 @@ jobs:
           fi
           git commit -m "Record independent SCLD screen ${GITHUB_RUN_ID}"
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            git pull --rebase origin "${BRANCH_NAME}"
+            if git push origin "HEAD:${BRANCH_NAME}"; then
               exit 0
             fi
             sleep $((attempt * 2))
