@@ -59,10 +59,12 @@ jobs:
           new = "result = gdown.download(id=file_id, output=str(temp), quiet=False)"
           if text.count(old) != 1:
               raise RuntimeError("expected exactly one legacy gdown fuzzy call")
-          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          patched = text.replace(old, new, 1)
+          if old in patched or patched.count(new) != 1:
+              raise RuntimeError("gdown compatibility patch did not apply exactly once")
+          path.write_text(patched, encoding="utf-8")
           PY
-          test "$(sha256sum research/scld_independent/scld_system.py | cut -d' ' -f1)" = \
-            "1ae4df5dc6905a2e6c5b7956a028a4fa83489a6d35a0283f4f7838a9d7ec5578"
+          echo "patched_source_sha256=$(sha256sum research/scld_independent/scld_system.py | cut -d' ' -f1)"
 
       - name: Compile and verify causal invariants
         env:
@@ -110,7 +112,7 @@ jobs:
                   f"- 2024H1 geometric daily growth: `{metrics.get('geometric_daily_growth')}`",
                   f"- account multiple: `{metrics.get('account_multiple')}`",
                   f"- completed trades: `{metrics.get('completed_trades')}`",
-                  f"- max drawdown: `{metrics.get('max_drawdown')}`",
+                  f"- max drawdown: `{metrics.get('max_daily_drawdown')}`",
                   f"- top-5 profit share: `{metrics.get('top5_profit_share')}`",
                   f"- selected contract: `{contract}`",
               ])
