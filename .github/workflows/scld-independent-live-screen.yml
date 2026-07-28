@@ -45,10 +45,22 @@ jobs:
           python -m pip install -q --upgrade pip
           python -m pip install -q numpy pandas scikit-learn pyarrow gdown
 
-      - name: Materialize and verify independent source
+      - name: Materialize, patch and verify independent source
         run: |
           python research/scld_independent/materialize_source.py \
             --output research/scld_independent/scld_system.py
+          test "$(sha256sum research/scld_independent/scld_system.py | cut -d' ' -f1)" = \
+            "915aa754db20da992f37c51aadd058f5fad13151b5d6efb0fc459882b39fe498"
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("research/scld_independent/scld_system.py")
+          text = path.read_text(encoding="utf-8")
+          old = "result = gdown.download(id=file_id, output=str(temp), quiet=False, fuzzy=True)"
+          new = "result = gdown.download(id=file_id, output=str(temp), quiet=False)"
+          if text.count(old) != 1:
+              raise RuntimeError("expected exactly one legacy gdown fuzzy call")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
           test "$(sha256sum research/scld_independent/scld_system.py | cut -d' ' -f1)" = \
             "1ae4df5dc6905a2e6c5b7956a028a4fa83489a6d35a0283f4f7838a9d7ec5578"
 
