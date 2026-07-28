@@ -1,0 +1,103 @@
+name: Canonical Bybit core market data
+
+on:
+  workflow_dispatch:
+    inputs:
+      segment:
+        description: Physical segment or REQUIRED_SET
+        required: true
+        default: REQUIRED_SET
+        type: choice
+        options:
+          - REQUIRED_SET
+          - PRE_2024_2021
+          - PRE_2024_2022
+          - PRE_2024_2023
+          - 2024_H1
+          - 2024_H2
+          - 2025_H1
+          - 2025_H2
+          - 2026_H1
+      symbol:
+        description: One symbol or ALL
+        required: true
+        default: ALL
+        type: choice
+        options: [ALL, BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT]
+
+concurrency:
+  group: canonical-bybit-core-${{ github.ref }}-${{ inputs.segment }}-${{ inputs.symbol }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+  BYBIT_PUBLIC_BASE_URL: https://api.manepa.jp
+
+jobs:
+  resolve-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      segments: ${{ steps.resolve.outputs.segments }}
+      symbols: ${{ steps.resolve.outputs.symbols }}
+    steps:
+      - id: resolve
+        shell: bash
+        env:
+          INPUT_SEGMENT: ${{ inputs.segment }}
+          INPUT_SYMBOL: ${{ inputs.symbol }}
+        run: |
+          if [[ "$INPUT_SEGMENT" == "REQUIRED_SET" ]]; then
+            segments='["PRE_2024_2021","PRE_2024_2022","PRE_2024_2023","2024_H1","2024_H2","2025_H1","2025_H2","2026_H1"]'
+          else
+            segments="[\"$INPUT_SEGMENT\"]"
+          fi
+          if [[ "$INPUT_SYMBOL" == "ALL" ]]; then
+            symbols='["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"]'
+          else
+            symbols="[\"$INPUT_SYMBOL\"]"
+          fi
+          echo "segments=$segments" >> "$GITHUB_OUTPUT"
+          echo "symbols=$symbols" >> "$GITHUB_OUTPUT"
+
+  build-shard:
+    needs: resolve-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        segment: ${{ fromJSON(needs.resolve-matrix.outputs.segments) }}
+        symbol: ${{ fromJSON(needs.resolve-matrix.outputs.symbols) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install .
+      - name: Build official core shard
+        run: |
+          python scripts/market_data/build_canonical_bybit.py \
+            --segment "${{ matrix.segment }}" \
+            --symbol "${{ matrix.symbol }}" \
+            --base-url "$BYBIT_PUBLIC_BASE_URL" \
+            --timeout 30 \
+            --max-attempts 8 \
+            --min-request-interval 0.10 \
+            --out artifact
+      - name: Verify immutable shard
+        run: |
+          python scripts/market_data/verify_canonical_bybit.py \
+            "artifact/${{ matrix.segment }}/${{ matrix.symbol }}" \
+            | tee "artifact/${{ matrix.segment }}/${{ matrix.symbol }}/VERIFICATION.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-bybit-core-${{ matrix.segment }}-${{ matrix.symbol }}
+          path: artifact/${{ matrix.segment }}/${{ matrix.symbol }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
