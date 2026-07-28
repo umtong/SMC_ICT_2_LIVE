@@ -1,14 +1,20 @@
-name: YTT 178 frozen structural H1 carrier
+name: YTT 178 frozen structural 2024H1
 
 on:
-  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-ytt-178-economic-h1-001]
+    paths:
+      - .github/workflows/ytt-178-frozen-structural-h1.yml
+      - control/ytt-178-frozen-structural-h1-trigger.json
+      - research/yt_trinity_ml/experiments/run_ytt_178_frozen_h1.py
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
-  group: ytt-178-h1-carrier-${{ github.event.pull_request.number }}
+  group: ytt-178-frozen-structural-h1
   cancel-in-progress: true
 
 env:
@@ -21,6 +27,9 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
 
       - uses: actions/checkout@v4
         with:
@@ -77,6 +86,7 @@ jobs:
           unzip -q /tmp/eth2023.zip -d inputs/data/PRE_2024_2023/ETHUSDT
           unzip -q /tmp/btc2024h1.zip -d inputs/data/2024_H1/BTCUSDT
           unzip -q /tmp/eth2024h1.zip -d inputs/data/2024_H1/ETHUSDT
+          find inputs/data -name DATASET_MANIFEST.json -print | sort
           test "$(find inputs/data -name DATASET_MANIFEST.json | wc -l)" -ge 4
 
       - name: Execute frozen 2023-selected H1 account paths
@@ -107,3 +117,60 @@ jobs:
           path: output
           if-no-files-found: error
           retention-days: 90
+
+      - name: Persist compact result pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ ! -f output/YTT_178_FROZEN_H1_RESULT.json ]]; then
+            exit 0
+          fi
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          source = Path('output/YTT_178_FROZEN_H1_RESULT.json')
+          result = json.loads(source.read_text(encoding='utf-8'))
+          primary = result['primary_base_result']
+          best = result.get('best_h1_diagnostic_not_selection_authority')
+          pointer = {
+              'schema_version': 1,
+              'claim_id': result['claim_id'],
+              'stage': result['stage'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'scientific_source_commit': result['scientific_source_commit'],
+              'canonical_source_commit': result['canonical_source_commit'],
+              'corpus_contract': result['corpus_contract'],
+              'selection_authority': result['selection_authority'],
+              'gate_counts_before_global_slot': result['gate_counts_before_global_slot'],
+              'primary_result_id': result['primary_result_id'],
+              'primary_metrics': primary['metrics'],
+              'primary_winner_removed_path': primary['winner_removed_path'],
+              'target_reached_by_primary_base': result['target_reached_by_primary_base'],
+              'target_reached_after_primary_winner_removal': result['target_reached_after_primary_winner_removal'],
+              'best_h1_diagnostic_not_selection_authority': None if best is None else {
+                  'configuration': best['configuration'],
+                  'metrics': best['metrics'],
+                  'winner_removed_path': best['winner_removed_path'],
+              },
+              'result_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+              'artifact_name': f"ytt-178-frozen-structural-h1-{os.environ['GITHUB_SHA']}",
+              'ranking_effect': result['ranking_effect'],
+          }
+          Path('research/yt_trinity_ml/YTT_178_FROZEN_H1_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/YTT_178_FROZEN_H1_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record frozen 178-corpus structural H1 ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
