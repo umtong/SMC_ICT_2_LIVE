@@ -50,11 +50,14 @@ jobs:
           cd research/alds_csd_delivery_gpt56
           cat runtime_bundle.b64.part* | base64 -d > runtime.tgz
           tar -xzf runtime.tgz
-          cat runner.py.gz.b64.part* | base64 -d | gzip -dc > runner.py
+          cat runner_small.b64.part* | base64 -d | gzip -dc > runner.py
           python -m py_compile parquet_flat.py materialize_canonical.py alds_engine.py alds_scale.py alds_csd.py runner.py
           python - <<'PY'
           from pathlib import Path
-          source = Path("runner.py").read_text(encoding="utf-8")
+          import hashlib
+          runner = Path("runner.py")
+          assert hashlib.sha256(runner.read_bytes()).hexdigest() == "a2dddc873ab2c8d725b30b06b6941b9eaf804dff32d86bc392c32d8dc7e34a8b"
+          source = runner.read_text(encoding="utf-8")
           assert 'loss="squared_error"' in source
           assert 'selection_score_pre2024' in source
           assert 'stable_pre2024' in source
