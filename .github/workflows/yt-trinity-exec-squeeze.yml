@@ -1,0 +1,101 @@
+name: YT Trinity isolated OI squeeze
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-exec-001]
+    paths:
+      - .github/workflows/yt-trinity-exec-squeeze.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: '1'
+  OMP_NUM_THREADS: '2'
+  MKL_NUM_THREADS: '2'
+
+concurrency:
+  group: yt-trinity-exec-squeeze-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install deterministic stack
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1' 'gdown==5.2.0'
+      - name: Materialize frozen source
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          base64 --decode research/yt_trinity_ml/payloads/squeeze_research.py.gz.b64 | gzip -dc > /tmp/run_squeeze.py
+          echo 'ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa  /tmp/run_squeeze.py' | sha256sum -c --strict
+          python -m py_compile /tmp/run_squeeze.py
+          cp /tmp/run_squeeze.py output/IMMUTABLE_SOURCE.py
+      - name: Download and verify immutable canonical shards
+        run: |
+          set -euo pipefail
+          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt -O input/BTCUSDT.zip
+          python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR -O input/ETHUSDT.zip
+          python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 -O input/SOLUSDT.zip
+          python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk -O input/XRPUSDT.zip
+          cat > input/SHA256SUMS <<'EOF'
+          ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46  BTCUSDT.zip
+          87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322  ETHUSDT.zip
+          d31a682456c32cab2158e10c957232a2a56e7fbae8d6d84495694781b127d132  SOLUSDT.zip
+          b014870d82664f24938faab8787d7bba1b8b655b9c31436c2dcb6eb79a8cd473  XRPUSDT.zip
+          EOF
+          (cd input && sha256sum -c --strict SHA256SUMS)
+          for symbol in BTCUSDT ETHUSDT SOLUSDT XRPUSDT; do mkdir -p input/$symbol; unzip -q input/$symbol.zip -d input/$symbol; done
+      - name: Run causal squeeze evaluation
+        run: |
+          set +e
+          python /tmp/run_squeeze.py --data-root input --output output 2>&1 | tee output/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]} > output/EXIT_CODE.txt
+          exit 0
+      - name: Persist pointer on isolated branch
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('output'); code=int((root/'EXIT_CODE.txt').read_text()) if (root/'EXIT_CODE.txt').exists() else 99
+          files={}
+          for path in sorted(root.glob('*.json')):
+            try: files[path.name]=json.loads(path.read_text())
+            except Exception: files[path.name]={'parse_error':True,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+          log=(root/'RUN_STDOUT.log').read_text(errors='replace') if (root/'RUN_STDOUT.log').exists() else ''
+          payload={'schema_version':1,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha256':'ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa','exit_code':code,'status':'success' if code==0 else 'execution_failure_not_economic_failure','json_outputs':files,'stdout_tail':log[-16000:],'ranking_effect':'NONE_PRE2024_NOT_EVENT_TAPE_VALIDATED'}
+          Path('research/yt_trinity_ml/EXEC_SQUEEZE_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True,default=str)+'\n')
+          PY
+          git config user.name github-actions[bot]; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/yt_trinity_ml/EXEC_SQUEEZE_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record isolated squeeze result ${GITHUB_RUN_ID}"
+            for i in 1 2 3 4 5; do git pull --rebase origin agent/r22-yt-trinity-ml-exec-001 && git push origin HEAD:agent/r22-yt-trinity-ml-exec-001 && break || sleep $((i*3)); done
+          fi
+      - name: Upload evidence
+        if: always()
+        run: (cd output && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-exec-squeeze-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fail after evidence preservation
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0

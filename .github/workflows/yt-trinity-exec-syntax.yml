@@ -1,0 +1,39 @@
+name: YT Trinity isolated syntax validation
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-exec-001]
+    paths:
+      - .github/workflows/yt-trinity-exec-syntax.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile all isolated scientific sources
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            research/yt_trinity_ml/run_quality_structural_runner_v1.py \
+            research/yt_trinity_ml/run_killzone_smt_cisd_v1.py \
+            research/yt_trinity_ml/run_frozen_frequency_gate_v1.py \
+            research/yt_trinity_ml/run_quality_exit_geometry_v1.py
+      - name: Persist validation marker
+        run: |
+          printf '{"schema_version":1,"status":"PASS","run_id":%s,"source_sha":"%s"}\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" > research/yt_trinity_ml/EXEC_SYNTAX_POINTER.json
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/yt_trinity_ml/EXEC_SYNTAX_POINTER.json
+          git commit -m "Validate isolated execution sources ${GITHUB_RUN_ID}"
+          for i in 1 2 3 4 5; do git pull --rebase origin agent/r22-yt-trinity-ml-exec-001 && git push origin HEAD:agent/r22-yt-trinity-ml-exec-001 && break || sleep $((i*3)); done

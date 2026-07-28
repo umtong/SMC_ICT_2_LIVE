@@ -1,0 +1,23 @@
+name: YT Trinity isolated PR execution marker
+
+on:
+  pull_request:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-exec-pr-marker.yml
+
+permissions:
+  contents: read
+
+jobs:
+  marker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "isolated PR execution visible"
+          python -m py_compile \
+            research/yt_trinity_ml/run_quality_structural_runner_v2.py \
+            research/yt_trinity_ml/run_killzone_smt_cisd_v1.py \
+            research/yt_trinity_ml/run_killzone_smt_cisd_v2.py \
+            research/yt_trinity_ml/run_killzone_smt_cisd_v3.py

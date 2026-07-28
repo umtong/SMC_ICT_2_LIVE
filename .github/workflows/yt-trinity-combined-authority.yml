@@ -1,0 +1,284 @@
+name: YT Trinity combined isolated alpha authority
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-exec-001]
+    paths:
+      - .github/workflows/yt-trinity-combined-authority.yml
+  pull_request:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-combined-authority.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: '1'
+  OMP_NUM_THREADS: '2'
+  MKL_NUM_THREADS: '2'
+
+concurrency:
+  group: yt-trinity-combined-authority-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-exec-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install exact-account stack
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1'
+      - name: Download immutable structural inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fetch_artifact(){ curl --fail --silent --show-error --location -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer ${GH_TOKEN}" -H 'X-GitHub-Api-Version: 2022-11-28' "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"; }
+          mkdir -p input/{labels,btc2023,eth2023,btc2024,eth2024,official} output
+          fetch_artifact 8643192491 /tmp/labels.zip; fetch_artifact 8636781702 /tmp/btc2023.zip; fetch_artifact 8636761741 /tmp/eth2023.zip; fetch_artifact 8636867995 /tmp/btc2024.zip; fetch_artifact 8636882043 /tmp/eth2024.zip; fetch_artifact 8644460717 /tmp/official.zip
+          unzip -q /tmp/labels.zip -d input/labels; unzip -q /tmp/btc2023.zip -d input/btc2023; unzip -q /tmp/eth2023.zip -d input/eth2023; unzip -q /tmp/btc2024.zip -d input/btc2024; unzip -q /tmp/eth2024.zip -d input/eth2024; unzip -q /tmp/official.zip -d input/official
+          find input -type f | sort > output/INPUT_FILES.txt
+      - name: Resolve structural inputs
+        run: |
+          set -euo pipefail
+          find input/labels -name EVENT_LABELS.pkl.gz -print -quit >/tmp/labels
+          find input/official -name FROZEN_PERIOD_RESULT.json -print -quit >/tmp/official
+          for pair in 'btc2023 btc_2023' 'eth2023 eth_2023' 'btc2024 btc_2024h1' 'eth2024 eth_2024h1';do set -- $pair;root=$1;key=$2;find input/$root -path '*/trade_bars/1m.parquet' -print -quit >/tmp/${key}_bars;find input/$root -path '*/streams/mark_price_1m.parquet' -print -quit >/tmp/${key}_marks;find input/$root -path '*/streams/funding_events.parquet' -print -quit >/tmp/${key}_funding;test -s /tmp/${key}_bars&&test -s /tmp/${key}_marks&&test -s /tmp/${key}_funding;done
+          test -s /tmp/labels&&test -s /tmp/official
+      - name: Run exact-account structural research
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          python -m py_compile research/yt_trinity_ml/run_quality_structural_runner_v1.py research/yt_trinity_ml/run_quality_structural_runner_v2.py
+          compile=$?;if [[ $compile != 0 ]];then echo $compile>output/EXIT_CODE.txt;exit 0;fi
+          python research/yt_trinity_ml/run_quality_structural_runner_v2.py --labels "$(cat /tmp/labels)" --frozen-pointer research/yt_trinity_ml/FROZEN_2024H1_V2_POINTER.json --official-result "$(cat /tmp/official)" --output output \
+            --btc-2023-bars "$(cat /tmp/btc_2023_bars)" --btc-2023-marks "$(cat /tmp/btc_2023_marks)" --btc-2023-funding "$(cat /tmp/btc_2023_funding)" --eth-2023-bars "$(cat /tmp/eth_2023_bars)" --eth-2023-marks "$(cat /tmp/eth_2023_marks)" --eth-2023-funding "$(cat /tmp/eth_2023_funding)" \
+            --btc-2024h1-bars "$(cat /tmp/btc_2024h1_bars)" --btc-2024h1-marks "$(cat /tmp/btc_2024h1_marks)" --btc-2024h1-funding "$(cat /tmp/btc_2024h1_funding)" --eth-2024h1-bars "$(cat /tmp/eth_2024h1_bars)" --eth-2024h1-marks "$(cat /tmp/eth_2024h1_marks)" --eth-2024h1-funding "$(cat /tmp/eth_2024h1_funding)" 2>&1|tee output/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]}>output/EXIT_CODE.txt;exit 0
+      - name: Hash structural evidence
+        if: always()
+        run: (cd output&&find . -type f ! -name SHA256SUMS -print0|sort -z|xargs -0 sha256sum>SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: combined-structural-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+  smt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-exec-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install SMT stack
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1' 'requests==2.32.3'
+      - name: Materialize immutable SMT source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_BLOB: 8ef34cd2bc3357d873bfa8d073328b8681f2157f
+        run: |
+          set -euo pipefail
+          mkdir -p research/yt_trinity_ml/experiments output cache
+          curl --fail --silent --show-error --location -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer ${GH_TOKEN}" -H 'X-GitHub-Api-Version: 2022-11-28' "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs/${SOURCE_BLOB}" -o /tmp/source.json
+          python - <<'PY'
+          import base64,json,os
+          from pathlib import Path
+          x=json.loads(Path('/tmp/source.json').read_text());raw=base64.b64decode(x['content']);Path('research/yt_trinity_ml/experiments/smt_or_bpr_screen.py').write_bytes(raw);Path('output/IMMUTABLE_SOURCE.py').write_bytes(raw);Path('output/SOURCE_BINDING.json').write_text(json.dumps({'commit':'bd266a0338eb4c376ec092ad12b862cbdb1c7a94','blob':os.environ['SOURCE_BLOB'],'bytes':len(raw)},indent=2)+'\n')
+          PY
+          test "$(git hash-object research/yt_trinity_ml/experiments/smt_or_bpr_screen.py)" = "$SOURCE_BLOB"
+          python -m py_compile research/yt_trinity_ml/experiments/smt_or_bpr_screen.py research/yt_trinity_ml/system/public_archive.py
+          PYTHONPATH=research/yt_trinity_ml python research/yt_trinity_ml/experiments/smt_or_bpr_screen.py --self-test
+      - name: Run SMT pre-2024 selection and conditional 2024H1
+        run: |
+          set +e
+          PYTHONPATH=research/yt_trinity_ml python research/yt_trinity_ml/experiments/smt_or_bpr_screen.py --cache-root cache --output output --corpus-pointer research/yt_trinity_ml/COMPLETE_CORPUS_POINTER.json --data-start 2021-01-01T00:00:00Z --selection-start 2022-01-01T00:00:00Z --evaluation-start 2024-01-01T00:00:00Z --evaluation-end-exclusive 2024-07-01T00:00:00Z 2>&1|tee output/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]}>output/EXIT_CODE.txt;exit 0
+      - name: Hash SMT evidence
+        if: always()
+        run: (cd output&&find . -type f ! -name SHA256SUMS -print0|sort -z|xargs -0 sha256sum>SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: combined-smt-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+  squeeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-exec-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install squeeze stack
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1' 'gdown==5.2.0'
+      - name: Materialize frozen squeeze source
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          base64 --decode research/yt_trinity_ml/payloads/squeeze_research.py.gz.b64|gzip -dc>/tmp/run_squeeze.py
+          echo 'ad66f4957e08bebc742032fe5cc682839057a8c251ecd8b6ac0e01c211f442fa  /tmp/run_squeeze.py'|sha256sum -c --strict
+          python -m py_compile /tmp/run_squeeze.py;cp /tmp/run_squeeze.py output/IMMUTABLE_SOURCE.py
+      - name: Download immutable squeeze shards
+        run: |
+          set -euo pipefail
+          python -m gdown --id 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt -O input/BTCUSDT.zip;python -m gdown --id 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR -O input/ETHUSDT.zip;python -m gdown --id 1eB-bVNBLFqlpO1w2FuoDYmYEGt7T9sp5 -O input/SOLUSDT.zip;python -m gdown --id 19W-LSU652DLVtoJfbF4CpSYYxoU3dUSk -O input/XRPUSDT.zip
+          cat >input/SHA256SUMS <<'EOF'
+          ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46  BTCUSDT.zip
+          87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322  ETHUSDT.zip
+          d31a682456c32cab2158e10c957232a2a56e7fbae8d6d84495694781b127d132  SOLUSDT.zip
+          b014870d82664f24938faab8787d7bba1b8b655b9c31436c2dcb6eb79a8cd473  XRPUSDT.zip
+          EOF
+          (cd input&&sha256sum -c --strict SHA256SUMS)
+          for symbol in BTCUSDT ETHUSDT SOLUSDT XRPUSDT;do mkdir -p input/$symbol;unzip -q input/$symbol.zip -d input/$symbol;done
+      - name: Run squeeze research
+        run: |
+          set +e
+          python /tmp/run_squeeze.py --data-root input --output output 2>&1|tee output/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]}>output/EXIT_CODE.txt;exit 0
+      - name: Hash squeeze evidence
+        if: always()
+        run: (cd output&&find . -type f ! -name SHA256SUMS -print0|sort -z|xargs -0 sha256sum>SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: combined-squeeze-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+  decide:
+    needs: [structural,smt,squeeze]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    outputs:
+      target_met: ${{ steps.core.outputs.target_met }}
+      needs_killzone: ${{ steps.core.outputs.needs_killzone }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-exec-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: combined-*-${{ github.sha }}
+          path: evidence
+          merge-multiple: false
+      - id: core
+        name: Parse core results and choose conditional action
+        run: |
+          python - <<'PY'
+          import json,math,os
+          from pathlib import Path
+          roots={p.name.replace('combined-','').rsplit('-',1)[0]:p for p in Path('evidence').iterdir() if p.is_dir()}
+          rows=[]
+          sroot=next((p for k,p in roots.items() if k.startswith('structural')),None)
+          if sroot:
+              p=sroot/'QUALITY_STRUCTURAL_RUNNER_V2_RESULT.json';r=json.loads(p.read_text()) if p.exists() else None;code=int((sroot/'EXIT_CODE.txt').read_text()) if (sroot/'EXIT_CODE.txt').exists() else 99;m=((r or {}).get('frozen_2024H1') or {}).get('growth') or {};rows.append({'id':'STRUCTURAL_V2','valid':bool(r and code==0 and r.get('baseline_crosscheck',{}).get('valid')),'metrics':m,'details':r})
+          mroot=next((p for k,p in roots.items() if k.startswith('smt')),None)
+          if mroot:
+              p=mroot/'RUN_SUMMARY.json';r=json.loads(p.read_text()) if p.exists() else None;code=int((mroot/'EXIT_CODE.txt').read_text()) if (mroot/'EXIT_CODE.txt').exists() else 99;candidates=[]
+              if isinstance(r,dict):
+                  for key in ('official_2024h1','evaluation','frozen_2024h1','result'):
+                      v=r.get(key)
+                      if isinstance(v,dict):candidates.append(v.get('metrics') if isinstance(v.get('metrics'),dict) else v)
+              m=next((x for x in candidates if isinstance(x,dict) and x.get('geometric_daily_growth') is not None),{});rows.append({'id':'SMT_OR_BPR','valid':bool(r and code==0),'metrics':m,'details':r})
+          qroot=next((p for k,p in roots.items() if k.startswith('squeeze')),None)
+          if qroot:
+              outputs={}
+              for p in qroot.glob('*.json'):
+                  try:outputs[p.name]=json.loads(p.read_text())
+                  except Exception:pass
+              r=outputs.get('RUN_SUMMARY.json') or outputs.get('SUMMARY.json') or {};code=int((qroot/'EXIT_CODE.txt').read_text()) if (qroot/'EXIT_CODE.txt').exists() else 99;m=r.get('metrics') or r.get('evaluation_metrics') or {};rows.append({'id':'OI_SQUEEZE','valid':code==0,'metrics':m,'details':r})
+          for row in rows:
+              m=row['metrics'];row['account_multiple']=m.get('account_multiple');row['geometric_daily_growth']=m.get('geometric_daily_growth');row['maximum_drawdown']=m.get('maximum_drawdown');row['completed_trades']=m.get('completed_trades') or m.get('filled_trades')
+          def score(x):
+              g=x.get('geometric_daily_growth');return float(g) if x['valid'] and isinstance(g,(int,float)) and math.isfinite(g) else -1e12
+          ranked=sorted(rows,key=lambda x:(score(x),x.get('account_multiple') or -1),reverse=True);best=ranked[0] if ranked and score(ranked[0])>-1e11 else None;target=bool(best and best.get('geometric_daily_growth') is not None and best['geometric_daily_growth']>=0.01);needs=not target
+          payload={'schema_version':1,'core_rows':rows,'ranked':ranked,'best':best,'target_met':target,'needs_killzone':needs}
+          Path('CORE_DECISION.json').write_text(json.dumps(payload,indent=2,sort_keys=True,default=str)+'\n')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f"target_met={'true' if target else 'false'}\nneeds_killzone={'true' if needs else 'false'}\n")
+          print(json.dumps(payload,indent=2,default=str))
+          PY
+      - name: Install conditional killzone stack
+        if: steps.core.outputs.needs_killzone == 'true'
+        run: python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' 'scikit-learn==1.6.1'
+      - name: Download killzone inputs
+        if: steps.core.outputs.needs_killzone == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fetch_artifact(){ curl --fail --silent --show-error --location -H 'Accept: application/vnd.github+json' -H "Authorization: Bearer ${GH_TOKEN}" -H 'X-GitHub-Api-Version: 2022-11-28' "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"; }
+          mkdir -p killinput/{btc2023,eth2023,btc2024,eth2024} killzone
+          fetch_artifact 8636781702 /tmp/kbtc23.zip;fetch_artifact 8636761741 /tmp/keth23.zip;fetch_artifact 8636867995 /tmp/kbtc24.zip;fetch_artifact 8636882043 /tmp/keth24.zip
+          unzip -q /tmp/kbtc23.zip -d killinput/btc2023;unzip -q /tmp/keth23.zip -d killinput/eth2023;unzip -q /tmp/kbtc24.zip -d killinput/btc2024;unzip -q /tmp/keth24.zip -d killinput/eth2024
+          for pair in 'btc2023 btcusdt_2023' 'eth2023 ethusdt_2023' 'btc2024 btcusdt_2024h1' 'eth2024 ethusdt_2024h1';do set -- $pair;root=$1;key=$2;find killinput/$root -path '*/trade_bars/1m.parquet' -print -quit >/tmp/${key}_bars;find killinput/$root -path '*/streams/mark_price_1m.parquet' -print -quit >/tmp/${key}_marks;find killinput/$root -path '*/streams/open_interest_5m.parquet' -print -quit >/tmp/${key}_oi;find killinput/$root -path '*/streams/funding_events.parquet' -print -quit >/tmp/${key}_funding;test -s /tmp/${key}_bars&&test -s /tmp/${key}_marks&&test -s /tmp/${key}_oi&&test -s /tmp/${key}_funding;done
+      - name: Run purged corrected killzone alpha
+        if: steps.core.outputs.needs_killzone == 'true'
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          python -m py_compile research/yt_trinity_ml/run_killzone_smt_cisd_v1.py research/yt_trinity_ml/run_killzone_smt_cisd_v2.py research/yt_trinity_ml/run_killzone_smt_cisd_v3.py;compile=$?;if [[ $compile != 0 ]];then echo $compile>killzone/EXIT_CODE.txt;exit 0;fi
+          python research/yt_trinity_ml/run_killzone_smt_cisd_v3.py --output killzone --btcusdt-2023-bars "$(cat /tmp/btcusdt_2023_bars)" --btcusdt-2023-marks "$(cat /tmp/btcusdt_2023_marks)" --btcusdt-2023-oi "$(cat /tmp/btcusdt_2023_oi)" --btcusdt-2023-funding "$(cat /tmp/btcusdt_2023_funding)" --ethusdt-2023-bars "$(cat /tmp/ethusdt_2023_bars)" --ethusdt-2023-marks "$(cat /tmp/ethusdt_2023_marks)" --ethusdt-2023-oi "$(cat /tmp/ethusdt_2023_oi)" --ethusdt-2023-funding "$(cat /tmp/ethusdt_2023_funding)" --btcusdt-2024h1-bars "$(cat /tmp/btcusdt_2024h1_bars)" --btcusdt-2024h1-marks "$(cat /tmp/btcusdt_2024h1_marks)" --btcusdt-2024h1-oi "$(cat /tmp/btcusdt_2024h1_oi)" --btcusdt-2024h1-funding "$(cat /tmp/btcusdt_2024h1_funding)" --ethusdt-2024h1-bars "$(cat /tmp/ethusdt_2024h1_bars)" --ethusdt-2024h1-marks "$(cat /tmp/ethusdt_2024h1_marks)" --ethusdt-2024h1-oi "$(cat /tmp/ethusdt_2024h1_oi)" --ethusdt-2024h1-funding "$(cat /tmp/ethusdt_2024h1_funding)" 2>&1|tee killzone/RUN_STDOUT.log
+          echo ${PIPESTATUS[0]}>killzone/EXIT_CODE.txt;exit 0
+      - name: Final aggregate and persistent authority pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,math,os
+          from pathlib import Path
+          core=json.loads(Path('CORE_DECISION.json').read_text());rows=list(core['core_rows']);kp=Path('killzone/KILLZONE_SMT_CISD_RESULT.json')
+          if kp.exists():
+              r=json.loads(kp.read_text());code=int(Path('killzone/EXIT_CODE.txt').read_text()) if Path('killzone/EXIT_CODE.txt').exists() else 99;m=r.get('official_2024h1') or {};rows.append({'id':'KILLZONE_SMT_CISD_PURGED','valid':code==0,'metrics':m,'details':r,'account_multiple':m.get('account_multiple'),'geometric_daily_growth':m.get('geometric_daily_growth'),'maximum_drawdown':m.get('maximum_drawdown'),'completed_trades':m.get('completed_trades')})
+          def score(x):
+              g=x.get('geometric_daily_growth');return float(g) if x.get('valid') and isinstance(g,(int,float)) and math.isfinite(g) else -1e12
+          ranked=sorted(rows,key=lambda x:(score(x),x.get('account_multiple') or -1),reverse=True);best=ranked[0] if ranked and score(ranked[0])>-1e11 else None;target=bool(best and best.get('geometric_daily_growth') is not None and best['geometric_daily_growth']>=0.01)
+          payload={'schema_version':1,'claim_id':'CLM-20260727-0346-YT-TRINITY-ML-001','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'core_decision':core,'ranked':ranked,'best':best,'target_met':target,'next_action':'EVENT_TAPE_AND_SEQUENTIAL_2024_2026' if target else 'NEXT_DISTINCT_ALPHA_FAILED_AUCTION_ABSORPTION_VWAP','ranking_effect':'NONE_UNTIL_EVENT_TAPE_VALIDATION'}
+          Path('research/yt_trinity_ml/EXEC_COMBINED_AUTHORITY_POINTER.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2,sort_keys=True,default=str)+'\n');Path('COMBINED_RESULT.json').write_text(json.dumps(payload,indent=2,default=str)+'\n')
+          PY
+          git config user.name github-actions[bot];git config user.email 41898282+github-actions[bot]@users.noreply.github.com;git add research/yt_trinity_ml/EXEC_COMBINED_AUTHORITY_POINTER.json
+          if ! git diff --cached --quiet;then git commit -m "Record combined alpha authority ${GITHUB_RUN_ID}";for i in 1 2 3 4 5;do git pull --rebase origin agent/r22-yt-trinity-ml-exec-001&&git push origin HEAD:agent/r22-yt-trinity-ml-exec-001&&break||sleep $((i*3));done;fi
+      - name: Upload combined evidence
+        if: always()
+        run: |
+          mkdir -p combined;cp CORE_DECISION.json COMBINED_RESULT.json combined/;if [[ -d killzone ]];then cp -a killzone combined/;fi;(cd combined&&find . -type f ! -name SHA256SUMS -print0|sort -z|xargs -0 sha256sum>SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: combined-authority-${{ github.sha }}
+          path: combined
+          if-no-files-found: error
+          retention-days: 90
