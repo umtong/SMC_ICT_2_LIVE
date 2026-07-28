@@ -6,6 +6,10 @@ on:
     branches: [agent/independent-scld-live-001]
     paths:
       - .github/workflows/scld-pyarrow-wheel-bridge.yml
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - .github/workflows/scld-pyarrow-wheel-bridge.yml
 
 permissions:
   contents: read
@@ -25,7 +29,7 @@ jobs:
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
-          name: scld-pyarrow-cp313-${{ github.sha }}
+          name: scld-pyarrow-cp313-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifact/wheel/*.whl
           if-no-files-found: error
           compression-level: 0
