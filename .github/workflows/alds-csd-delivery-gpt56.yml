@@ -60,7 +60,7 @@ jobs:
           runner = Path("runner.py")
           materializer = Path("materialize_canonical.py")
           assert hashlib.sha256(runner.read_bytes()).hexdigest() == "a2dddc873ab2c8d725b30b06b6941b9eaf804dff32d86bc392c32d8dc7e34a8b"
-          assert hashlib.sha256(materializer.read_bytes()).hexdigest() == "27ee8eac47ae4c3a4af9b8a30d420792ef437ff22833c901c3911e29348f3011"
+          assert hashlib.sha256(materializer.read_bytes()).hexdigest() == "5ed6dc1043f9e336923e7b67047ed70b3441244caa4dd19820d0fd03a7a0f8be"
           source = runner.read_text(encoding="utf-8")
           assert 'loss="squared_error"' in source
           assert 'selection_score_pre2024' in source
