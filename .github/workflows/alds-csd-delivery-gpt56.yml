@@ -53,7 +53,8 @@ jobs:
           tar -xzf runtime.tgz
           cat runner_small.b64.part* | base64 -d | gzip -dc > runner.py
           cat materializer_v2_small.b64.part* | base64 -d | gzip -dc > materialize_canonical.py
-          python -m py_compile parquet_flat.py materialize_canonical.py alds_engine.py alds_scale.py alds_csd.py runner.py
+          python runtime_compat_patch.py alds_scale.py
+          python -m py_compile parquet_flat.py materialize_canonical.py runtime_compat_patch.py alds_engine.py alds_scale.py alds_csd.py runner.py
           python - <<'PY'
           from pathlib import Path
           import hashlib
@@ -62,9 +63,12 @@ jobs:
           assert hashlib.sha256(runner.read_bytes()).hexdigest() == "a2dddc873ab2c8d725b30b06b6941b9eaf804dff32d86bc392c32d8dc7e34a8b"
           assert hashlib.sha256(materializer.read_bytes()).hexdigest() == "5ed6dc1043f9e336923e7b67047ed70b3441244caa4dd19820d0fd03a7a0f8be"
           source = runner.read_text(encoding="utf-8")
+          scale = Path("alds_scale.py").read_text(encoding="utf-8")
           assert 'loss="squared_error"' in source
           assert 'selection_score_pre2024' in source
           assert 'stable_pre2024' in source
+          assert 'known_col = f"{prefix}_known_at_ms"' in scale
+          assert 'd["d_known_at_ms"] = d["d_known_at_ms"].astype("int64")' in scale
           print({"runner_lines": len(source.splitlines()), "runner_bytes": len(source.encode())})
           PY
 
