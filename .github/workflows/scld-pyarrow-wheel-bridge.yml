@@ -1,0 +1,36 @@
+name: SCLD pyarrow wheel bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/independent-scld-live-001]
+    paths:
+      - .github/workflows/scld-pyarrow-wheel-bridge.yml
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - .github/workflows/scld-pyarrow-wheel-bridge.yml
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download binary parquet engine
+        run: |
+          mkdir -p artifact/wheel
+          python -m pip download --only-binary=:all: --no-deps pyarrow -d artifact/wheel
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: scld-pyarrow-cp313-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifact/wheel/*.whl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
