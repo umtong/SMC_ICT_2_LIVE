@@ -1,0 +1,168 @@
+name: Independent SCLD live-system causal screen
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [agent/r22-canonical-halfyear-market-data-001]
+    paths:
+      - research/scld_live/scld_screen.py
+      - .github/workflows/scld-live-independent-screen.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scld-live-independent-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies and test invariants
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow gdown
+          python -m py_compile research/scld_live/scld_screen.py
+          python research/scld_live/scld_screen.py --self-test
+
+      - name: Restore immutable canonical archive cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical-downloads
+          key: scld-canonical-btceth-2023-2024h1-v1
+
+      - name: Materialize verified canonical Bybit shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, shutil, zipfile
+          from pathlib import Path
+          import gdown
+
+          archives = [
+              ("PRE_2024_2023", "BTCUSDT", "1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt", "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46"),
+              ("PRE_2024_2023", "ETHUSDT", "1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR", "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322"),
+              ("2024_H1", "BTCUSDT", "1RMgFypk0P4WX99WJRN1FWkqOJICf2VC3", "95c932c4ce6e397738219e0bf5ad94defbbadb7dab215716fdd65438a4484eac"),
+              ("2024_H1", "ETHUSDT", "19ZE-pM5YseslNAL99KLZGKqUuQtVP3Xa", "58a10d224918d078b5738d37d9b0fbb20d9448f20a875e83b68d224ef3f9cef9"),
+          ]
+          cache, root = Path("artifact/canonical-downloads"), Path("artifact/canonical")
+          cache.mkdir(parents=True, exist_ok=True); root.mkdir(parents=True, exist_ok=True)
+
+          def digest(path):
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for block in iter(lambda: f.read(1 << 20), b""): h.update(block)
+              return h.hexdigest()
+
+          evidence = []
+          for segment, symbol, file_id, expected_hash in archives:
+              archive = cache / f"DS-BYBIT-LINEAR-{symbol}-{segment}-CANONICAL-V1.zip"
+              if not archive.is_file() or digest(archive) != expected_hash:
+                  archive.unlink(missing_ok=True)
+                  if not gdown.download(id=file_id, output=str(archive), quiet=False):
+                      raise RuntimeError(f"download failed: {archive.name}")
+              actual = digest(archive)
+              if actual != expected_hash: raise RuntimeError(f"hash mismatch: {archive.name}")
+              destination = root / segment / symbol
+              shutil.rmtree(destination, ignore_errors=True); destination.mkdir(parents=True)
+              with zipfile.ZipFile(archive) as bundle: bundle.extractall(destination)
+              manifest = json.loads((destination / "DATASET_MANIFEST.json").read_text(encoding="utf-8"))
+              dataset_id = f"DS-BYBIT-LINEAR-{symbol}-{segment}-CANONICAL-V1"
+              if manifest.get("dataset_id") != dataset_id: raise RuntimeError(f"identity mismatch: {dataset_id}")
+              evidence.append({"dataset_id": dataset_id, "archive_sha256": actual, "drive_file_id": file_id})
+          (root / "MATERIALIZATION.json").write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
+      - name: Run pre-2024 selection and 2024H1 causal evaluation
+        env:
+          PYTHONPATH: .
+          OMP_NUM_THREADS: "2"
+          OPENBLAS_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+        run: |
+          rm -rf artifact/scld-live-v1 && mkdir -p artifact/scld-live-v1
+          python research/scld_live/scld_screen.py \
+            --data-root artifact/canonical \
+            --output artifact/scld-live-v1 \
+            2>&1 | tee artifact/scld-live-v1/SCREEN_STDOUT.log
+
+      - name: Publish run summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path("artifact/scld-live-v1/RUN_SUMMARY.json")
+          if not path.exists(): raise SystemExit("RUN_SUMMARY.json missing")
+          s = json.loads(path.read_text(encoding="utf-8")); a = s["pre_2024_oof_selection"]["metrics"]; b = s["evaluation_2024_h1"]["metrics"]
+          lines = [
+              "## Independent SCLD live-system causal screen",
+              f"- decision: `{s['decision']}`", f"- candidate rows: `{s['candidate_rows']}`",
+              f"- pre-2024 OOF daily growth / multiple / trades: `{a['geometric_daily_growth']}` / `{a['account_multiple']}` / `{a['completed_trades']}`",
+              f"- 2024H1 daily growth / multiple: `{b['geometric_daily_growth']}` / `{b['account_multiple']}`",
+              f"- 2024H1 max drawdown / trades / top-10 share: `{b['max_drawdown']}` / `{b['completed_trades']}` / `{b['top_10_profit_share']}`",
+              f"- liquidations: `{b['liquidations']}`",
+          ]
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as f: f.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload immutable run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scld-live-independent-${{ github.sha }}
+          path: |
+            artifact/scld-live-v1
+            artifact/canonical/MATERIALIZATION.json
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact result pointer
+        if: success()
+        env:
+          RESULT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          p = Path("artifact/scld-live-v1/RUN_SUMMARY.json"); s = json.loads(p.read_text(encoding="utf-8")); e = s["evaluation_2024_h1"]
+          pointer = {
+              "schema_version": 1, "system_id": s["system_id"], "decision": s["decision"],
+              "workflow": "Independent SCLD live-system causal screen", "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]), "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"scld-live-independent-{os.environ['GITHUB_SHA']}",
+              "summary_sha256": hashlib.sha256(p.read_bytes()).hexdigest(), "independence_contract": s["independence_contract"],
+              "data_verification": s["data_verification"], "candidate_rows": s["candidate_rows"],
+              "candidate_counts": s["candidate_counts"], "selected_model": s["selected_model"],
+              "selected_portfolio_config": s["selected_portfolio_config"],
+              "pre_2024_oof_metrics": s["pre_2024_oof_selection"]["metrics"],
+              "evaluation_2024_h1_metrics": e["metrics"], "evaluation_2024_h1_grouped": e.get("grouped", {}),
+              "monthly_model_updates": s["monthly_model_updates"], "runtime_seconds": s["runtime_seconds"],
+          }
+          Path("research/scld_live/LATEST_RESULT.json").write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/scld_live/LATEST_RESULT.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record independent SCLD causal screen ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${RESULT_BRANCH}"
+            git push origin "HEAD:${RESULT_BRANCH}" && exit 0
+            sleep $((attempt * 2))
+          done
+          exit 1
