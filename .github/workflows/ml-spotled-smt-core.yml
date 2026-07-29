@@ -1,0 +1,150 @@
+name: Spot-led intermarket SMT Core fatal screen
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/ml_spotled_smt_core/**
+      - .github/workflows/ml-spotled-smt-core.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ml-spotled-smt-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+  BYBIT_ARTIFACT_ID: "8626087323"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified portable quant runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          unzip -q deps/runtime.zip -d deps/runtime
+          (cd deps/runtime && sha256sum -c SHA256SUMS)
+          mkdir -p deps/runtime/root
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import numpy, pandas, pyarrow, sklearn
+          print("runtime-ok", numpy.__version__, pandas.__version__, pyarrow.__version__, sklearn.__version__)
+          PY
+
+      - name: Download immutable Bybit 100ms state artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/bybit
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BYBIT_ARTIFACT_ID}/zip" \
+            -o deps/bybit.zip
+          unzip -q deps/bybit.zip -d deps/bybit
+          (cd deps/bybit && sha256sum -c INPUT_SHA256SUMS.txt)
+          test -s deps/bybit/output/compact_states/2022-07-01_BTCUSDT_state.parquet
+          test -s deps/bybit/output/compact_states/2023-07-01_BTCUSDT_state.parquet
+
+      - name: Download outcome-sealed Binance spot public samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deps/spot
+          curl -L --fail --retry 6 --retry-all-errors \
+            "https://datasets.tardis.dev/v1/binance/trades/2022/07/01/BTCUSDT.csv.gz" \
+            -o deps/spot/BTCUSDT-trades-2022-07-01.csv.gz
+          curl -L --fail --retry 6 --retry-all-errors \
+            "https://datasets.tardis.dev/v1/binance/trades/2023/07/01/BTCUSDT.csv.gz" \
+            -o deps/spot/BTCUSDT-trades-2023-07-01.csv.gz
+          gzip -t deps/spot/*.csv.gz
+          sha256sum deps/spot/*.csv.gz | tee deps/spot/SHA256SUMS.txt
+
+      - name: Compile and run focused semantic tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          python research/ml_spotled_smt_core/materialize.py --out research/ml_spotled_smt_core/materialized
+          "$PY" -m py_compile \
+            research/ml_spotled_smt_core/materialized/run.py \
+            research/ml_spotled_smt_core/materialized/test_semantics.py
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          path = pathlib.Path("research/ml_spotled_smt_core/materialized/test_semantics.py")
+          spec = importlib.util.spec_from_file_location("test_semantics", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["test_semantics"] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith("test_"))
+          for name in tests:
+              getattr(module, name)()
+              print("PASS", name)
+          assert len(tests) == 5
+          PY
+
+      - name: Run frozen source-to-account fatal screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf artifact
+          "$PY" research/ml_spotled_smt_core/materialized/run.py \
+            --spot-2022 deps/spot/BTCUSDT-trades-2022-07-01.csv.gz \
+            --spot-2023 deps/spot/BTCUSDT-trades-2023-07-01.csv.gz \
+            --bybit-2022 deps/bybit/output/compact_states/2022-07-01_BTCUSDT_state.parquet \
+            --bybit-2023 deps/bybit/output/compact_states/2023-07-01_BTCUSDT_state.parquet \
+            --output artifact \
+            | tee artifact-run.log
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("artifact/RESULT.json").read_text())
+          assert result["official_2024_2026_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["contract"]["cross_provider_delay_ms"] == 2000
+          assert result["contract"]["order_latency_ms"] == 500
+          print(json.dumps({
+              "status": result["status"],
+              "economic_verdict": result["economic_verdict"],
+              "fit_actions": result["fit_summary"]["resolved_or_marked_actions"],
+              "forward_actions": result["forward_summary"]["resolved_or_marked_actions"],
+              "forward_raw_mean_gross_bps": result["forward_raw_mean_gross_bps"],
+              "constant_24bp": result["forward_constant"]["24"],
+              "ml_opened": result["ml"].get("opened", False),
+          }, indent=2))
+          PY
+          cp research/ml_spotled_smt_core/CONTRACT.json artifact/CONTRACT.json
+          cp deps/spot/SHA256SUMS.txt artifact/SPOT_DOWNLOAD_SHA256SUMS.txt
+          cp artifact-run.log artifact/RUN.log
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-spotled-smt-core-fatal-screen
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
