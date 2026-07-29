@@ -1,0 +1,85 @@
+name: Dynamic flow no-time audit source export
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/dynamic-flow-notime-source-export-r23.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r4-dynamic-factor-residual-001
+          fetch-depth: 1
+
+      - name: Reconstruct and verify immutable source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, pathlib, shutil, tarfile
+          root = pathlib.Path('research/dynamic_factor_residual_20260725')
+          manifest = json.loads((root / 'EXTENSION_BUNDLE_MANIFEST.json').read_text())
+          chunks = []
+          for item in manifest['parts']:
+              raw = (root / item['path']).read_bytes()
+              assert len(raw) == item['bytes'], item['path']
+              assert hashlib.sha256(raw).hexdigest() == item['sha256'], item['path']
+              chunks.append(raw)
+          combined = b''.join(chunks)
+          assert hashlib.sha256(combined).hexdigest() == manifest['combined_base64_sha256']
+          archive = base64.b64decode(combined, validate=True)
+          assert len(archive) == manifest['decoded_tar_gz_bytes']
+          assert hashlib.sha256(archive).hexdigest() == manifest['decoded_tar_gz_sha256']
+          out = pathlib.Path('/tmp/dynamic-flow-notime-source')
+          shutil.rmtree(out, ignore_errors=True)
+          (out / 'extension').mkdir(parents=True)
+          archive_path = out / 'extension_bundle.tar.gz'
+          archive_path.write_bytes(archive)
+          with tarfile.open(archive_path, 'r:gz') as tf:
+              tf.extractall(out / 'extension', filter='data')
+          inner = json.loads((out / 'extension' / 'MANIFEST.json').read_text())
+          assert hashlib.sha256((out / 'extension' / 'MANIFEST.json').read_bytes()).hexdigest() == manifest['content_manifest_sha256']
+          for item in inner['files']:
+              p = out / 'extension' / item['path']
+              raw = p.read_bytes()
+              assert len(raw) == item['bytes'], item['path']
+              assert hashlib.sha256(raw).hexdigest() == item['sha256'], item['path']
+          for name in [
+              'dynamic_factor_residual.py',
+              'test_dynamic_factor_residual.py',
+              'preregistration.json',
+              'result_summary.json',
+              'revision5_champion_comparison.json',
+              'actual_funding_evaluation_contract.json',
+              'actual_funding_audit_summary.json',
+              'EXTENSION_BUNDLE_MANIFEST.json',
+          ]:
+              (out / name).write_bytes((root / name).read_bytes())
+          evidence = {
+              'schema_version': 1,
+              'decoded_archive_sha256': hashlib.sha256(archive).hexdigest(),
+              'content_manifest_sha256': hashlib.sha256((out / 'extension' / 'MANIFEST.json').read_bytes()).hexdigest(),
+              'files': inner['files'],
+              'scientific_content_changed': False,
+              'orders_submitted': False,
+          }
+          (out / 'EXPORT_EVIDENCE.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
+          print(json.dumps(evidence, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dynamic-flow-notime-source-${{ github.sha }}
+          path: /tmp/dynamic-flow-notime-source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
