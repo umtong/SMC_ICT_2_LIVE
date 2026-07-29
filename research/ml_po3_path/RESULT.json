@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260729-ML-PO3-PATH-001",
+  "claim_id": "CLM-20260729-2114-ML-PO3-PATH-001",
+  "status": "RETIRED_ECONOMIC_FAILURE",
+  "validation_stage": "pre-2024 chronological ML development plus first official 2024H1 causal evaluation",
+  "ranking_eligibility": "not eligible; official opening interval is negative and the target gap is structural",
+  "deterministic_state_filter": {
+    "pre_2024_order_type_cost": {
+      "2021": {"trades": 37, "return": 0.01597783973091249, "profit_factor": 1.2303654787678013, "max_drawdown": 0.015751482405664596},
+      "2022": {"trades": 20, "return": 0.015118406101436888, "profit_factor": 1.451145987836946, "max_drawdown": 0.01749475710848014},
+      "2023": {"trades": 15, "return": 0.018223434438481068, "profit_factor": 1.9080639707115732, "max_drawdown": 0.009981124552091214}
+    },
+    "official_2024_h1": {"trades": 25, "return": -0.02197272278717233, "profit_factor": 0.6632305134306313, "win_rate": 0.48},
+    "post_gate_diagnostics_not_continuous_official_path": {
+      "2024_full_calendar": {"trades": 52, "return": -0.01818327315905477, "profit_factor": 0.8514534359741184},
+      "2025_full_calendar": {"trades": 35, "return": 0.028244471827065576, "profit_factor": 1.4693395885174134},
+      "2026_h1": {"trades": 24, "return": 0.011834725965089943, "profit_factor": 1.2663694341071638}
+    }
+  },
+  "ml_action_value_policy": {
+    "forward_development": {
+      "2022": {"trades": 115, "return": 0.04878086552037564, "profit_factor": 1.2165587044545916, "top5_positive_share": 0.08646419101806876},
+      "2023": {"trades": 131, "return": 0.04944017870425155, "profit_factor": 1.1904624085254751, "top5_positive_share": 0.07463764822287887}
+    },
+    "official_2024_h1": {"trades": 60, "return": -0.01187570483498695, "profit_factor": 0.9191707193071268, "win_rate": 0.5333333333333333, "top5_positive_share": 0.17552659102170073},
+    "post_gate_diagnostics_not_continuous_official_path": {
+      "2024_full_calendar": {"trades": 132, "return": -0.02044131688258133, "profit_factor": 0.9366735672902302},
+      "2025_full_calendar": {"trades": 127, "return": 0.03214950759534596, "profit_factor": 1.124185557461533},
+      "2026_h1": {"trades": 63, "return": 0.01632929518452131, "profit_factor": 1.1292822961409752}
+    }
+  },
+  "failed_adjacent_routes": {
+    "fixed_12bp_4h_rejection_best": {"2021_return": -0.0520, "2022_return": -0.0418, "2023_return": -0.0060},
+    "order_type_4h_rejection_best": {"2021_return": 0.003267, "2022_return": 0.007022, "2023_return": 0.007201, "note": "positive but fee-fragile and orders of magnitude below target"},
+    "partial_runner_best": {"2021_return": -0.0023637969977795548, "2022_return": 0.015549955999897724, "2023_return": 0.008845874318437863},
+    "broad_rejection_ml_forward": {"2022_return": -0.05645, "2023_return": -0.01679}
+  },
+  "programization_defects_corrected": [
+    "small range breaks were initially misclassified as manipulation",
+    "outside closes were initially counted non-consecutively",
+    "unfilled limits initially occupied the global slot beyond the active candle",
+    "filled positions were incorrectly coupled to pending-order expiry during early iterations",
+    "a flat 12bp charge was initially applied to maker entry, maker target and taker stop paths alike",
+    "account-risk asymmetry from tight-stop losses was initially hidden by price-unit expectation"
+  ],
+  "decision": "Retire this exact active-candle PO3 information unit. Do not rescue it with higher risk, leverage, adjacent checklist gates or 2024-aware threshold changes.",
+  "artifact_hashes": {
+    "ml_result_sha256": "1e5c501de569b858bf1aa92867d6a1c834b990916b330119dc6add5171eff428",
+    "acceptance_audit_sha256": "ae9fe59c3d0feac8b90b183116ceb8e4843ac6dda617a121a9b25dfd97a5990f"
+  }
+}
