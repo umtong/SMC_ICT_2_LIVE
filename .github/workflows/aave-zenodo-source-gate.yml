@@ -28,7 +28,9 @@ jobs:
       - run: python -m pip install --disable-pip-version-check pandas==2.3.3 pyarrow==21.0.0 requests==2.32.5
       - name: Query claimed Zenodo record without market outcomes
         run: |
-          python research/aave_zenodo_liquidation_source/source_gate.py --output artifact/aave_zenodo_source
+          cd research/aave_zenodo_liquidation_source
+          python source_gate_v3.py --output "$GITHUB_WORKSPACE/artifact/aave_zenodo_source"
+          cd "$GITHUB_WORKSPACE"
           python - <<'PY'
           import json
           from pathlib import Path
