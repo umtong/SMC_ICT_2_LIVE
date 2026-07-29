@@ -1,4 +1,4 @@
-name: Salvage signed Uniswap source and run profit-first account
+name: Signed Uniswap source-pass to profit-first account decision
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  salvage-and-decide:
+  source-pass-to-account:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -29,8 +29,9 @@ jobs:
       OMP_NUM_THREADS: '2'
       OPENBLAS_NUM_THREADS: '2'
       MKL_NUM_THREADS: '2'
-      PRIOR_RUN_ID: '30204103060'
-      PRIOR_ARTIFACT: 'ml-uniswap-source-gate-r14-30204103060'
+      SOURCE_PASS_RUN_ID: '30479496595'
+      SOURCE_PASS_ARTIFACT: 'ml-uniswap-signed-salvage-r31-30479496595'
+      SOURCE_PASS_ARTIFACT_DIGEST: 'sha256:d223b6f65d10e7cd528912ff2a881f683fe5fe4c9f6438c9f0863d0ae8e513cc'
       ECONOMIC_COMMIT: 'f0c5e9b4afffc878524cbcf307c2162c6e7b4215'
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +41,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Materialize unchanged frozen economic engine
+      - name: Materialize frozen economic engine
         run: |
           set -euo pipefail
           git fetch origin "$ECONOMIC_COMMIT" --depth=1
@@ -51,89 +52,61 @@ jobs:
           python -m pip install --disable-pip-version-check \
             requests==2.32.4 pytest==8.3.5 numpy==2.1.3 pandas==2.2.3 \
             scikit-learn==1.6.1 pyarrow==18.1.0
-      - name: Validate transport salvage and account correction
+      - name: Validate and build corrected profit-first engine
         run: |
           set -euo pipefail
-          source_root=research/ml_uniswap_hedge_transfer_20260726
-          salvage_root=research/ml_uniswap_signed_salvage_r31
-          economic_root=research/ml_uniswap_hedge_transfer_economic_20260726
-          python -m py_compile \
-            "$salvage_root/salvage_source_gate.py" \
-            "$salvage_root/apply_profit_first_patch.py"
-          PYTHONPATH="$source_root:$salvage_root" python -m pytest -q \
-            "$salvage_root/test_salvage_source_gate.py"
-          PYTHONPATH="$economic_root:$salvage_root" python -m pytest -q \
-            "$salvage_root/test_apply_profit_first_patch.py"
-          python "$economic_root/reconstruct.py"
-          PYTHONPATH="$economic_root" python "$economic_root/run.py" self-test
-          python "$salvage_root/apply_profit_first_patch.py" \
-            --source "$economic_root/run.py" \
-            --output "$salvage_root/run_profit_first.py"
-          python -m py_compile "$salvage_root/run_profit_first.py"
-          PYTHONPATH="$salvage_root" python "$salvage_root/run_profit_first.py" self-test
-      - name: Restore immutable partial signed-source evidence
+          source_root=research/ml_uniswap_hedge_transfer_economic_20260726
+          patch_root=research/ml_uniswap_signed_salvage_r31
+          python -m py_compile "$patch_root/apply_profit_first_patch.py"
+          PYTHONPATH="$source_root:$patch_root" python -m pytest -q \
+            "$patch_root/test_apply_profit_first_patch.py"
+          python "$source_root/reconstruct.py"
+          PYTHONPATH="$source_root" python "$source_root/run.py" self-test
+          python "$patch_root/apply_profit_first_patch.py" \
+            --source "$source_root/run.py" \
+            --output "$patch_root/run_profit_first.py"
+          python -m py_compile "$patch_root/run_profit_first.py"
+          PYTHONPATH="$patch_root" python "$patch_root/run_profit_first.py" self-test
+      - name: Restore immutable signed-source PASS
         run: |
           set -euo pipefail
           out=research_runs/ml_uniswap_signed_salvage_r31
-          mkdir -p "$out/prior"
-          gh run download "$PRIOR_RUN_ID" \
+          mkdir -p "$out/source_pass_artifact" "$out/source"
+          gh run download "$SOURCE_PASS_RUN_ID" \
             --repo "$GITHUB_REPOSITORY" \
-            --name "$PRIOR_ARTIFACT" \
-            --dir "$out/prior"
-          test -f "$out/prior/PROBE_RESULT.json"
-          test -f "$out/prior/RAW_SWAP_LOGS.jsonl.gz"
-          python -m json.tool "$out/prior/PROBE_RESULT.json" >/dev/null
-          sha256sum "$out/prior/PROBE_RESULT.json" "$out/prior/RAW_SWAP_LOGS.jsonl.gz" \
-            > "$out/PRIOR_INPUT_SHA256SUMS.txt"
-      - id: source
-        name: Recover transport-only decode failures and missing sixth window
-        shell: bash
-        run: |
-          set -u
-          source_root=research/ml_uniswap_hedge_transfer_20260726
-          salvage_root=research/ml_uniswap_signed_salvage_r31
-          out=research_runs/ml_uniswap_signed_salvage_r31
-          mkdir -p "$out/source"
-          set +e
-          PYTHONPATH="$source_root:$salvage_root" \
-            python "$salvage_root/salvage_source_gate.py" \
-              --prior "$out/prior" \
-              --output "$out/source" 2>&1 | tee "$out/source/RUN.log"
-          rc=${PIPESTATUS[0]}
-          set -e
-          echo "$rc" > "$out/source/RUN_EXIT_CODE.txt"
-          test -f "$out/source/PROBE_RESULT.json"
-          authorized=$(python -c "import json; print(str(bool(json.load(open('$out/source/PROBE_RESULT.json'))['source_gate_pass'])).lower())")
-          echo "authorized=$authorized" >> "$GITHUB_OUTPUT"
-          if [[ "$rc" != 0 && "$authorized" == true ]]; then exit "$rc"; fi
-      - name: Run original frozen pre-2024 decision for defect comparison
-        if: steps.source.outputs.authorized == 'true'
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -u
-          root=research/ml_uniswap_hedge_transfer_economic_20260726
-          out=research_runs/ml_uniswap_signed_salvage_r31
-          mkdir -p "$out/original" "$out/cache"
-          set +e
-          PYTHONPATH="$root" python "$root/run.py" run \
-            --parent-probe "$out/source/PROBE_RESULT.json" \
-            --cache "$out/cache" \
-            --output "$out/original" 2>&1 | tee "$out/original/RUN.log"
-          rc=${PIPESTATUS[0]}
-          set -e
-          echo "$rc" > "$out/original/RUN_EXIT_CODE.txt"
-          test -f "$out/original/RESULT.json"
-          python -m json.tool "$out/original/RESULT.json" >/dev/null
-          if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
-      - name: Run corrected profit-first pre-2024 decision on identical cache
-        if: steps.source.outputs.authorized == 'true'
+            --name "$SOURCE_PASS_ARTIFACT" \
+            --dir "$out/source_pass_artifact"
+          cp "$out/source_pass_artifact/source/PROBE_RESULT.json" "$out/source/PROBE_RESULT.json"
+          cp "$out/source_pass_artifact/source/SOURCE_MANIFEST.json" "$out/source/SOURCE_MANIFEST.json"
+          cp "$out/source_pass_artifact/source/RAW_SWAP_LOGS.jsonl.gz" "$out/source/RAW_SWAP_LOGS.jsonl.gz"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research_runs/ml_uniswap_signed_salvage_r31/source/PROBE_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['claim_id']=='CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
+          assert r['source_gate_pass'] is True
+          assert r['scientific_decision']=='OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
+          assert r['totals']['decoded_logs']==5384
+          assert r['totals']['decode_error_count']==0
+          assert all(r['source_gate_checks'].values())
+          assert r.get('market_outcome_opened',False) is False
+          assert r.get('model_fit',False) is False
+          assert r.get('trade_or_pnl_opened',False) is False
+          assert r.get('official_2024_2026_opened',False) is False
+          print(json.dumps({'source_gate_pass':True,'decoded_logs':5384},sort_keys=True))
+          PY
+          sha256sum "$out/source/PROBE_RESULT.json" \
+            "$out/source/SOURCE_MANIFEST.json" \
+            "$out/source/RAW_SWAP_LOGS.jsonl.gz" > "$out/SOURCE_PASS_SHA256SUMS.txt"
+          printf '%s\n' "$SOURCE_PASS_ARTIFACT_DIGEST" > "$out/SOURCE_PASS_ARTIFACT_DIGEST.txt"
+      - name: Run corrected pre-2024 HGBT and account decision
         shell: bash
         run: |
           set -u
           root=research/ml_uniswap_signed_salvage_r31
           out=research_runs/ml_uniswap_signed_salvage_r31
-          mkdir -p "$out/profit_first"
+          mkdir -p "$out/profit_first" "$out/cache"
           set +e
           PYTHONPATH="$root" python "$root/run_profit_first.py" run \
             --parent-probe "$out/source/PROBE_RESULT.json" \
@@ -145,7 +118,7 @@ jobs:
           test -f "$out/profit_first/RESULT.json"
           python -m json.tool "$out/profit_first/RESULT.json" >/dev/null
           if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
-      - name: Publish compact comparison and immutable hashes
+      - name: Publish compact decision and immutable hashes
         if: always()
         run: |
           set -euo pipefail
@@ -161,8 +134,9 @@ jobs:
               'schema_version':1,
               'claim_id':'CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001',
               'source':read(root/'source/PROBE_RESULT.json'),
-              'original':read(root/'original/RESULT.json'),
               'profit_first':read(root/'profit_first/RESULT.json'),
+              'source_pass_run_id':30479496595,
+              'source_pass_artifact_digest':'sha256:d223b6f65d10e7cd528912ff2a881f683fe5fe4c9f6438c9f0863d0ae8e513cc',
               'orders_submitted':False,
               'official_2024h1_opened':False,
           }
@@ -173,14 +147,13 @@ jobs:
           ))
           print(json.dumps({
               'source_pass':bool(payload['source'] and payload['source'].get('source_gate_pass')),
-              'original_status':None if payload['original'] is None else payload['original'].get('status'),
               'profit_first_status':None if payload['profit_first'] is None else payload['profit_first'].get('status'),
           },sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-uniswap-signed-salvage-r31-${{ github.run_id }}
+          name: ml-uniswap-signed-profit-first-r31-${{ github.run_id }}
           path: research_runs/ml_uniswap_signed_salvage_r31
           if-no-files-found: error
           retention-days: 30
