@@ -23,13 +23,21 @@ def _source_path(repository: Path) -> Path:
     )
 
 
-def test_temporary_source_overlay_repairs_exactly_one_self_test_reference(
+def test_temporary_source_overlay_repairs_all_four_self_test_references(
     tmp_path: Path,
 ) -> None:
     path = _source_path(tmp_path)
     path.parent.mkdir(parents=True)
     path.write_text(
-        "before\n    decoded = authority.base.decode_log(\nafter\n",
+        "\n".join(
+            [
+                "decoded = authority.base.decode_log(",
+                'address = authority.base.CONTRACTS["USDT"]["address"]',
+                "topic = authority.base.ISSUE_TOPIC",
+                'address2 = authority.base.CONTRACTS["USDT"]["address"]',
+            ]
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -38,7 +46,10 @@ def test_temporary_source_overlay_repairs_exactly_one_self_test_reference(
     assert observed == path
     text = path.read_text(encoding="utf-8")
     assert repaired._OLD_SELF_TEST not in text
-    assert text.count(repaired._NEW_SELF_TEST) == 1
+    assert (
+        text.count(repaired._NEW_SELF_TEST)
+        == repaired._EXPECTED_SELF_TEST_REFERENCES
+    )
 
 
 def test_temporary_source_overlay_fails_closed_on_unexpected_count(
@@ -47,11 +58,11 @@ def test_temporary_source_overlay_fails_closed_on_unexpected_count(
     path = _source_path(tmp_path)
     path.parent.mkdir(parents=True)
     path.write_text(
-        repaired._OLD_SELF_TEST + "\n" + repaired._OLD_SELF_TEST + "\n",
+        (repaired._OLD_SELF_TEST + "placeholder\n") * 3,
         encoding="utf-8",
     )
 
-    with pytest.raises(RuntimeError, match="exactly one"):
+    with pytest.raises(RuntimeError, match="exactly four"):
         repaired.repair_materialized_source(tmp_path)
 
 
