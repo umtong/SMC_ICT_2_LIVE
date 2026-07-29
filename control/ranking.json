@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "revision": 22,
+  "revision": 23,
   "status": "ACTIVE",
-  "ranking_id": "STRATEGY-RANKING-20260727-R22",
+  "ranking_id": "STRATEGY-RANKING-20260730-R23",
   "ranking_rule": {
     "eligibility": "hard-valid or preliminary causal strategy whose complete route was frozen using only information available before its evaluated interval; interval-selected routes remain development diagnostics only",
     "primary_objective": "maximize sustainable realistic after-cost geometric daily growth below and above the 1% reference while satisfying survival and recoverability",
@@ -22,68 +22,177 @@
   },
   "first_place": {
     "rank": 1,
-    "first_place_id": "FIRST-20260726-ML-DONCHIAN-HGBT-2024H1-24BPS",
+    "first_place_id": "FIRST-20260730-BYBIT-DONCHIAN-ML-FULLPATH-13BPS-PROVISIONAL",
     "candidate_type": "STRATEGY",
-    "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
-    "qualification_stage": "OFFICIAL_2024H1_SEQUENTIAL_BINANCE_PROXY_RETIRED_WINNER_CONCENTRATED",
+    "source_result_id": "RES-20260730-BYBIT-DONCHIAN-ML-FULLPATH-001",
+    "supporting_audit_result_id": "RES-20260730-BYBIT-CHANNEL-FULLPATH-AUDIT-001",
+    "qualification_stage": "FULL_2024_2026_CAUSAL_EXACT_BYBIT_PROVISIONAL_EXPANSION_ARTIFACT_GAP",
     "target_status": "NOT_MET",
-    "selection_reason": "Highest recorded after-cost growth among routes currently carrying an evaluated account path whose complete route was frozen before that interval. It is still structurally weak and retired.",
-    "comparison_confidence": "LOW",
-    "ml_requirement_status": "MET_HGBT_ACCEPT_FLAT",
+    "selection_reason": "Highest recorded realistic after-cost growth on a complete 2024-01-01 through 2026-06-30 continuous exact-Bybit account path. It remains provisional because the exact fitted model, scored tape, trade ledgers, daily NAV and replay source are attested by hashes but not retrievable; independent audit classifies it as an Expansion component rather than a sufficient Core engine.",
+    "comparison_confidence": "MEDIUM_LOW",
+    "ml_requirement_status": "MET_HGBT_ACTION_VALUE",
     "metrics": {
-      "base_cost_bps": 24,
-      "geometric_daily_growth": 0.0003873170703223572,
+      "base_cost_bps": 13,
+      "geometric_daily_growth": 0.0010809071209163523,
+      "geometric_daily_growth_at_18bps": 0.0009187598708091382,
+      "geometric_daily_growth_at_24bps": 0.0007383360699446673,
       "target_geometric_daily_growth": 0.01,
-      "target_gap": 0.009612682929677643,
-      "target_fraction": 0.03873170703223572,
-      "target_multiple_required": 25.818639988361927,
-      "total_return": 0.07302102602013516,
-      "final_nav": 10730.210260201351,
-      "calendar_days": 182,
-      "trade_count": 24,
-      "profit_factor": 1.8711953493879065,
-      "maximum_drawdown": 0.1016557360891246,
-      "median_account_return_bps": -50.0,
-      "top5_positive_share": 1.0,
-      "winner_removed_geometric_daily_growth": -0.0004378387203566314,
-      "winner_removed_total_return": -0.07661046043680741,
-      "mae_skill_vs_constant": -0.016896747107063792,
+      "target_gap": 0.008919092879083648,
+      "target_fraction": 0.10809071209163523,
+      "target_multiple_required": 9.251488686208651,
+      "total_return": 1.6784945607515005,
+      "final_nav": 26784.945607515005,
+      "calendar_days": 912,
+      "trade_count": 80,
+      "profit_factor": 1.2137956138351755,
+      "maximum_drawdown": 0.5758874980905657,
+      "median_account_return_bps": -500.0,
+      "top5_positive_share": 0.689822670355542,
+      "winner_removed_geometric_daily_growth": 0.00031033573249028557,
+      "winner_removed_total_return": 0.3270816464457771,
+      "small_risk_geometric_daily_growth_lower_bound": 0.0001080381718465695,
+      "small_risk_geometric_daily_growth_upper_bound": 0.00022557448161242277,
+      "small_risk_winner_removed_geometric_daily_growth_lower_bound": 0.000031029240228575006,
+      "small_risk_winner_removed_geometric_daily_growth_upper_bound": 0.0001263207472210759,
+      "planned_risk_fraction": 0.05,
+      "maximum_used_leverage": 7.407394481594312,
       "information_cutoff": "2023-12-31T23:59:59Z",
-      "evaluated_interval": "2024H1",
+      "evaluated_interval": "2024-01-01/2026-06-30",
       "elapsed_time_liquidation": false,
-      "bybit_execution_replayed": false,
-      "actual_funding_included": false
+      "bybit_execution_replayed": true,
+      "actual_funding_included": true,
+      "forced_liquidation": false,
+      "exact_model_and_ledgers_retrievable": false
     },
     "sequential_evidence": {
       "information_cutoff": "2023-12-31T23:59:59Z",
-      "opened_intervals": ["2024H1"],
-      "unopened_intervals": ["2024H2", "2025H1", "2025H2", "2026H1"],
-      "information_unit_retired": true
+      "opened_intervals": ["2024H1", "2024H2", "2025H1", "2025H2", "2026H1"],
+      "annual_expanding_updates": true,
+      "information_unit_role": "PROVISIONAL_EXPANSION",
+      "audit_status": "EVENT_AND_TRAINING_BOUNDARY_PARITY_EXACT_MODEL_ARTIFACT_MISSING"
     },
     "known_weaknesses": [
-      "All positive PnL came from five winners and exact winner removal produced a loss.",
-      "The median completed trade was -50bp.",
-      "Official-period MAE was worse than the constant baseline.",
-      "Binance completed bars are a proxy rather than exact Bybit BBO/depth and funding.",
-      "The route is retired and remains about 25.82 times short of the 1% reference."
+      "The 13bp path reaches only 10.81% of the 1% daily reference and still requires about 9.25 times more daily growth.",
+      "The published account uses 5% planned loss and suffered 57.59% daily liquidation-value drawdown.",
+      "The median completed trade was -5% of account and the top five winners contributed 68.98% of positive PnL.",
+      "2026H1 lost 28.76% and had profit factor 0.382 at 13bp.",
+      "The exact model, scored candidate tape, trades, daily NAV and full replay source are not retrievable; only hashes and summary artifacts remain.",
+      "A nearby independently reproducible HGBT changed tail selection enough to fail exact winner deletion at high risk.",
+      "Independent small-risk bounds are positive but only 0.010804% to 0.022557% per day, confirming Expansion rather than Core economics."
     ]
   },
   "ranked_candidates": [
-    {"rank": 1, "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001", "candidate_label": "Official 2024H1 frozen HGBT Donchian accept/flat at 24bp", "geometric_daily_growth": 0.0003873170703223572, "geometric_daily_growth_at_24bps": 0.0003873170703223572, "target_gap": 0.009612682929677643, "comparison_confidence": "LOW", "comparison_status": "OFFICIAL_2024H1_RETIRED_WINNER_REMOVAL_NEGATIVE"},
-    {"rank": 2, "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001", "candidate_label": "CME gap competing-risk ML at 24bp", "geometric_daily_growth": 0.0003348504650920563, "geometric_daily_growth_at_24bps": 0.0003348504650920563, "target_gap": 0.009665149534907944, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_PROXY_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"},
-    {"rank": 3, "source_result_id": "RES-20260726-LIQUIDITY-MASS-001", "candidate_label": "Bybit liquidity-mass rejection at 12bp", "geometric_daily_growth": 0.0001185504610022094, "target_gap": 0.00988144953899779, "comparison_confidence": "VERY_LOW", "comparison_status": "BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"},
-    {"rank": 4, "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001", "candidate_label": "Official 2024H1 unfiltered Donchian comparator at 24bp", "geometric_daily_growth": 0.00010051636083741045, "geometric_daily_growth_at_24bps": 0.00010051636083741045, "target_gap": 0.00989948363916259, "comparison_confidence": "LOW", "comparison_status": "OFFICIAL_2024H1_UNFILTERED_PF_1_109"},
-    {"rank": 5, "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001", "candidate_label": "08:00 option-settlement SMT at 18bp", "geometric_daily_growth": 0.00009955592268640068, "target_gap": 0.0099004440773136, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_PROXY_12_TRADES"},
-    {"rank": 6, "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001", "candidate_label": "Bybit MMXM lifecycle at 12bp", "geometric_daily_growth": 0.00005750578742594239, "target_gap": 0.009942494212574058, "comparison_confidence": "VERY_LOW", "comparison_status": "PRE2024_FIT_NEGATIVE_MEDIAN_SECOND_HALF_LOSS"},
-    {"rank": 7, "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001", "candidate_label": "KRW-relative regional SMT reversal at 12bp", "geometric_daily_growth": 0.000048748293338896076, "target_gap": 0.009951251706661104, "comparison_confidence": "VERY_LOW", "comparison_status": "TWO_TRADES_WINNER_REMOVAL_NEGATIVE"},
-    {"rank": 8, "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001", "candidate_label": "Liquidation exhaustion reversal at 18bp", "geometric_daily_growth": 0.0000358316, "target_gap": 0.0099641684, "comparison_confidence": "VERY_LOW", "comparison_status": "SPARSE_FIT_SIGN_REVERSAL_WINNER_REMOVAL_NEGATIVE"}
+    {
+      "rank": 1,
+      "source_result_id": "RES-20260730-BYBIT-DONCHIAN-ML-FULLPATH-001",
+      "candidate_label": "Exact Bybit 96/48 channel HGBT full 2024-2026 path at 13bp",
+      "geometric_daily_growth": 0.0010809071209163523,
+      "geometric_daily_growth_at_24bps": 0.0007383360699446673,
+      "target_gap": 0.008919092879083648,
+      "comparison_confidence": "MEDIUM_LOW",
+      "comparison_status": "FULLPATH_PROVISIONAL_EXPANSION_EXACT_ARTIFACT_GAP"
+    },
+    {
+      "rank": 2,
+      "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
+      "candidate_label": "Official 2024H1 frozen HGBT Donchian accept/flat at 24bp",
+      "geometric_daily_growth": 0.0003873170703223572,
+      "geometric_daily_growth_at_24bps": 0.0003873170703223572,
+      "target_gap": 0.009612682929677643,
+      "comparison_confidence": "LOW",
+      "comparison_status": "OFFICIAL_2024H1_RETIRED_WINNER_REMOVAL_NEGATIVE"
+    },
+    {
+      "rank": 3,
+      "source_result_id": "RES-20260726-CME-GAP-ML-FATAL-001",
+      "candidate_label": "CME gap competing-risk ML at 24bp",
+      "geometric_daily_growth": 0.0003348504650920563,
+      "geometric_daily_growth_at_24bps": 0.0003348504650920563,
+      "target_gap": 0.009665149534907944,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "PRE2024_PROXY_NEGATIVE_MEDIAN_WINNER_CONCENTRATED"
+    },
+    {
+      "rank": 4,
+      "source_result_id": "RES-20260726-LIQUIDITY-MASS-001",
+      "candidate_label": "Bybit liquidity-mass rejection at 12bp",
+      "geometric_daily_growth": 0.0001185504610022094,
+      "target_gap": 0.00988144953899779,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "BYBIT_NATIVE_PRE2024_FIT_ONLY_23_TRADES_TOP5_SHARE_100PCT"
+    },
+    {
+      "rank": 5,
+      "source_result_id": "RES-20260726-ML-DONCHIAN-2024H1-SEQUENTIAL-001",
+      "candidate_label": "Official 2024H1 unfiltered Donchian comparator at 24bp",
+      "geometric_daily_growth": 0.00010051636083741045,
+      "geometric_daily_growth_at_24bps": 0.00010051636083741045,
+      "target_gap": 0.00989948363916259,
+      "comparison_confidence": "LOW",
+      "comparison_status": "OFFICIAL_2024H1_UNFILTERED_PF_1_109"
+    },
+    {
+      "rank": 6,
+      "source_result_id": "RES-20260726-EXPIRY-SMT-FATAL-001",
+      "candidate_label": "08:00 option-settlement SMT at 18bp",
+      "geometric_daily_growth": 0.00009955592268640068,
+      "target_gap": 0.0099004440773136,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "PRE2024_PROXY_12_TRADES"
+    },
+    {
+      "rank": 7,
+      "source_result_id": "RES-20260726-MMXM-LIFECYCLE-001",
+      "candidate_label": "Bybit MMXM lifecycle at 12bp",
+      "geometric_daily_growth": 0.00005750578742594239,
+      "target_gap": 0.009942494212574058,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "PRE2024_FIT_NEGATIVE_MEDIAN_SECOND_HALF_LOSS"
+    },
+    {
+      "rank": 8,
+      "source_result_id": "RES-20260726-KRW-RELATIVE-FATAL-001",
+      "candidate_label": "KRW-relative regional SMT reversal at 12bp",
+      "geometric_daily_growth": 0.000048748293338896076,
+      "target_gap": 0.009951251706661104,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "TWO_TRADES_WINNER_REMOVAL_NEGATIVE"
+    },
+    {
+      "rank": 9,
+      "source_result_id": "RES-20260726-LIQUIDATION-REFILL-001",
+      "candidate_label": "Liquidation exhaustion reversal at 18bp",
+      "geometric_daily_growth": 0.0000358316,
+      "target_gap": 0.0099641684,
+      "comparison_confidence": "VERY_LOW",
+      "comparison_status": "SPARSE_FIT_SIGN_REVERSAL_WINNER_REMOVAL_NEGATIVE"
+    }
   ],
   "unranked_results": [
-    {"source_result_id": "RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001", "reason": "Outcome-sealed official source failure: BTCUSD_PERP and ETHUSD_PERP liquidationSnapshot archives begin 2023-06-25 and cover only about 17% of the frozen 2021-2023 chronology versus the 80% minimum; no market outcome or model opened."},
-    {"source_result_id": "RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001", "reason": "Source semantics invalid before market outcomes: cumulative unsigned USDC/WETH volume cannot identify signed inventory transfer."},
-    {"source_result_id": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001", "reason": "Official 2024H1 negative at 18/24bp; exact family retired."},
-    {"source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001", "reason": "Filter selected using the complete 2024-2025 path; retained as a development diagnostic only. Recorded diagnostic growth was 0.223030%/day at 24bp."},
-    {"source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001", "reason": "Pre-2024 Donchian all-breakout and after-loser paths remain development diagnostics and are superseded for active ranking by the official 2024H1 account path."},
+    {
+      "source_result_id": "RES-20260730-BYBIT-CHANNEL-FULLPATH-AUDIT-001",
+      "reason": "Supporting audit rather than a separate strategy. It confirms exact event and training-boundary parity, positive small-risk bounds and a critical exact-model artifact gap."
+    },
+    {
+      "source_result_id": "RES-20260726-ML-BINANCE-COINM-LIQ-SOURCE-COVERAGE-001",
+      "reason": "Outcome-sealed source failure; no market outcome or model opened."
+    },
+    {
+      "source_result_id": "RES-20260726-ML-UNISWAP-INVENTORY-SOURCE-SEMANTICS-001",
+      "reason": "Unsigned cumulative source could not identify signed inventory transfer."
+    },
+    {
+      "source_result_id": "RES-20260726-ML-HOURWEEK-PRE2024-2024H1-001",
+      "reason": "Official 2024H1 negative at 18/24bp; exact family retired."
+    },
+    {
+      "source_result_id": "RES-20260726-ML-HOURWEEK-XRP-001",
+      "reason": "Complete 2024-2025 path was used for selection; development diagnostic only."
+    },
+    {
+      "source_result_id": "RES-20260726-DONCHIAN-DEPENDENCE-001",
+      "reason": "Pre-2024 development diagnostics superseded by evaluated account paths."
+    },
     {"source_result_id": "RES-20260725-DYNAMIC-FACTOR-001", "reason": "Prohibited elapsed-time liquidation."},
     {"source_result_id": "RES-20260725-ABS-FLOW-001", "reason": "Prohibited scheduled maximum holding close."},
     {"source_result_id": "RES-20260726-SPOT-PERP-LEADERSHIP-001", "reason": "Fixed timeout exit."},
@@ -91,17 +200,31 @@
     {"source_result_id": "RES-20260725-ALPHA-HYP-001", "reason": "Durable INVALID result and fixed hold."},
     {"source_result_id": "RES-20260726-FLOW-IMPACT-EFFICIENCY-001", "reason": "Fixed holding minutes and negative winner-removal path."},
     {"source_result_id": "RES-20260726-ML-DIRECT-UTILITY-001", "reason": "Hard-valid negative; calibration scale zero and no authorized trades."},
-    {"source_result_id": "RES-20260726-ML-PATH-CONTINUITY-001", "reason": "Hard-valid negative; model underperformed structural distance and lost 71.93% at 24bp."},
+    {"source_result_id": "RES-20260726-ML-PATH-CONTINUITY-001", "reason": "Hard-valid negative; model underperformed structural distance."},
     {"source_result_id": "source_only_and_hard_invalid_results", "reason": "No ranking account path."}
   ],
   "component_rankings": [
-    {"component": "execution_routing", "rank": 1, "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER", "source_result_id": "RES-20260725-1510-L1-EXEC-001", "reason": "Best recorded execution-routing component; not a standalone strategy."}
+    {
+      "component": "expansion_alpha",
+      "rank": 1,
+      "first_place_id": "FIRST-20260730-BYBIT-DONCHIAN-ML-FULLPATH-EXPANSION",
+      "source_result_id": "RES-20260730-BYBIT-DONCHIAN-ML-FULLPATH-001",
+      "reason": "Best complete exact-Bybit expansion path; positive small-risk bounds but insufficient Core growth and missing exact model/ledger artifacts."
+    },
+    {
+      "component": "execution_routing",
+      "rank": 1,
+      "first_place_id": "FIRST-20260725-L1-DYNAMIC-MAKER-TAKER",
+      "source_result_id": "RES-20260725-1510-L1-EXEC-001",
+      "reason": "Best recorded execution-routing component; not a standalone strategy."
+    }
   ],
   "reconciliation_notes": [
-    "Recorded the official COIN-M liquidationSnapshot source coverage failure before any market outcome; it does not enter the strategy ranking.",
-    "Retired the exact continuous-2021-to-2023 COIN-M source dependency because BTC and ETH coverage was only about 17% versus the frozen 80% minimum.",
-    "Retained the current weak first place unchanged because no superior decision-ready account path exists.",
-    "Active primary work is reduced to the sole strict-causal stablecoin supply-shock source-to-economic decision in PR #268."
+    "Inserted the complete exact-Bybit 2024-2026 channel HGBT path as provisional rank 1 because its 13bp and 24bp daily growth exceed the stale incumbent under stronger data and execution evidence.",
+    "Classified the candidate as Expansion rather than Core after the independent audit bounded its 0.5% risk growth at only 0.010804% to 0.022557% per day.",
+    "Retained medium-low confidence because the exact model, scored tape, trades, daily NAV and replay source are unavailable as retrievable artifacts even though hashes and aggregate validation are internally consistent.",
+    "No live permission, risk increase, channel retuning or 2026-aware rescue is authorized.",
+    "Rank does not determine research priority; the next priority is an independent frequent Core alpha."
   ],
-  "updated_at": "2026-07-27T00:30:00+09:00"
+  "updated_at": "2026-07-30T03:00:00+09:00"
 }
