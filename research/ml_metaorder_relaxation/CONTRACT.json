@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-METAORDER-RELAXATION-001",
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "source": "registered canonical Bybit MICROBAR-SPARSE500-V5 months only",
+  "fit_months": ["2021-01", "2021-04", "2021-07", "2021-10"],
+  "forward_months": ["2022-01", "2022-04", "2022-07", "2022-10"],
+  "event": {"run_seconds": 30, "five_second_bars": 6, "min_aligned_bars": 4, "flow_purity": 0.6, "path_efficiency": 0.6, "min_impact_bp": 72.0, "completion_bars": 2, "completion_pace_ratio_max": 0.25},
+  "actions": ["continuation", "relaxation", "flat"],
+  "continuation": {"stop": "two-thirds retained-impact floor", "target": "one additional full run impact beyond peak"},
+  "relaxation": {"stop": "one-quarter run impact beyond peak", "target": "two-thirds permanent-impact point"},
+  "execution": {"decision": "after two completed five-second completion bars", "activation_delay_ms": 500, "fill": "first later observed public trade", "one_global_slot": true, "exit_bucket_blocks_slot": true},
+  "account": {"planned_loss_fraction": 0.005, "notional_cap": 3.0, "cost_bps": [12, 18, 24], "funding": "exact signed canonical funding", "elapsed_time_exit": false},
+  "sequential": {"fit": 2021, "selection": 2022, "confirmation_2023": "conditional and unopened", "official_2024_2026": "unopened"}
+}
