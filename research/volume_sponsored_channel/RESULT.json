@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-BYBIT-VOLUME-SPONSORED-CHANNEL-001",
+  "claim_id": "CLM-20260730-VOLUME-SPONSORED-CHANNEL-001",
+  "status": "PROVISIONAL_NEW_RANK_1_EXPANSION_TARGET_NOT_MET",
+  "target_status": "NOT_MET",
+  "ranking_recommendation": "PROVISIONAL_RANK_1_BY_TARGET_PROXIMITY_LOW_CONFIDENCE_EXPANSION_NOT_CORE",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "event": "completed one-hour close beyond the prior 96 completed hours",
+  "sponsorship_rule": {
+    "feature": "log-volume z-score versus prior 168 completed hours",
+    "threshold": 2.2706072565238586,
+    "threshold_source": "2021 upper quartile",
+    "economic_interpretation": "accepted external-range displacement accompanied by unusually high completed turnover"
+  },
+  "selection_chronology": {
+    "2021": "freeze feature quartile boundaries only",
+    "2022": "select the highest 24bp single-feature bin that is positive after exact top10pct positive-event removal; then select symbol-side subset among fixed BTC/ETH x long/short groups",
+    "2023": "apply selected rule and symbol-side subset unchanged; confirmation remains positive after exact winner removal",
+    "pre2024_risk": "fixed risk grid and 12x cap; maximize 24bp geometric growth under declared survival and conservative liquidation guard",
+    "official": "restart at 10000 USDT on 2024-01-01 and run unchanged through 2026-06-30"
+  },
+  "selected_symbol_sides": ["BTCUSDT:LONG", "ETHUSDT:LONG", "ETHUSDT:SHORT"],
+  "entry": "fixed 500ms after completed hourly decision; first later observable one-minute open",
+  "exit": "2ATR20 structural disaster stop or first later one-minute open after a completed close through the opposite prior-48h channel; no elapsed-time or scheduled close",
+  "portfolio": "one global pending/open slot",
+  "funding": "actual signed Bybit funding",
+  "costs_bp": [13, 18, 24],
+  "pre2024": {
+    "single_feature_selection_2022_24bp": {
+      "trades": 43,
+      "end_nav": 11944.214723120733,
+      "profit_factor": 2.478366836003021,
+      "geometric_daily_growth": 0.000486863533211368,
+      "winner_removed_nav": 10543.168948573724
+    },
+    "unchanged_confirmation_2023_24bp": {
+      "trades": 59,
+      "end_nav": 12273.531279055085,
+      "profit_factor": 1.865027649041529,
+      "geometric_daily_growth": 0.0005614175965209522,
+      "winner_removed_nav": 10185.654514495729
+    },
+    "symbol_side_selection_2022": {
+      "subset": ["BTCUSDT:LONG", "ETHUSDT:LONG", "ETHUSDT:SHORT"],
+      "trades": 38,
+      "multiple": 1.2494114617706298,
+      "winner_removed_multiple": 1.0832052791704785
+    },
+    "symbol_side_confirmation_2023": {
+      "trades": 49,
+      "multiple": 1.2808009708023158,
+      "winner_removed_multiple": 1.08359264469805
+    },
+    "risk_selection": {
+      "selected_planned_loss_fraction": 0.1,
+      "notional_cap": 12.0,
+      "24bp_multiple": 55.149991131123855,
+      "24bp_geometric_daily_growth": 0.005508343641345004,
+      "24bp_maximum_drawdown": 0.6964606679097027,
+      "24bp_winner_removed_multiple": 4.547937771289316,
+      "max_leverage": 12.0,
+      "conservative_liquidation_guard_pass": true,
+      "minimum_liquidation_headroom_after_reserves": 0.061317951909588476
+    }
+  },
+  "official_selected_growth_path": {
+    "13bp": {
+      "start_nav": 10000.0,
+      "end_nav": 237204.48082224297,
+      "multiple": 23.720448082224298,
+      "geometric_daily_growth": 0.003477895146070553,
+      "completed_trades": 110,
+      "profit_factor": 1.1904239021433007,
+      "daily_liquidation_value_mdd": 0.7751459563589378,
+      "median_trade_return": -0.09824872607753276,
+      "max_leverage": 10.485702127289866,
+      "top_five_positive_pnl_share": 0.5592354880579192,
+      "winner_removed_multiple": 1.0116768359843251,
+      "winner_removed_geometric_daily_growth": 0.000012729453646720401,
+      "half_year_returns": {
+        "2024H1": 1.2387415507906683,
+        "2024H2": 1.307539886286131,
+        "2025H1": 0.8302337548271657,
+        "2025H2": 2.1082126211644563,
+        "2026H1": -0.19285338107225636
+      }
+    },
+    "18bp": {
+      "start_nav": 10000.0,
+      "end_nav": 174090.7375672689,
+      "multiple": 17.40907375672689,
+      "geometric_daily_growth": 0.0031375781003502023,
+      "completed_trades": 110,
+      "profit_factor": 1.1764526373044246,
+      "daily_liquidation_value_mdd": 0.775663706260433,
+      "max_leverage": 9.965335288717924,
+      "top_five_positive_pnl_share": 0.5513266055900866,
+      "winner_removed_multiple": 1.0621105372623967,
+      "winner_removed_geometric_daily_growth": 0.00006607455284313168,
+      "half_year_returns": {
+        "2024H1": 1.1051458878987845,
+        "2024H2": 1.1468400012266886,
+        "2025H1": 0.7307245896131049,
+        "2025H2": 1.8976728048115268,
+        "2026H1": -0.2319022737140859
+      }
+    },
+    "24bp": {
+      "start_nav": 10000.0,
+      "end_nav": 122414.63081010323,
+      "multiple": 12.241463081010323,
+      "geometric_daily_growth": 0.002750297959140724,
+      "completed_trades": 110,
+      "profit_factor": 1.1596918635093927,
+      "daily_liquidation_value_mdd": 0.7762322710277486,
+      "max_leverage": 9.405238411777514,
+      "top_five_positive_pnl_share": 0.5416659830250036,
+      "winner_removed_multiple": 0.9695631808460257,
+      "winner_removed_geometric_daily_growth": -0.0000338915725295319,
+      "half_year_returns": {
+        "2024H1": 0.9626620561407635,
+        "2024H2": 0.9768948123679404,
+        "2025H1": 0.6238771451829985,
+        "2025H2": 1.6766456513702814,
+        "2026H1": -0.2741277583686673
+      }
+    }
+  },
+  "lower_risk_diagnostics": {
+    "fixed_subset_5pct_12x_24bp": {
+      "multiple": 7.9932500586965975,
+      "geometric_daily_growth": 0.002281763131092518,
+      "completed_trades": 110,
+      "profit_factor": 1.3788563777962108,
+      "maximum_drawdown": 0.5293469087730709,
+      "winner_removed_multiple": 1.3783120519390724
+    },
+    "all_sides_2pct_8x_24bp": {
+      "multiple": 2.9743532536823514,
+      "geometric_daily_growth": 0.0011959191706942818,
+      "completed_trades": 124,
+      "profit_factor": 1.568241148751936,
+      "maximum_drawdown": 0.30656899329914267,
+      "winner_removed_multiple": 1.059619761138685
+    }
+  },
+  "programization_validity": {
+    "candidate_count_total": 2855,
+    "candidate_count_by_year": {"2021": 538, "2022": 511, "2023": 369, "2024": 578, "2025": 598, "2026H1": 261},
+    "same_minute_ambiguity": "adverse stop first",
+    "stage_boundary": "mark/carry, never strategy close",
+    "conservative_liquidation_guard_pass": true,
+    "orders_submitted": false
+  },
+  "decision": [
+    "The high-volume sponsorship state is a real, simple after-cost information unit from 2022 through every official year at event level.",
+    "The pre2024-selected 10% path is the closest current result but is an Expansion route: 24bp winner deletion is negative and daily liquidation-value drawdown exceeds 77%.",
+    "The 5% and 2% paths remain positive after exact winner deletion and are useful robustness diagnostics, but their growth remains far below 1%/day.",
+    "Do not tune channel lengths, threshold, symbol sides, 2026 filters, risk or leverage using official outcomes.",
+    "Preserve as a global-slot Expansion component; continue searching for an independent frequent Core engine."
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}
