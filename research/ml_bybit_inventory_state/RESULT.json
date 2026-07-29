@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-20260729-ML-BYBIT-INVENTORY-STATE-001",
+  "data": [
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1","end_exclusive":"2022-01-01T00:00:00Z","manifest_sha256":"e1acb85412dbbb3f9ee02be9a85ed9994b577fbecd974e9a8e4bc9a48b48b967","source_code_sha":"2437b32ba24cce47a0147e8500685ba988278e01","start":"2021-01-01T00:00:00Z","symbol":"BTCUSDT"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1","end_exclusive":"2023-01-01T00:00:00Z","manifest_sha256":"a81b529ea4efe71944b4cbdcaf496e3f2e7920b3a504ef7ee97bbbb79890a1e1","source_code_sha":"2437b32ba24cce47a0147e8500685ba988278e01","start":"2022-01-01T00:00:00Z","symbol":"BTCUSDT"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2023-CANONICAL-V1","end_exclusive":"2024-01-01T00:00:00Z","manifest_sha256":"071f6e4df1712a87686eabda318cb7527a1b3cd3e4d0d80a5e82d44d12b31427","source_code_sha":"a132088c81d4eb6fb148cf0310c49814609e3034","start":"2023-01-01T00:00:00Z","symbol":"BTCUSDT"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1","end_exclusive":"2022-01-01T00:00:00Z","manifest_sha256":"030bbe351e198caf5ac8e87ceea8957a8e65439a54fea6bf41c40ac075ee6501","source_code_sha":"2437b32ba24cce47a0147e8500685ba988278e01","start":"2021-01-01T00:00:00Z","symbol":"ETHUSDT"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1","end_exclusive":"2023-01-01T00:00:00Z","manifest_sha256":"73abd6f4838428d45b5a02cb0c8e19c5c3b9b22a98855fba9039ad1a105123da","source_code_sha":"2437b32ba24cce47a0147e8500685ba988278e01","start":"2022-01-01T00:00:00Z","symbol":"ETHUSDT"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2023-CANONICAL-V1","end_exclusive":"2024-01-01T00:00:00Z","manifest_sha256":"e315062e16d0d27863b4f796a143f0bb0c853f1d671b5086e340fcaeaa5247cd","source_code_sha":"a132088c81d4eb6fb148cf0310c49814609e3034","start":"2023-01-01T00:00:00Z","symbol":"ETHUSDT"}
+  ],
+  "decision": "Retire the exact Bybit leveraged-inventory state-transition family before any 2024 evaluation. Neither the ML continuation/reversal policy nor the economically coherent OI-accumulation continuation branch survived 24 bp costs and actual funding across pre-2024 years.",
+  "deterministic_base_alpha": {
+    "definition": "OI shock z > 1, causal price/volume shock, account-ratio z < 1, premium z < 1; continue in shock direction; exit only when 2-hour price trend and 2-hour OI accumulation jointly lose state, or structural stop.",
+    "metrics_by_year": [
+      {"gd":-0.0005808682606452,"mdd":0.1990361867443439,"median":-0.0018202544804408,"multiple":0.8089011834365833,"nav":8089.011834365833,"pf":0.7535379318966308,"return":-0.1910988165634166,"top5_share":0.1904429320350909,"trades":375,"year":2021},
+      {"gd":-0.0004922008278904,"mdd":0.2201183204511635,"median":-0.0021514477460135,"multiple":0.8355228942682251,"nav":8355.228942682252,"pf":0.7983750687480822,"return":-0.1644771057317748,"top5_share":0.2196424442674364,"trades":373,"year":2022},
+      {"gd":-0.0007255432428299,"mdd":0.2327322111153713,"median":-0.0025195732326584,"multiple":0.7672677888846287,"nav":7672.677888846287,"pf":0.6869699717743343,"return":-0.2327322111153713,"top5_share":0.368784823362527,"trades":316,"year":2023}
+    ],
+    "selection_rule": "maximize the worst geometric daily growth across 2021 and 2022 among routes with at least 60 trades in each year; 2023 was then read as confirmation."
+  },
+  "known_weaknesses": [
+    "The preliminary extreme-tail event regressor looked positive in 2022 but collapsed to three trades and a loss in 2023.",
+    "The full dynamic ML policy had negative median account return, PF below one and large drawdown in both selection and confirmation.",
+    "The simpler OI-accumulation continuation mechanism remained negative in every pre-2024 calendar year, so risk/leverage optimization and official 2024 replay were not opened."
+  ],
+  "ml_dynamic_policy": {
+    "frozen_confirmation_2023": {"gd":-0.0029210963289748593,"mdd":0.6643623008703579,"median":-0.004995830023496281,"multiple":0.3437775677999165,"nav":3437.7756779991646,"pf":0.6068084703455922,"return":-0.6562224322000836,"top5_share":0.34935878261709236,"trades":680},
+    "frozen_threshold": 0.09403580726447441,
+    "selection_2022": {"gd":-0.00032436865700835593,"h":48.0,"mdd":0.3316877803390993,"median":-0.004995476930964694,"multiple":0.8883284167299733,"nav":8883.284167299733,"pf":0.9275632695298013,"q":0.7,"return":-0.11167158327002669,"threshold":0.16519231944093357,"top5_share":0.3041049693245497,"trades":403.0}
+  },
+  "next_alpha_requirement": "Change economic mechanism; do not rescue this family with adjacent OI thresholds, reward-to-risk targets, extra leverage or narrower filters.",
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "result_id": "RES-20260729-ML-BYBIT-INVENTORY-STATE-001",
+  "schema_version": 1,
+  "source_sha256": {
+    "CONTRACT.json": "c6f71b91317da030db1a62308c3f93b5bb2161ae597c77fed0f30f4c0190810e",
+    "continuation_rule.py": "3c20769ca402da886e49d4aab91dfe8c874e7a632c71fddeafafd3dc1bbacf24",
+    "dynamic_policy_fast.py": "1a9a13229d22a39e48e840c780b489b2c50b16b96d3f3ba97bcc73596f24e092",
+    "explore.py": "e0679df9baade12cf30e67ece936d67b486b40d53e10c200ccac5b3f412b8a45"
+  },
+  "status": "ECONOMIC_FAIL"
+}
