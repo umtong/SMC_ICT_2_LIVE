@@ -40,8 +40,9 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
             -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
           unzip -q deps/runtime.zip -d deps/runtime
-          (cd deps/runtime && sha256sum -c SHA256SUMS)
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
           mkdir -p deps/runtime/root
           tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
           deps/runtime/root/python/bin/python3 - <<'PY'
