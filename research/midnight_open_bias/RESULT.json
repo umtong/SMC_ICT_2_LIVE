@@ -1,0 +1,37 @@
+{
+  "claim_id": "CLM-20260730-0410-ICT-MIDNIGHT-OPEN-BIAS-001",
+  "contract": {
+    "anchors": ["NY_MIDNIGHT", "TRUE_DAY_1800", "UTC_MIDNIGHT", "NY_0600"],
+    "decision": "completed 08:30-08:35 America/New_York 5m bar",
+    "entry": "08:36 ET 1m open after fixed 500ms",
+    "same_minute": "stop_first",
+    "stop": "1bp beyond anchor",
+    "target": "still-unconsumed prior New-York-day high/low in anchor-implied direction",
+    "time_exit": false
+  },
+  "counts": {"events": 5285, "resolved": 5283, "unresolved_or_gap": 2},
+  "data": {"official_2024_2026_opened": false, "period": "2021-01-01 through 2023-12-31", "symbols": ["BTCUSDT", "ETHUSDT"], "venue": "Bybit"},
+  "diagnostic_one_slot_accounts_24bp": {
+    "NY_0600": {"anchor": "NY_0600", "cost_bps": 24, "final_nav": 1012.1035821096377, "geometric_daily_growth": -0.002089643943202657, "max_drawdown_realized_nav": 0.9002579494372029, "multiple": 0.10121035821096377, "notional_cap": 3.0, "profit_factor": 0.3693963768978984, "risk_fraction": 0.005, "trades": 837},
+    "NY_MIDNIGHT": {"anchor": "NY_MIDNIGHT", "cost_bps": 24, "final_nav": 2855.764377549547, "geometric_daily_growth": -0.0011438617773603665, "max_drawdown_realized_nav": 0.7358095459390619, "multiple": 0.2855764377549547, "notional_cap": 3.0, "profit_factor": 0.5654879596300771, "risk_fraction": 0.005, "trades": 717},
+    "TRUE_DAY_1800": {"anchor": "TRUE_DAY_1800", "cost_bps": 24, "final_nav": 3628.5645896947235, "geometric_daily_growth": -0.0009253687991052084, "max_drawdown_realized_nav": 0.6371435410305277, "multiple": 0.36285645896947233, "notional_cap": 3.0, "profit_factor": 0.5846124673588128, "risk_fraction": 0.005, "trades": 664},
+    "UTC_MIDNIGHT": {"anchor": "UTC_MIDNIGHT", "cost_bps": 24, "final_nav": 3914.847094861514, "geometric_daily_growth": -0.0008560797659056263, "max_drawdown_realized_nav": 0.610206483297075, "multiple": 0.3914847094861514, "notional_cap": 3.0, "profit_factor": 0.6069650517319375, "risk_fraction": 0.005, "trades": 639}
+  },
+  "matched_24bp": {
+    "NY_0600": {"bootstrap_95ci_mean_diff_bps": [-2.900303516025547, 14.691975565044675], "mean_control_bps": -29.484866644032408, "mean_diff_bps": 5.574058803310682, "mean_midnight_bps": -23.91080784072173, "median_diff_bps": 0.0, "paired_t_pvalue": 0.2099226193565445, "pairs": 1245, "wilcoxon_pvalue": 0.01930016873468252},
+    "TRUE_DAY_1800": {"bootstrap_95ci_mean_diff_bps": [-7.528327955674053, 13.828033629514772], "mean_control_bps": -27.092432994545966, "mean_diff_bps": 2.5738138454784782, "mean_midnight_bps": -24.51861914906749, "median_diff_bps": 0.0, "paired_t_pvalue": 0.6463520134525366, "pairs": 1170, "wilcoxon_pvalue": 0.14338751997937482},
+    "UTC_MIDNIGHT": {"bootstrap_95ci_mean_diff_bps": [-7.780874230329961, 12.647292530001314], "mean_control_bps": -27.508172662038515, "mean_diff_bps": 2.2997985482203074, "mean_midnight_bps": -25.208374113818206, "median_diff_bps": 0.0, "paired_t_pvalue": 0.6623435200650184, "pairs": 1191, "wilcoxon_pvalue": 0.07726546771361113}
+  },
+  "orders_submitted": false,
+  "overall_anchor": {
+    "NY_0600": {"events": 1513, "mean_12bp_bps": -20.501073191133223, "mean_18bp_bps": -26.501073191133223, "mean_24bp_bps": -32.501073191133216, "mean_funding_bps": 0.10200700594844676, "mean_gross_bps": -8.603080197081667, "median_12bp_bps": -35.371528788882486, "median_18bp_bps": -41.371528788882486, "median_24bp_bps": -47.371528788882486, "median_gross_bps": -23.096157231217163, "median_hold_minutes": 60.0, "median_stop_distance_bps": 36.7219536971798, "median_structural_rr": 6.197081371060536, "median_target_distance_bps": 212.08723528575717, "pf_12bp": 0.6148698138055791, "pf_18bp": 0.5443656751651504, "pf_24bp": 0.48497912393410164, "positive_12bp": 0.1784534038334435, "positive_18bp": 0.17713152676801058, "positive_24bp": 0.17448777263714474, "target_rate": 0.17911434236615995},
+    "NY_MIDNIGHT": {"events": 1329, "mean_12bp_bps": -12.827924452845535, "mean_18bp_bps": -18.827924452845533, "mean_24bp_bps": -24.82792445284553, "mean_funding_bps": 0.2824290443942814, "mean_gross_bps": -1.1103534972398152, "median_12bp_bps": -33.31056434290013, "median_18bp_bps": -39.31056434290013, "median_24bp_bps": -45.31056434290013, "median_gross_bps": -21.780360006324884, "median_hold_minutes": 96.0, "median_stop_distance_bps": 52.119765176244094, "median_structural_rr": 3.8058258570792156, "median_target_distance_bps": 186.69694284448303, "pf_12bp": 0.7963506205692814, "pf_18bp": 0.7207623646639497, "pf_24bp": 0.6545748971693233, "positive_12bp": 0.26109857035364936, "positive_18bp": 0.2595936794582393, "positive_24bp": 0.255079006772009, "target_rate": 0.2626034612490594},
+    "TRUE_DAY_1800": {"events": 1209, "mean_12bp_bps": -14.707912788196213, "mean_18bp_bps": -20.707912788196214, "mean_24bp_bps": -26.707912788196214, "mean_funding_bps": 0.29084863523573196, "mean_gross_bps": -2.9987614234319464, "median_12bp_bps": -34.9309942611855, "median_18bp_bps": -40.9309942611855, "median_24bp_bps": -46.9309942611855, "median_gross_bps": -22.937434491049345, "median_hold_minutes": 112.0, "median_stop_distance_bps": 67.34512393560776, "median_structural_rr": 2.604628518291951, "median_target_distance_bps": 164.00368304175905, "pf_12bp": 0.7898037491244979, "pf_18bp": 0.7206873414455434, "pf_24bp": 0.6589904580369711, "positive_12bp": 0.30603804797353185, "positive_18bp": 0.304383788254756, "positive_24bp": 0.3010752688172043, "target_rate": 0.3076923076923077},
+    "UTC_MIDNIGHT": {"events": 1232, "mean_12bp_bps": -16.217380349546442, "mean_18bp_bps": -22.217380349546442, "mean_24bp_bps": -28.217380349546442, "mean_funding_bps": 0.39052167207792216, "mean_gross_bps": -4.607902021624366, "median_12bp_bps": -35.97838196228297, "median_18bp_bps": -41.97838196228297, "median_24bp_bps": -47.97838196228297, "median_gross_bps": -24.12169966184652, "median_hold_minutes": 112.0, "median_stop_distance_bps": 64.65392539898323, "median_structural_rr": 2.8139291734387397, "median_target_distance_bps": 178.86588826773874, "pf_12bp": 0.7716300254275835, "pf_18bp": 0.7045919404133263, "pf_24bp": 0.644682889136417, "positive_12bp": 0.30113636363636365, "positive_18bp": 0.3003246753246753, "positive_24bp": 0.29707792207792205, "target_rate": 0.3027597402597403}
+  },
+  "ranking_change": false,
+  "result_id": "RES-20260730-ICT-MIDNIGHT-OPEN-BIAS-001",
+  "schema_version": 1,
+  "stage2_authorized": false,
+  "status": "RETIRED_STAGE1_NEGATIVE_SUBCOST_OR_NONUNIQUE"
+}
