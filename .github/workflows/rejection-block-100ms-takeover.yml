@@ -7,6 +7,11 @@ on:
     paths:
       - "research/rejection_block_100ms_takeover/**"
       - ".github/workflows/rejection-block-100ms-takeover.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/rejection_block_100ms_takeover/**"
+      - ".github/workflows/rejection-block-100ms-takeover.yml"
   workflow_dispatch:
 
 permissions:
@@ -14,7 +19,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: rejection-block-100ms-${{ github.ref }}
+  group: rejection-block-100ms-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
