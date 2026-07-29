@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from research.ipda_multiday_draw.run import DAY_MS, MINUTE_MS, prepare_daily, simulate_one
+from research.ipda_multiday_draw.run import DAY_MS, MINUTE_MS, START_MS, prepare_daily, simulate_one
 
 
 def test_day_start_range_uses_completed_prior_days_only():
@@ -11,7 +11,7 @@ def test_day_start_range_uses_completed_prior_days_only():
     for i in range(62):
         rows.append(
             dict(
-                start_time_ms=i * DAY_MS,
+                start_time_ms=START_MS + i * DAY_MS,
                 open=100.0,
                 high=100.0 + i,
                 low=50.0 - i,
@@ -39,50 +39,29 @@ def test_500ms_activation_cannot_use_minute_open_at_decision_time():
             "close": [100.0, 101.5, 105.0],
         }
     )
-    event = SimpleNamespace(
-        symbol="BTCUSDT",
-        day_start_ms=0,
-        family="accepted_expansion",
-        horizon=40,
-        direction=1,
-        target=105.0,
-        source_boundary=99.0,
-        state_strength=1.0,
-        decision_time_ms=decision,
-        signal_start_ms=0,
-        signal_close=100.0,
-        stop=98.0,
-        atr=1.0,
-        body_atr=1.0,
-        range_atr=1.0,
-        close_loc=1.0,
-        rr_at_signal=2.0,
-        prior_close=100.0,
-        range_low=90.0,
-        range_high=105.0,
-        _asdict=lambda: {
-            "symbol": "BTCUSDT",
-            "day_start_ms": 0,
-            "family": "accepted_expansion",
-            "horizon": 40,
-            "direction": 1,
-            "target": 105.0,
-            "source_boundary": 99.0,
-            "state_strength": 1.0,
-            "decision_time_ms": decision,
-            "signal_start_ms": 0,
-            "signal_close": 100.0,
-            "stop": 98.0,
-            "atr": 1.0,
-            "body_atr": 1.0,
-            "range_atr": 1.0,
-            "close_loc": 1.0,
-            "rr_at_signal": 2.0,
-            "prior_close": 100.0,
-            "range_low": 90.0,
-            "range_high": 105.0,
-        },
-    )
+    payload = {
+        "symbol": "BTCUSDT",
+        "day_start_ms": 0,
+        "family": "accepted_expansion",
+        "horizon": 40,
+        "direction": 1,
+        "target": 105.0,
+        "source_boundary": 99.0,
+        "state_strength": 1.0,
+        "decision_time_ms": decision,
+        "signal_start_ms": 0,
+        "signal_close": 100.0,
+        "stop": 98.0,
+        "atr": 1.0,
+        "body_atr": 1.0,
+        "range_atr": 1.0,
+        "close_loc": 1.0,
+        "rr_at_signal": 2.0,
+        "prior_close": 100.0,
+        "range_low": 90.0,
+        "range_high": 105.0,
+    }
+    event = SimpleNamespace(**payload, _asdict=lambda: payload.copy())
     result = simulate_one(event, minute, decision + 3 * MINUTE_MS)
     assert result["filled"]
     assert result["entry_time_ms"] == decision + MINUTE_MS
