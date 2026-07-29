@@ -11,16 +11,17 @@ import run_stablecoin_profit_v5_single_pass_authority as base
 
 CLAIM_ID = base.CLAIM_ID
 RESULT_ID = base.RESULT_ID
-CORRECTION_ID = "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-SOURCE-SELFTEST-AND-FAILURE-PATH-001"
+CORRECTION_ID = "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-COMPLETE-SOURCE-SELFTEST-NAMESPACE-002"
 CORRECTION_PATH = (
     Path(__file__).resolve().parents[1]
     / "research"
     / "execution"
     / "stablecoin_profit_v5_20260727"
-    / "EXECUTION_CORRECTION_007_SOURCE_SELFTEST_AND_FAILURE_PATH_BEFORE_OUTCOME.json"
+    / "EXECUTION_CORRECTION_008_COMPLETE_SOURCE_SELFTEST_NAMESPACE_BEFORE_OUTCOME.json"
 )
-_OLD_SELF_TEST = "decoded = authority.base.decode_log("
-_NEW_SELF_TEST = "decoded = authority.base.auth.decode_log("
+_OLD_SELF_TEST = "authority.base."
+_NEW_SELF_TEST = "authority.base.auth."
+_EXPECTED_SELF_TEST_REFERENCES = 4
 
 
 def _load_correction() -> dict[str, Any]:
@@ -35,7 +36,7 @@ def _load_correction() -> dict[str, Any]:
 
 
 def repair_materialized_source(repository: Path) -> Path:
-    """Repair only the frozen source self-test namespace in a temporary checkout."""
+    """Repair only frozen source self-test namespaces in a temporary checkout."""
     _load_correction()
     path = (
         repository
@@ -45,14 +46,17 @@ def repair_materialized_source(repository: Path) -> Path:
     )
     text = path.read_text(encoding="utf-8")
     observed = text.count(_OLD_SELF_TEST)
-    if observed != 1:
+    if observed != _EXPECTED_SELF_TEST_REFERENCES:
         raise RuntimeError(
-            "expected exactly one frozen self-test namespace reference, "
+            "expected exactly four frozen self-test namespace references, "
             f"observed {observed}"
         )
     if _NEW_SELF_TEST in text:
         raise RuntimeError("repaired self-test namespace already present before overlay")
-    path.write_text(text.replace(_OLD_SELF_TEST, _NEW_SELF_TEST, 1), encoding="utf-8")
+    repaired = text.replace(_OLD_SELF_TEST, _NEW_SELF_TEST)
+    if repaired.count(_NEW_SELF_TEST) != _EXPECTED_SELF_TEST_REFERENCES:
+        raise RuntimeError("self-test namespace repair count changed unexpectedly")
+    path.write_text(repaired, encoding="utf-8")
     return path
 
 
@@ -73,8 +77,8 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
                     {
                         "correction_id": CORRECTION_ID,
                         "path": str(repaired),
-                        "old_reference_count": 1,
-                        "new_reference_count": 1,
+                        "old_reference_count": _EXPECTED_SELF_TEST_REFERENCES,
+                        "new_reference_count": _EXPECTED_SELF_TEST_REFERENCES,
                         "scientific_contract_changed": False,
                     },
                     sort_keys=True,
