@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-UNRESOLVED-LIQUIDITY-BOOK-001",
+  "result_id": "RES-20260730-ML-UNRESOLVED-LIQUIDITY-BOOK-001",
+  "status": "TESTED_BELOW_GATE",
+  "hard_validity": "PASS_AFTER_STRICT_EXIT_MINUTE_SLOT_CORRECTION",
+  "economic_status": "ECONOMIC_FAILURE_PRE2024",
+  "ranking_eligible": false,
+  "ranking_change": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "data": [
+    {"dataset_id": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1", "sha256": "7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca"},
+    {"dataset_id": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1", "sha256": "b2ff98c7ea8968ec942bdf79a69fcd75d37871ca9ca9d6c42778ecf098945295"},
+    {"dataset_id": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1", "sha256": "273995bf7efd905c147237ff14978b92ef65f4703b290986ba6fab5fe5e3e42c"},
+    {"dataset_id": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1", "sha256": "681cb5c21826f05a12e40b25818c40d1be46cf4b394676998d8a6856180271da"},
+    {"dataset_id": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2023-CANONICAL-V1", "sha256": "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46"},
+    {"dataset_id": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2023-CANONICAL-V1", "sha256": "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322"}
+  ],
+  "verification": {
+    "zip_hashes_match_registry": true,
+    "manifest_hashes_match": true,
+    "internal_file_hash_failures": 0,
+    "runtime": "Python 3.12.12; numpy 2.3.3; pandas 2.3.3; pyarrow 21.0.0; scikit-learn 1.7.2",
+    "runtime_artifact_sha256": "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4"
+  },
+  "causality_correction": {
+    "defect": "the exploratory router allowed a new position at the open of the same one-minute bucket in which the previous position later hit a target or stop",
+    "repair": "treat the whole observed exit minute as occupied and require a strictly later entry minute",
+    "affected_successions_at_threshold_1_5": 29,
+    "decision_effect": "small metric changes; the economic conclusion remained negative"
+  },
+  "primary_threshold": 1.5,
+  "candidate_economics": {
+    "resolved_candidates": 5174,
+    "nearest_dominant_pool_first_fraction": 0.7729029764205644,
+    "mean_gross_unit_return": 0.0001411893923805989,
+    "interpretation": "the book often predicts the next nearby pool but the gross movement averages only 1.4119 bp"
+  },
+  "strict_global_slot_2021_2023": {
+    "12bp": {
+      "trades": 2066,
+      "nav_multiple": 0.5093372636431217,
+      "total_return": -0.4906627363568783,
+      "geometric_daily_growth": -0.0006159242876331295,
+      "profit_factor": 0.7373125893240571,
+      "maximum_drawdown": -0.5212470365561068,
+      "median_account_return": 0.00033595808054727385,
+      "top5_positive_pnl_share": 0.05436770448790839
+    },
+    "18bp": {
+      "trades": 2066,
+      "nav_multiple": 0.37390260313008733,
+      "total_return": -0.6260973968699126,
+      "geometric_daily_growth": -0.0008980074492294099,
+      "profit_factor": 0.6247942823163406,
+      "maximum_drawdown": -0.6389414581614601,
+      "median_account_return": 0.00018711591394725497,
+      "top5_positive_pnl_share": 0.05871867179817865
+    },
+    "24bp": {
+      "trades": 2066,
+      "nav_multiple": 0.28240567624037166,
+      "total_return": -0.7175943237596283,
+      "geometric_daily_growth": -0.0011540465194367355,
+      "profit_factor": 0.5317953969356332,
+      "maximum_drawdown": -0.7213523164962425,
+      "median_account_return": 0.000072699892266374,
+      "top5_positive_pnl_share": 0.06305118238223002
+    }
+  },
+  "fixed_tape_state_loss_audit": {
+    "description": "replace exits on the already-selected strict entry tape when the aggregate book crosses to the opposite state; do not fill the freed slot with additional trades",
+    "18bp_2021_return": -0.13903,
+    "18bp_2022_return": -0.25969,
+    "18bp_2023_return": -0.41348,
+    "comparison": "2022 improved by about 2.07 percentage points, while 2021 and 2023 worsened; all remain deeply negative"
+  },
+  "ml_action_value": {
+    "feature_count": 56,
+    "2021_sequential_oof": {
+      "best_auc": 0.6793460643388312,
+      "best_brier": 0.15668772998484365,
+      "cost_gate_passed": false
+    },
+    "2022_best_fixed_policy": {
+      "model": "hgb_medium",
+      "expected_18bp_account_value_gate": 0.00025,
+      "trades": 166,
+      "auc": 0.7079071847917249,
+      "12bp_return": 0.012703985669067608,
+      "18bp_return": -0.004453244507751863,
+      "24bp_return": -0.020461943016803597,
+      "18bp_profit_factor": 0.9885858273332025,
+      "18bp_maximum_drawdown": -0.0880903846844564
+    },
+    "2022_selection_gate_passed": false,
+    "2023_confirmation_opened": false
+  },
+  "decision": "Retire the exact standalone aggregate-unresolved-liquidity entry family. Preserve the causal level lifecycle and mass features only as a reusable target-state component. Do not rescue it with farther targets, passive entries, lower costs, risk/leverage expansion or work overlapping active low-resistance-liquidity continuation."
+}
