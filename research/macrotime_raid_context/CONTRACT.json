@@ -1,0 +1,36 @@
+{
+  "claim_id": "CLM-20260730-0348-ML-MACROTIME-RAID-CONTEXT-001",
+  "conditional_stage2": "Only if macro phase has positive, material, non-sparse increment versus both controls; then genuine FVG/BPR first rebalance and action-value ML may be tested.",
+  "decision": "Stage 1 failed; stage 2 prohibited.",
+  "development_period": "2021-01-01 through 2023-12-31",
+  "economics": {
+    "cost_bps": [12, 18, 24],
+    "global_slot_account": "diagnostic only after event economics; 0.5% NAV risk and 3x cap",
+    "stage1_ml": false,
+    "stage1_risk_search": false
+  },
+  "event": {
+    "both_side_consumption": "invalid",
+    "boundary": "frozen prior-40m high and low",
+    "decision": "completed one-minute close back inside before the opposite boundary is consumed",
+    "entry": "fixed 500ms activation then first strictly later observable one-minute open",
+    "raid": "first trade beyond exactly one boundary by at least 1 bp",
+    "same_minute": "stop-first",
+    "stop": "causally observed raid extreme plus 1 bp",
+    "target": "untouched opposite frozen boundary",
+    "time_exit": false
+  },
+  "hypothesis": "The transcript-defined minute-50 through next-minute-10 ICT macro-time is context that improves an otherwise identical causal one-sided raid/reclaim reversal versus matched 10-30 and 30-50 control phases.",
+  "official_2024_2026_prohibited": true,
+  "phase_contract": {
+    "CONTROL_10_30": "minute 10 inclusive to minute 30 exclusive",
+    "CONTROL_30_50": "minute 30 inclusive to minute 50 exclusive",
+    "MACRO_50_10": "minute 50 inclusive to next hour minute 10 exclusive",
+    "max_events_per_phase": 1,
+    "pre_range": "immediately preceding completed 40 one-minute bars"
+  },
+  "result_id": "RES-20260730-MACROTIME-RAID-CONTEXT-001",
+  "schema_version": 1,
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "venue": "Bybit USDT linear perpetual"
+}
