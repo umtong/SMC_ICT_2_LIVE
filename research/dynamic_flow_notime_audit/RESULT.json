@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-DYNAMIC-FLOW-NOTIME-AUDIT-001",
+  "result_id": "RES-20260729-DYNAMIC-FLOW-NOTIME-AUDIT-001",
+  "parent_result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+  "candidate_id": "021fbab613517a31ad98",
+  "decision": "RETIRED_OFFICIAL_2024H1_ECONOMIC_FAILURE",
+  "orders_submitted": false,
+  "ranking_changed": false,
+  "source_reproduction": {
+    "status": "BYTE_CONTRACT_METRIC_PARITY",
+    "trades": 194,
+    "return_12bps": 0.23161511969981352,
+    "return_18bps": 0.16629922950181775,
+    "return_24bps": 0.11184631965863745,
+    "geometric_daily_12bps": 0.000570920210096304,
+    "profit_factor_12bps": 1.5019446137431731,
+    "maximum_drawdown_12bps": 0.0462986066016563,
+    "exit_reasons": {
+      "protective_stop": 96,
+      "flow_decay": 59,
+      "maximum_hold_96_bars": 39
+    }
+  },
+  "program_defect_decomposition_2023": {
+    "remove_only_maximum_hold_24bps": {
+      "trades": 190,
+      "return": 0.14878853176989404,
+      "geometric_daily": 0.0003800939611673382,
+      "profit_factor": 1.312237418452648,
+      "maximum_drawdown": 0.06925368102271778,
+      "exit_reasons": {"protective_stop": 98, "flow_decay": 92}
+    },
+    "correct_500ms_but_keep_maximum_hold_24bps": {
+      "trades": 195,
+      "return": 0.06854702292947334,
+      "geometric_daily": 0.0001816597944870324,
+      "profit_factor": 1.1434488529209135,
+      "maximum_drawdown": 0.09027577612324578,
+      "exit_reasons": {"protective_stop": 106, "flow_decay": 54, "maximum_hold_96_bars": 35}
+    },
+    "fully_corrected_no_time_24bps": {
+      "trades": 191,
+      "return": 0.06800856609966788,
+      "geometric_daily": 0.00018027860768321524,
+      "profit_factor": 1.1404869424940192,
+      "maximum_drawdown": 0.10481621268465557,
+      "median_account_return_bps": -19.774868708812875,
+      "top_five_positive_share": 0.4072215792401357,
+      "top_ten_percent_removed_return": -0.31289341513365143,
+      "exit_reasons": {"protective_stop": 106, "flow_decay": 85},
+      "symbol_trades": {"BTCUSDT": 9, "ETHUSDT": 6, "SOLUSDT": 109, "XRPUSDT": 67},
+      "maximum_duration_5m_bars": 458
+    },
+    "interpretation": "The prohibited 96-bar close was not required for nominal 2023 profitability; removing it increased the proxy return. The fixed 500ms correction caused the material deterioration, showing that the original next-open entry and state exit used prices already in the past at activation. Even after correction the pre-2024 route remained positive but concentrated and had a negative median trade."
+  },
+  "official_2024H1": {
+    "information_cutoff": "2023-12-31T23:59:59Z",
+    "route_changed_after_cutoff": false,
+    "cost_paths": {
+      "12bps": {
+        "trades": 78,
+        "return": -0.07579250948118332,
+        "geometric_daily": -0.00043297588563984135,
+        "profit_factor": 0.6570918231966452,
+        "maximum_drawdown": 0.10158464248670096
+      },
+      "18bps": {
+        "trades": 78,
+        "return": -0.08899023260230987,
+        "geometric_daily": -0.0005119659345264038,
+        "profit_factor": 0.6005077637095783,
+        "maximum_drawdown": 0.11297945851136038
+      },
+      "24bps": {
+        "trades": 78,
+        "return": -0.10060399938919751,
+        "geometric_daily": -0.0005824229159201444,
+        "profit_factor": 0.550669641902354,
+        "maximum_drawdown": 0.12298497127762309,
+        "median_account_return_bps": -49.999999999999154,
+        "top_five_positive_share": 0.7255369498364802,
+        "top_ten_percent_removed_return": -0.19251566815840016,
+        "exit_reasons": {"protective_stop": 46, "flow_decay": 32},
+        "symbol_trades": {"BTCUSDT": 10, "ETHUSDT": 5, "SOLUSDT": 36, "XRPUSDT": 27},
+        "maximum_duration_5m_bars": 344
+      }
+    }
+  },
+  "stage_opening": {
+    "official_2024H1_opened": true,
+    "official_2024H2_authorized": false,
+    "official_2025_opened": false,
+    "official_2026_opened": false,
+    "quarantined_diagnostic": "A full-2024 replay was inadvertently computed in the same local batch after the H1 calculation. It was not used for model, parameter, route or risk selection and is deliberately excluded from authoritative evidence because the claim authorized H2 only after a positive H1."
+  },
+  "decision_reason": "The exact candidate survived removal of the elapsed-time exit and remained positive after the 500ms correction in 2023, so opening 2024H1 was warranted. It then lost at all three cost paths with 78 trades and broad stop dominance. This is a market-state family failure, not a remaining timeout or small-sample software artifact.",
+  "prohibited_rescues": [
+    "different residual or flow threshold",
+    "different rank-transition window",
+    "different stop or capacity limit",
+    "reintroduction of maximum holding duration",
+    "2024-aware feature or symbol filter",
+    "risk or leverage increase"
+  ],
+  "data_identity": {
+    "dataset_id": "DS-BINANCE-USDM-5M-2023-2025-R1",
+    "dataset_manifest_sha256": "a6f8575eccfed2129daee4596f897351d84d85ae52f061f734dc991debed3ac4",
+    "dataset_artifact_sha256": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "verified_source_artifact_id": 8728052748,
+    "verified_source_artifact_digest": "sha256:e1ba786e5eb08f6606d88a295f570f18fdcf9d05080d5ede0e6c9fb3958e5430"
+  }
+}
