@@ -32,7 +32,15 @@ try:
         members = archive.getmembers()
         result["tar_opened"] = True
         result["members"] = [
-            {"name": member.name, "size": member.size, "type": member.type}
+            {
+                "name": member.name,
+                "size": member.size,
+                "type": (
+                    member.type.decode("ascii", errors="backslashreplace")
+                    if isinstance(member.type, bytes)
+                    else str(member.type)
+                ),
+            }
             for member in members
         ]
         for member in members:
