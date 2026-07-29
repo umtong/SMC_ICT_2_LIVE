@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-STRICT-VALIDATION-CONTRACT-ALIGNMENT-008",
+  "takeover_claim_id": "CLM-20260730-STABLECOIN-V5-TAKEOVER-001",
+  "original_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T02:55:00+09:00",
+  "timing": "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_failure": {
+    "workflow_run": 30477347433,
+    "source_self_test_passed": true,
+    "source_decision_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false,
+    "outdated_test_assertion": "test_run_causal required completed_feature_index == entry_index - 1 although correction 002 requires the last bar completed by the mid-minute source decision",
+    "synthetic_gap_test_assertion": "strict_guard self_test used p_up=0.99 on a 24.54bp target against 24bp cost, making pre-entry EV nonpositive and correctly producing no order while the test expected a cost-only invalidation"
+  },
+  "contract_resolution": {
+    "completed_feature_boundary": "CORRECTION-20260727-ML-STABLECOIN-PREENTRY-INFORMATION-BOUNDARY-002 remains authoritative: latest bar with open_time + 60000 <= source decision time",
+    "entry_open": "execution-only; the still-forming pre-entry minute and future entry open cannot change features, frozen liquidity geometry or action eligibility",
+    "entry_gap_cost_only": "applies only to a setup already selected from positive pre-entry expected value; a nonpositive-EV setup remains flat and creates no artificial cost trade"
+  },
+  "validation_only_fix": [
+    "replace the obsolete entry_index - 1 assertion with the exact source-decision completed-bar cutoff and assert that cutoff precedes entry",
+    "set the synthetic gap test probability from 0.99 to 1.0 so its frozen 24.54bp upper target has positive expected value before the 24bp cost and therefore actually tests the cost-only gap path"
+  ],
+  "unchanged": [
+    "all source collection, filtering and decoding",
+    "strict_build_rows and strict_trade_from_row production behavior",
+    "features, labels, model and calibration",
+    "market data and execution prices",
+    "structural targets and stops",
+    "costs, funding, one global slot and no elapsed-time liquidation",
+    "registered 99-path risk and notional grid",
+    "profit-first advancement and official-period rules",
+    "credentials and order prohibition"
+  ]
+}
