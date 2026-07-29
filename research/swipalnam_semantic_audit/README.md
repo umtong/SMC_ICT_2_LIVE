@@ -72,7 +72,7 @@ python research/swipalnam_semantic_audit/audit.py \
   --out candidates.pkl.gz
 ```
 
-The module exposes `run_simulation(...)` for the fixed-500ms, next-observable-minute execution replay. `test_audit.py` locks the semantic invariants and the three original fallbacks as executable counterexamples.
+`execution.py` exposes `run_simulation(...)` for the fixed-500ms, next-observable-minute execution replay. `test_audit.py` locks the semantic invariants and the three original fallbacks as executable counterexamples.
 
 ## Decision
 
