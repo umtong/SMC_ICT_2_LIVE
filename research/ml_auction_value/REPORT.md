@@ -2,47 +2,76 @@
 
 **Result:** `RES-20260729-ML-AUCTION-VALUE-001`  
 **Claim:** `CLM-20260729-ML-AUCTION-VALUE-001` / issue #387  
-**Decision:** ECONOMIC FAIL; official 2024 was not opened.
+**Decision:** **ECONOMIC FAIL**; official 2024 was not opened.
 
 ## Mechanism tested
 
-Each UTC day used only the completed prior UTC day's official Bybit one-minute bars to construct a turnover-at-price profile. Turnover was distributed uniformly over each observed minute range on a fixed log-price grid. The resulting POC, 70%/80% value edges, high-volume nodes and low-density corridors were frozen for the current day.
+Each UTC day used only the completed prior UTC day's official Bybit one-minute bars to construct a turnover-at-price profile. Turnover was distributed uniformly over each observed minute range on a fixed log-price grid. The resulting POC, 70%/80% value edges, high-volume nodes, and low-density corridors were frozen for the current decision day.
 
 A completed five-minute close through a value edge created two counterfactual actions:
 
-- acceptance continuation through the adjacent low-density corridor toward the next profile node, with exit on value re-entry, completed trailing-structure loss, target or stop;
-- rejection reversion toward POC, with exit on POC delivery, re-acceptance outside value or stop.
+- **acceptance continuation** through the adjacent low-density corridor toward the next profile node, with exit on value re-entry, completed trailing-structure loss, node delivery, or structural stop;
+- **rejection reversion** toward POC, with exit on POC delivery, re-acceptance outside value, or structural stop.
 
-ML estimated mean and 35th-percentile action value and selected continuation, reversion or flat. No elapsed-time liquidation was used.
+Pooled gradient-boosted mean and 35th-percentile value models compared continuation, reversion, and flat. No elapsed-time liquidation was used.
 
-## Fixed account and execution contract
+## Fixed execution and account contract
 
 - BTCUSDT and ETHUSDT; one global pending/open slot.
-- Completed five-minute decisions; fixed 500 ms latency; first observable one-minute open after activation.
-- 24 bp round-trip cost stress plus actual funding.
+- Completed five-minute decisions; fixed 500 ms activation delay; first observable one-minute open after activation.
+- 24 bp round-trip execution stress plus actual canonical Bybit funding.
 - Stop-first same-minute ambiguity and adverse gap execution.
 - Fixed 0.5% NAV loss budget and 3x notional cap during alpha discovery.
+- Simultaneous BTC/ETH candidates compete by predicted action value rather than symbol order.
 
-## Economic result
+## Causality correction before final publication
 
-The primary 5 bp / 70% profile generated 11,162 value-edge events. Raw continuation and reversion actions had negative mean and median unit returns in 2021, 2022 and 2023. Median account return was approximately -0.5%, indicating that the structural stop was the modal outcome after costs.
+The first exploratory calculation was discarded after audit found three implementation defects:
 
-Every dense mean-value ML policy lost money in 2022. Across the tested profile/stop sensitivity, losses ranged from 48.28% to 65.26%, with PF between 0.47 and 0.59.
+1. the annual stage used bar-start year rather than the year in which the completed bar became available;
+2. a late-year counterfactual outcome could resolve using the next development year's state;
+3. simultaneous BTC and ETH candidates were ordered alphabetically instead of by expected action value.
 
-The only positive 2022 diagnostic was the 5 bp / 80% value-area lower-tail blend:
+The corrected implementation partitions on `available_at_ms`, resolves or marks every action no later than the next UTC year boundary, contains no future outcome columns in the feature table, and arbitrates the global slot by predicted value. Four unit tests and the result validator passed; all preliminary positive figures are invalid and are not reported as evidence.
 
-- +1.8956% total return;
-- +0.005145% geometric daily growth;
-- 18 trades;
-- PF 1.342;
-- MDD 3.70%;
-- negative median trade;
-- 92.81% of positive PnL in the top five trades.
+## Corrected economic result
 
-It failed the non-sparse eligibility requirement. After refitting through 2022 and freezing the same policy, 2023 produced one trade and lost 0.0541%. Requiring a positive 35th-percentile action value selected zero trades.
+The primary 5 bp / 70% profile produced 11,177 value-edge events and 20,615 valid action outcomes. Both raw action families were negative after 24 bp and actual funding:
+
+| action | year | outcomes | mean account return | median account return | positive fraction |
+|---|---:|---:|---:|---:|---:|
+| continuation | 2021 | 2,980 | -0.2278% | -0.4997% | 16.48% |
+| continuation | 2022 | 3,615 | -0.2729% | -0.4998% | 12.59% |
+| reversion | 2021 | 2,835 | -0.2474% | -0.4999% | 15.03% |
+| reversion | 2022 | 3,524 | -0.3032% | -0.4999% | 14.81% |
+
+Five profile/stop configurations and four model gates produced 20 causal 2022 policy routes. Ten routes selected no trades. None produced positive non-sparse growth.
+
+The best route that actually traded was still negative:
+
+- 5 bp grid, 80% value area, 0.25 ATR stop buffer, 12-bar structural trail;
+- blended mean/lower-tail gate;
+- 19 trades;
+- NAV 10,000 → 9,775.51;
+- return **-2.2449%**;
+- geometric daily growth **-0.006220%**;
+- PF **0.701**;
+- MDD **5.63%**;
+- median account return **-0.4998%**;
+- top-five positive-PnL share **100%**.
+
+The best dense policy was much worse:
+
+- 398 trades;
+- NAV 10,000 → 4,753.63;
+- return **-52.4637%**;
+- geometric daily growth **-0.20354%**;
+- PF **0.532**;
+- MDD **52.84%**;
+- median account return **-0.4997%**.
 
 ## Decision
 
-The prior-day turnover-profile acceptance/rejection family is closed. Its value-edge geometry did not provide a stable cost-surviving action advantage, and ML could only choose broad losses, a one-off sparse tail or no trades. Official 2024H1, risk/leverage optimization, ranking changes and order authority were not opened.
+No 2022 policy survived, so the corrected protocol did not open a frozen 2023 confirmation, official 2024H1, risk/leverage optimization, ranking changes, or order authority. Raw 2023 action outcomes had already been exposed during debugging, but were not used to select or rescue this family.
 
-The next route must change the economic source of alpha rather than narrow profile bins, add value-edge confirmations, relax costs or increase leverage.
+The causal prior-day turnover profile did not create a stable cost-surviving advantage at the value edge. ML could choose broad losses, a small losing tail, or no trade. The exact family is closed. Any next study must change the economic source of alpha rather than narrow the profile, add confirmation gates, relax execution costs, or increase leverage.
