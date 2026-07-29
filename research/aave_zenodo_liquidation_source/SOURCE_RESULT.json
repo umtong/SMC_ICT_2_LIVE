@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-AAVE-ZENODO-LIQUIDATION-001",
+  "source_result_id": "RES-20260730-AAVE-ZENODO-LIQUIDATION-SOURCE-001",
+  "status": "PASS_WITH_DUPLICATE_ROW_CORRECTION",
+  "claimed_paper_source": {
+    "arxiv": "2512.11363",
+    "claimed_zenodo_doi": "10.5281/zenodo.17898640",
+    "claimed_record_status": "NOT_FOUND_404"
+  },
+  "selected_public_source": {
+    "title": "RED-LIQ-2026-v1: A public benchmark of 18,750 Ethereum Aave V3 liquidations paired with a 4-chain lending-utilization panel",
+    "record_id": 21211303,
+    "doi": "10.5281/zenodo.21211303",
+    "publication_date": "2026-07-06",
+    "file": "red_liq_2026_v1_liquidations.jsonl.gz",
+    "bytes": 2111476,
+    "zenodo_checksum": "md5:81121c07651e59ab55844482e956a4d5",
+    "checksum_ok": true,
+    "sha256": "0f52862e275ecd09020c484eeb9be798177285a50bf60008fadaef1e6ad1b55d",
+    "workflow_run": 30487456010,
+    "artifact_id": 8738247959,
+    "artifact_digest": "sha256:962ac097266ff50089b6b1f679746bb68a4998bd1179277d5cb3c15cad02519c"
+  },
+  "raw_parse": {
+    "rows": 18750,
+    "valid_timestamps": 18750,
+    "raw_2023_rows": 7095,
+    "minimum_timestamp": "2023-01-30T19:11:47Z",
+    "maximum_timestamp": "2026-07-02T22:22:11Z"
+  },
+  "semantic_audit": {
+    "exact_deduplicated_all_year_rows": 3547,
+    "unique_2023_liquidations": 473,
+    "raw_to_unique_2023_factor": 15,
+    "defect": "Every unique 2023 liquidation row appears exactly fifteen times in the public table. Raw row counts cannot be used as independent events.",
+    "unique_2023_blocks": 240,
+    "tradeable_five_minute_clusters": 241,
+    "WETH_clusters": 196,
+    "WBTC_clusters": 45,
+    "H1_clusters": 66,
+    "Q3_clusters": 100,
+    "Q4_clusters_quarantined": 75
+  },
+  "source_gate": {
+    "minimum_100_unique_pre2024_events": true,
+    "nonempty_2023_coverage": true,
+    "public_download": true,
+    "checksum_and_size_match": true,
+    "market_outcomes_opened_at_source_gate": false,
+    "decision": "PASS_AFTER_EXACT_DEDUPLICATION"
+  },
+  "orders_submitted": false
+}
