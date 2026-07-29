@@ -1,0 +1,127 @@
+name: Repair and execute frozen Bybit premium-dislocation screen
+
+on:
+  pull_request:
+    branches: [agent/r11-bybit-premium-dislocation-001]
+    paths:
+      - '.github/workflows/bybit-premium-repair-r31.yml'
+      - 'research/bybit_premium_repair_r31/**'
+      - 'research/triggers/bybit_premium_repair_r31/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: bybit-premium-repair-r31-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repair-and-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-bybit-premium-repair-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            numpy==2.1.3 pandas==2.2.3 requests==2.32.4
+      - name: Recover byte-identical valid source and self-test
+        run: |
+          set -euo pipefail
+          root=research/bybit_premium_dislocation_20260726
+          repair=research/bybit_premium_repair_r31
+          out=research_runs/bybit_premium_repair_r31
+          mkdir -p "$out"
+          python "$repair/reconstruct_verified.py" \
+            --repo . \
+            --current "$root/run_screen.py.gz.b64" \
+            --output "$root/run_screen.py" \
+            --diagnostics "$out/RECONSTRUCTION.json"
+          python -m py_compile "$repair/reconstruct_verified.py" "$root/run_screen.py"
+          python "$root/run_screen.py" self-test | tee "$out/SELF_TEST.json"
+      - name: Probe every frozen Bybit source
+        run: |
+          set -euo pipefail
+          root=research/bybit_premium_dislocation_20260726
+          out=research_runs/bybit_premium_repair_r31
+          mkdir -p "$out/probe" "$out/cache/probe"
+          python "$root/run_screen.py" probe \
+            --cache "$out/cache/probe" \
+            --output "$out/probe" 2>&1 | tee "$out/PROBE.log"
+      - name: Run unchanged 2022 fit and 2023 development screen
+        shell: bash
+        run: |
+          set -u
+          root=research/bybit_premium_dislocation_20260726
+          out=research_runs/bybit_premium_repair_r31
+          mkdir -p "$out/output" "$out/cache/full"
+          set +e
+          python "$root/run_screen.py" run \
+            --cache "$out/cache/full" \
+            --output "$out/output" 2>&1 | tee "$out/SCREEN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          test -f "$out/output/RESULT.json"
+          python -m json.tool "$out/output/RESULT.json" >/dev/null
+          if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
+      - name: Enforce sealed boundary and publish compact decision
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/bybit_premium_repair_r31
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research_runs/bybit_premium_repair_r31')
+          result_path=root/'output/RESULT.json'
+          result=json.loads(result_path.read_text()) if result_path.exists() else None
+          if result is not None:
+              assert result['2024_opened'] is False
+              assert result['2025_or_2026_opened'] is False
+              assert result['orders_submitted'] is False
+              assert result['rank_eligible'] is False
+          payload={
+            'schema_version':1,
+            'claim_id':'CLM-20260726-0547-BYBIT-PREMIUM-DISLOCATION-001',
+            'implementation_repair_only':True,
+            'reconstruction':json.loads((root/'RECONSTRUCTION.json').read_text()) if (root/'RECONSTRUCTION.json').exists() else None,
+            'result':result,
+            'orders_submitted':False,
+            'official_2024_2026_opened':False,
+          }
+          (root/'DECISION.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt')
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(
+              f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in files
+          ))
+          print(json.dumps({
+            'status':None if result is None else result.get('status'),
+            'survivor_count':None if result is None else result.get('survivor_count'),
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31-bybit-premium-repair-${{ github.run_id }}
+          path: research_runs/bybit_premium_repair_r31
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
