@@ -1,0 +1,32 @@
+{
+  "baseline_raw_actions": [
+    {"action":"CONT","mean_unit_return":-0.0022764335446710145,"median_unit_return":-0.004996974078033522,"n":2973,"positive_fraction":0.16481668348469558,"year":2021},
+    {"action":"CONT","mean_unit_return":-0.002729163457036676,"median_unit_return":-0.004997673127768178,"n":3607,"positive_fraction":0.12586637094538397,"year":2022},
+    {"action":"CONT","mean_unit_return":-0.0035580978577216048,"median_unit_return":-0.004998465753367147,"n":3853,"positive_fraction":0.07215157020503504,"year":2023},
+    {"action":"REV","mean_unit_return":-0.0024760537918693333,"median_unit_return":-0.004998522004850908,"n":2830,"positive_fraction":0.1501766784452297,"year":2021},
+    {"action":"REV","mean_unit_return":-0.0030239722048983494,"median_unit_return":-0.0049986089809156775,"n":3515,"positive_fraction":0.1487908961593172,"year":2022},
+    {"action":"REV","mean_unit_return":-0.0032866400565536393,"median_unit_return":-0.004999042638643144,"n":3812,"positive_fraction":0.14742917103882477,"year":2023}
+  ],
+  "best_dense_2022_mean_policy": {"file":"variant_s10_v70_b25_t12.parquet","gate":"mean","gd":-0.0018049432984869,"log_step":0.001,"mdd":0.4858373301338191,"median":-0.0049962333468832,"nav":5171.617594068938,"pf":0.5443576361768685,"return":-0.4828382405931062,"stop_buffer":0.25,"top5_share":0.2826671286555015,"trades":410.0,"trail_h":12.0,"value_fraction":0.7},
+  "claim_id": "CLM-20260729-ML-AUCTION-VALUE-001",
+  "data": [
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1","manifest_sha256":"e1acb85412dbbb3f9ee02be9a85ed9994b577fbecd974e9a8e4bc9a48b48b967"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1","manifest_sha256":"a81b529ea4efe71944b4cbdcaf496e3f2e7920b3a504ef7ee97bbbb79890a1e1"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2023-CANONICAL-V1","manifest_sha256":"071f6e4df1712a87686eabda318cb7527a1b3cd3e4d0d80a5e82d44d12b31427"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1","manifest_sha256":"030bbe351e198caf5ac8e87ceea8957a8e65439a54fea6bf41c40ac075ee6501"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1","manifest_sha256":"73abd6f4838428d45b5a02cb0c8e19c5c3b9b22a98855fba9039ad1a105123da"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2023-CANONICAL-V1","manifest_sha256":"e315062e16d0d27863b4f796a143f0bb0c853f1d671b5086e340fcaeaa5247cd"}
+  ],
+  "decision": "Retire the exact prior-day turnover-profile acceptance/rejection family before official 2024. Raw continuation and reversion actions were negative in every pre-2024 year; ML either selected a loss-making policy or collapsed to a sparse tail that did not confirm.",
+  "frozen_sparse_diagnostic_2023": {"geometric_daily_growth":-1.4813943683966713e-06,"max_drawdown":0.0005405631880291972,"median_unit_return":-0.0005405631880292835,"profit_factor":0.0,"return":-0.0005405631880291972,"trades":1},
+  "next_alpha_requirement": "Change economic mechanism. Do not rescue this family with narrower value-edge filters, adjacent profile bins, higher leverage or looser cost assumptions.",
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "profile_sensitivity": "No eligible route across 5bp/10bp grids, 70%/80% value areas, 0.25/0.50 ATR buffers and 12/24-bar structural trails. All dense mean-value policies lost 48.28% to 65.26% in 2022.",
+  "ranking_changed": false,
+  "result_id": "RES-20260729-ML-AUCTION-VALUE-001",
+  "risk_leverage_optimization_opened": false,
+  "schema_version": 1,
+  "sparse_diagnostic_2022": {"config":"5bp grid, 80% value area, 0.25 ATR stop buffer, 12-bar structural trail, mean/lower-tail blend gate","geometric_daily_growth":5.144822213343225e-05,"max_drawdown":0.03695332191462597,"median_unit_return":-0.004968954735686435,"profit_factor":1.3423023215228291,"return":0.0189555356740716,"top5_positive_share":0.9280988575417846,"trades":18},
+  "status": "ECONOMIC_FAIL"
+}
