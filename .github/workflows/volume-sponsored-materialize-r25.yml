@@ -1,0 +1,60 @@
+name: Materialize volume-sponsored channel audit source
+
+on:
+  push:
+    branches:
+      - agent/r25-volume-sponsored-lifecycle-audit-001
+    paths:
+      - '.github/workflows/volume-sponsored-materialize-r25.yml'
+      - 'research/volume_sponsored_channel/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/volume-sponsored-materialize-r25.yml'
+      - 'research/volume_sponsored_channel/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: volume-sponsored-materialize-r25-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r25-volume-sponsored-lifecycle-audit-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe bundle and export any internally matching source files
+        run: |
+          set -euo pipefail
+          root=research/volume_sponsored_channel
+          out=research_runs/volume_sponsored_materialized_r25
+          mkdir -p "$out"
+          python "$root/probe_bundle_integrity.py" | tee "$out/BUNDLE_PROBE.log"
+          cp "$root/BUNDLE_PROBE_RESULT.json" "$out/"
+          cp "$root/SOURCE_MANIFEST.json" "$out/"
+          cp "$root/CONTRACT.json" "$out/"
+          cp "$root/RESULT.json" "$out/"
+          cp "$root"/*.py "$out/"
+          if [[ -d "$root/bundle_probe_materialized" ]]; then
+            cp -a "$root/bundle_probe_materialized/." "$out/"
+            python -m py_compile "$root/bundle_probe_materialized"/*.py
+          fi
+          find "$out" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: volume-sponsored-materialized-r25-${{ github.run_id }}
+          path: research_runs/volume_sponsored_materialized_r25
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

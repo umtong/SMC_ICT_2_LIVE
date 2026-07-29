@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-VOLUME-SPONSORED-CHANNEL-001",
+  "result_id": "RES-20260730-BYBIT-VOLUME-SPONSORED-CHANNEL-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "event": "completed one-hour close beyond the prior 96 completed hours",
+  "volume_threshold": {
+    "feature": "log-volume z-score versus prior 168 completed hours",
+    "threshold": 2.2706072565238586,
+    "threshold_source": "2021 upper quartile",
+    "economic_interpretation": "accepted external-range displacement accompanied by unusually high completed turnover"
+  },
+  "symbol_sides": [
+    "BTCUSDT:LONG",
+    "ETHUSDT:LONG",
+    "ETHUSDT:SHORT"
+  ],
+  "entry": "fixed 500ms after completed hourly decision; first later observable one-minute open",
+  "exit": "2ATR20 structural disaster stop or first later one-minute open after a completed close through the opposite prior-48h channel; no elapsed-time or scheduled close",
+  "one_global_slot": true,
+  "actual_signed_funding": true,
+  "costs_bp": [
+    13,
+    18,
+    24
+  ],
+  "risk": {
+    "planned_loss_fraction": 0.1,
+    "notional_cap": 12.0,
+    "selection": "pre2024 only under declared grid and guard"
+  },
+  "evaluation": [
+    "2024-01-01T00:00:00Z",
+    "2026-07-01T00:00:00Z"
+  ],
+  "start_nav": 10000,
+  "orders_submitted": false
+}
