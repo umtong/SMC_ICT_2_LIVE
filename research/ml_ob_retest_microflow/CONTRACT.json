@@ -1,0 +1,38 @@
+{
+  "claim_id": "CLM-20260730-ML-OB-RETEST-MICROFLOW-001",
+  "confirmation_2023_opened": false,
+  "cost_bps": [12, 18, 24],
+  "decision": "RETIRED_ECONOMIC_FAILURE_PRE2024",
+  "elapsed_time_exit": false,
+  "entry": "fixed 500 ms after sensor decision at first later observed public trade",
+  "event": "first later interaction with a causally completed five-minute opposite-body engulf block",
+  "fit_months": ["2021-01", "2021-04", "2021-07", "2021-10"],
+  "forward_months": ["2022-01", "2022-04", "2022-07", "2022-10"],
+  "global_slot": "one pending/open position; the entire observed exit minute remains occupied",
+  "management": "50% at displacement extreme; structural runner to next pre-known unresolved target or breakeven runner stop",
+  "model": "causal HGBT direct 24 bp account-action value, calibrated only from 2021 OOF predictions; fixed predicted value > 0 action",
+  "notional_cap": 3.0,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "planned_loss_fraction": 0.005,
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "programization_corrections": [
+    "blind passive-touch candidates were not treated as filled orders; the final event exists only at an exact public-trade first interaction",
+    "the five-second sensor is completed before the fixed 500 ms activation and entry uses the first later exact trade",
+    "empty ML policies are valid zero-trade results rather than report-schema failures",
+    "block-formation 500 ms flow was added as a semantic audit because transcript logic requires formation absorption, not merely a candle shape"
+  ],
+  "prohibitions": [
+    "no 2022-aware threshold search",
+    "no 2023 access",
+    "no risk/leverage rescue",
+    "no FVG/OB/session checklist rescue",
+    "no source reacquisition"
+  ],
+  "result_id": "RES-20260730-ML-OB-RETEST-MICROFLOW-001",
+  "schema_version": 1,
+  "sensor": "ten UTC-aligned observed/covered 500 ms buckets beginning at first interaction; decision after 5 seconds",
+  "status": "TESTED_BELOW_GATE",
+  "stop": "original block extreme",
+  "venue": "Bybit USDT linear perpetual"
+}
