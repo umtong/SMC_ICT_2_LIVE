@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-COMPLETE-SOURCE-SELFTEST-NAMESPACE-002",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "parent_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "prior_execution": {
+    "workflow_run": 30475661701,
+    "source_unit_tests": "10 passed",
+    "durable_failure_record": true,
+    "source_decision_observed": false,
+    "market_outcome_observed": false,
+    "error": "the first overlay corrected decode_log but three additional self-test-only constants remained under authority.base instead of authority.base.auth"
+  },
+  "repair": "in the temporary materialized run_pinned_snapshot_source.py only, assert exactly four occurrences of authority.base. and replace them with authority.base.auth.; the four references are decode_log, CONTRACTS twice and ISSUE_TOPIC",
+  "scientific_contract_changed": false,
+  "unchanged": [
+    "immutable source commit and source event semantics",
+    "all runtime source collection code outside self_test",
+    "economic engine, features, model, calibration, labels and thresholds",
+    "targets, stops, costs, risk/notional grid and one global slot",
+    "causal availability and no elapsed-time liquidation",
+    "official-period authorization rules",
+    "credentials and orders prohibition"
+  ],
+  "source_decision_observed": false,
+  "market_outcome_observed": false,
+  "model_fit_observed": false,
+  "trade_or_pnl_observed": false,
+  "official_2024_2026_observed": false,
+  "orders_submitted": false
+}
