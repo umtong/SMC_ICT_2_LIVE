@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-DYNAMIC-FLOW-NOTIME-AUDIT-001",
+  "result_id": "RES-20260729-DYNAMIC-FLOW-NOTIME-AUDIT-001",
+  "parent_result_id": "RES-20260725-DYNAMIC-FACTOR-001",
+  "candidate_id": "021fbab613517a31ad98",
+  "market": "Binance USD-M proxy signal and execution audit before any Bybit-native expansion",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "global_pending_or_open_slots": 1,
+  "entry_rule": {
+    "family": "rank_transition",
+    "beta_window_5m_bars": 2016,
+    "residual_horizon_5m_bars": 48,
+    "rank_threshold": 2.0,
+    "flow_threshold": 0.5,
+    "transition_bars": 12
+  },
+  "exit_rule": {
+    "protective_stop_atr": 2.5,
+    "minimum_hold_bars_before_state_exit": 1,
+    "signed_flow_exit_threshold": -0.5,
+    "maximum_hold_bars": null,
+    "elapsed_time_exit": false
+  },
+  "execution_correction": {
+    "signal_information": "completed 5m bar",
+    "activation_delay_ms": 500,
+    "entry": "first later observable 5m open, decision_index_plus_2",
+    "flow_state_exit": "condition on completed bar, first later observable 5m open, condition_index_plus_2",
+    "protective_stop": "intrabar adverse-first; gap through stop uses adverse observed open"
+  },
+  "account": {
+    "initial_nav": 10000.0,
+    "risk_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "prior_quote_volume_participation_cap": 0.001,
+    "round_trip_cost_bps": [12.0, 18.0, 24.0]
+  },
+  "development": "2023-01-01 through 2023-12-31",
+  "official_first_gate": "2024H1",
+  "official_2024H2_open_rule": "only if unchanged 2024H1 is positive",
+  "official_2024H2_opened": false,
+  "orders_submitted": false
+}
