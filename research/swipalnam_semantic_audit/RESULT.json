@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260729-SWIPALNAM-SEMANTIC-AUDIT-001",
+  "claim_id": "CLM-20260729-2125-SWIPALNAM-AUDIT-001",
+  "status": "TESTED_BELOW_GATE",
+  "verdict": "BOTH_PROGRAMIZATION_AND_ECONOMIC_FAILURE",
+  "ranking_action": "NO_CHANGE",
+  "official_2024_2026_corrected_evaluation_opened": false,
+  "source": {
+    "repository": "umtong/SMC_ICT_2_LIVE",
+    "audited_pr": 372,
+    "artifact_workflow_run_id": 30280884235,
+    "artifact_id": 8669049565,
+    "artifact_digest": "sha256:367723b0722f8624404d000baab7a10824e55a76380ad1752ac7591b2e0f0ff5",
+    "artifact_source_sha": "76d1b2bb83fb71eab93ab02129904d09f3613aa8",
+    "v15_blob_sha": "c8541a1e5a4d2a25ad60614b05db6e33168f3e44",
+    "canonical_data_contract": "Existing ALDS core tables; BTCUSDT/ETHUSDT 1m and 15m; no reacquisition"
+  },
+  "official_reported": {
+    "pre2024": {
+      "initial_nav": 10000.0,
+      "final_nav": 309613.5636515093,
+      "account_multiple": 30.96135636515093,
+      "geometric_daily_growth": 0.014109799760196218,
+      "max_drawdown": -0.6328912908283433,
+      "completed_trades": 72
+    },
+    "2024h1": {
+      "initial_nav": 10000.0,
+      "final_nav": 17.12743963686788,
+      "account_multiple": 0.001712743963686788,
+      "geometric_daily_growth": -0.034392772102769475,
+      "max_drawdown": -0.998358086892785,
+      "completed_trades": 60,
+      "profit_factor": 0.3804694261470817
+    },
+    "selected_structure": {
+      "timeframe_min": 15,
+      "min_sweep_atr": 0.1,
+      "min_body_atr": 1.0,
+      "min_fvg_atr": 0.0,
+      "require_overlap": false,
+      "require_pd": false,
+      "retrace": 0.5,
+      "stop_buffer_atr": 0.1,
+      "min_rr": 1.25
+    },
+    "selected_risk": {
+      "risk_fraction": 0.12,
+      "confidence_risk_max": 3.0,
+      "effective_planned_nav_loss_range": [0.042, 0.36],
+      "leverage": 75,
+      "taker_fee_bps": 5.5,
+      "slippage_bps": 1.0,
+      "impact_bps": 4.0
+    },
+    "selected_raw_screen_quarter_mean_r": [-0.440921917734124, -0.6571981497359675, -1.0416328636295413, -0.31030466733844114],
+    "strict_original_screen_quarter_mean_r": [-0.08736379930590105, -0.934149430102639, -0.8067415142475951, -0.22167778927608098]
+  },
+  "selected_trade_semantics": {
+    "matched_trade_ids": "132/132 exact",
+    "combined_trades": 132,
+    "genuine_fvg": 20,
+    "genuine_ob": 121,
+    "fvg_ob_overlap": 57,
+    "known_liquidity_target": 121,
+    "strict_semantic_trades": 4,
+    "strict_share": 0.030303030303030304,
+    "union_zone_trades": 75
+  },
+  "independent_24bp_event_economics": [
+    {"year": 2021, "variant": "original", "n": 3387, "mean_r": -0.5811974829992976, "median_r": -1.1385265209221755, "profit_factor": 0.4209348083188806},
+    {"year": 2021, "variant": "strict_all", "n": 106, "mean_r": -0.5719699435487976, "median_r": -1.182133543105336, "profit_factor": 0.4494371449163406},
+    {"year": 2022, "variant": "original", "n": 3069, "mean_r": -0.6634159832331413, "median_r": -1.1531413441946678, "profit_factor": 0.3663525392146714},
+    {"year": 2022, "variant": "strict_all", "n": 93, "mean_r": -1.18111398946445, "median_r": -1.392649890818053, "profit_factor": 0.1780408631714368},
+    {"year": 2023, "variant": "original", "n": 2875, "mean_r": -1.3325717445854015, "median_r": -1.352940760511032, "profit_factor": 0.1808046985381161},
+    {"year": 2023, "variant": "strict_all", "n": 134, "mean_r": -1.1120717555878663, "median_r": -1.5799870011662644, "profit_factor": 0.2169445366417046}
+  ],
+  "strict_all_deterministic_account": {
+    "contract": "Nearest known T0 target; one global slot; 0.5% planned stop-loss budget; 3x notional cap; fixed 500ms activation; next-observable-minute fills; 24bp round trip; no elapsed-time forced exit",
+    "years": [
+      {"year": 2021, "final_nav": 9529.522085788994, "trades": 26, "geometric_daily_growth": -0.0001320201201415, "max_drawdown": -0.0470477914211006, "profit_factor": 0.387947239224346},
+      {"year": 2022, "final_nav": 9825.80892936177, "trades": 24, "geometric_daily_growth": -0.00004814296396893347, "max_drawdown": -0.0329715084026358, "profit_factor": 0.7459717062942705},
+      {"year": 2023, "final_nav": 9530.053021274982, "trades": 25, "geometric_daily_growth": -0.0001318675012259, "max_drawdown": -0.057137884895382, "profit_factor": 0.3508030645814687}
+    ]
+  },
+  "ml_risk_diagnostics": {
+    "pre2024_win_auc": 0.6728147554129912,
+    "2024h1_win_auc": 0.4138755980861244,
+    "2024h1_score_realized_r_correlation": -0.16770365813483487,
+    "2024h1_score_risk_correlation": 0.7949328466836935,
+    "2024h1_highest_score_quartile": {"mean_r": -0.5460953234677522, "sum_pnl": -8175.550450007111, "mean_risk_pct": 0.36}
+  },
+  "funding_audit": {
+    "pre2024": {"code_cost": -2147.3002110861394, "rough_event_replay_cost": -489.9120098685979, "signed_error": -1657.388201217541},
+    "2024h1": {"code_cost": -68.58520909301144, "rough_event_replay_cost": -14.39782479198039, "signed_error": -54.187384301031045}
+  },
+  "critical_defects": [
+    "Missing three-candle FVG is replaced by displacement candle body and accepted at min_fvg_atr=0.",
+    "Missing opposite candle falls back to an ordinary prior candle as order block.",
+    "Disjoint FVG and OB become a union entry zone containing prices in neither array.",
+    "Missing opposing liquidity target is replaced by a measured 2.5x/3x target.",
+    "A discovered mitigation touch is converted into a next-minute market-like open fill.",
+    "ML labels and account execution use inconsistent cost and funding semantics.",
+    "Negative base screens advance to ML and high-risk account optimization.",
+    "The 2024 ML ranking inversion assigns the most risk to the worst trades."
+  ],
+  "decision": {
+    "economic": "Retire the exact dual-auction/FVG-OB family; corrected candidates remain negative across 2021-2023 after 24bp.",
+    "programization": "Do not treat the reported 30.96x pre-2024 result as evidence for the stated SMC/ICT thesis; 128 of 132 selected trades violate the strict semantic contract.",
+    "risk": "No leverage or confidence-risk rescue; risk scaling amplified but did not create the underlying 2024 economic failure.",
+    "next": "Require executable semantic invariants and positive non-sparse fixed-small-risk event economics before ML or sizing."
+  },
+  "evidence_files": [
+    "yearly_event_economics.csv",
+    "yearly_account.csv",
+    "selected_trade_semantics.csv",
+    "funding_audit.csv"
+  ]
+}
