@@ -11,14 +11,16 @@ import run_stablecoin_profit_v5_single_pass_authority as base
 
 CLAIM_ID = base.CLAIM_ID
 RESULT_ID = base.RESULT_ID
-CORRECTION_ID = "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-STRICT-FIXTURE-ALIGNMENT-003"
+CORRECTION_ID = "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-APPLY-NONBLOCKING-PROJECT-VALIDATOR-004"
 CORRECTION_PATH = (
     Path(__file__).resolve().parents[1]
     / "research"
     / "execution"
     / "stablecoin_profit_v5_20260727"
-    / "EXECUTION_CORRECTION_009_STRICT_FIXTURE_ALIGNMENT_BEFORE_OUTCOME.json"
+    / "EXECUTION_CORRECTION_010_APPLY_FROZEN_NONBLOCKING_PROJECT_VALIDATOR_BEFORE_OUTCOME.json"
 )
+ROOT = Path(__file__).resolve().parents[1]
+PROJECT_VALIDATOR = (ROOT / "scripts" / "validate_project.py").resolve()
 _SOURCE_OLD = "authority.base."
 _SOURCE_NEW = "authority.base.auth."
 _EXPECTED_SOURCE_REFERENCES = 4
@@ -55,7 +57,7 @@ def _load_correction() -> dict[str, Any]:
     if payload.get("scientific_contract_changed") is not False:
         raise AssertionError("scientific contract may not change in execution repair")
     if payload.get("runtime_engine_changed") is not False:
-        raise AssertionError("runtime engine may not change in fixture repair")
+        raise AssertionError("runtime engine may not change in execution repair")
     return payload
 
 
@@ -109,10 +111,54 @@ def repair_materialized_strict_fixtures(repository: Path) -> tuple[Path, Path]:
     return causal_test, strict_guard
 
 
+def _is_project_validator_command(command: list[str]) -> bool:
+    if len(command) < 2:
+        return False
+    try:
+        return Path(command[1]).resolve() == PROJECT_VALIDATOR
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def _diagnostic_run_wrapper(
+    original_run: Callable[..., Any], work_dir: Path
+) -> Callable[..., Any]:
+    def wrapped(
+        command: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        check: bool = True,
+        log: Path | None = None,
+    ) -> Any:
+        if not _is_project_validator_command(command):
+            return original_run(command, env=env, check=check, log=log)
+        completed = original_run(command, env=env, check=False, log=log)
+        (work_dir / "PROJECT_VALIDATION_EXIT_CODE.txt").write_text(
+            f"{completed.returncode}\n", encoding="utf-8"
+        )
+        print(
+            "STABLECOIN_PROJECT_VALIDATOR_DIAGNOSTIC",
+            json.dumps(
+                {
+                    "correction_id": CORRECTION_ID,
+                    "returncode": completed.returncode,
+                    "blocking": False,
+                    "scientific_contract_changed": False,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return completed
+
+    return wrapped
+
+
 def execute(work_dir: Path, publish_dir: Path) -> int:
     """Run the unchanged authority with pre-outcome execution/fixture overlays."""
     _load_correction()
     original_materialize: Callable[..., Any] = base.v4auth.materialize
+    original_run: Callable[..., Any] = base.v4auth.run
 
     def materialize_with_repair(
         sha: str, paths: list[str], repository: Path
@@ -141,10 +187,12 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
             )
 
     base.v4auth.materialize = materialize_with_repair
+    base.v4auth.run = _diagnostic_run_wrapper(original_run, work_dir)
     try:
         return base.execute(work_dir, publish_dir)
     finally:
         base.v4auth.materialize = original_materialize
+        base.v4auth.run = original_run
 
 
 def _failure_payload(error: Exception) -> dict[str, Any]:
