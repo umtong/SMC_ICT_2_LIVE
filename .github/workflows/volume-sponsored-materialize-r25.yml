@@ -1,0 +1,52 @@
+name: Materialize volume-sponsored channel audit source
+
+on:
+  push:
+    branches:
+      - agent/r25-volume-sponsored-lifecycle-audit-001
+    paths:
+      - '.github/workflows/volume-sponsored-materialize-r25.yml'
+      - 'research/volume_sponsored_channel/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: volume-sponsored-materialize-r25
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r25-volume-sponsored-lifecycle-audit-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct and verify exact nine-script source
+        run: |
+          set -euo pipefail
+          root=research/volume_sponsored_channel
+          python "$root/materialize.py"
+          python -m py_compile "$root"/*.py
+          python "$root/validate.py"
+          mkdir -p research_runs/volume_sponsored_materialized_r25
+          cp "$root"/*.py research_runs/volume_sponsored_materialized_r25/
+          cp "$root"/SOURCE_MANIFEST.json research_runs/volume_sponsored_materialized_r25/
+          cp "$root"/CONTRACT.json research_runs/volume_sponsored_materialized_r25/
+          cp "$root"/RESULT.json research_runs/volume_sponsored_materialized_r25/
+          find research_runs/volume_sponsored_materialized_r25 -type f -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > research_runs/volume_sponsored_materialized_r25/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: volume-sponsored-materialized-r25-${{ github.run_id }}
+          path: research_runs/volume_sponsored_materialized_r25
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
