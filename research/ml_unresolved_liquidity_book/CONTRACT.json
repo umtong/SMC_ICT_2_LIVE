@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-UNRESOLVED-LIQUIDITY-BOOK-001",
+  "result_id": "RES-20260730-ML-UNRESOLVED-LIQUIDITY-BOOK-001",
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "market": "Bybit USDT linear perpetual",
+  "segments": ["PRE_2024_2021", "PRE_2024_2022", "PRE_2024_2023"],
+  "information_unit": "causal live aggregate of still-unconsumed confirmed 15m/1h/4h swing liquidity above and below price",
+  "level_lifecycle": {
+    "creation": "usable only after full right-side pivot confirmation",
+    "consumption": "retired at first later completed-bar trade-through",
+    "maximum_age_days": 90,
+    "age_half_life_days": 30,
+    "timeframe_weights": {"15m": 1.0, "1h": 2.0, "4h": 4.0},
+    "distance_weight": "timeframe_weight * age_decay / (0.25 + distance_in_prior_ATR)"
+  },
+  "decision_timeframe": "completed 15m",
+  "execution_timeframe": "observed 1m",
+  "activation_delay_ms": 500,
+  "first_executable_rule": "first observed one-minute open strictly after activation",
+  "entry_event": "new signed log-mass imbalance crossing",
+  "target": "nearest still-unconsumed dominant-side level frozen at decision",
+  "stop": "nearest still-unconsumed opposite-side level frozen at decision",
+  "elapsed_time_exit": false,
+  "scheduled_close": false,
+  "same_minute_boundary": "adverse stop first",
+  "global_slot": 1,
+  "slot_rule": "the entire observed exit minute remains occupied; a new entry requires a strictly later minute",
+  "cost_bps_round_trip": [12, 18, 24],
+  "funding": "exact signed canonical Bybit settlements",
+  "planned_loss_fraction": 0.005,
+  "notional_cap_multiple": 3.0,
+  "fixed_imbalance_thresholds": [0.25, 0.5, 0.75, 1.0, 1.5],
+  "ml": {
+    "purpose": "target-first probability and deterministic cost-after action value; trade or flat only",
+    "features": 56,
+    "models": ["L2 logistic", "shallow HGBT", "medium HGBT"],
+    "2021": "expanding sequential OOF diagnostics and fit",
+    "2022": "fixed model/action-value policy selection",
+    "2023": "opens only after a positive non-sparse 18bp and nonnegative 24bp 2022 route"
+  },
+  "official_2024_2026_opened": false
+}
