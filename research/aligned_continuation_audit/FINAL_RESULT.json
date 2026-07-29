@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-ALIGNED-CONTINUATION-CURRENT-CONTRACT-001",
+  "claim_id": "CLM-20260730-ALIGNED-CONTINUATION-AUDIT-001",
+  "candidate_id": "aligned_continuation|h48|z3-inf|t3|f0.1|e0.45|hold0.7|buf0.5|rr4|life720|xidiosyncratic",
+  "status": "RETIRED_OFFICIAL_2024H1_ECONOMIC_FAILURE",
+  "source_recovery": {
+    "registered_source_blob": "2eb432b03b7126d0feda365c4af44669c58336a0",
+    "registered_source_sha256": "e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8",
+    "registered_expected_trades": 184,
+    "registered_observed_trades": 184,
+    "registered_expected_15bp_return": 0.15627618264978582,
+    "registered_observed_15bp_return": 0.156213,
+    "official_2024h1_event_artifact_id": 8735901604,
+    "official_2024h1_event_artifact_digest": "sha256:b7f28a7c411d9b8e7839e3d1f0fde21dfea3ebdfa99adf4e9f6517bed07530fc",
+    "official_event_count": 111
+  },
+  "programization_findings": [
+    "prohibited exact 720-minute elapsed-time liquidation",
+    "entry used the already-started decision minute instead of the first observable price after 500ms",
+    "registered winner deletion skipped a simultaneous opportunity instead of rerouting",
+    "the first official replay omitted pre-2024 universe selection and final pre-2024 refitting",
+    "absolute Binance stop coordinates required signal-relative mapping before Bybit execution"
+  ],
+  "frozen_current_contract_policy": {
+    "universe": ["BTCUSDT", "SOLUSDT"],
+    "universe_rule": "among non-empty subsets with at least 10 trades per year and positive return plus PF above one at 18/24bp in both 2022 and 2023, maximize summed 18/24bp account return",
+    "model": "StandardScaler plus class-balanced LogisticRegression",
+    "C": 0.1,
+    "training": "all 2022-04-03 through 2023-12-31 labels resolved before 2024-01-01",
+    "target": "positive independent protected-flow R at 18bp",
+    "threshold": "training break-even probability from mean winning and losing R",
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "elapsed_time_exit": false
+  },
+  "pre2024": {
+    "2022_forward_24bp": {
+      "return": 0.026692089602828838,
+      "geometric_daily": 0.00021594192366625187,
+      "trades": 19,
+      "profit_factor": 1.935850126682197,
+      "maximum_drawdown": 0.011618562217125206,
+      "exact_winner_reroute_return": 0.024278647154050686
+    },
+    "frozen_2023_24bp": {
+      "return": 0.07274783216777889,
+      "geometric_daily": 0.00019241145136583704,
+      "trades": 47,
+      "profit_factor": 1.7558263996102574,
+      "maximum_drawdown": 0.034400621115154295,
+      "exact_winner_reroute_return": 0.0014211089338445183
+    }
+  },
+  "official_2024h1": {
+    "15bp": {"return": -0.014963807259723572, "geometric_daily": -0.00008283664899999543, "trades": 25, "profit_factor": 0.7836125427679483, "maximum_drawdown": 0.027429889173986366, "median_r": -0.7971433823991415, "top5_positive_share": 0.9167495768404995},
+    "18bp": {"return": -0.025341658906782194, "geometric_daily": -0.00014102460886999957, "trades": 25, "profit_factor": 0.6325581858981384, "maximum_drawdown": 0.027555372253699306, "median_r": -0.8036827149810013, "top5_positive_share": 0.9049000092632644},
+    "24bp": {"return": -0.028241979905279546, "geometric_daily": -0.00015739671093040197, "trades": 25, "profit_factor": 0.5929778181706706, "maximum_drawdown": 0.029412520960954813, "median_r": -0.8155681431227834, "top5_positive_share": 0.9160704958680632}
+  },
+  "decision": {
+    "official_2024h2_opened": false,
+    "risk_leverage_search_opened": false,
+    "ranking_changed": false,
+    "historical_rank_pointer_current_contract_eligible": false,
+    "orders_submitted": false
+  },
+  "known_limitations": [
+    "official maximum drawdown uses adverse one-minute marking rather than tick-order reconstruction",
+    "the signal source is Binance USD-M while execution and state management use canonical Bybit data",
+    "the official frozen policy has only 25 H1 trades and high positive-PnL concentration"
+  ]
+}
