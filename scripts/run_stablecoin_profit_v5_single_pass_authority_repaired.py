@@ -24,6 +24,10 @@ ARBITRATION_CORRECTION_ID = (
     "CORRECTION-20260730-STABLECOIN-V5-"
     "ENTRY-TIME-GLOBAL-SLOT-ARBITRATION-011"
 )
+SCHEMA_BINDING_CORRECTION_ID = (
+    "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-"
+    "BIND-AUTHORITATIVE-SOURCE-SCHEMA-013"
+)
 ROOT = Path(__file__).resolve().parents[1]
 CORRECTION_ROOT = ROOT / "research" / "execution" / "stablecoin_profit_v5_20260727"
 CORRECTION_PATH = (
@@ -38,12 +42,18 @@ ARBITRATION_CORRECTION_PATH = (
     CORRECTION_ROOT
     / "EXECUTION_CORRECTION_011_ENTRY_TIME_GLOBAL_SLOT_ARBITRATION_BEFORE_OUTCOME.json"
 )
+SCHEMA_BINDING_CORRECTION_PATH = (
+    CORRECTION_ROOT
+    / "EXECUTION_CORRECTION_013_BIND_AUTHORITATIVE_SOURCE_SCHEMA_BEFORE_OUTCOME.json"
+)
 ARBITRATION_TEST = CORRECTION_ROOT / "test_entry_time_arbitration.py"
 PROJECT_VALIDATOR = (ROOT / "scripts" / "validate_project.py").resolve()
 
 _SOURCE_OLD = "authority.base."
 _SOURCE_NEW = "authority.base.auth."
 _EXPECTED_SOURCE_REFERENCES = 4
+_SOURCE_GATE_CALL_OLD = "    result = source.source_gate(args.output)\n"
+_SOURCE_GATE_CALL_NEW = "    result = authority.source_gate(args.output)\n"
 _TEST_OLD = '    assert int(rows.iloc[0]["completed_feature_index"]) == entry_index - 1\n'
 _TEST_NEW = """    decision_ms = int(events.iloc[0]["available_timestamp_12"]) * 1_000
     expected_completed = int(
@@ -180,6 +190,36 @@ def _load_transferred_correction(
     return payload
 
 
+def _load_schema_binding_correction() -> dict[str, Any]:
+    payload = json.loads(
+        SCHEMA_BINDING_CORRECTION_PATH.read_text(encoding="utf-8")
+    )
+    if payload.get("correction_id") != SCHEMA_BINDING_CORRECTION_ID:
+        raise AssertionError("source-schema correction identity changed")
+    if payload.get("claim_id") != REPAIR_CLAIM_ID:
+        raise AssertionError("source-schema correction claim changed")
+    if payload.get("timing") != (
+        "BEFORE_ANY_DURABLE_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL"
+    ):
+        raise AssertionError("source-schema correction timing changed")
+    observed = payload.get("observed_state", {})
+    for key in (
+        "source_decision_observed",
+        "market_archive_opened",
+        "label_computed",
+        "model_fitted",
+        "trade_or_pnl_opened",
+        "official_2024_2026_opened",
+        "credentials_used",
+        "orders_submitted",
+    ):
+        if observed.get(key) is not False:
+            raise AssertionError(
+                f"source-schema correction outcome seal failed: {key}={observed.get(key)!r}"
+            )
+    return payload
+
+
 def _load_corrections() -> None:
     _load_correction()
     _load_transferred_correction(
@@ -188,6 +228,7 @@ def _load_corrections() -> None:
     _load_transferred_correction(
         ARBITRATION_CORRECTION_PATH, ARBITRATION_CORRECTION_ID
     )
+    _load_schema_binding_correction()
     if not ARBITRATION_TEST.is_file():
         raise FileNotFoundError(ARBITRATION_TEST)
 
@@ -205,7 +246,7 @@ def _replace_exact(path: Path, old: str, new: str, expected: int = 1) -> None:
 
 
 def repair_materialized_source(repository: Path) -> Path:
-    """Repair only frozen source self-test namespaces in a temporary checkout."""
+    """Repair frozen source self-tests and bind the authoritative schema wrapper."""
     _load_corrections()
     path = (
         repository
@@ -219,6 +260,7 @@ def repair_materialized_source(repository: Path) -> Path:
         _SOURCE_NEW,
         expected=_EXPECTED_SOURCE_REFERENCES,
     )
+    _replace_exact(path, _SOURCE_GATE_CALL_OLD, _SOURCE_GATE_CALL_NEW)
     return path
 
 
@@ -335,19 +377,22 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         sha: str, paths: list[str], repository: Path
     ) -> None:
         original_materialize(sha, paths, repository)
-        repaired_paths: list[dict[str, str]] = []
+        repaired_paths: list[dict[str, Any]] = []
         if sha == base.v4auth.SOURCE_SHA:
             repaired_paths.extend(
                 [
                     {
                         "path": str(repair_materialized_source(repository)),
-                        "correction_id": CORRECTION_ID,
+                        "correction_ids": [
+                            CORRECTION_ID,
+                            SCHEMA_BINDING_CORRECTION_ID,
+                        ],
                     },
                     {
                         "path": str(
                             repair_materialized_source_prefetch(repository)
                         ),
-                        "correction_id": PREFETCH_CORRECTION_ID,
+                        "correction_ids": [PREFETCH_CORRECTION_ID],
                     },
                 ]
             )
@@ -355,7 +400,7 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
             repaired_paths.extend(
                 {
                     "path": str(path),
-                    "correction_id": CORRECTION_ID,
+                    "correction_ids": [CORRECTION_ID],
                 }
                 for path in repair_materialized_strict_fixtures(repository)
             )
@@ -364,7 +409,7 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
                     "path": str(
                         repair_materialized_entry_time_route(repository)
                     ),
-                    "correction_id": ARBITRATION_CORRECTION_ID,
+                    "correction_ids": [ARBITRATION_CORRECTION_ID],
                 }
             )
         if repaired_paths:
@@ -403,6 +448,9 @@ def _failure_payload(error: Exception) -> dict[str, Any]:
         "exact_availability_batch_prefetch_correction_id": PREFETCH_CORRECTION_ID,
         "entry_time_global_slot_arbitration_correction_id": (
             ARBITRATION_CORRECTION_ID
+        ),
+        "authoritative_source_schema_binding_correction_id": (
+            SCHEMA_BINDING_CORRECTION_ID
         ),
         "error_type": type(error).__name__,
         "error": repr(error),
