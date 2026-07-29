@@ -3,7 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from research.alds_csd_semantic_audit.audit import START_MS, route_account, semantic_masks
+try:
+    from .audit import START_MS, route_account, semantic_masks
+except ImportError:
+    from audit import START_MS, route_account, semantic_masks
 
 
 def base_row(**overrides):
