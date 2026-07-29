@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-AAVE-ZENODO-LIQUIDATION-001",
+  "result_id": "RES-20260730-AAVE-ZENODO-LIQUIDATION-001",
+  "source_result_id": "RES-20260730-AAVE-ZENODO-LIQUIDATION-SOURCE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["ETHUSDT", "BTCUSDT"],
+  "external_information": "Ethereum Aave V3 LiquidationCall events from checksum-verified RED-LIQ-2026-v1 Zenodo record 21211303",
+  "source_semantics": {
+    "event_key": "exact decoded liquidation row; duplicate rows are removed before aggregation",
+    "usable_direction": "WETH/WBTC collateral seized against stablecoin debt is forced collateral-transfer pressure",
+    "availability": "block timestamp plus 180 seconds finality allowance",
+    "aggregation": "five-minute event clusters by collateral family",
+    "minimum_source_coverage": "at least 100 unique pre-2024 Ethereum liquidations and non-empty 2023 coverage"
+  },
+  "decision": "first completed five-minute Bybit response after causal source availability",
+  "actions": ["long", "short", "flat"],
+  "features": [
+    "cluster event count and collateral/debt amount state",
+    "collateral family WETH or WBTC",
+    "post-finality five-minute Bybit return and range response",
+    "pre-event 15-minute and one-hour return",
+    "Bybit open-interest and account-ratio change",
+    "premium/index and mark/index basis state",
+    "turnover, volatility and BTC/ETH peer confirmation"
+  ],
+  "latency_ms": 500,
+  "execution": "first later observable Bybit one-minute open",
+  "stop": "latest causally right-confirmed opposite five-minute pivot plus 0.25 ATR; 1.5 ATR disaster fallback only for invalid geometry",
+  "exit": "hard stop or completed five-minute close through the fixed protected origin, executed after 500 ms; stage-boundary NAV mark only; no elapsed-time or scheduled close",
+  "portfolio_slot": 1,
+  "planned_loss_fraction": 0.005,
+  "notional_cap": 3.0,
+  "cost_paths_bps": [12, 18, 24],
+  "funding": "exact signed Bybit settlements crossed by the position",
+  "chronology": {
+    "fit": "2023H1",
+    "selection": "2023Q3",
+    "quarantined_not_evidence": "2023Q4 because Q3 failed",
+    "official_2024": "conditional on a positive, non-sparse, PF>1, exact-winner-reroute-positive Q3 survivor"
+  },
+  "risk_or_leverage_search_before_alpha": false,
+  "orders_submitted": false
+}

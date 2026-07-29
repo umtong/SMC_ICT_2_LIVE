@@ -1,0 +1,55 @@
+name: Aave Zenodo liquidation source gate
+
+on:
+  push:
+    branches: [agent/aave-zenodo-liquidation-source-001]
+    paths:
+      - 'research/aave_zenodo_liquidation_source/**'
+      - '.github/workflows/aave-zenodo-source-gate.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/aave_zenodo_liquidation_source/**'
+      - '.github/workflows/aave-zenodo-source-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pandas==2.3.3 pyarrow==21.0.0 requests==2.32.5
+      - name: Query claimed Zenodo record without market outcomes
+        run: |
+          cd research/aave_zenodo_liquidation_source
+          python source_gate_v3.py --output "$GITHUB_WORKSPACE/artifact/aave_zenodo_source"
+          cd "$GITHUB_WORKSPACE"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          decision=json.loads(Path('artifact/aave_zenodo_source/SOURCE_DECISION.json').read_text())
+          assert decision['market_outcomes_opened'] is False
+          assert decision['orders_submitted'] is False
+          print(json.dumps({
+              'source_status': decision['source_status'],
+              'reason': decision.get('reason'),
+              'candidate_record_count': decision['candidate_record_count'],
+              'selected_record': decision.get('selected_record'),
+              'parsed': decision.get('parsed'),
+          }, indent=2, default=str))
+          PY
+          find artifact/aave_zenodo_source -type f -print0 | sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aave-zenodo-source-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
