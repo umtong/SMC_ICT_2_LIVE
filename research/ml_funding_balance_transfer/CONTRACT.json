@@ -1,0 +1,45 @@
+{
+  "account": {
+    "global_pending_or_open_slots": 1,
+    "notional_cap_multiple": 3.0,
+    "planned_loss_fraction": 0.005,
+    "start_nav": 10000
+  },
+  "chronology": [
+    "2021 fit",
+    "2022 forward",
+    "2021-2022 refit",
+    "2023 frozen confirmation"
+  ],
+  "claim_id": "CLM-20260730-ML-FUNDING-BALANCE-TRANSFER-001",
+  "costs": {
+    "funding": "exact signed events",
+    "maker": 0.0002,
+    "stop_slippage": 0.0002,
+    "taker": 0.00055
+  },
+  "decision_clocks": "completed 10/15 minute post-settlement state and completed five-minute reclaim state",
+  "decision_templates": [
+    "aligned first-rebalance continuation",
+    "funding-direction extension and reclaim reversal",
+    "opposite-first move then causal funding-direction reclaim continuation",
+    "flat"
+  ],
+  "execution_rule": "first later observable one-minute open; passive limit requires one-basis-point penetration",
+  "exits": "structural target, structural stop or state loss only; no elapsed-time or scheduled close",
+  "information_unit": "exact settled funding cash transfer notional plus causal post-settlement price/OI balance-sheet response",
+  "latency_ms": 500,
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "portfolio_slot": 1,
+  "result_id": "RES-20260730-ML-FUNDING-BALANCE-TRANSFER-001",
+  "schema_version": 1,
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "targets": "nearest still-unconsumed prior UTC-day or confirmed four-hour external liquidity; one-hour targets rejected as scale-mismatched",
+  "transfer_notional": "abs(funding_rate) * causal_open_interest * causal_mark_price",
+  "transfer_stress": "transfer_notional / prior-only median absolute five-minute OI-notional change",
+  "venue": "Bybit USDT linear perpetual"
+}
