@@ -45,11 +45,8 @@ def test_temporary_source_overlay_repairs_all_four_self_test_references(
 
     assert observed == path
     text = path.read_text(encoding="utf-8")
-    assert repaired._OLD_SELF_TEST not in text
-    assert (
-        text.count(repaired._NEW_SELF_TEST)
-        == repaired._EXPECTED_SELF_TEST_REFERENCES
-    )
+    assert repaired._SOURCE_OLD not in text
+    assert text.count(repaired._SOURCE_NEW) == repaired._EXPECTED_SOURCE_REFERENCES
 
 
 def test_temporary_source_overlay_fails_closed_on_unexpected_count(
@@ -58,12 +55,41 @@ def test_temporary_source_overlay_fails_closed_on_unexpected_count(
     path = _source_path(tmp_path)
     path.parent.mkdir(parents=True)
     path.write_text(
-        (repaired._OLD_SELF_TEST + "placeholder\n") * 3,
+        (repaired._SOURCE_OLD + "placeholder\n") * 3,
         encoding="utf-8",
     )
 
-    with pytest.raises(RuntimeError, match="exactly four"):
+    with pytest.raises(RuntimeError, match="expected 4"):
         repaired.repair_materialized_source(tmp_path)
+
+
+def test_strict_fixture_overlay_changes_tests_not_runtime(tmp_path: Path) -> None:
+    causal_test = (
+        tmp_path
+        / "research"
+        / "ml_stablecoin_issuance_economic_20260726"
+        / "test_run_causal.py"
+    )
+    strict_guard = (
+        tmp_path
+        / "sourcefix"
+        / "ml_stablecoin_causal_guard_20260726"
+        / "strict_guard.py"
+    )
+    causal_test.parent.mkdir(parents=True)
+    strict_guard.parent.mkdir(parents=True)
+    causal_test.write_text("before\n" + repaired._TEST_OLD + "after\n", encoding="utf-8")
+    strict_guard.write_text("before\n" + repaired._GAP_OLD + "after\n", encoding="utf-8")
+
+    observed_test, observed_guard = repaired.repair_materialized_strict_fixtures(
+        tmp_path
+    )
+
+    assert observed_test == causal_test
+    assert observed_guard == strict_guard
+    assert repaired._TEST_NEW in causal_test.read_text(encoding="utf-8")
+    assert repaired._GAP_NEW in strict_guard.read_text(encoding="utf-8")
+    assert "def strict_build_rows" not in strict_guard.read_text(encoding="utf-8")
 
 
 def test_failure_record_uses_resolved_cli_publish_path(
