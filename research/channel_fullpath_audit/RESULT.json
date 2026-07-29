@@ -1,0 +1,84 @@
+{
+  "base_result_id": "RES-20260730-BYBIT-DONCHIAN-ML-FULLPATH-001",
+  "claim_id": "CLM-20260730-CHANNEL-FULLPATH-AUDIT-001",
+  "economic_verdict": [
+    "The exact published selected tape necessarily retains positive small-risk value under the reported continuous sizing assumptions.",
+    "Its small-risk geometric growth is bounded far below the 1% daily objective, so it is an Expansion component rather than a sufficient Core engine.",
+    "The 5% headline materially amplifies both gains and the 2026H1 regime loss; it does not create a new information source.",
+    "The exact model cannot be independently audited from the repository because source, scored candidates, trades and daily NAV are represented only by hashes.",
+    "A nearby reproducible HGBT and a robust bootstrap-LCB screen show that model specification and tail selection are economically decisive.",
+    "Preserve the route provisionally as Expansion; do not grant deployment authority or tune with 2026-aware thresholds, channel lookbacks, risk or leverage."
+  ],
+  "live_permission": false,
+  "orders_submitted": false,
+  "programization_audit": {
+    "annual_training_parity": [
+      {
+        "last_release": "2023-12-29T16:22:00Z",
+        "model_year": 2024,
+        "rows": 1418
+      },
+      {
+        "last_release": "2024-12-30T17:43:00Z",
+        "model_year": 2025,
+        "rows": 1996
+      },
+      {
+        "last_release": "2025-12-29T09:42:00Z",
+        "model_year": 2026,
+        "rows": 2594
+      }
+    ],
+    "branch_contains": [
+      "CONTRACT.json",
+      "REPORT.md",
+      "RESULT.json",
+      "VALIDATION_ATTESTATION.json",
+      "validate.py"
+    ],
+    "candidate_count_by_year": {
+      "2021": 538,
+      "2022": 511,
+      "2023": 369,
+      "2024": 578,
+      "2025": 598,
+      "2026H1": 261
+    },
+    "candidate_count_total": 2855,
+    "candidate_geometry_parity": true,
+    "exact_model_and_ledgers_retrievable_from_branch": false,
+    "missing_reproducibility_inputs": [
+      "full replay source",
+      "ALL_CANDIDATES_2021_2026H1.parquet",
+      "SCORED_OFFICIAL_CANDIDATES.parquet",
+      "TRADES_*",
+      "DAILY_NAV_*",
+      "RUN.log"
+    ],
+    "published_validation_consistent": true
+  },
+  "ranking_change": false,
+  "result_id": "RES-20260730-BYBIT-CHANNEL-FULLPATH-AUDIT-001",
+  "risk_decomposition": {
+    "2026H1_0p5pct_multiple_lower_bound": 0.9666605033187373,
+    "assumption": "same exact selected trade tape; continuous quantity; reported 5% path not notional-cap bound because maximum leverage 7.4074x < 12x; reduce planned loss and leverage by factor 0.1",
+    "inequality": "concavity gives log(1+t*r)>=t*log(1+r); log(1+t*r)<=t*r for each trade return r>-1",
+    "ordinary_0p5pct_daily_growth_lower_bound": 0.0001080381718465695,
+    "ordinary_0p5pct_daily_growth_upper_bound": 0.00022557448161242277,
+    "ordinary_0p5pct_multiple_lower_bound": 1.1035425339563436,
+    "ordinary_0p5pct_multiple_upper_bound": 1.228385527200077,
+    "scaling_factor": 0.1,
+    "winner_removed_0p5pct_daily_growth_lower_bound": 3.1029240228575006e-05,
+    "winner_removed_0p5pct_daily_growth_upper_bound": 0.0001263207472210759,
+    "winner_removed_0p5pct_multiple_lower_bound": 1.0287024266029716,
+    "winner_removed_0p5pct_multiple_upper_bound": 1.1220947441284415
+  },
+  "robust_bootstrap_lcb_screen": {
+    "decision": "no BASE bootstrap-LCB route was positive and winner-removal resistant with meaningful breadth in both 2022 and 2023; official period remained unopened",
+    "official_opened": false,
+    "pre2024_survivor_count": 0
+  },
+  "schema_version": 1,
+  "status": "PROVISIONAL_EXPANSION_ALPHA_POSITIVE_SMALL_RISK_BOUNDED_EXACT_MODEL_ARTIFACT_MISSING",
+  "target_status": "NOT_MET"
+}
