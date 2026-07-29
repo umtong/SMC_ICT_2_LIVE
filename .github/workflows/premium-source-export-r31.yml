@@ -1,0 +1,46 @@
+name: Export recovered frozen premium-screen source
+
+on:
+  pull_request:
+    branches: [agent/r11-bybit-premium-dislocation-001]
+    paths:
+      - '.github/workflows/premium-source-export-r31.yml'
+      - 'research/triggers/premium_source_export_r31/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-bybit-premium-repair-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recover and compile frozen source
+        run: |
+          set -euo pipefail
+          root=research/bybit_premium_dislocation_20260726
+          repair=research/bybit_premium_repair_r31
+          out=research_runs/premium_source_export_r31
+          mkdir -p "$out"
+          python "$repair/reconstruct_verified.py" \
+            --repo . \
+            --current "$root/run_screen.py.gz.b64" \
+            --output "$out/run_screen.py" \
+            --diagnostics "$out/RECONSTRUCTION.json"
+          python -m py_compile "$out/run_screen.py"
+          sha256sum "$out/run_screen.py" "$out/RECONSTRUCTION.json" > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r31-premium-recovered-source
+          path: research_runs/premium_source_export_r31
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
