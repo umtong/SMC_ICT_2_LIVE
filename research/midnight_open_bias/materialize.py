@@ -4,8 +4,14 @@ from pathlib import Path,PurePosixPath
 ROOT=Path(__file__).resolve().parent
 def sha256(x:bytes)->str:return hashlib.sha256(x).hexdigest()
 def main()->int:
- m=json.loads((ROOT/"BUNDLE_MANIFEST.json").read_text()); enc=b"".join((ROOT/"source_bundle.tar.gz.b64").read_bytes().split())
- if len(enc)!=m["base64_bytes"] or sha256(enc)!=m["base64_sha256"]:raise SystemExit("base64 mismatch")
+ m=json.loads((ROOT/"BUNDLE_MANIFEST.json").read_text())
+ chunks=[]
+ for spec in m["parts"]:
+  payload=(ROOT/spec["name"]).read_bytes()
+  if len(payload)!=spec["bytes"] or sha256(payload)!=spec["sha256"]:raise SystemExit(f"part mismatch: {spec['name']}")
+  chunks.append(b"".join(payload.split()))
+ enc=b"".join(chunks)
+ if len(enc)!=m["base64_bytes"] or sha256(enc)!=m["base64_sha256"]:raise SystemExit("combined base64 mismatch")
  gz=base64.b64decode(enc,validate=True)
  if len(gz)!=m["gzip_bytes"] or sha256(gz)!=m["gzip_sha256"]:raise SystemExit("gzip mismatch")
  raw=gzip.decompress(gz)
@@ -19,5 +25,5 @@ def main()->int:
    payload=ar.extractfile(member).read(); spec=m["files"][member.name]
    if len(payload)!=spec["bytes"] or sha256(payload)!=spec["sha256"]:raise SystemExit("source mismatch")
    (ROOT/member.name).write_bytes(payload)
- print(json.dumps({"status":"PASS","files":m["files"]},sort_keys=True));return 0
+ print(json.dumps({"status":"PASS","parts":m["parts"],"files":m["files"]},sort_keys=True));return 0
 if __name__=="__main__":raise SystemExit(main())
