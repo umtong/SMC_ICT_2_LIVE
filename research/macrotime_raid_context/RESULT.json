@@ -1,0 +1,171 @@
+{
+  "claim_id": "CLM-20260730-0348-ML-MACROTIME-RAID-CONTEXT-001",
+  "clustered_regression_24bp": {
+    "control_30_50_coef_bps_vs_control_10_30": -0.7089011924926735,
+    "control_30_50_pvalue": 0.3117456956907295,
+    "macro_coef_bps": -2.8380483548883633,
+    "macro_pvalue": 1.507481773592458e-06,
+    "macro_se_bps": 0.590001241485938,
+    "n": 60558,
+    "r2": 0.008095309361427327
+  },
+  "contract": {
+    "entry": "first strictly later observable 1m open after fixed 500ms activation",
+    "phase_minutes": 20,
+    "phases": ["CONTROL_10_30", "CONTROL_30_50", "MACRO_50_10"],
+    "pre_range_minutes": 40,
+    "raid_excess_bps": 1.0,
+    "same_minute": "stop_first",
+    "stop": "raid extreme plus 1bp",
+    "stop_buffer_bps": 1.0,
+    "target": "untouched opposite frozen pre-phase boundary",
+    "time_exit": false
+  },
+  "counts": {
+    "complete_windows": 152418,
+    "invalid_geometry": {"BTCUSDT": 1726, "ETHUSDT": 2069},
+    "resolved_events": 60558,
+    "unresolved_or_gap_events": 8,
+    "windows": 157674
+  },
+  "data": {
+    "official_2024_2026_opened": false,
+    "period": "2021-01-01 through 2023-12-31",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "venue": "Bybit"
+  },
+  "diagnostic_one_slot_accounts_24bp": {
+    "CONTROL_10_30": {
+      "cost_bps": 24,
+      "final_nav": 4.716784945647824e-13,
+      "geometric_daily_growth": -0.03374870776181982,
+      "max_drawdown_realized_nav": 1.0,
+      "multiple": 4.716784945647824e-17,
+      "notional_cap": 3.0,
+      "phase": "CONTROL_10_30",
+      "profit_factor": 0.4467336383910045,
+      "risk_fraction": 0.005,
+      "trades": 13550
+    },
+    "CONTROL_30_50": {
+      "cost_bps": 24,
+      "final_nav": 2.2513628705592242e-13,
+      "geometric_daily_growth": -0.03440111882120567,
+      "max_drawdown_realized_nav": 1.0,
+      "multiple": 2.251362870559224e-17,
+      "notional_cap": 3.0,
+      "phase": "CONTROL_30_50",
+      "profit_factor": 0.4577562659880446,
+      "risk_fraction": 0.005,
+      "trades": 13537
+    },
+    "MACRO_50_10": {
+      "cost_bps": 24,
+      "final_nav": 1.754698819974246e-14,
+      "geometric_daily_growth": -0.03664876185394639,
+      "max_drawdown_realized_nav": 1.0,
+      "multiple": 1.754698819974246e-18,
+      "notional_cap": 3.0,
+      "phase": "MACRO_50_10",
+      "profit_factor": 0.34642024264220783,
+      "risk_fraction": 0.005,
+      "trades": 13666
+    }
+  },
+  "macro_increment_vs_better_control_24bp_bps": -2.985773847683756,
+  "matched_24bp": {
+    "CONTROL_10_30": {
+      "bootstrap_95ci_mean_diff_bps": [-3.741772366570023, -1.9911278619141155],
+      "mean_control_net_bps": -21.616892374072798,
+      "mean_diff_net_bps": -2.8706468112108423,
+      "mean_distance": 1.2563317209581872,
+      "mean_macro_net_bps": -24.48753918528364,
+      "median_diff_net_bps": -0.7091401346264874,
+      "paired_t_pvalue": 1.033906637727678e-10,
+      "pairs": 20103,
+      "wilcoxon_pvalue": 2.193231572776172e-15
+    },
+    "CONTROL_30_50": {
+      "bootstrap_95ci_mean_diff_bps": [-3.0074558640278606, -1.2884970604028982],
+      "mean_control_net_bps": -22.33229850891618,
+      "mean_diff_net_bps": -2.15524067636746,
+      "mean_distance": 1.2634702677876457,
+      "mean_macro_net_bps": -24.48753918528364,
+      "median_diff_net_bps": -0.3634106090363147,
+      "paired_t_pvalue": 1.2458294605682201e-06,
+      "pairs": 20103,
+      "wilcoxon_pvalue": 2.111360785824914e-07
+    }
+  },
+  "orders_submitted": false,
+  "overall_phase": {
+    "CONTROL_10_30": {
+      "events": 20031,
+      "mean_12bp_bps": -9.501765337599887,
+      "mean_18bp_bps": -15.50176533759989,
+      "mean_24bp_bps": -21.501765337599885,
+      "mean_gross_bps": 2.498234662400111,
+      "mean_stop_distance_bps": 21.468467327589444,
+      "mean_target_distance_bps": 70.72060980441141,
+      "median_12bp_bps": -20.323069215352053,
+      "median_18bp_bps": -26.32306921535205,
+      "median_24bp_bps": -32.32306921535205,
+      "median_gross_bps": -8.323069215352053,
+      "median_hold_minutes": 13.0,
+      "pf_12bp": 0.577720356086281,
+      "pf_18bp": 0.4259901584078454,
+      "pf_24bp": 0.32089326525561723,
+      "positive_12bp": 0.2612949927612201,
+      "positive_18bp": 0.23713244471069841,
+      "positive_24bp": 0.20937546802456192,
+      "target_rate": 0.28361040387399533
+    },
+    "CONTROL_30_50": {
+      "events": 20424,
+      "mean_12bp_bps": -10.392117936488798,
+      "mean_18bp_bps": -16.3921179364888,
+      "mean_24bp_bps": -22.3921179364888,
+      "mean_gross_bps": 1.6078820635111999,
+      "mean_stop_distance_bps": 22.080819717390348,
+      "mean_target_distance_bps": 70.07799011183485,
+      "median_12bp_bps": -20.604140846839773,
+      "median_18bp_bps": -26.604140846839773,
+      "median_24bp_bps": -32.60414084683977,
+      "median_gross_bps": -8.604140846839776,
+      "median_hold_minutes": 15.0,
+      "pf_12bp": 0.5499374186045357,
+      "pf_18bp": 0.40680143086847326,
+      "pf_24bp": 0.3072098526149945,
+      "positive_12bp": 0.2539659224441833,
+      "positive_18bp": 0.23149236192714454,
+      "positive_24bp": 0.2063258911084998,
+      "target_rate": 0.27893654524089306
+    },
+    "MACRO_50_10": {
+      "events": 20103,
+      "mean_12bp_bps": -12.487539185283643,
+      "mean_18bp_bps": -18.48753918528364,
+      "mean_24bp_bps": -24.48753918528364,
+      "mean_gross_bps": -0.4875391852836436,
+      "mean_stop_distance_bps": 21.498528696244204,
+      "mean_target_distance_bps": 71.02229872561165,
+      "median_12bp_bps": -21.003702676170665,
+      "median_18bp_bps": -27.003702676170665,
+      "median_24bp_bps": -33.00370267617066,
+      "median_gross_bps": -9.003702676170667,
+      "median_hold_minutes": 13.0,
+      "pf_12bp": 0.4698258965874078,
+      "pf_18bp": 0.34376373168699204,
+      "pf_24bp": 0.2565190986123342,
+      "positive_12bp": 0.24085957319803014,
+      "positive_18bp": 0.21897229269263294,
+      "positive_24bp": 0.19235934935084315,
+      "target_rate": 0.2606078694722181
+    }
+  },
+  "ranking_change": false,
+  "result_id": "RES-20260730-MACROTIME-RAID-CONTEXT-001",
+  "schema_version": 1,
+  "stage2_authorized": false,
+  "status": "RETIRED_STAGE1_NON_INCREMENTAL_OR_SUBCOST"
+}
