@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-PINNED-SELFTEST-ALIAS-AND-FAILURE-PATH-007",
+  "takeover_claim_id": "CLM-20260730-STABLECOIN-V5-TAKEOVER-001",
+  "original_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T02:47:58+09:00",
+  "timing": "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_failure": {
+    "workflow_run": 30210813687,
+    "source_self_test_error": "AttributeError: module source_gate_blockscout has no attribute decode_log",
+    "failure_writer_error": "NameError: name publish_dir is not defined",
+    "source_decision_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "correction": {
+    "temporary_pinned_source_self_test_only": "replace authority.base.decode_log with the unchanged authoritative decoder authority.base.auth.decode_log after materialization and before compilation",
+    "scientific_source_execution": "unchanged; source.source_gate and every event decoder used for source output remain identical",
+    "failure_path": "the takeover wrapper writes EXECUTION_FAILURE.json through the resolved --publish-dir instead of the undefined local name in the superseded carrier"
+  },
+  "unchanged": [
+    "source commit 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+    "strict economic commit 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+    "USDT Issue/Redeem and USDC zero-address Transfer semantics",
+    "12-block and 64-block causal availability boundaries",
+    "source months and coverage thresholds",
+    "model features and hyperparameters",
+    "structural target, stop and first-passage labels",
+    "simultaneous-event grouping and actual fill-to-stop liquidation test",
+    "one global slot and no elapsed-time liquidation",
+    "12, 18 and 24 bp paths",
+    "registered 99-path risk and notional grid",
+    "profit-first V5 advancement rule",
+    "credentials and order prohibition"
+  ]
+}
