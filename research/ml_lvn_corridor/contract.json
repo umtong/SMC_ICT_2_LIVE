@@ -1,0 +1,62 @@
+{
+  "account": {
+    "all_in_round_trip_cost": 0.0024,
+    "exit": "first frozen corridor boundary; no elapsed-time liquidation",
+    "funding": "exact signed Bybit funding settlements between entry and structural exit",
+    "notional_cap_multiple": 3.0,
+    "planned_loss_fraction": 0.005,
+    "same_minute_boundary_ambiguity": "selected action loses at its structural stop",
+    "start_nav_usdt": 10000,
+    "unresolved_paths": "not authorized as completed trades"
+  },
+  "claim_id": "CLM-20260729-1933-ML-LVN-CORRIDOR-001",
+  "gate": {
+    "decision": "open 2023 only if positive 2022 account at meaningful breadth; otherwise retire exact information unit",
+    "minimum_completed_trades": 80,
+    "minimum_end_nav_usdt": 10000,
+    "require_positive_median": false
+  },
+  "global_slot_limit": 1,
+  "information": {
+    "activation_latency_ms": 500,
+    "decision_clock": "completed 15m bar",
+    "execution_observation": "first later available 1m open",
+    "external_features": [
+      "completed Bybit open_interest_5m",
+      "completed Bybit account_ratio_5m",
+      "exact funding history",
+      "completed BTC/ETH cross-asset returns"
+    ],
+    "profile_availability": "only prior completed UTC days; current UTC day excluded",
+    "profile_source": "completed Bybit 5m turnover and volume-derived VWAP"
+  },
+  "live_orders": false,
+  "market": "Bybit USDT linear perpetual",
+  "mechanism": "causal rolling executed-turnover-at-price low-volume corridor; ML routes far-node continuation versus origin-node return or abstention",
+  "model": {
+    "C_grid": [0.1, 1.0, 10.0],
+    "action_threshold_expected_R": [0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5],
+    "family": "pooled standardized logistic regression",
+    "nonlinear_diagnostic": "HistGradientBoosting on sole nominal sparse topology only; not used to open later data"
+  },
+  "periods": {
+    "calendar_2023_opened": false,
+    "forward_validation": "2022-01-01 through 2022-12-31",
+    "official_2024_2026_opened": false,
+    "train": "2021-01-01 through 2021-12-31; labels resolved before 2022 boundary"
+  },
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "result_id": "RES-20260729-ML-LVN-CORRIDOR-001",
+  "schema_version": 1,
+  "source_manifest_sha256": "8de81d791c9ad177c6fd2046675adda759dc7373aa1d31e01b32d9b7058e8c6d",
+  "topology_grid": [
+    {"bin_bps": 10, "high_q": 0.55, "low_frac": 0.35, "window_days": 7},
+    {"bin_bps": 10, "high_q": 0.55, "low_frac": 0.5, "window_days": 7},
+    {"bin_bps": 10, "high_q": 0.65, "low_frac": 0.35, "window_days": 7},
+    {"bin_bps": 10, "high_q": 0.65, "low_frac": 0.5, "window_days": 7},
+    {"bin_bps": 10, "high_q": 0.55, "low_frac": 0.35, "window_days": 14},
+    {"bin_bps": 10, "high_q": 0.55, "low_frac": 0.5, "window_days": 14},
+    {"bin_bps": 20, "high_q": 0.55, "low_frac": 0.35, "window_days": 7},
+    {"bin_bps": 20, "high_q": 0.55, "low_frac": 0.5, "window_days": 7}
+  ]
+}
