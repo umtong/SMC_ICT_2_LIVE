@@ -1,0 +1,30 @@
+{
+  "claim_id": "CLM-20260730-0445-PD-EQUILIBRIUM-RECLAIM-001",
+  "result_id": "RES-20260730-PD-EQUILIBRIUM-RECLAIM-001",
+  "venue": "Bybit USDT linear perpetual",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "development_period": "2021-01-01 through 2023-12-31",
+  "official_2024_2026_prohibited": true,
+  "hypothesis": "After exactly one side of the prior completed UTC-day range is consumed, a later completed close through the frozen prior-day midpoint has positive and incremental delivery value toward the untouched opposite prior-day boundary versus the first causal boundary reclaim.",
+  "event": {
+    "range": "previous completed UTC-day high, low and midpoint frozen at 00:00 UTC",
+    "raid": "first current-day 1m consumption of exactly one boundary by at least 1bp; same-minute both-side consumption invalid",
+    "direct_decision": "first later completed 5m close back inside the consumed boundary",
+    "equilibrium_decision": "first later completed 5m close through prior-day midpoint toward the untouched opposite boundary before current UTC-day end",
+    "entry": "fixed 500ms activation and first strictly later observable 1m open",
+    "stop": "1bp beyond the current-day raid extreme known at the action decision",
+    "target": "still-unconsumed opposite prior-day boundary",
+    "same_minute": "stop_first",
+    "gap_stop": "adverse observed open",
+    "time_exit": false,
+    "label_boundary": "unresolved at next calendar-year boundary, never force-closed"
+  },
+  "economics": {
+    "cost_bps": [12, 18, 24],
+    "stage1_ml": false,
+    "stage1_risk_search": false,
+    "diagnostic_account": {"risk_fraction": 0.005, "notional_cap": 3.0, "global_slot": 1}
+  },
+  "conditional_stage2": "Only positive, non-sparse 18/24bp equilibrium economics with persistent incremental value versus direct reclaim may authorize FVG/BPR/OI features or ML.",
+  "decision": "Stage 1 failed; stage 2 prohibited."
+}
