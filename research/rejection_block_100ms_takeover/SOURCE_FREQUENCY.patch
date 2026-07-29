@@ -1,0 +1,20 @@
+--- research/rejection_block_20260726/run_screen.py.archived_500ms_assumption
++++ research/rejection_block_20260726/run_screen.py.exact_100ms_source
+@@ -133,7 +133,7 @@
+ 
+ def build_bars(states: pd.DataFrame, bar_seconds: int) -> pd.DataFrame:
+     bar_us = int(bar_seconds * 1_000_000)
+-    expected = bar_seconds * 2
++    expected = bar_seconds * 10
+     data = states.copy()
+     data["bar_id"] = (data["decision_us"].astype("int64") // bar_us).astype("int64")
+     rows: list[dict[str, Any]] = []
+@@ -142,7 +142,7 @@
+         if len(group) != expected:
+             continue
+         times = group["decision_us"].to_numpy(dtype=np.int64)
+-        if len(times) > 1 and not np.all(np.diff(times) == 500_000):
++        if len(times) > 1 and not np.all(np.diff(times) == 100_000):
+             continue
+         first = group.iloc[0]
+         last = group.iloc[-1]
