@@ -19,7 +19,7 @@ RUNNER_TEMP = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
 WORK = RUNNER_TEMP / "stablecoin_profit_v5_validator_work"
 PUBLISH = RUNNER_TEMP / "stablecoin_profit_v5_validator_result"
 MARKER = RUNNER_TEMP / "stablecoin_profit_v5_validator_summary.json"
-AUTHORITY = ROOT / "scripts" / "run_stablecoin_profit_v5_single_pass_authority.py"
+AUTHORITY = ROOT / "scripts" / "run_stablecoin_profit_v5_single_pass_authority_repaired.py"
 
 
 def run(
