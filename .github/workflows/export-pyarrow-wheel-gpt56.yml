@@ -1,0 +1,49 @@
+name: Export pyarrow CPython 3.13 wheel
+
+on:
+  push:
+    branches:
+      - agent/r56-scld-core-export-run-001
+    paths:
+      - .github/workflows/export-pyarrow-wheel-gpt56.yml
+      - research/alds_csd_delivery_gpt56/PYARROW_WHEEL_REQUEST.json
+  pull_request:
+    branches:
+      - agent/r56-alds-csd-delivery-001
+    paths:
+      - .github/workflows/export-pyarrow-wheel-gpt56.yml
+      - research/alds_csd_delivery_gpt56/PYARROW_WHEEL_REQUEST.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download pinned CPython 3.13 wheel
+        run: |
+          mkdir -p artifact/pyarrow-wheel
+          python -m pip download \
+            --only-binary=:all: \
+            --no-deps \
+            --python-version 313 \
+            --implementation cp \
+            --abi cp313 \
+            --platform manylinux2014_x86_64 \
+            --dest artifact/pyarrow-wheel \
+            pyarrow==19.0.1
+          sha256sum artifact/pyarrow-wheel/* | tee artifact/pyarrow-wheel/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pyarrow-cp313-gpt56-${{ github.sha }}
+          path: artifact/pyarrow-wheel
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
