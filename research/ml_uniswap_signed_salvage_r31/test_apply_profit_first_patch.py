@@ -25,6 +25,9 @@ def test_frozen_source_patch_compiles_and_changes_only_declared_contract(
     assert "PARTITION_BOUNDARY_MARK" in text
     assert "positive_18bps" in text
     assert "growth_above_donchian_benchmark_24bps" not in text
+    assert "NON_ECONOMIC_ZERO_LEG_SWAP" in text
+    assert "INVALID_SAME_SIGN_SWAP" in text
+    assert "continue without manufacturing a trade direction" in text
     spec = importlib.util.spec_from_file_location("run_profit_first_test", output)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
