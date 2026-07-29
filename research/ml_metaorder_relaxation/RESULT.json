@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-METAORDER-RELAXATION-001",
+  "result_id": "RES-20260730-ML-METAORDER-RELAXATION-001",
+  "status": "TESTED_BELOW_GATE",
+  "decision": "RETIRED_ECONOMIC_FAILURE_PRE2024",
+  "stage": "SPARSE_PRE2024_FATAL_SCREEN",
+  "rows": {"events": 630, "actions": 508, "train": 324, "development": 184},
+  "programization_correction": {
+    "defect": "completion-state features were indexed from the candidate-scan offset rather than end_i-5, reading states about 25 seconds after causal completion",
+    "effect": "constant event economics unchanged; all preliminary ML outputs invalidated",
+    "repair": "aligned all completion features to the actual run end and reran events, labels, OOF calibration, policy and account paths"
+  },
+  "development_2022": {
+    "continuation": {
+      "12": {"trades": 87, "nav_multiple": 0.752961953582085, "return": -0.24703804641791505, "pf": 0.2756960642384741, "mdd": -0.24703804641791505, "targets": 7, "stops": 80, "mean_gross_bp": -1.749277440693084, "positive_segments": 0, "top5_positive_share": 0.8023497516522856},
+      "18": {"trades": 87, "nav_multiple": 0.7243356865158163, "return": -0.27566431348418374, "pf": 0.20221806895611077, "mdd": -0.27566431348418374, "targets": 7, "stops": 80, "mean_gross_bp": -1.749277440693084, "positive_segments": 0, "top5_positive_share": 0.7845278537140897},
+      "24": {"trades": 87, "nav_multiple": 0.7121900112244355, "return": -0.2878099887755645, "pf": 0.15872841451509764, "mdd": -0.2878099887755645, "targets": 7, "stops": 80, "mean_gross_bp": -1.749277440693084, "positive_segments": 0, "top5_positive_share": 0.774423973537841}
+    },
+    "relaxation": {
+      "12": {"trades": 87, "nav_multiple": 0.9038981812235615, "return": -0.09610181877643853, "pf": 0.12038079782721185, "mdd": -0.09697691337759073, "targets": 69, "stops": 18, "mean_gross_bp": 0.7919423376471467, "positive_segments": 0, "top5_positive_share": 0.5843029137668484},
+      "18": {"trades": 87, "nav_multiple": 0.8748776891761192, "return": -0.1251223108238808, "pf": 0.036579835613789226, "mdd": -0.1252690801959706, "targets": 69, "stops": 18, "mean_gross_bp": 0.7919423376471467, "positive_segments": 0, "top5_positive_share": 0.8223834767663294},
+      "24": {"trades": 87, "nav_multiple": 0.8519249136123552, "return": -0.14807508638764477, "pf": 0.00803548332367224, "mdd": -0.14807508638764477, "targets": 69, "stops": 18, "mean_gross_bp": 0.7919423376471467, "positive_segments": 0, "top5_positive_share": 1.0}
+    },
+    "hgbt_18": {"trades": 3, "nav_multiple": 0.9850748750054849, "return": -0.014925124994515149, "pf": 0.0, "stops": 3},
+    "linear_18": {"trades": 0}
+  },
+  "model": {"hgbt_oof_corr": 0.4672217595678008, "hgbt_oof_rows": 58, "positive_hgbt": 3, "linear_oof_corr": 0.17388038927098848, "positive_linear": 0},
+  "gate_passed": false,
+  "confirmation_2023": {"opened": false, "reason": "2022_GATE_FAILED"},
+  "official_period_opened": false,
+  "ranking_changed": false,
+  "orders_submitted": false
+}
