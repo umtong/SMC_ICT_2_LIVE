@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-EXACT-AVAILABILITY-BLOCK-BATCH-PREFETCH-010",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-TAKEOVER-001",
+  "original_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T03:28:00+09:00",
+  "timing": "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_failure": {
+    "workflow_run": 30477867717,
+    "state": "IN_PROGRESS_SOURCE_GATE_WITHOUT_DURABLE_SOURCE_DECISION",
+    "source_decision_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "execution_bottleneck": "The exact source gate resolves +12 and +64 causal-availability timestamps row by row. The pinned ExactBatchClient can resolve arbitrary exact block numbers in JSON-RPC batches of 40, but the source loop does not prefill that cache, so dispersed events can create thousands of sequential requests without changing the scientific source result.",
+  "correction": {
+    "scope": "materialized source_gate_blockscout.py execution only",
+    "method": "sort the already decoded and deduplicated rows once, collect every unique block_number+12 and block_number+64, resolve those exact block numbers in deterministic batches of 40 through the existing ExactBatchClient._post_batch method, populate the unchanged exact timestamp cache, then execute the original event-construction loop",
+    "fallback": "if a batch request fails, preserve the existing exact per-block block_timestamp path and its REST fallback",
+    "scientific_output": "unchanged event identities, amounts, timestamps, 12/64-block availability, source gates, hashes of scientific inputs, model, labels, costs, account rules and stage boundaries"
+  },
+  "unchanged": [
+    "source commit 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+    "strict economic commit 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+    "USDT Issue/Redeem and USDC zero-address Transfer semantics",
+    "all 36 fixed source months and source density thresholds",
+    "12-block primary and 64-block stress information availability",
+    "fail-closed Blockscout response classification",
+    "one pooled model and frozen features/hyperparameters",
+    "structural first-passage payoff and no elapsed-time liquidation",
+    "one global slot and 12/18/24bp account paths",
+    "registered 99-path risk/notional grid",
+    "profit-first V5 advancement",
+    "no credentials and no orders"
+  ]
+}
