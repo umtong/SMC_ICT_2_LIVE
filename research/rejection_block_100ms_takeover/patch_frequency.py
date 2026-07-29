@@ -59,9 +59,14 @@ def main() -> int:
             tofile=f"{args.source}.exact_100ms_source",
         )
     )
-    if diff.count("@@") != 4:
-        # Unified diff contains two hunk headers, each represented by an opening and closing @@.
-        raise SystemExit(f"unexpected patch hunk structure: {diff!r}")
+    removed = [line for line in diff.splitlines() if line.startswith("-") and not line.startswith("---")]
+    added = [line for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++")]
+    if len(removed) != 2 or len(added) != 2 or "@@" not in diff:
+        raise SystemExit(f"unexpected cadence diff structure: {diff!r}")
+    if {line[1:] + "\n" for line in removed} != {old for old, _ in REPLACEMENTS}:
+        raise SystemExit("diff removed unexpected source lines")
+    if {line[1:] + "\n" for line in added} != {new for _, new in REPLACEMENTS}:
+        raise SystemExit("diff added unexpected source lines")
 
     before_bytes = before.encode("utf-8")
     after_bytes = after.encode("utf-8")
