@@ -15,6 +15,7 @@ SEGMENTS = (
 )
 SYMBOLS = ("BTCUSDT", "ETHUSDT")
 TABLES = (
+    ("trade_bars/1m.parquet", "bars_1m", "start_time_ms"),
     ("trade_bars/5m.parquet", "bars_5m", "start_time_ms"),
     ("trade_bars/15m.parquet", "bars_15m", "start_time_ms"),
     ("trade_bars/1h.parquet", "bars_1h", "start_time_ms"),
