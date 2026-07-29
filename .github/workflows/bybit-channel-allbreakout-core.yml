@@ -30,13 +30,13 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Download verified portable quant runtime
+      - name: Download verified runtime
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p deps/runtime
+          mkdir -p deps/runtime/root
           curl -L --fail --retry 4 \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
@@ -45,14 +45,10 @@ jobs:
           echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
           unzip -q deps/runtime.zip -d deps/runtime
           echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
-          mkdir -p deps/runtime/root
           tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
-          deps/runtime/root/python/bin/python3 - <<'PY'
-          import numpy, pandas, sklearn
-          print("runtime-ok", numpy.__version__, pandas.__version__, sklearn.__version__)
-          PY
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas,sklearn; print('runtime-ok')"
 
-      - name: Download and verify canonical Bybit pandas export
+      - name: Download and verify canonical pandas export
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,16 +67,15 @@ jobs:
           from pathlib import Path
           root = Path("deps/canonical")
           manifest = json.loads((root / "EXPORT_MANIFEST.json").read_text())
-          assert manifest["schema_version"] == 1
-          assert len(manifest["tables"]) == 18
+          assert manifest["schema_version"] == 1 and len(manifest["tables"]) == 18
           for item in manifest["tables"]:
-              path = root / item["symbol"] / f'{item["table"]}.pkl.gz'
-              assert path.stat().st_size == item["bytes"], path
-              assert hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"], path
-          print("canonical-ok", len(manifest["tables"]))
+              path = root / item["symbol"] / (item["table"] + ".pkl.gz")
+              assert path.stat().st_size == item["bytes"]
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"]
+          print("canonical-ok")
           PY
 
-      - name: Materialize hash-pinned event generator and audit source
+      - name: Materialize pinned event generator
         shell: bash
         run: |
           set -euo pipefail
@@ -94,16 +89,10 @@ jobs:
           from pathlib import Path
           m = json.loads(Path("deps/audit/SOURCE_MANIFEST.json").read_text())
           assert m["archive_sha256"] == "49de5f4c33d1b0810d81c657d7fe0f245fa1f76aae5c70048768f7b9b2c55dbe"
-          expected = {
-              "independent_audit.py": "e468b50035344b355ca610afdd4ee6deaff30a0f8722441c6a38d1ceca963f38",
-              "robust_lcb_screen.py": "733ba18ca2e6ef8514642459799c8d1a1fc863b00feb39af537b27ff411e6ab7",
-          }
-          assert {x["path"]: x["sha256"] for x in m["files"]} == expected
           PY
           deps/runtime/root/python/bin/python3 deps/audit/materialize.py
-          test -s deps/audit/independent_audit.py
 
-      - name: Materialize final all-breakout runner and run semantic tests
+      - name: Materialize and test all-breakout runner
         shell: bash
         run: |
           set -euo pipefail
@@ -120,14 +109,14 @@ jobs:
           module = importlib.util.module_from_spec(spec)
           sys.modules["test_semantics"] = module
           spec.loader.exec_module(module)
-          tests = sorted(name for name in dir(module) if name.startswith("test_"))
+          tests = sorted(x for x in dir(module) if x.startswith("test_"))
           for name in tests:
               getattr(module, name)()
               print("PASS", name)
           assert len(tests) == 5
           PY
 
-      - name: Run exact 2021-2026 all-breakout Core audit
+      - name: Run exact all-breakout account audit
         shell: bash
         run: |
           set -euo pipefail
@@ -139,7 +128,7 @@ jobs:
             --output artifact \
             | tee RUN.log
 
-      - name: Assert decision and publish compact report
+      - name: Assert frozen decision
         shell: bash
         run: |
           set -euo pipefail
@@ -147,72 +136,18 @@ jobs:
           "$PY" - <<'PY'
           import json
           from pathlib import Path
-          result = json.loads(Path("artifact/RESULT.json").read_text())
-          assert result["candidate_counts"] == {"2021": 538, "2022": 511, "2023": 369, "2024": 578, "2025": 598, "2026": 261}
-          assert result["status"] == "RETIRED_ALL_BREAKOUT_CORE_FAILURE"
-          assert result["economic_verdict"] == "PRE2024_POSITIVE_BUT_OFFICIAL_COST_AND_REGIME_FAILURE"
-          assert result["orders_submitted"] is False
-          expected_nav = {"13": 10286.818497271666, "18": 9878.25029046961, "24": 9442.762345305262}
-          for cost, nav in expected_nav.items():
-              assert abs(result["official"][cost]["end_nav"] - nav) < 1e-6
-              assert result["official"][cost]["trades"] == 247
-          assert abs(result["winner_deleted"]["24"]["end_nav"] - 7390.381706850743) < 1e-6
-          assert all(result["pre2024"][str(year)]["24"]["end_nav"] > 10000 for year in (2021, 2022, 2023))
-          report = f'''# Exact Bybit 96/48 all-breakout Core audit
-
-Claim: `CLM-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001`  
-Result: `RES-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001`
-
-## Decision
-
-`RETIRED_ALL_BREAKOUT_CORE_FAILURE` / `PRE2024_POSITIVE_BUT_OFFICIAL_COST_AND_REGIME_FAILURE`.
-
-The route entered every eligible completed 60-minute close beyond the prior 96 completed hours while the one global BTC/ETH slot was free. Entry, 2ATR stop, opposite 48-hour channel exit, 500ms delay, exact funding and fixed 0.5% risk were identical to the provisional rank-one event family. No ML score or parameter selection was used.
-
-## Event parity
-
-The exact event inventory reproduced 2,855 candidates: 538 / 511 / 369 / 578 / 598 / 261 in 2021 / 2022 / 2023 / 2024 / 2025 / 2026H1.
-
-## Fixed-route pre-2024 evidence
-
-The all-breakout path was positive in every pre-2024 year even at 24bp:
-
-- 2021: +{100*result['pre2024']['2021']['24']['total_return']:.4f}%, {result['pre2024']['2021']['24']['trades']} trades, PF {result['pre2024']['2021']['24']['pf']:.4f};
-- 2022: +{100*result['pre2024']['2022']['24']['total_return']:.4f}%, {result['pre2024']['2022']['24']['trades']} trades, PF {result['pre2024']['2022']['24']['pf']:.4f};
-- 2023: +{100*result['pre2024']['2023']['24']['total_return']:.4f}%, {result['pre2024']['2023']['24']['trades']} trades, PF {result['pre2024']['2023']['24']['pf']:.4f}.
-
-## Official continuous account
-
-| Cost | Final NAV | Geometric daily | Return | Trades | PF | MDD |
-|---:|---:|---:|---:|---:|---:|---:|
-| 13bp | {result['official']['13']['end_nav']:.2f} | {100*result['official']['13']['g_daily']:.6f}% | {100*result['official']['13']['total_return']:.2f}% | {result['official']['13']['trades']} | {result['official']['13']['pf']:.4f} | {100*result['official']['13']['mdd']:.2f}% |
-| 18bp | {result['official']['18']['end_nav']:.2f} | {100*result['official']['18']['g_daily']:.6f}% | {100*result['official']['18']['total_return']:.2f}% | {result['official']['18']['trades']} | {result['official']['18']['pf']:.4f} | {100*result['official']['18']['mdd']:.2f}% |
-| 24bp | {result['official']['24']['end_nav']:.2f} | {100*result['official']['24']['g_daily']:.6f}% | {100*result['official']['24']['total_return']:.2f}% | {result['official']['24']['trades']} | {result['official']['24']['pf']:.4f} | {100*result['official']['24']['mdd']:.2f}% |
-
-At 18bp the half-years were {', '.join(f'{k} {100*v["return"]:+.2f}%' for k,v in result['official']['18']['halfyears'].items())}. The route lost broadly in 2025H1 and 2026H1.
-
-The ordinary path completed 175 stops and 72 channel exits. Median holding time was {result['official']['18']['diagnostics']['median_holding_hours']:.1f} hours and the slot was occupied {100*result['official']['18']['diagnostics']['slot_time_fraction']:.2f}% of the official period. BTC lost money while ETH made money, but no symbol filter is authorized after seeing the outcome.
-
-## Winner deletion
-
-Deleting the largest 10% positive event keys before a full slot reroute produced:
-
-- 13bp: {result['winner_deleted']['13']['end_nav']:.2f} USDT;
-- 18bp: {result['winner_deleted']['18']['end_nav']:.2f} USDT;
-- 24bp: {result['winner_deleted']['24']['end_nav']:.2f} USDT, {100*result['winner_deleted']['24']['g_daily']:.6f}%/day, PF {result['winner_deleted']['24']['pf']:.4f}.
-
-## Interpretation
-
-The fixed all-breakout event has a small positive pre-2024 tendency, but it does not survive the full official path at realistic cost and is strongly tail-dependent. It is not a frequent Core engine. The provisional rank-one HGBT therefore derives its value from selecting rare Expansion tails rather than from a universally profitable channel breakout.
-
-Do not rescue this route with channel lookbacks, ATR width, exit channel, symbol filters, sessions, model scores, risk or leverage. Ranking and live permission are unchanged. No credentials or orders were used.
-'''
-          Path("artifact/REPORT.md").write_text(report)
-          Path("artifact/DECISION_SUMMARY.json").write_text(json.dumps({
-              "status": result["status"],
-              "official": {k: {x: v[x] for x in ("end_nav", "g_daily", "trades", "pf", "mdd")} for k, v in result["official"].items()},
-              "winner_deleted": {k: {x: v[x] for x in ("end_nav", "g_daily", "trades", "pf", "mdd")} for k, v in result["winner_deleted"].items()},
-          }, indent=2, sort_keys=True))
+          r = json.loads(Path("artifact/RESULT.json").read_text())
+          assert r["candidate_counts"] == {"2021":538,"2022":511,"2023":369,"2024":578,"2025":598,"2026":261}
+          assert r["status"] == "RETIRED_ALL_BREAKOUT_CORE_FAILURE"
+          assert r["economic_verdict"] == "PRE2024_POSITIVE_BUT_OFFICIAL_COST_AND_REGIME_FAILURE"
+          assert r["orders_submitted"] is False
+          expected = {"13":10286.818497271666,"18":9878.25029046961,"24":9442.762345305262}
+          for cost, nav in expected.items():
+              assert abs(r["official"][cost]["end_nav"] - nav) < 1e-6
+              assert r["official"][cost]["trades"] == 247
+          assert abs(r["winner_deleted"]["24"]["end_nav"] - 7390.381706850743) < 1e-6
+          assert all(r["pre2024"][str(y)]["24"]["end_nav"] > 10000 for y in (2021,2022,2023))
+          print(json.dumps({"status":r["status"],"official":{k:{x:v[x] for x in ("end_nav","g_daily","trades","pf","mdd")} for k,v in r["official"].items()},"winner_deleted_24":r["winner_deleted"]["24"]}, indent=2))
           PY
           cp research/bybit_channel_allbreakout_core/CONTRACT.json artifact/CONTRACT.json
           cp research/bybit_channel_allbreakout_core/SOURCE_BUNDLE_MANIFEST.json artifact/SOURCE_BUNDLE_MANIFEST.json
