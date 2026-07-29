@@ -1,0 +1,59 @@
+name: Generate frozen aligned-continuation 2024H1 events
+
+on:
+  push:
+    branches: [agent/ml-aligned-continuation-audit-001]
+    paths:
+      - '.github/workflows/aligned-continuation-2024h1-events.yml'
+      - 'research/aligned_continuation_audit/generate_official_2024h1_events.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  events:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deterministic dependencies
+        run: python -m pip install --disable-pip-version-check 'numpy==2.3.3' 'pandas==2.3.3' 'pyarrow==21.0.0'
+      - name: Recover exact registered source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/aligned-source"
+          git fetch --quiet --no-tags origin '+refs/pull/*/head:refs/remotes/origin/pr/*' || true
+          blob='2eb432b03b7126d0feda365c4af44669c58336a0'
+          git cat-file blob "$blob" > "$RUNNER_TEMP/aligned-source/absorption_flow_benchmark.py"
+          echo 'e9ce4e211e060d74cfb43759bb6afb69616cc8b12fa66aa6ad317ceac01d56b8  '"$RUNNER_TEMP/aligned-source/absorption_flow_benchmark.py" | sha256sum -c -
+          python -m py_compile research/aligned_continuation_audit/generate_official_2024h1_events.py
+      - name: Restore official Binance warmup and H1 cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/aligned-2024h1/raw
+          key: aligned-continuation-binance-usdm-202312-202406-v1
+      - name: Generate event tape
+        run: |
+          mkdir -p artifact/aligned-continuation-2024h1-events
+          python research/aligned_continuation_audit/generate_official_2024h1_events.py \
+            --original-source "$RUNNER_TEMP/aligned-source/absorption_flow_benchmark.py" \
+            --work-root "$RUNNER_TEMP/aligned-2024h1" \
+            --output artifact/aligned-continuation-2024h1-events \
+            --workers 12
+          find artifact/aligned-continuation-2024h1-events -type f -print0 \
+            | sort -z | xargs -0 sha256sum \
+            > artifact/aligned-continuation-2024h1-events/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aligned-continuation-2024h1-events-${{ github.sha }}
+          path: artifact/aligned-continuation-2024h1-events
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
