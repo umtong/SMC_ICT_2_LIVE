@@ -42,7 +42,7 @@ def _economic_run_path(repository: Path) -> Path:
     )
 
 
-def test_temporary_source_overlay_repairs_all_four_self_test_references(
+def test_temporary_source_overlay_repairs_namespaces_and_authoritative_gate(
     tmp_path: Path,
 ) -> None:
     path = _source_path(tmp_path)
@@ -54,6 +54,7 @@ def test_temporary_source_overlay_repairs_all_four_self_test_references(
                 'address = authority.base.CONTRACTS["USDT"]["address"]',
                 "topic = authority.base.ISSUE_TOPIC",
                 'address2 = authority.base.CONTRACTS["USDT"]["address"]',
+                repaired._SOURCE_GATE_CALL_OLD.rstrip("\n"),
             ]
         )
         + "\n",
@@ -66,6 +67,8 @@ def test_temporary_source_overlay_repairs_all_four_self_test_references(
     text = path.read_text(encoding="utf-8")
     assert repaired._SOURCE_OLD not in text
     assert text.count(repaired._SOURCE_NEW) == repaired._EXPECTED_SOURCE_REFERENCES
+    assert repaired._SOURCE_GATE_CALL_OLD not in text
+    assert text.count(repaired._SOURCE_GATE_CALL_NEW) == 1
 
 
 def test_temporary_source_overlay_fails_closed_on_unexpected_count(
@@ -74,12 +77,35 @@ def test_temporary_source_overlay_fails_closed_on_unexpected_count(
     path = _source_path(tmp_path)
     path.parent.mkdir(parents=True)
     path.write_text(
-        (repaired._SOURCE_OLD + "placeholder\n") * 3,
+        (repaired._SOURCE_OLD + "placeholder\n") * 3
+        + repaired._SOURCE_GATE_CALL_OLD,
         encoding="utf-8",
     )
 
     with pytest.raises(RuntimeError, match="expected 4"):
         repaired.repair_materialized_source(tmp_path)
+
+
+def test_temporary_source_overlay_fails_closed_without_lower_gate_call(
+    tmp_path: Path,
+) -> None:
+    path = _source_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        (repaired._SOURCE_OLD + "placeholder\n") * 4,
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="expected 1"):
+        repaired.repair_materialized_source(tmp_path)
+
+
+def test_schema_binding_correction_is_outcome_sealed() -> None:
+    payload = repaired._load_schema_binding_correction()
+    assert payload["correction_id"] == repaired.SCHEMA_BINDING_CORRECTION_ID
+    assert payload["observed_state"]["source_decision_observed"] is False
+    assert payload["observed_state"]["market_archive_opened"] is False
+    assert payload["observed_state"]["orders_submitted"] is False
 
 
 def test_exact_availability_prefetch_overlay_is_execution_only(
@@ -226,6 +252,10 @@ def test_failure_record_uses_resolved_cli_publish_path(
     assert (
         payload["entry_time_global_slot_arbitration_correction_id"]
         == repaired.ARBITRATION_CORRECTION_ID
+    )
+    assert (
+        payload["authoritative_source_schema_binding_correction_id"]
+        == repaired.SCHEMA_BINDING_CORRECTION_ID
     )
     assert payload["official_2024_2026_opened"] is False
     assert payload["orders_submitted"] is False
