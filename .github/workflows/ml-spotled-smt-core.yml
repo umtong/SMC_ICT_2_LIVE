@@ -61,8 +61,9 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BYBIT_ARTIFACT_ID}/zip" \
             -o deps/bybit.zip
+          echo "90594acc23e63e97e83347f9b07eb9ac260ba7bb1b87eb72052287a8328ad4a1  deps/bybit.zip" | sha256sum -c -
           unzip -q deps/bybit.zip -d deps/bybit
-          (cd deps/bybit && sha256sum -c INPUT_SHA256SUMS.txt)
+          (cd deps/bybit/output && sha256sum -c SHA256SUMS.txt)
           test -s deps/bybit/output/compact_states/2022-07-01_BTCUSDT_state.parquet
           test -s deps/bybit/output/compact_states/2023-07-01_BTCUSDT_state.parquet
 
