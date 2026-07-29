@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-XVENUE-FUNDING-INVENTORY-001",
+  "result_id": "RES-20260730-ML-XVENUE-FUNDING-INVENTORY-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "information_unit": "first prior-only 1.5-sigma Bybit-minus-Binance synchronized funding differential, followed by one completed five-minute Bybit inventory response",
+  "funding_alignment": "funding rates usable only at recorded settlement timestamps; Binance official monthly fundingRate archives are adjacent-CHECKSUM verified",
+  "features": [
+    "Bybit and Binance funding levels and prior-90-event differential z-score",
+    "post-settlement five-minute price response",
+    "pre-settlement 15-minute and one-hour return",
+    "Bybit OI and account-ratio change",
+    "premium/index and mark/index basis state",
+    "turnover, volatility and BTC/ETH peer confirmation"
+  ],
+  "actions": ["continue funding-differential direction", "fade venue-specific crowding", "flat"],
+  "event_threshold": "absolute prior-only funding differential z-score >= 1.5; frozen before economic outcomes",
+  "decision_time": "first completed five-minute Bybit response after settlement",
+  "latency_ms": 500,
+  "execution": "first later observable Bybit one-minute open",
+  "stop": "latest causally right-confirmed opposite five-minute pivot plus fixed 0.25 ATR buffer; fixed 1.5 ATR disaster fallback only when geometry is invalid",
+  "exit": "stop, completed protected-origin loss, later funding-differential normalization/reversal, or stage-boundary NAV mark; no elapsed-time or scheduled close",
+  "portfolio_slot": 1,
+  "planned_loss_fraction": 0.005,
+  "notional_cap": 3.0,
+  "cost_paths_bps": [12, 18, 24],
+  "funding": "exact signed Bybit settlements crossed by the position",
+  "chronology": {
+    "fit": 2021,
+    "selection": 2022,
+    "confirmation": "2023 conditional on a positive non-sparse PF>1 and exact-winner-reroute-positive 2022 survivor",
+    "official_2024": "conditional on pre-2024 survival"
+  },
+  "stage_boundary": "labels and account paths are capped and NAV-marked at the next calendar-year boundary; 2023 is not loaded after the failed 2022 gate",
+  "risk_or_leverage_search_before_alpha": false,
+  "orders_submitted": false
+}

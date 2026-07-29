@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-XVENUE-FUNDING-INVENTORY-001",
+  "result_id": "RES-20260730-ML-XVENUE-FUNDING-INVENTORY-001",
+  "status": "RETIRED_ECONOMIC_FAILURE_PRE2023",
+  "hard_validity_status": "PASS_CAUSAL_SOURCE_AND_ACCOUNT_SCREEN",
+  "economic_status": "NEGATIVE_2022_SELECTION",
+  "source": {
+    "binance_provider": "Binance Vision official USD-M monthly fundingRate archives",
+    "binance_archive_count": 72,
+    "adjacent_checksum_verified": true,
+    "artifact_id": 8737578695,
+    "artifact_digest": "sha256:148144143b99b6aba018df48c98f09002ec6e699588d754cf877aec592f30099",
+    "BTCUSDT_rows": 3285,
+    "BTCUSDT_parquet_sha256": "5dd9f983e275f13c7a1c3936085818c5ee7914689f8af29729aea3762632dc30",
+    "ETHUSDT_rows": 3285,
+    "ETHUSDT_parquet_sha256": "2ef8908b6146594e4584aa39e860f655e3a5eb5593229be6ca7329499dea905d",
+    "bybit_dataset_ids": [
+      "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1",
+      "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1",
+      "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1",
+      "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1"
+    ]
+  },
+  "programization_corrections": [
+    "The geographically blocked Binance REST path (HTTP 451) was replaced only by official checksum-verified Binance Vision archives; scientific content was unchanged.",
+    "The first implementation mechanically materialized conditional 2023 labels. The final screen loads only 2021 fit and 2022 selection data and leaves 2023 unopened after gate failure.",
+    "All-in entry and stop execution costs had already been embedded in adverse prices; a duplicate cost term was removed from the planned-loss denominator before final reporting.",
+    "Every post-settlement decision waits for one completed five-minute response and then uses the first later one-minute price after the fixed 500 ms activation.",
+    "Positions use a causally confirmed protected origin and exit on its loss or a later funding-differential normalization/reversal; no elapsed-time close exists."
+  ],
+  "event_inventory": {
+    "total_prior_only_1p5sigma_events": 131,
+    "BTCUSDT": 66,
+    "ETHUSDT": 65,
+    "fit_2021_action_rows_per_action": 51,
+    "selection_2022_action_rows_per_action": 80
+  },
+  "raw_2022_accounts": {
+    "12bps": {
+      "continuation": {"return": -0.004263, "trades": 68, "profit_factor": 0.985, "top5_positive_share": 0.908},
+      "fade": {"return": -0.205512, "trades": 67, "profit_factor": 0.215, "top5_positive_share": 1.0}
+    },
+    "18bps": {
+      "continuation": {"return": -0.038798, "trades": 68, "profit_factor": 0.864, "top5_positive_share": 0.905},
+      "fade": {"return": -0.212059, "trades": 67, "profit_factor": 0.197, "top5_positive_share": 1.0}
+    },
+    "24bps": {
+      "continuation": {"return": -0.069271, "trades": 68, "profit_factor": 0.754, "top5_positive_share": 0.900},
+      "fade": {"return": -0.216103, "trades": 67, "profit_factor": 0.184, "top5_positive_share": 1.0}
+    }
+  },
+  "ml_2022_accounts": {
+    "12bps": {
+      "ridge_action_value": {"return": -0.073005, "trades": 38, "profit_factor": 0.540, "exact_winner_reroute_return": -0.152714, "rerouted_trades": 34},
+      "logistic_positive_value": {"return": -0.089431, "trades": 44, "profit_factor": 0.506, "exact_winner_reroute_return": -0.177472, "rerouted_trades": 40},
+      "hgbt": {"authorized_trades": 0}
+    },
+    "18bps": {
+      "ridge_action_value": {"return": -0.068331, "trades": 36, "profit_factor": 0.546, "exact_winner_reroute_return": -0.144561, "rerouted_trades": 32},
+      "logistic_positive_value": {"return": -0.091658, "trades": 42, "profit_factor": 0.470, "exact_winner_reroute_return": -0.164710, "rerouted_trades": 37},
+      "hgbt": {"authorized_trades": 0}
+    },
+    "24bps": {
+      "ridge_action_value": {"return": -0.089492, "trades": 33, "profit_factor": 0.364, "exact_winner_reroute_return": -0.133974, "rerouted_trades": 29},
+      "logistic_positive_value": {"return": -0.094616, "trades": 41, "profit_factor": 0.449, "exact_winner_reroute_return": -0.166893, "rerouted_trades": 37},
+      "hgbt": {"authorized_trades": 0}
+    }
+  },
+  "primary_model_diagnostics_24bps": {
+    "continuation_ridge": {"mae": 1.641772, "constant_mae": 1.651680, "spearman": -0.063580},
+    "continuation_logistic": {"auc": 0.405714, "brier": 0.267932, "constant_brier": 0.112024},
+    "fade_ridge": {"mae": 0.806685, "constant_mae": 0.490720, "spearman": -0.047563},
+    "fade_logistic": {"auc": 0.394667, "brier": 0.222407, "constant_brier": 0.058607},
+    "hgbt": "degenerate constant-like predictions; zero positive account actions"
+  },
+  "decision": {
+    "calendar_2023_opened": false,
+    "official_2024_opened": false,
+    "risk_leverage_search_opened": false,
+    "ranking_changed": false,
+    "reason": "The economically readable continuation and fade actions were already negative in 2022 at realistic costs. Every ML account was negative or abstained, exact winner deletion worsened every traded policy, and model ranking/calibration did not beat simple constants. This is not a threshold or leverage problem."
+  },
+  "known_limitations": [
+    "Maximum drawdown in the fast discovery replay is measured on event-level account marks rather than complete minute-by-minute liquidation NAV; the negative decision does not depend on a tighter MDD estimate.",
+    "The complete local evaluator and action ledgers were not yet transported into this draft branch; the source exporter, fixed contract and compact decision evidence are present.",
+    "The result closes this exact synchronized-funding-differential formulation, not every possible cross-venue inventory signal."
+  ],
+  "orders_submitted": false,
+  "paper_live_started": false
+}
