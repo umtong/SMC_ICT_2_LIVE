@@ -45,4 +45,4 @@ Breaker events were generally less negative than matched mitigation events, so i
 
 The exact breaker/mitigation standalone family is retired without threshold, checklist, cost, risk, leverage or confidence-multiplier rescue. Breaker state may be reused only as context inside a materially different information unit.
 
-The complete reproducible source, tests, final causal grid and evidence are hash-bound in `bundle_manifest.json` and reconstructed with `materialize_bundle.py`.
+The full source, tests and diagnostic grids were generated and validated in the research session. This draft branch currently carries compact decision evidence only; it must not be merged as a reusable implementation until the complete source bundle is transported and hash-verified.
