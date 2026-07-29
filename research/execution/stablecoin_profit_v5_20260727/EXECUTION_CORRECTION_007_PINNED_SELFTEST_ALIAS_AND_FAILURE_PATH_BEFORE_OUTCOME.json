@@ -4,11 +4,15 @@
   "takeover_claim_id": "CLM-20260730-STABLECOIN-V5-TAKEOVER-001",
   "original_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
   "recorded_at": "2026-07-30T02:47:58+09:00",
+  "amended_at": "2026-07-30T02:51:30+09:00",
   "timing": "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
   "observed_failure": {
-    "workflow_run": 30210813687,
-    "source_self_test_error": "AttributeError: module source_gate_blockscout has no attribute decode_log",
+    "superseded_workflow_run": 30210813687,
+    "takeover_workflow_run": 30477102855,
+    "initial_source_self_test_error": "AttributeError: module source_gate_blockscout has no attribute decode_log",
+    "second_source_self_test_error": "AttributeError: module source_gate_blockscout has no attribute CONTRACTS",
     "failure_writer_error": "NameError: name publish_dir is not defined",
+    "durable_failure_writer_repaired_in_takeover": true,
     "source_decision_observed": false,
     "market_archive_opened": false,
     "label_computed": false,
@@ -19,8 +23,13 @@
     "orders_submitted": false
   },
   "correction": {
-    "temporary_pinned_source_self_test_only": "replace authority.base.decode_log with the unchanged authoritative decoder authority.base.auth.decode_log after materialization and before compilation",
-    "scientific_source_execution": "unchanged; source.source_gate and every event decoder used for source output remain identical",
+    "temporary_pinned_source_self_test_only": [
+      "replace authority.base.decode_log with the unchanged authoritative decoder authority.base.auth.decode_log",
+      "replace authority.base.CONTRACTS with the unchanged authoritative registry authority.base.auth.CONTRACTS",
+      "replace authority.base.ISSUE_TOPIC with the unchanged authoritative event signature authority.base.auth.ISSUE_TOPIC"
+    ],
+    "application_boundary": "after immutable source materialization and before compilation; only run_pinned_snapshot_source.py self_test references are changed",
+    "scientific_source_execution": "unchanged; source.source_gate, transport, event filtering, decoding and every source/economic output rule remain identical",
     "failure_path": "the takeover wrapper writes EXECUTION_FAILURE.json through the resolved --publish-dir instead of the undefined local name in the superseded carrier"
   },
   "unchanged": [
