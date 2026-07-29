@@ -1,0 +1,68 @@
+name: Rejection Block exact 100ms takeover
+
+on:
+  push:
+    branches:
+      - agent/r24-rejection-block-100ms-takeover-001
+    paths:
+      - "research/rejection_block_100ms_takeover/**"
+      - ".github/workflows/rejection-block-100ms-takeover.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rejection-block-100ms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download immutable causal state artifact
+        uses: actions/download-artifact@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: 30183063220
+          name: bybit-l2-resiliency-ce9150a0b06f4864dd8021a63ac6b3238be2b216
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: reused/bybit_l2_resiliency
+      - name: Verify immutable market source and reconstruct archived evaluator
+        run: |
+          set -euo pipefail
+          (cd reused/bybit_l2_resiliency/output && sha256sum --check SHA256SUMS.txt)
+          echo "da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b  reused/bybit_l2_resiliency/output/compact_states/2022-07-01_BTCUSDT_state.parquet" | sha256sum --check
+          echo "8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f  reused/bybit_l2_resiliency/output/compact_states/2023-07-01_BTCUSDT_state.parquet" | sha256sum --check
+          old=research/rejection_block_20260726
+          python "$old/reconstruct.py"
+          python -m py_compile "$old/run_screen.py" "$old/test_run_screen.py" research/rejection_block_100ms_takeover/probe_frequency.py
+      - name: Probe exact source-frequency assumptions without market outcome
+        run: |
+          set -euo pipefail
+          mkdir -p research_runs/rejection_block_100ms/source_probe
+          python research/rejection_block_100ms_takeover/probe_frequency.py \
+            --source-dir research/rejection_block_20260726 \
+            --output research_runs/rejection_block_100ms/source_probe/PROBE.json \
+            2>&1 | tee research_runs/rejection_block_100ms/source_probe/probe.log
+          cp research/rejection_block_20260726/run_screen.py research_runs/rejection_block_100ms/source_probe/
+          cp research/rejection_block_20260726/test_run_screen.py research_runs/rejection_block_100ms/source_probe/
+          cp research/rejection_block_20260726/bundle_manifest.json research_runs/rejection_block_100ms/source_probe/
+          sha256sum research_runs/rejection_block_100ms/source_probe/* > research_runs/rejection_block_100ms/source_probe/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rejection-block-100ms-source-probe-${{ github.sha }}
+          path: research_runs/rejection_block_100ms
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
