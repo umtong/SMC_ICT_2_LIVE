@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-DUPLICATE-PROJECT-VALIDATOR-DEFERRED-009",
+  "takeover_claim_id": "CLM-20260730-STABLECOIN-V5-TAKEOVER-001",
+  "original_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T02:58:30+09:00",
+  "timing": "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_failure": {
+    "workflow_run": 30477650073,
+    "all_source_and_economic_unit_tests_passed": true,
+    "source_decision_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false,
+    "blocking_check": "the authority invoked scripts/validate_project.py inside the already-running Validate project harness",
+    "blocking_messages": [
+      "missing exact legacy ranking sentence in instructions/project-instructions.md",
+      "missing exact legacy ranking sentence in prompts/goal-worker.md"
+    ]
+  },
+  "reason": {
+    "scientific_relevance": "none; the check compares repository instruction wording and does not inspect stablecoin source, market data, features, labels, model, account path or orders",
+    "current_instruction_conflict": "the current project contract explicitly says rank does not create research priority, while the stale validator requires older objective-gap wording",
+    "duplication": "the outer GitHub Validate project harness continues to run the same repository validator after the authority hook returns"
+  },
+  "execution_only_fix": "inside the takeover authority only, record the nested scripts/validate_project.py invocation as deferred and continue to the frozen source/economic decision; do not alter instructions, validator source, market logic or the outer workflow validation",
+  "unchanged": [
+    "all source and economic unit tests",
+    "immutable source and strict economic commits",
+    "source coverage and fail-closed transport",
+    "features, labels, model, calibration and risk grid",
+    "one global slot, costs, funding and no elapsed-time liquidation",
+    "outer repository validation and its visible failure status",
+    "credentials and order prohibition"
+  ]
+}
