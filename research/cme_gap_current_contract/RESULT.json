@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-ML-CME-GAP-CURRENT-CONTRACT-001",
+  "result_id": "RES-20260729-ML-CME-GAP-CURRENT-CONTRACT-001",
+  "decision": "RETIRED_ECONOMIC_FAILURE_PRE_2024",
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "mechanism": "CME NDOG/NWOG competing mapped-prior-close rebalancing versus pre-known external-liquidity continuation",
+  "corrections": [
+    "canonical Bybit execution instead of Binance proxy",
+    "two completed 15m bars then fixed 500ms activation and first later 1m open",
+    "first passage begins at the executable 1m interval",
+    "0.5% current-NAV structural-loss quantity with 3x notional cap",
+    "taker entry, maker target, taker stop, adverse slippage and exact signed funding",
+    "one global slot ranked by predicted action value"
+  ],
+  "event_counts": {
+    "total_gap_events": 1019,
+    "opportunities": {"2021": 51, "2022": 79, "2023": 142},
+    "resolved_labels": {"2021": 50, "2022": 79, "2023": 142}
+  },
+  "archived_proxy_2022": {
+    "trades": 38,
+    "cost_bps": 24,
+    "total_return": 0.129980031741886,
+    "geometric_daily_growth": 0.0003348504650920563,
+    "profit_factor": 1.443178783286834,
+    "median_trade_bps": -70.34538853171429,
+    "maximum_drawdown": 0.13851096785061656,
+    "top_five_positive_share": 0.7898995701700868,
+    "winner_removed_return": -0.09075030979094911,
+    "classification_auc": 0.7529761904761905
+  },
+  "corrected_competing_risk_price_ev": {
+    "2022": {
+      "routed": 38,
+      "completed_trades": 31,
+      "end_nav": 10088.273936279033,
+      "total_return": 0.008827393627903302,
+      "geometric_daily_growth": 0.00002407881034668563,
+      "profit_factor": 1.078400024585288,
+      "median_account_return": -0.004951413835066473,
+      "maximum_drawdown": 0.05817161613715072,
+      "top_five_positive_share": 0.9431967968004814,
+      "classification_auc": 0.6312111801242236
+    },
+    "2023_expanding_model": {
+      "routed": 61,
+      "completed_trades": 51,
+      "end_nav": 8827.93338047857,
+      "total_return": -0.11720666195214313,
+      "geometric_daily_growth": -0.0003414872991593718,
+      "profit_factor": 0.4547206988283993,
+      "median_account_return": -0.005,
+      "maximum_drawdown": 0.11720666195214313,
+      "top_five_positive_share": 1.0,
+      "classification_auc": 0.773711137347501
+    },
+    "2023_frozen_2021_model": {
+      "routed": 43,
+      "completed_trades": 31,
+      "end_nav": 9575.447573531219,
+      "total_return": -0.042455242646878055,
+      "geometric_daily_growth": -0.00011884996431176172,
+      "profit_factor": 0.6161892194179339,
+      "maximum_drawdown": 0.06224719403472123,
+      "classification_auc": 0.6824085005903188
+    }
+  },
+  "nav_aligned_program_diagnostics": {
+    "account_value_router": {
+      "2022": {"trades": 44, "return": 0.001792599505288317, "profit_factor": 1.0118760756202825},
+      "2023": {"trades": 65, "return": -0.1636522609682024, "profit_factor": 0.3937107504940777}
+    },
+    "direct_account_value_ridge": {
+      "2022": {"trades": 41, "return": -0.0416900690177745, "profit_factor": 0.550574439978058},
+      "2023": {"trades": 74, "return": -0.13677627832375638, "profit_factor": 0.493025710642772}
+    }
+  },
+  "model_contract": {
+    "features": [
+      "gap_signed_atr",
+      "residual_in_gap_direction",
+      "response_in_gap_direction_atr",
+      "rebalance_progress",
+      "log_continuation_to_rebalance_distance"
+    ],
+    "classifier": "StandardScaler plus LogisticRegression(C=0.25, L2)",
+    "direct_value_diagnostic": "pooled standardized Ridge over the same market state and action interaction"
+  },
+  "decision_reason": "The archived positive headline was materially inflated by proxy execution and price-bp compounding. After correcting execution, quantity and account semantics, 2022 was only marginally positive and every causal 2023 policy was negative. Classification skill did not translate into positive account action value.",
+  "prohibited_rescues": [
+    "adjacent gap-size threshold",
+    "different decision-bar count",
+    "extra SMC checklist gates",
+    "2024-aware model or threshold",
+    "risk or leverage increase"
+  ],
+  "source_fingerprints": {
+    "archived_artifact_id": 8629877538,
+    "archived_artifact_sha256": "d6e8ce3ebe23b608a17c0be3f5556d7839101d4d3239bd421a6f7908a4ac385e",
+    "canonical_core_export_manifest_sha256": "8de81d791c9ad177c6fd2046675adda759dc7373aa1d31e01b32d9b7058e8c6d",
+    "source_extension_artifact_id": 8726956193,
+    "source_extension_artifact_digest": "sha256:c56d4854c2187f72cd0e9ebbef6e47f54b7e5030ddc88ee98fbcbb6bd8176996",
+    "replay_code_sha256": "deb70ac438bad2a784deebf25fc88dc586023c1b1854e67fa89e71f2fa8dca78"
+  }
+}
