@@ -1,0 +1,222 @@
+name: Parallel signed Uniswap history and profit-first decision
+
+on:
+  pull_request:
+    branches: [agent/r31-ml-uniswap-signed-reopen-001]
+    paths:
+      - '.github/workflows/ml-uniswap-parallel-r31.yml'
+      - 'research/ml_uniswap_signed_parallel_r31/**'
+      - 'research/triggers/uniswap_signed_parallel_r31/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-uniswap-parallel-r31-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  ECONOMIC_COMMIT: 'f0c5e9b4afffc878524cbcf307c2162c6e7b4215'
+  SOURCE_PASS_RUN_ID: '30479496595'
+  SOURCE_PASS_ARTIFACT: 'ml-uniswap-signed-salvage-r31-30479496595'
+  PYTHONHASHSEED: '0'
+  PYTHONUNBUFFERED: '1'
+  PYTHONFAULTHANDLER: '1'
+  OMP_NUM_THREADS: '2'
+  OPENBLAS_NUM_THREADS: '2'
+  MKL_NUM_THREADS: '2'
+
+jobs:
+  pools:
+    name: pool-${{ matrix.pool }}
+    strategy:
+      fail-fast: false
+      matrix:
+        pool:
+          - WETH_USDC_500
+          - WETH_USDC_3000
+          - WETH_USDT_500
+          - WETH_USDT_3000
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-uniswap-parallel-transport-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Materialize and patch frozen economic engine
+        run: |
+          set -euo pipefail
+          git fetch origin "$ECONOMIC_COMMIT" --depth=1
+          git archive "$ECONOMIC_COMMIT" research/ml_uniswap_hedge_transfer_economic_20260726 | tar -x
+          root=research/ml_uniswap_hedge_transfer_economic_20260726
+          patch_root=research/ml_uniswap_signed_salvage_r31
+          python "$root/reconstruct.py"
+          python "$patch_root/apply_profit_first_patch.py" \
+            --source "$root/run.py" \
+            --output "$patch_root/run_profit_first.py"
+      - name: Install fixed environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 numpy==2.1.3 pandas==2.2.3 scipy==1.15.1 \
+            scikit-learn==1.6.1 pyarrow==18.1.0
+      - name: Validate pool transport helper
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            research/ml_uniswap_signed_salvage_r31/run_profit_first.py \
+            research/ml_uniswap_signed_parallel_r31/fetch_uniswap_pool.py
+          PYTHONPATH=research/ml_uniswap_signed_salvage_r31 \
+            python research/ml_uniswap_signed_salvage_r31/run_profit_first.py self-test
+      - name: Fetch one frozen pool history
+        run: |
+          set -euo pipefail
+          out="research_runs/ml_uniswap_signed_parallel_r31/pools/${{ matrix.pool }}"
+          mkdir -p "$out"
+          PYTHONPATH=research/ml_uniswap_signed_salvage_r31 \
+            python research/ml_uniswap_signed_parallel_r31/fetch_uniswap_pool.py \
+              --pool '${{ matrix.pool }}' \
+              --output "$out" 2>&1 | tee "$out/RUN.log"
+          python -m json.tool "$out/POOL_MANIFEST.json" >/dev/null
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31-uniswap-pool-${{ matrix.pool }}-${{ github.run_id }}
+          path: research_runs/ml_uniswap_signed_parallel_r31/pools/${{ matrix.pool }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  decide:
+    name: merge-and-decide
+    needs: pools
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-uniswap-parallel-transport-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Materialize and patch frozen economic engine
+        run: |
+          set -euo pipefail
+          git fetch origin "$ECONOMIC_COMMIT" --depth=1
+          git archive "$ECONOMIC_COMMIT" research/ml_uniswap_hedge_transfer_economic_20260726 | tar -x
+          root=research/ml_uniswap_hedge_transfer_economic_20260726
+          patch_root=research/ml_uniswap_signed_salvage_r31
+          python "$root/reconstruct.py"
+          python "$patch_root/apply_profit_first_patch.py" \
+            --source "$root/run.py" \
+            --output "$patch_root/run_profit_first.py"
+      - name: Install fixed environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            requests==2.32.4 pytest==8.3.5 numpy==2.1.3 pandas==2.2.3 \
+            scipy==1.15.1 scikit-learn==1.6.1 pyarrow==18.1.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r31-uniswap-pool-*-${{ github.run_id }}
+          path: research_runs/ml_uniswap_signed_parallel_r31/pool_artifacts
+      - name: Validate and merge four pool artifacts
+        run: |
+          set -euo pipefail
+          patch_root=research/ml_uniswap_signed_salvage_r31
+          parallel_root=research/ml_uniswap_signed_parallel_r31
+          out=research_runs/ml_uniswap_signed_parallel_r31
+          python -m py_compile "$parallel_root/merge_uniswap_pools.py"
+          PYTHONPATH="$patch_root" python "$parallel_root/merge_uniswap_pools.py" \
+            --pools-root "$out/pool_artifacts" \
+            --output-cache "$out/cache/uniswap"
+          python -m json.tool "$out/cache/uniswap/UNISWAP_HISTORY_MANIFEST.json" >/dev/null
+      - name: Restore immutable source PASS
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_uniswap_signed_parallel_r31
+          mkdir -p "$out/source_pass_artifact" "$out/source"
+          gh run download "$SOURCE_PASS_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$SOURCE_PASS_ARTIFACT" \
+            --dir "$out/source_pass_artifact"
+          cp "$out/source_pass_artifact/source/PROBE_RESULT.json" "$out/source/PROBE_RESULT.json"
+          python - <<'PY'
+          import json
+          p='research_runs/ml_uniswap_signed_parallel_r31/source/PROBE_RESULT.json'
+          r=json.load(open(p))
+          assert r['source_gate_pass'] is True
+          assert r['scientific_decision']=='OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
+          assert r['totals']['decoded_logs']==5384
+          assert r['totals']['decode_error_count']==0
+          assert all(r['source_gate_checks'].values())
+          PY
+      - name: Validate corrected engine
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_economic_20260726
+          patch_root=research/ml_uniswap_signed_salvage_r31
+          PYTHONPATH="$root:$patch_root" python -m pytest -q \
+            "$patch_root/test_apply_profit_first_patch.py"
+          PYTHONPATH="$patch_root" python "$patch_root/run_profit_first.py" self-test
+      - name: Run corrected profit-first account decision
+        shell: bash
+        run: |
+          set -u
+          root=research/ml_uniswap_signed_salvage_r31
+          out=research_runs/ml_uniswap_signed_parallel_r31
+          mkdir -p "$out/profit_first" "$out/cache/market"
+          set +e
+          PYTHONPATH="$root" python "$root/run_profit_first.py" run \
+            --parent-probe "$out/source/PROBE_RESULT.json" \
+            --cache "$out/cache" \
+            --output "$out/profit_first" 2>&1 | tee "$out/profit_first/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/profit_first/RUN_EXIT_CODE.txt"
+          test -f "$out/profit_first/RESULT.json"
+          python -m json.tool "$out/profit_first/RESULT.json" >/dev/null
+          if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
+      - name: Freeze decision hashes
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_uniswap_signed_parallel_r31
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research_runs/ml_uniswap_signed_parallel_r31')
+          source=root/'source/PROBE_RESULT.json'
+          result=root/'profit_first/RESULT.json'
+          payload={
+            'schema_version':1,
+            'claim_id':'CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001',
+            'parallel_transport':True,
+            'source_pass':json.loads(source.read_text()) if source.exists() else None,
+            'profit_first':json.loads(result.read_text()) if result.exists() else None,
+            'orders_submitted':False,
+            'official_2024h1_opened':False,
+          }
+          (root/'DECISION.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt')
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(
+            f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in files
+          ))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r31-uniswap-parallel-decision-${{ github.run_id }}
+          path: research_runs/ml_uniswap_signed_parallel_r31
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
