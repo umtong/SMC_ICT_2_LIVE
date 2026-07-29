@@ -19,6 +19,20 @@ def patch(source: Path, output: Path) -> None:
 
     text = replace_once(
         text,
+        '''    if stable_raw == 0 or weth_raw == 0 or (stable_raw > 0) == (weth_raw > 0):\n        raise ValueError("inconsistent stable/WETH Swap signs")\n''',
+        '''    # A valid directional Uniswap V3 inventory transfer has opposite-signed\n    # pool deltas. Rare dust swaps can round one leg to zero; they carry no\n    # bilateral stable/WETH inventory information and are excluded explicitly.\n    # Non-zero same-sign deltas remain a hard source error with full identity.\n    if stable_raw == 0 or weth_raw == 0:\n        raise ValueError("NON_ECONOMIC_ZERO_LEG_SWAP")\n    if (stable_raw > 0) == (weth_raw > 0):\n        raise ValueError(\n            "INVALID_SAME_SIGN_SWAP "\n            f"pool={pool_name} block={raw.get('blockNumber')} "\n            f"tx={raw.get('transactionHash')} log={raw.get('logIndex')} "\n            f"stable_raw={stable_raw} weth_raw={weth_raw}"\n        )\n''',
+        "signed swap validity",
+    )
+
+    text = replace_once(
+        text,
+        '''                try:\n                    event = decode_swap_log(pool_name, raw)\n                except Exception:\n                    invalid += 1\n                    raise\n''',
+        '''                try:\n                    event = decode_swap_log(pool_name, raw)\n                except ValueError as exc:\n                    invalid += 1\n                    if str(exc) == "NON_ECONOMIC_ZERO_LEG_SWAP":\n                        # Zero-leg dust is not a directional inventory event.\n                        # Keep the count in the immutable source manifest and\n                        # continue without manufacturing a trade direction.\n                        continue\n                    raise\n''',
+        "zero-leg source handling",
+    )
+
+    text = replace_once(
+        text,
         '''    boundary_index = min(max(start, stop_index - 1), len(market) - 1)\n    adverse = lower if side > 0 else upper\n    return boundary_index, adverse, "PARTITION_BOUNDARY_STRUCTURAL_STOP"\n''',
         '''    # The evaluation boundary is not a strategy exit. Mark the still-open\n    # position at the last causally observed close and retain a distinct outcome\n    # so completed-trade diagnostics never count the mark as a closed trade.\n    boundary_index = min(max(start, stop_index - 1), len(market) - 1)\n    return boundary_index, float(market.close.iloc[boundary_index]), "PARTITION_BOUNDARY_MARK"\n''',
         "boundary NAV mark",
