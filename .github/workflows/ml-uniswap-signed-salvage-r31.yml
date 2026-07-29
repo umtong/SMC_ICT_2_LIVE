@@ -1,9 +1,11 @@
 name: Salvage signed Uniswap source and run profit-first account
 
 on:
-  push:
-    branches: [agent/r31-ml-uniswap-signed-reopen-001]
+  pull_request:
+    branches: [main]
     paths:
+      - '.github/workflows/ml-uniswap-signed-salvage-r31.yml'
+      - 'research/ml_uniswap_signed_salvage_r31/**'
       - 'research/triggers/uniswap_signed_salvage_r31/**'
   workflow_dispatch:
 
