@@ -21,8 +21,11 @@ CORRECTION_FILE = (
     / "stablecoin_profit_v5_20260727"
     / "EXECUTION_CORRECTION_007_PINNED_SELFTEST_ALIAS_AND_FAILURE_PATH_BEFORE_OUTCOME.json"
 )
-_OLD_SELF_TEST_CALL = "authority.base.decode_log("
-_NEW_SELF_TEST_CALL = "authority.base.auth.decode_log("
+_SELF_TEST_REPLACEMENTS = (
+    ("authority.base.decode_log(", "authority.base.auth.decode_log(", 1),
+    ("authority.base.CONTRACTS", "authority.base.auth.CONTRACTS", 2),
+    ("authority.base.ISSUE_TOPIC", "authority.base.auth.ISSUE_TOPIC", 1),
+)
 _ORIGINAL_RUN = original.v4auth.run
 _PATCHED_PATHS: set[Path] = set()
 
@@ -60,20 +63,22 @@ def _patch_materialized_self_test(command: list[str]) -> None:
         if resolved in _PATCHED_PATHS:
             continue
         text = resolved.read_text(encoding="utf-8")
-        old_count = text.count(_OLD_SELF_TEST_CALL)
-        new_count = text.count(_NEW_SELF_TEST_CALL)
-        if old_count == 1 and new_count == 0:
-            resolved.write_text(
-                text.replace(_OLD_SELF_TEST_CALL, _NEW_SELF_TEST_CALL, 1),
-                encoding="utf-8",
-            )
-        elif old_count == 0 and new_count == 1:
-            pass
-        else:
-            raise RuntimeError(
-                "unexpected pinned-source self-test identity: "
-                f"old={old_count}, new={new_count}, path={resolved}"
-            )
+        counts: dict[str, dict[str, int]] = {}
+        for old, new, expected in _SELF_TEST_REPLACEMENTS:
+            old_count = text.count(old)
+            new_count = text.count(new)
+            counts[old] = {"old": old_count, "new": new_count, "expected": expected}
+            if old_count == expected and new_count == 0:
+                text = text.replace(old, new)
+            elif old_count == 0 and new_count == expected:
+                pass
+            else:
+                raise RuntimeError(
+                    "unexpected pinned-source self-test identity: "
+                    f"old={old!r}, old_count={old_count}, "
+                    f"new_count={new_count}, expected={expected}, path={resolved}"
+                )
+        resolved.write_text(text, encoding="utf-8")
         _PATCHED_PATHS.add(resolved)
         print(
             "STABLECOIN_V5_TAKEOVER_SELFTEST_COMPATIBILITY_APPLIED",
@@ -81,6 +86,7 @@ def _patch_materialized_self_test(command: list[str]) -> None:
                 {
                     "path": str(resolved),
                     "correction_id": CORRECTION_ID,
+                    "replacement_counts": counts,
                     "scientific_source_execution_changed": False,
                 },
                 sort_keys=True,
