@@ -1,0 +1,147 @@
+name: Frozen signed Uniswap source and economic decision
+
+on:
+  push:
+    branches: [agent/r31-ml-uniswap-signed-reopen-001]
+    paths:
+      - '.github/workflows/ml-uniswap-signed-reopen-r31.yml'
+      - 'research/triggers/uniswap_signed_reopen_r31/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ml-uniswap-signed-reopen-r31-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    runs-on: macos-14
+    timeout-minutes: 360
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      ECONOMIC_COMMIT: f0c5e9b4afffc878524cbcf307c2162c6e7b4215
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-ml-uniswap-signed-reopen-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests==2.32.4 pytest==8.3.5
+      - name: Validate unchanged signed-log source gate
+        run: |
+          set -euo pipefail
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_signed_reopen_r31/source
+          mkdir -p "$out"
+          python -m py_compile \
+            "$root/probe_uniswap_swaps.py" \
+            "$root/probe_uniswap_swaps_bounded.py" \
+            "$root/run_source_gate_with_blockscout.py" \
+            "$root/run_source_gate_with_batch_timestamps.py" \
+            "$root/test_probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps_bounded.py"
+          PYTHONPATH="$root" python -m pytest -q \
+            "$root/test_probe_uniswap_swaps.py" \
+            "$root/test_probe_uniswap_swaps_bounded.py" | tee "$out/PYTEST.log"
+          PYTHONPATH="$root" python -c "import run_source_gate_with_batch_timestamps as x; x.self_test(); print('batch timestamp self-test PASS')" | tee "$out/SELF_TEST.log"
+      - id: source
+        name: Run outcome-sealed canonical signed Swap source gate
+        shell: bash
+        run: |
+          set -u
+          root=research/ml_uniswap_hedge_transfer_20260726
+          out=research_runs/ml_uniswap_signed_reopen_r31/source
+          set +e
+          PYTHONPATH="$root" python "$root/run_source_gate_with_batch_timestamps.py" \
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          test -f "$out/PROBE_RESULT.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research_runs/ml_uniswap_signed_reopen_r31/source/PROBE_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['claim_id']=='CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001'
+          assert r['forbidden_outcome_fields']==['future_return','label','action','trade','pnl','model_metric','official_2024_2026']
+          assert r['scientific_decision']==('OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE' if r['source_gate_pass'] else 'CLOSE_SOURCE_ROUTE_BEFORE_OUTCOMES')
+          assert r.get('market_outcome_opened',False) is False
+          assert r.get('model_fit',False) is False
+          assert r.get('trade_or_pnl_opened',False) is False
+          assert r.get('official_2024_2026_opened',False) is False
+          print(json.dumps({'source_gate_pass':r['source_gate_pass'],'decision':r['scientific_decision'],'totals':r.get('totals',{})},sort_keys=True))
+          PY
+          authorized=$(python -c "import json; print(str(bool(json.load(open('$out/PROBE_RESULT.json'))['source_gate_pass'])).lower())")
+          echo "authorized=$authorized" >> "$GITHUB_OUTPUT"
+          if [[ "$rc" != 0 && "$authorized" == true ]]; then exit "$rc"; fi
+      - name: Materialize frozen economic continuation
+        if: steps.source.outputs.authorized == 'true'
+        run: |
+          set -euo pipefail
+          git fetch origin "$ECONOMIC_COMMIT" --depth=1
+          git archive "$ECONOMIC_COMMIT" research/ml_uniswap_hedge_transfer_economic_20260726 | tar -x
+          root=research/ml_uniswap_hedge_transfer_economic_20260726
+          python -m pip install --disable-pip-version-check \
+            numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1 pyarrow==18.1.0
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/run.py" "$root/test_run.py" "$root/reconstruct.py"
+          PYTHONPATH="$root" python -m pytest -q "$root/test_run.py"
+          PYTHONPATH="$root" python "$root/run.py" self-test
+      - name: Run frozen pre-2024 HGBT and account decision
+        if: steps.source.outputs.authorized == 'true'
+        shell: bash
+        run: |
+          set -u
+          root=research/ml_uniswap_hedge_transfer_economic_20260726
+          source=research_runs/ml_uniswap_signed_reopen_r31/source/PROBE_RESULT.json
+          out=research_runs/ml_uniswap_signed_reopen_r31/economic
+          mkdir -p "$out" research_runs/ml_uniswap_signed_reopen_r31/cache
+          set +e
+          PYTHONPATH="$root" python "$root/run.py" run \
+            --parent-probe "$source" \
+            --cache research_runs/ml_uniswap_signed_reopen_r31/cache \
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "$rc" > "$out/RUN_EXIT_CODE.txt"
+          test -f "$out/RESULT.json"
+          python -m json.tool "$out/RESULT.json" >/dev/null
+          if [[ "$rc" != 0 && "$rc" != 2 ]]; then exit "$rc"; fi
+      - name: Write compact decision pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          out=research_runs/ml_uniswap_signed_reopen_r31
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research_runs/ml_uniswap_signed_reopen_r31')
+          source=root/'source/PROBE_RESULT.json'
+          economic=root/'economic/RESULT.json'
+          payload={'schema_version':1,'claim_id':'CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001','source_result':json.loads(source.read_text()) if source.exists() else None,'economic_result':json.loads(economic.read_text()) if economic.exists() else None,'orders_submitted':False,'official_2024h1_opened':False}
+          (root/'DECISION_POINTER.json').write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='OUTPUT_SHA256SUMS.txt')
+          (root/'OUTPUT_SHA256SUMS.txt').write_text(''.join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.as_posix()}\n" for p in files))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ml-uniswap-signed-reopen-r31-${{ github.run_id }}
+          path: research_runs/ml_uniswap_signed_reopen_r31
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
