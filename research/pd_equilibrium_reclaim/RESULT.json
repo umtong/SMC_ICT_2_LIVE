@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-0445-PD-EQUILIBRIUM-RECLAIM-001",
+  "result_id": "RES-20260730-PD-EQUILIBRIUM-RECLAIM-001",
+  "status": "RETIRED_STAGE1_EQUILIBRIUM_RECLAIM_NEGATIVE_AND_NON_INCREMENTAL",
+  "official_2024_2026_opened": false,
+  "stage2_authorized": false,
+  "ranking_change": false,
+  "orders_submitted": false,
+  "counts": {
+    "days_considered": 2188,
+    "one_sided_raids": 1695,
+    "invalid_both_sides_same_minute": 2,
+    "direct_decisions": 1530,
+    "equilibrium_decisions": 574,
+    "resolved": {"DIRECT_RECLAIM": 1496, "EQUILIBRIUM_RECLAIM": 570},
+    "unresolved_or_gap": {"DIRECT_RECLAIM": 5, "EQUILIBRIUM_RECLAIM": 2}
+  },
+  "overall_action": {
+    "DIRECT_RECLAIM": {
+      "events": 1496,
+      "target_rate": 0.20521390374331552,
+      "mean_gross_bps": 10.235129372281083,
+      "median_gross_bps": -45.90711646162607,
+      "mean_12bp_bps": -1.6284937483527537,
+      "mean_18bp_bps": -7.628493748352754,
+      "mean_24bp_bps": -13.628493748352752,
+      "pf_24bp": 0.8466593378917591,
+      "median_stop_distance_bps": 64.95604712548206,
+      "median_target_distance_bps": 422.82155561503225,
+      "median_structural_rr": 6.480021117613042,
+      "median_decision_delay_minutes": 6.0
+    },
+    "EQUILIBRIUM_RECLAIM": {
+      "events": 570,
+      "target_rate": 0.6508771929824562,
+      "mean_gross_bps": -11.992671476026766,
+      "median_gross_bps": 95.0162340518708,
+      "mean_12bp_bps": -23.957064577257985,
+      "mean_18bp_bps": -29.957064577257985,
+      "mean_24bp_bps": -35.95706457725798,
+      "pf_24bp": 0.7351249302128742,
+      "median_stop_distance_bps": 299.6204242602062,
+      "median_target_distance_bps": 168.35446750496602,
+      "median_structural_rr": 0.587038149139096,
+      "median_decision_delay_minutes": 478.0
+    }
+  },
+  "year_24bp_mean_bps": {
+    "DIRECT_RECLAIM": {"2021": -16.17160426726574, "2022": -24.052325630278837, "2023": 0.5579338088236859},
+    "EQUILIBRIUM_RECLAIM": {"2021": -10.497249639463666, "2022": -72.2667779517842, "2023": -19.16314352309236}
+  },
+  "paired_increment_24bp": {
+    "pairs": 562,
+    "mean_direct_bps": 71.77517986018207,
+    "mean_equilibrium_bps": -36.80298249262704,
+    "mean_increment_bps": -108.57816235280911,
+    "median_increment_bps": -97.16401636613739,
+    "paired_t_pvalue": 5.850534891654002e-23,
+    "wilcoxon_pvalue": 1.4872348625776562e-22,
+    "bootstrap_95ci_mean_increment_bps": [-128.65798372716812, -87.02202561378395],
+    "same_decision_fraction": 0.008896797153024912,
+    "equilibrium_later_median_minutes": 405.0
+  },
+  "strict_acceptance_audit": {
+    "semantic_rule": "after direct reclaim, any later completed 5m close back outside the swept prior-day boundary invalidates the equilibrium setup",
+    "counts": {"direct_source_events": 1496, "failed_reacceptance": 1154, "strict_decisions": 235, "resolved": 234, "target_consumed": 3, "unresolved_or_gap": 0},
+    "overall_24bp": {"events": 234, "mean_bps": -34.993713125204316, "median_bps": 129.6236962863177, "pf": 0.7253753104351719, "target_rate": 0.6794871794871795},
+    "year_24bp_mean_bps": {"2021": 22.395884437423977, "2022": -70.25519782698811, "2023": -40.763596238756876},
+    "same_event_mean_increment_vs_direct_24bp": -175.81688974045858
+  },
+  "diagnostic_accounts_24bp": {
+    "DIRECT_RECLAIM": {"trades": 843, "final_nav": 4018.7390298247546, "geometric_daily_growth": -0.0008321842794043466, "profit_factor": 0.7490739367198073, "max_drawdown_realized_nav": 0.6104070554953458},
+    "EQUILIBRIUM_RECLAIM": {"trades": 346, "final_nav": 8835.092614106043, "geometric_daily_growth": -0.00011309675507242889, "profit_factor": 0.7980037133629059, "max_drawdown_realized_nav": 0.12495607899120542}
+  },
+  "validation": {
+    "focused_tests": 7,
+    "independent_full_rerun_byte_identical": true,
+    "event_ledger_sha256": "fdd4ad2c60280ccf38e710372d5abc082d0366299a298b56e5d04af1debeabb5"
+  }
+}
