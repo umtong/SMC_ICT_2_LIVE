@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-FUNDING-BALANCE-TRANSFER-001",
+  "result_id": "RES-20260730-ML-FUNDING-BALANCE-TRANSFER-001",
+  "decoded_tgz_bytes": 24830,
+  "decoded_tgz_sha256": "38cd685b80c21ac8027a4ae4408d8e2c80c4f4d76319f9357e8ef99919fe19f9",
+  "combined_base64_bytes": 33108,
+  "combined_base64_sha256": "f775866ba29b994145679c5e41a4a2fb02de37d497279324462416d6ab7fbad6",
+  "parts": [
+    {"path":"SOURCE_EVIDENCE.tgz.b64.part00","bytes":7000,"sha256":"963282e541eeae0450312facba6fe23a5a8cd2da07ef26ee53fb1b0d0b5bbb2a"},
+    {"path":"SOURCE_EVIDENCE.tgz.b64.part01","bytes":7000,"sha256":"5a70dda794a03a375cf472fd665b3ab62a09dfb3113e03ad4cb5fa90e5f01069"},
+    {"path":"SOURCE_EVIDENCE.tgz.b64.part02","bytes":7000,"sha256":"4a2e0ae3a371e22bde2d535521458dd9ce000865dc0e7de710b614119db2d1f3"},
+    {"path":"SOURCE_EVIDENCE.tgz.b64.part03","bytes":7000,"sha256":"fe2e6523905c0317f6312fe62c74aa256e25239594c88bb14ebcb3bc443abab2"},
+    {"path":"SOURCE_EVIDENCE.tgz.b64.part04","bytes":5108,"sha256":"75bed8dfc42e21b949453437d3732fad072d3e481b1a5f98cb798395155a4c0e"}
+  ],
+  "reconstruct": "cat SOURCE_EVIDENCE.tgz.b64.part* | base64 -d > SOURCE_EVIDENCE.tgz && tar -xzf SOURCE_EVIDENCE.tgz",
+  "tests": "4 passed locally",
+  "orders_submitted": false
+}
