@@ -11,17 +11,39 @@ import run_stablecoin_profit_v5_single_pass_authority as base
 
 CLAIM_ID = base.CLAIM_ID
 RESULT_ID = base.RESULT_ID
-CORRECTION_ID = "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-COMPLETE-SOURCE-SELFTEST-NAMESPACE-002"
+CORRECTION_ID = "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-STRICT-FIXTURE-ALIGNMENT-003"
 CORRECTION_PATH = (
     Path(__file__).resolve().parents[1]
     / "research"
     / "execution"
     / "stablecoin_profit_v5_20260727"
-    / "EXECUTION_CORRECTION_008_COMPLETE_SOURCE_SELFTEST_NAMESPACE_BEFORE_OUTCOME.json"
+    / "EXECUTION_CORRECTION_009_STRICT_FIXTURE_ALIGNMENT_BEFORE_OUTCOME.json"
 )
-_OLD_SELF_TEST = "authority.base."
-_NEW_SELF_TEST = "authority.base.auth."
-_EXPECTED_SELF_TEST_REFERENCES = 4
+_SOURCE_OLD = "authority.base."
+_SOURCE_NEW = "authority.base.auth."
+_EXPECTED_SOURCE_REFERENCES = 4
+_TEST_OLD = '    assert int(rows.iloc[0]["completed_feature_index"]) == entry_index - 1\n'
+_TEST_NEW = '''    decision_ms = int(events.iloc[0]["available_timestamp_12"]) * 1_000
+    expected_completed = int(
+        np.searchsorted(
+            base_frame["open_time_ms"].to_numpy(np.int64) + 60_000,
+            decision_ms,
+            side="right",
+        )
+        - 1
+    )
+    assert int(rows.iloc[0]["completed_feature_index"]) == expected_completed
+'''
+_GAP_OLD = '''    gap_trade = strict_trade_from_row(
+        changed_row,
+        0.99,
+        24.0,
+'''
+_GAP_NEW = '''    gap_trade = strict_trade_from_row(
+        changed_row,
+        1.0,
+        24.0,
+'''
 
 
 def _load_correction() -> dict[str, Any]:
@@ -32,7 +54,21 @@ def _load_correction() -> dict[str, Any]:
         raise AssertionError("stablecoin execution correction was not outcome-sealed")
     if payload.get("scientific_contract_changed") is not False:
         raise AssertionError("scientific contract may not change in execution repair")
+    if payload.get("runtime_engine_changed") is not False:
+        raise AssertionError("runtime engine may not change in fixture repair")
     return payload
+
+
+def _replace_exact(path: Path, old: str, new: str, expected: int = 1) -> None:
+    text = path.read_text(encoding="utf-8")
+    observed = text.count(old)
+    if observed != expected:
+        raise RuntimeError(
+            f"expected {expected} frozen occurrence(s) in {path}, observed {observed}"
+        )
+    if new in text:
+        raise RuntimeError(f"replacement already present before overlay in {path}")
+    path.write_text(text.replace(old, new, expected), encoding="utf-8")
 
 
 def repair_materialized_source(repository: Path) -> Path:
@@ -44,24 +80,37 @@ def repair_materialized_source(repository: Path) -> Path:
         / "ml_stablecoin_issuance_20260726"
         / "run_pinned_snapshot_source.py"
     )
-    text = path.read_text(encoding="utf-8")
-    observed = text.count(_OLD_SELF_TEST)
-    if observed != _EXPECTED_SELF_TEST_REFERENCES:
-        raise RuntimeError(
-            "expected exactly four frozen self-test namespace references, "
-            f"observed {observed}"
-        )
-    if _NEW_SELF_TEST in text:
-        raise RuntimeError("repaired self-test namespace already present before overlay")
-    repaired = text.replace(_OLD_SELF_TEST, _NEW_SELF_TEST)
-    if repaired.count(_NEW_SELF_TEST) != _EXPECTED_SELF_TEST_REFERENCES:
-        raise RuntimeError("self-test namespace repair count changed unexpectedly")
-    path.write_text(repaired, encoding="utf-8")
+    _replace_exact(
+        path,
+        _SOURCE_OLD,
+        _SOURCE_NEW,
+        expected=_EXPECTED_SOURCE_REFERENCES,
+    )
     return path
 
 
+def repair_materialized_strict_fixtures(repository: Path) -> tuple[Path, Path]:
+    """Align two stale pre-network fixtures with the already-frozen runtime rules."""
+    _load_correction()
+    causal_test = (
+        repository
+        / "research"
+        / "ml_stablecoin_issuance_economic_20260726"
+        / "test_run_causal.py"
+    )
+    strict_guard = (
+        repository
+        / "sourcefix"
+        / "ml_stablecoin_causal_guard_20260726"
+        / "strict_guard.py"
+    )
+    _replace_exact(causal_test, _TEST_OLD, _TEST_NEW)
+    _replace_exact(strict_guard, _GAP_OLD, _GAP_NEW)
+    return causal_test, strict_guard
+
+
 def execute(work_dir: Path, publish_dir: Path) -> int:
-    """Run the unchanged authority with a pre-outcome execution-only overlay."""
+    """Run the unchanged authority with pre-outcome execution/fixture overlays."""
     _load_correction()
     original_materialize: Callable[..., Any] = base.v4auth.materialize
 
@@ -69,16 +118,21 @@ def execute(work_dir: Path, publish_dir: Path) -> int:
         sha: str, paths: list[str], repository: Path
     ) -> None:
         original_materialize(sha, paths, repository)
+        repaired_paths: list[str] = []
         if sha == base.v4auth.SOURCE_SHA:
-            repaired = repair_materialized_source(repository)
+            repaired_paths.append(str(repair_materialized_source(repository)))
+        if sha == base.v4auth.STRICT_SHA:
+            repaired_paths.extend(
+                str(path) for path in repair_materialized_strict_fixtures(repository)
+            )
+        if repaired_paths:
             print(
                 "STABLECOIN_V5_EXECUTION_REPAIR",
                 json.dumps(
                     {
                         "correction_id": CORRECTION_ID,
-                        "path": str(repaired),
-                        "old_reference_count": _EXPECTED_SELF_TEST_REFERENCES,
-                        "new_reference_count": _EXPECTED_SELF_TEST_REFERENCES,
+                        "paths": repaired_paths,
+                        "runtime_engine_changed": False,
                         "scientific_contract_changed": False,
                     },
                     sort_keys=True,
