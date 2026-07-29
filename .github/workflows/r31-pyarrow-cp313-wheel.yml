@@ -1,0 +1,43 @@
+name: Build isolated CPython 3.13 Arrow wheel artifact
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/r31-pyarrow-cp313-wheel.yml'
+      - 'research/triggers/r31_pyarrow_wheel/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r31-pyarrow-cp313-wheel-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-ml-uniswap-signed-reopen-001
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download fixed binary wheel
+        run: |
+          set -euo pipefail
+          mkdir -p wheelhouse
+          python -m pip download --disable-pip-version-check \
+            --only-binary=:all: --no-deps pyarrow==19.0.1 -d wheelhouse
+          test "$(find wheelhouse -maxdepth 1 -name 'pyarrow-19.0.1-cp313-cp313-manylinux_2_28_x86_64.whl' | wc -l)" = 1
+          echo '1b93ef2c93e77c442c979b0d596af45e4665d8b96da598db145b0fec014b9136  wheelhouse/pyarrow-19.0.1-cp313-cp313-manylinux_2_28_x86_64.whl' | sha256sum -c -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r31-pyarrow-19.0.1-cp313-manylinux-x86_64
+          path: wheelhouse/pyarrow-19.0.1-cp313-cp313-manylinux_2_28_x86_64.whl
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
