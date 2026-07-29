@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-2006-ML-LEVEL-HAZARD-001",
+  "result_id": "RES-20260729-ML-LEVEL-HAZARD-001",
+  "market": "Bybit USDT linear perpetual",
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "live_orders": false,
+  "mechanism": "survival hazard of completed prior-UTC-day highs and lows under repeated causally separated interactions",
+  "source": {
+    "dataset": "verified canonical Bybit pandas export",
+    "manifest_sha256": "8de81d791c9ad177c6fd2046675adda759dc7373aa1d31e01b32d9b7058e8c6d",
+    "tables": ["bars_1m", "bars_15m", "open_interest_5m", "account_ratio_5m", "funding_events"]
+  },
+  "periods": {
+    "model_fit": "2021-01-01 through 2021-12-31; only outcomes resolved before 2022-01-01",
+    "forward_selection": "2022-01-01 through 2022-12-31; only outcomes resolved before 2023-01-01",
+    "calendar_2023_opened": false,
+    "official_2024_2026_opened": false
+  },
+  "level_contract": {
+    "creation": "high and low of a fully completed UTC day, usable from the next UTC day",
+    "active_days_grid": [3, 5, 7],
+    "touch_separation_bars_grid": [2, 4, 8],
+    "touch_tolerance_scale_grid": [0.1, 0.2],
+    "boundary_scale_grid": [0.5, 0.75, 1.0],
+    "retirement": "completed close at least 1.25 completed-state scales beyond the level",
+    "cluster_deduplication": "one closest same-side level per completed 15-minute interaction, newest level on ties",
+    "scale": "decision close times mean(high/low-1) over the latest 96 completed 15-minute bars, minimum 48"
+  },
+  "model": {
+    "family": "pooled standardized logistic boundary model",
+    "C_grid": [0.1, 1.0, 10.0],
+    "actions": ["breakout", "rejection", "abstention"],
+    "expected_R_threshold_grid": [0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0],
+    "features": "level touch history, prior rejection and penetration, approach compression and returns, completed price/volume/turnover, Bybit OI/account ratio/funding and completed BTC/ETH confirmation"
+  },
+  "execution": {
+    "activation_latency_ms": 500,
+    "entry": "first later observed one-minute open",
+    "same_minute_dual_boundary": "adverse stop first",
+    "exit": "first frozen structural boundary only",
+    "elapsed_time_liquidation": false,
+    "global_pending_open_slot": 1,
+    "primary_round_trip_cost_bps": 18,
+    "replay_round_trip_cost_bps": [12, 18, 24],
+    "funding": "exact signed Bybit settlements between entry and structural exit"
+  },
+  "sizing": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "risk_or_leverage_search_before_base_alpha": false
+  },
+  "survivor_gate": {
+    "minimum_completed_trades": 100,
+    "positive_end_nav_at_18bp": true,
+    "nonnegative_end_nav_at_24bp": true,
+    "positive_exact_winner_removed_end_nav_at_18bp": true,
+    "winner_removal": "delete the top ceil(10%) positive selected event IDs and rerun the full global router"
+  }
+}
