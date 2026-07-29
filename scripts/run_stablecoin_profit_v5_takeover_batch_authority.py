@@ -14,13 +14,20 @@ CORRECTION_ID = (
     "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-"
     "EXACT-AVAILABILITY-BLOCK-BATCH-PREFETCH-010"
 )
+ARBITRATION_CORRECTION_ID = (
+    "CORRECTION-20260730-STABLECOIN-V5-"
+    "ENTRY-TIME-GLOBAL-SLOT-ARBITRATION-011"
+)
+CORRECTION_ROOT = ROOT / "research" / "execution" / "stablecoin_profit_v5_20260727"
 CORRECTION_FILE = (
-    ROOT
-    / "research"
-    / "execution"
-    / "stablecoin_profit_v5_20260727"
+    CORRECTION_ROOT
     / "EXECUTION_CORRECTION_010_EXACT_AVAILABILITY_BLOCK_BATCH_PREFETCH_BEFORE_OUTCOME.json"
 )
+ARBITRATION_CORRECTION_FILE = (
+    CORRECTION_ROOT
+    / "EXECUTION_CORRECTION_011_ENTRY_TIME_GLOBAL_SLOT_ARBITRATION_BEFORE_OUTCOME.json"
+)
+ARBITRATION_TEST = CORRECTION_ROOT / "test_entry_time_arbitration.py"
 
 _OLD_SOURCE_LOOP = '''    events: list[auth.Event] = []
     for row in sorted(unique.values(), key=lambda x: (x["block_number"], x["log_index"])):
@@ -53,13 +60,52 @@ _NEW_SOURCE_LOOP = '''    ordered_rows = sorted(
     events: list[auth.Event] = []
     for row in ordered_rows:
 '''
+_OLD_ROUTE = '''    candidates.sort(key=lambda t: (t.decision_ms, -t.ev_bps, t.symbol, t.event_id))
+    accepted: list[Trade] = []
+    free_ms = -1
+    i = 0
+    while i < len(candidates):
+        t0 = candidates[i].decision_ms
+        group = []
+        while i < len(candidates) and candidates[i].decision_ms == t0:
+            group.append(candidates[i]); i += 1
+        if t0 < free_ms:
+            continue
+        chosen = max(group, key=lambda t: (t.ev_bps, -t.entry_ms, t.symbol))
+        accepted.append(chosen)
+        free_ms = chosen.exit_ms + 1
+    return accepted
+'''
+_NEW_ROUTE = '''    candidates.sort(
+        key=lambda t: (t.entry_ms, t.decision_ms, -t.ev_bps, t.symbol, t.event_id)
+    )
+    accepted: list[Trade] = []
+    free_ms = -1
+    i = 0
+    while i < len(candidates):
+        executable_ms = candidates[i].entry_ms
+        group = []
+        while i < len(candidates) and candidates[i].entry_ms == executable_ms:
+            group.append(candidates[i])
+            i += 1
+        if executable_ms < free_ms:
+            continue
+        chosen = max(
+            group,
+            key=lambda t: (t.ev_bps, t.decision_ms, t.symbol, t.event_id),
+        )
+        accepted.append(chosen)
+        free_ms = chosen.exit_ms + 1
+    return accepted
+'''
 _ORIGINAL_PATCH = prior._patch_materialized_files
+_PRIOR_ORIGINAL_RUN = prior._ORIGINAL_RUN
 _PATCHED: set[Path] = set()
 
 
-def _load_correction() -> dict[str, Any]:
-    value = json.loads(CORRECTION_FILE.read_text(encoding="utf-8"))
-    if value.get("correction_id") != CORRECTION_ID:
+def _load_outcome_sealed_correction(path: Path, expected_id: str) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if value.get("correction_id") != expected_id:
         raise AssertionError(value.get("correction_id"))
     if value.get("timing") != (
         "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL"
@@ -81,6 +127,29 @@ def _load_correction() -> dict[str, Any]:
     return value
 
 
+def _load_corrections() -> None:
+    _load_outcome_sealed_correction(CORRECTION_FILE, CORRECTION_ID)
+    _load_outcome_sealed_correction(
+        ARBITRATION_CORRECTION_FILE, ARBITRATION_CORRECTION_ID
+    )
+
+
+def _replace_exact(path: Path, old: str, new: str) -> tuple[int, int]:
+    text = path.read_text(encoding="utf-8")
+    old_count = text.count(old)
+    new_count = text.count(new)
+    if old_count == 1 and new_count == 0:
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    elif old_count == 0 and new_count == 1:
+        pass
+    else:
+        raise RuntimeError(
+            "unexpected materialized source identity: "
+            f"old={old_count}, new={new_count}, path={path}"
+        )
+    return old_count, new_count
+
+
 def _patch_source_prefetch(command: list[str]) -> None:
     for value in command:
         path = Path(value)
@@ -89,21 +158,9 @@ def _patch_source_prefetch(command: list[str]) -> None:
         resolved = path.resolve()
         if resolved in _PATCHED:
             continue
-        text = resolved.read_text(encoding="utf-8")
-        old_count = text.count(_OLD_SOURCE_LOOP)
-        new_count = text.count(_NEW_SOURCE_LOOP)
-        if old_count == 1 and new_count == 0:
-            resolved.write_text(
-                text.replace(_OLD_SOURCE_LOOP, _NEW_SOURCE_LOOP, 1),
-                encoding="utf-8",
-            )
-        elif old_count == 0 and new_count == 1:
-            pass
-        else:
-            raise RuntimeError(
-                "unexpected source availability loop identity: "
-                f"old={old_count}, new={new_count}, path={resolved}"
-            )
+        old_count, new_count = _replace_exact(
+            resolved, _OLD_SOURCE_LOOP, _NEW_SOURCE_LOOP
+        )
         _PATCHED.add(resolved)
         print(
             "STABLECOIN_V5_EXACT_AVAILABILITY_BATCH_PREFETCH_APPLIED",
@@ -112,7 +169,35 @@ def _patch_source_prefetch(command: list[str]) -> None:
                     "path": str(resolved),
                     "correction_id": CORRECTION_ID,
                     "batch_size": 40,
+                    "old_count": old_count,
+                    "new_count": new_count,
                     "exact_timestamp_semantics_changed": False,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+
+
+def _patch_entry_time_route(command: list[str]) -> None:
+    for value in command:
+        path = Path(value)
+        if path.name != "run.py" or not path.is_file():
+            continue
+        resolved = path.resolve()
+        if resolved in _PATCHED:
+            continue
+        old_count, new_count = _replace_exact(resolved, _OLD_ROUTE, _NEW_ROUTE)
+        _PATCHED.add(resolved)
+        print(
+            "STABLECOIN_V5_ENTRY_TIME_ARBITRATION_APPLIED",
+            json.dumps(
+                {
+                    "path": str(resolved),
+                    "correction_id": ARBITRATION_CORRECTION_ID,
+                    "old_count": old_count,
+                    "new_count": new_count,
+                    "model_or_payoff_changed": False,
                 },
                 sort_keys=True,
             ),
@@ -123,11 +208,31 @@ def _patch_source_prefetch(command: list[str]) -> None:
 def _combined_patch(command: list[str]) -> None:
     _ORIGINAL_PATCH(command)
     _patch_source_prefetch(command)
+    _patch_entry_time_route(command)
+
+
+def _run_with_arbitration_test(
+    command: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    check: bool = True,
+    log: Path | None = None,
+):
+    amended = list(command)
+    is_internal_economic_pytest = (
+        len(amended) >= 3
+        and amended[1:3] == ["-m", "pytest"]
+        and any(Path(value).name == "test_run.py" for value in amended)
+    )
+    if is_internal_economic_pytest and str(ARBITRATION_TEST) not in amended:
+        amended.append(str(ARBITRATION_TEST))
+    return _PRIOR_ORIGINAL_RUN(amended, env=env, check=check, log=log)
 
 
 def execute(work_dir: Path, publish_dir: Path) -> int:
-    _load_correction()
+    _load_corrections()
     prior._patch_materialized_files = _combined_patch
+    prior._ORIGINAL_RUN = _run_with_arbitration_test
     return prior.execute(work_dir, publish_dir)
 
 
@@ -159,6 +264,9 @@ def main() -> int:
                 prior.DEFERRED_VALIDATOR_CORRECTION_ID
             ),
             "takeover_batch_prefetch_correction_id": CORRECTION_ID,
+            "takeover_entry_time_arbitration_correction_id": (
+                ARBITRATION_CORRECTION_ID
+            ),
             "official_2024_2026_opened": False,
             "orders_submitted": False,
         }
