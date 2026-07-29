@@ -1,0 +1,38 @@
+{
+  "claim_id": "CLM-20260730-ML-EXTERNAL-ACCEPTANCE-001",
+  "confirmation": "2023 closed by corrected staged pipeline; preliminary mechanically generated values quarantined",
+  "data": [
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1","manifest_sha256":"e1acb85412dbbb3f9ee02be9a85ed9994b577fbecd974e9a8e4bc9a48b48b967","zip_sha256":"7b542797093e8377df7f2e3c4531d5f0f2d19bbc0e0ad41cf6d69c277b76e3ca"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1","manifest_sha256":"a81b529ea4efe71944b4cbdcaf496e3f2e7920b3a504ef7ee97bbbb79890a1e1","zip_sha256":"273995b5bfb3e04d84130e2f6f3cd80486de49043f68e0c5c554b038184fe42c"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1","manifest_sha256":"030bbe351e198caf5ac8e87ceea8957a8e65439a54fea6bf41c40ac075ee6501","zip_sha256":"b2ff2a066467ae344addf87470fd78b58d15e657bd60cf56c72071d8de2b5295"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1","manifest_sha256":"73abd6f4838428d45b5a02cb0c8e19c5c3b9b22a98855fba9039ad1a105123da","zip_sha256":"681cba118de3161f97ba18b5e1fe75d6bcb461f12e8508c72b12511ec74f271d"}
+  ],
+  "decision": "Retire before 2023 confirmation. Raw actions are negative at 24bp; positive HGBT paths are sparse and become negative under exact winner deletion; no model passes the frozen gate. No adjacent range, dwell, OI, premium, session, cost, target, risk or leverage rescue.",
+  "inventory": {"events":{"2021":397,"2022":394},"action_rows":{"2021":440,"2022":446,"total":886}},
+  "mechanism": "prior-only 96-hour external-range consumption; compare index-supported first-retest continuation, failed-acceptance reversal, and flat using index/mark/premium/OI/account-ratio evidence",
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "programization_corrections": [
+    {"defect":"multi-stream DataFrame joins retained multi-million-row objects and timed out","correction":"aligned canonical arrays and symbol-isolated compact hour state","economic_contract_changed":false},
+    {"defect":"continuation BOS reference defaulted to history index zero when the five-minute trigger extreme was not a confirmed fifteen-minute pivot","correction":"anchor BOS reference at the causal trigger bar","economic_effect":"24 of 287 continuation exits changed; raw economics remained negative"},
+    {"defect":"one five-minute close outside the range was treated as higher-timeframe reacceptance","correction":"completed fifteen-minute reacceptance plus 500ms","economic_effect":"2021/2022 24bp reversal PF remained 0.343/0.802"},
+    {"defect":"preliminary batch mechanically replayed 2023 before the 2022 gate","correction":"staged pipeline exits after 2022 failure","economic_effect":"2023 output quarantined"}
+  ],
+  "ranking_change": false,
+  "raw_24bps": {
+    "2021_continuation":{"rows":136,"mean_r":-0.7562186266031771,"median_r":-1.0,"positive_fraction":0.08823529411764706,"pf":0.1475221976341468},
+    "2021_reversal":{"rows":304,"mean_r":-0.3398563360282013,"median_r":-0.45579736172418595,"positive_fraction":0.03289473684210526,"pf":0.3426468780882621},
+    "2022_continuation":{"rows":151,"mean_r":-0.5396862820924706,"median_r":-1.0,"positive_fraction":0.13245033112582782,"pf":0.36491564223610584},
+    "2022_reversal":{"rows":295,"mean_r":-0.09231668486066053,"median_r":-0.3937361130347406,"positive_fraction":0.07457627118644068,"pf":0.8024965929037486}
+  },
+  "result_id": "RES-20260730-ML-EXTERNAL-ACCEPTANCE-001",
+  "schema_version": 1,
+  "selection": {
+    "gate":{"eligible":[],"selected":null,"rules":["positive at 18bp and 24bp","at least 30 global-slot trades at 24bp","PF above one at 24bp","exact top-10%-winner deletion remains positive"]},
+    "hgbt_clip_24bp":{"return":0.013958450317778981,"trades":15,"pf":1.6242996379656933,"winner_removed_return":-0.022176434385996036,"mae":0.4438028680732995,"constant_mae":0.5270479162965718},
+    "hgbt_probability_24bp":{"return":0.09744989514529911,"trades":9,"pf":4.653131953254172,"winner_removed_return":-0.025971888517042685,"auc":0.5727251296558228,"brier":0.0920543390370132,"constant_brier":0.08725336322869953},
+    "logistic_24bp":{"return":-0.04411214421673393,"trades":199,"pf":0.9186214170596861,"winner_removed_return":-0.45758469850419436}
+  },
+  "status": "RETIRED_PROGRAMIZATION_CORRECTED_ECONOMIC_FAILURE_PRE2023",
+  "target_status": "NOT_MET"
+}
