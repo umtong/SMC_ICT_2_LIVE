@@ -5,7 +5,6 @@ import argparse
 import hashlib
 import io
 import json
-import re
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -13,16 +12,20 @@ from typing import Any
 import pandas as pd
 import requests
 
-RECORD_ID = "17898640"
-DOI = "10.5281/zenodo.17898640"
-TITLE = "A Cross-Chain Event-Driven Data Infrastructure for Aave Protocol Analytics and Applications"
+CLAIMED_RECORD_ID = "17898640"
+CLAIMED_DOI = "10.5281/zenodo.17898640"
+CLAIMED_TITLE = "A Cross-Chain Event-Driven Data Infrastructure for Aave Protocol Analytics and Applications"
+RED_LIQ_RECORD_ID = "21211303"
+RED_LIQ_DOI = "10.5281/zenodo.21211303"
 ZENODO = "https://zenodo.org"
 QUERIES = [
-    ("record_id", f"{ZENODO}/api/records/{RECORD_ID}"),
-    ("doi", f"{ZENODO}/api/records?q=doi:%22{DOI}%22&size=10"),
-    ("exact_title", f"{ZENODO}/api/records?q=metadata.title:%22{TITLE.replace(' ', '%20')}%22&size=10"),
+    ("claimed_record_id", f"{ZENODO}/api/records/{CLAIMED_RECORD_ID}"),
+    ("claimed_doi", f"{ZENODO}/api/records?q=doi:%22{CLAIMED_DOI}%22&size=10"),
+    ("claimed_exact_title", f"{ZENODO}/api/records?q=metadata.title:%22{CLAIMED_TITLE.replace(' ', '%20')}%22&size=10"),
+    ("red_liq_record", f"{ZENODO}/api/records/{RED_LIQ_RECORD_ID}"),
     ("title_words", f"{ZENODO}/api/records?q=Aave%20V3%20LiquidationCall%20cross-chain%20event&size=25"),
-    ("doi_resolver", f"https://doi.org/{DOI}"),
+    ("claimed_doi_resolver", f"https://doi.org/{CLAIMED_DOI}"),
+    ("red_liq_doi_resolver", f"https://doi.org/{RED_LIQ_DOI}"),
 ]
 
 
@@ -78,7 +81,7 @@ def candidate_records(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if fingerprint in seen:
                 continue
             text = f"{title} {doi}".lower()
-            if "aave" in text or DOI.lower() in text or rid == RECORD_ID:
+            if "aave" in text or CLAIMED_DOI.lower() in text or rid in {CLAIMED_RECORD_ID, RED_LIQ_RECORD_ID}:
                 out.append(record)
                 seen.add(fingerprint)
     return out
@@ -99,13 +102,14 @@ def normalize_files(record: dict[str, Any]) -> list[dict[str, Any]]:
         key = str(item.get("key") or item.get("filename") or item.get("name") or "")
         links = item.get("links") if isinstance(item.get("links"), dict) else {}
         url = links.get("content") or links.get("self") or item.get("download") or item.get("url")
-        checksum = item.get("checksum")
-        size = item.get("size") or item.get("filesize")
-        out.append({"key": key, "url": url, "checksum": checksum, "size": size, "raw": item})
+        out.append({"key": key, "url": url, "checksum": item.get("checksum"), "size": item.get("size") or item.get("filesize"), "raw": item})
     return out
 
 
-def matching_file(files: list[dict[str, Any]]) -> dict[str, Any] | None:
+def matching_file(record: dict[str, Any], files: list[dict[str, Any]]) -> dict[str, Any] | None:
+    metadata = record.get("metadata") if isinstance(record.get("metadata"), dict) else {}
+    title = str(metadata.get("title") or "").lower()
+    record_is_ethereum_aave = "ethereum" in title and "aave" in title and "liquidation" in title
     ranked = []
     for item in files:
         key = item["key"].lower()
@@ -114,10 +118,14 @@ def matching_file(files: list[dict[str, Any]]) -> dict[str, Any] | None:
             score += 4
         if "liquidationcall" in key or "liquidation_call" in key:
             score += 5
-        elif "liquidation" in key:
-            score += 3
-        if key.endswith((".csv", ".csv.gz", ".zip", ".parquet")):
+        elif "liquidations" in key or "liquidation" in key:
+            score += 4
+        if record_is_ethereum_aave:
+            score += 4
+        if key.endswith((".csv", ".csv.gz", ".jsonl", ".jsonl.gz", ".zip", ".parquet")):
             score += 1
+        if "utilization" in key or "summary" in key or "schema" in key:
+            score -= 4
         if score:
             ranked.append((score, item))
     ranked.sort(key=lambda x: (-x[0], x[1]["key"]))
@@ -128,10 +136,7 @@ def verify_checksum(raw: bytes, checksum: Any) -> tuple[bool | None, str | None,
     if not checksum:
         return None, None, None
     text = str(checksum)
-    if ":" in text:
-        algorithm, expected = text.split(":", 1)
-    else:
-        algorithm, expected = ("md5" if len(text) == 32 else "sha256"), text
+    algorithm, expected = text.split(":", 1) if ":" in text else (("md5" if len(text) == 32 else "sha256"), text)
     algorithm = algorithm.lower()
     if algorithm not in hashlib.algorithms_available:
         return None, algorithm, expected
@@ -144,19 +149,25 @@ def read_table(raw: bytes, key: str) -> pd.DataFrame:
     if lower.endswith(".zip"):
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             members = [n for n in archive.namelist() if not n.endswith("/")]
-            csv_members = [n for n in members if n.lower().endswith(".csv")]
-            if len(csv_members) != 1:
-                raise ValueError(f"expected one CSV in {key}, found {members}")
-            return pd.read_csv(io.BytesIO(archive.read(csv_members[0])))
+            data_members = [n for n in members if n.lower().endswith((".csv", ".jsonl"))]
+            if len(data_members) != 1:
+                raise ValueError(f"expected one table in {key}, found {members}")
+            inner = data_members[0].lower()
+            payload = archive.read(data_members[0])
+            return pd.read_json(io.BytesIO(payload), lines=True) if inner.endswith(".jsonl") else pd.read_csv(io.BytesIO(payload))
     if lower.endswith(".parquet"):
         return pd.read_parquet(io.BytesIO(raw))
+    if lower.endswith(".jsonl.gz"):
+        return pd.read_json(io.BytesIO(raw), lines=True, compression="gzip")
+    if lower.endswith(".jsonl"):
+        return pd.read_json(io.BytesIO(raw), lines=True)
     if lower.endswith(".csv.gz"):
         return pd.read_csv(io.BytesIO(raw), compression="gzip")
     return pd.read_csv(io.BytesIO(raw))
 
 
 def timestamp_column(frame: pd.DataFrame) -> str | None:
-    priorities = ["timestamp", "block_timestamp", "block_time", "blocktime", "time", "date", "datetime"]
+    priorities = ["timestamp", "block_timestamp", "block_time", "blocktimestamp", "blocktime", "time", "date", "datetime"]
     lowered = {str(c).lower(): str(c) for c in frame.columns}
     for name in priorities:
         if name in lowered:
@@ -186,7 +197,7 @@ def main() -> int:
     raw_dir.mkdir(exist_ok=True)
 
     session = requests.Session()
-    session.headers.update({"User-Agent": "SMC-ICT-Aave-Zenodo-source-gate/1.0"})
+    session.headers.update({"User-Agent": "SMC-ICT-Aave-Zenodo-source-gate/2.0"})
     results = [request(session, name, url) for name, url in QUERIES]
     response_manifest = []
     for result in results:
@@ -197,12 +208,12 @@ def main() -> int:
         response_manifest.append(result)
 
     records = candidate_records([{**r, "body": (args.output / r["path"]).read_bytes()} for r in response_manifest])
-    selected = None
+    records.sort(key=lambda r: (str(r.get("id")) != RED_LIQ_RECORD_ID, str(r.get("id"))))
+    selected = selected_match = None
     selected_files: list[dict[str, Any]] = []
-    selected_match = None
     for record in records:
         files = normalize_files(record)
-        match = matching_file(files)
+        match = matching_file(record, files)
         if match:
             selected, selected_files, selected_match = record, files, match
             break
@@ -211,7 +222,8 @@ def main() -> int:
         "schema_version": 1,
         "claim_id": "CLM-20260730-AAVE-ZENODO-LIQUIDATION-001",
         "result_id": "RES-20260730-AAVE-ZENODO-LIQUIDATION-SOURCE-001",
-        "paper": {"title": TITLE, "arxiv": "2512.11363", "claimed_doi": DOI},
+        "claimed_paper": {"title": CLAIMED_TITLE, "arxiv": "2512.11363", "claimed_doi": CLAIMED_DOI},
+        "replacement_public_record": {"record_id": RED_LIQ_RECORD_ID, "doi": RED_LIQ_DOI},
         "responses": response_manifest,
         "candidate_record_count": len(records),
         "source_status": "FAIL",
@@ -220,12 +232,13 @@ def main() -> int:
     }
 
     if selected is None or selected_match is None:
-        decision["reason"] = "No public Zenodo record exposed a retrievable Ethereum Aave V3 LiquidationCall file under the claimed record ID, DOI, or title searches."
+        decision["reason"] = "No public Zenodo record exposed a retrievable Ethereum Aave V3 liquidation table with pre-2024 timestamps."
     else:
         metadata = selected.get("metadata") if isinstance(selected.get("metadata"), dict) else {}
         decision["selected_record"] = {
             "id": selected.get("id"),
             "title": metadata.get("title"),
+            "publication_date": metadata.get("publication_date"),
             "doi": metadata.get("doi") or selected.get("doi"),
             "file_count": len(selected_files),
             "matching_file": {k: selected_match.get(k) for k in ("key", "url", "checksum", "size")},
@@ -260,28 +273,28 @@ def main() -> int:
                     if tcol is None:
                         raise ValueError("no recognizable timestamp column")
                     ts = parse_timestamp(frame[tcol])
-                    pre2024 = ts < pd.Timestamp("2024-01-01T00:00:00Z")
+                    pre2024 = (ts < pd.Timestamp("2024-01-01T00:00:00Z")).fillna(False)
                     year_counts = ts[pre2024].dt.year.value_counts().sort_index()
                     decision["parsed"] = {
                         "rows": len(frame),
                         "columns": [str(c) for c in frame.columns],
                         "timestamp_column": tcol,
                         "valid_timestamps": int(ts.notna().sum()),
-                        "pre2024_count": int(pre2024.fillna(False).sum()),
+                        "pre2024_count": int(pre2024.sum()),
                         "pre2024_year_counts": {str(int(k)): int(v) for k, v in year_counts.items()},
                         "minimum_timestamp": ts.min().isoformat() if ts.notna().any() else None,
                         "maximum_timestamp": ts.max().isoformat() if ts.notna().any() else None,
                     }
-                    if int(pre2024.fillna(False).sum()) >= 100 and int((ts.dt.year == 2023).fillna(False).sum()) > 0:
+                    if int(pre2024.sum()) >= 100 and int((ts.dt.year == 2023).fillna(False).sum()) > 0:
                         decision["source_status"] = "PASS"
-                        decision["reason"] = "Public hash-verified Ethereum LiquidationCall data has sufficient pre-2024 coverage for a separate causal economic contract."
+                        decision["reason"] = "Public checksum-verified Ethereum Aave V3 liquidation data has sufficient 2023 coverage for a separate causal economic contract."
                     else:
-                        decision["reason"] = "The matching file is valid but has fewer than 100 pre-2024 Ethereum liquidation events or no 2023 coverage."
+                        decision["reason"] = "The valid table has fewer than 100 pre-2024 Ethereum liquidation events or no 2023 coverage."
                 except Exception as exc:
                     decision["reason"] = f"Matching file could not be parsed deterministically: {type(exc).__name__}: {exc}"
 
     (args.output / "SOURCE_DECISION.json").write_text(json.dumps(decision, indent=2, default=str), encoding="utf-8")
-    print(json.dumps({"source_status": decision["source_status"], "reason": decision.get("reason"), "candidate_record_count": len(records)}, indent=2))
+    print(json.dumps({"source_status": decision["source_status"], "reason": decision.get("reason"), "candidate_record_count": len(records), "selected_record": decision.get("selected_record"), "parsed": decision.get("parsed")}, indent=2))
     return 0
 
 
