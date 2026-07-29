@@ -108,6 +108,7 @@ jobs:
           if [[ "$rc" != 0 && "$authorized" == true ]]; then exit "$rc"; fi
       - name: Run original frozen pre-2024 decision for defect comparison
         if: steps.source.outputs.authorized == 'true'
+        continue-on-error: true
         shell: bash
         run: |
           set -u
