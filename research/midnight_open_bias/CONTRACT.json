@@ -1,0 +1,34 @@
+{
+  "claim_id": "CLM-20260730-0410-ICT-MIDNIGHT-OPEN-BIAS-001",
+  "conditional_stage2": "Only if NY_MIDNIGHT has positive non-sparse 18/24bp economics and positive matched increment versus all alternative anchors.",
+  "decision": "Stage 1 failed; stage 2 prohibited.",
+  "development_period": "2021-01-01 through 2023-12-31",
+  "economics": {
+    "cost_bps": [12, 18, 24],
+    "diagnostic_global_slot": {
+      "notional_cap": 3.0,
+      "risk_fraction": 0.005,
+      "simultaneous_arbitration": "highest causal structural reward-to-risk"
+    },
+    "stage1_ml": false,
+    "stage1_risk_search": false
+  },
+  "event": {
+    "anchors": ["NY_MIDNIGHT", "TRUE_DAY_1800", "UTC_MIDNIGHT", "NY_0600"],
+    "calendar": "IANA America/New_York including DST",
+    "decision": "completed 5m candle beginning 08:30 ET and ending 08:35 ET",
+    "direction": "sign of decision close relative to anchor",
+    "entry": "fixed 500ms activation, first strictly later observable 1m open (08:36 ET)",
+    "gap_stop": "adverse observed open",
+    "same_minute": "stop_first",
+    "stop": "1bp beyond selected anchor",
+    "target": "prior completed New-York-day high for long or low for short, still unconsumed from current NY midnight through decision",
+    "time_exit": false
+  },
+  "hypothesis": "At a fixed completed 08:30-08:35 America/New_York decision, direction relative to the New-York midnight open has positive and uniquely better structural delivery economics to still-unconsumed prior-New-York-day high/low than alternative objective daily anchors.",
+  "official_2024_2026_prohibited": true,
+  "result_id": "RES-20260730-ICT-MIDNIGHT-OPEN-BIAS-001",
+  "schema_version": 1,
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "venue": "Bybit USDT linear perpetual"
+}
