@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-20260730-ML-BASIS-DISTORTION-001",
+  "decision": "No 2022 model is positive, PF>1 and winner-resistant at 18/24bp with at least 30 trades. Close before 2023; no z-score, horizon, stop, cost, risk or leverage rescue.",
+  "mechanism": "Bybit native mark/index basis distortion; ML chooses immediate basis normalization, protected-order-flow structural hold, or flat",
+  "models_2022_24bps": {
+    "hgb_clip": {"maximum_drawdown": 0.07246272123185515, "median_return": -0.0033751392385774686, "profit_factor": 0.9841010632213373, "total_return": -0.004345252303493141, "trades": 96, "winner_removed_return": -0.21608719293635836},
+    "hgb_pos": {"maximum_drawdown": 0.1013040813920757, "median_return": -0.005, "profit_factor": 0.7705147757678844, "total_return": -0.05546879567398799, "trades": 71, "winner_removed_return": -0.1850038949248246},
+    "logit_pos": {"maximum_drawdown": 0.07244231911907761, "median_return": -0.000758441185578212, "profit_factor": 0.9558000719102944, "total_return": -0.007271611878621798, "trades": 92, "winner_removed_return": -0.10811867645368578},
+    "ridge_clip": {"maximum_drawdown": 0.04207240451738814, "median_return": -0.0007939607068878468, "profit_factor": 0.3832708902713396, "total_return": -0.039660751370728886, "trades": 36, "winner_removed_return": -0.055160458794876854}
+  },
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "ranking_change": false,
+  "raw_2022_24bps": {
+    "normalize": {"pf": 0.743597025300268, "return": -0.19418710105841108, "trades": 383, "winner_removed_return": -0.38460895755272595},
+    "structural": {"pf": 0.8299364350037163, "return": -0.14408145689749707, "trades": 243, "winner_removed_return": -0.4454647056368063}
+  },
+  "result_id": "RES-20260730-ML-BASIS-DISTORTION-001",
+  "schema_version": 1,
+  "source_bundle_sha256": "35bb623072daddaa089416fec6542bcf5bd74b8a8e598d7fc422ae6f248594f1",
+  "staging": {"decision": "RETIRED_PRE2023_NO_FIXED_GATE_SURVIVOR", "eligible": [], "selection_rows": 760, "selection_year": 2022, "training_rows": 662},
+  "status": "RETIRED_ECONOMIC_FAILURE_PRE2023",
+  "target_status": "NOT_MET",
+  "validation": {"deterministic_result_sha256": "1591d27a52b32718aa052016a7bc286bab6d5be11b4d305d21a0df4c8aaea714", "focused_tests": 4}
+}
