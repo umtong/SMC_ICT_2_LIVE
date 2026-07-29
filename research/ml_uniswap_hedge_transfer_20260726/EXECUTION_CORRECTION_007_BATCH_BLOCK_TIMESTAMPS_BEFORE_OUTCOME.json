@@ -1,0 +1,35 @@
+{
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "correction": [
+    "Pace HTTP requests below the documented unauthenticated per-IP rate.",
+    "Request exact eth_getBlockByNumber timestamps in JSON-RPC batches of at most 40.",
+    "Use single paced requests only for binary-search boundaries or batch-incompatible fallback.",
+    "Retain exact block timestamps and identities; do not approximate or impute event time."
+  ],
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-BATCH-TIMESTAMPS-007",
+  "orders_submitted": false,
+  "recorded_before_market_or_model_outcome": true,
+  "schema_version": 1,
+  "scientific_outcome_used_to_choose_correction": false,
+  "observed_source_evidence": {
+    "artifact_id": 8632776815,
+    "canonical_pools_observed": 4,
+    "completed_dense_windows": 5,
+    "decoded_swap_logs_before_failure": 4894,
+    "failure": "Blockscout unauthenticated eth_getBlockByNumber HTTP 429 during per-unique-block timestamp completion",
+    "label_or_model_opened": false,
+    "market_price_opened": false,
+    "official_2024_2026_opened": false,
+    "trade_or_pnl_opened": false,
+    "workflow_run": 30204103060
+  },
+  "unchanged": [
+    "four canonical Uniswap V3 WETH-USDC and WETH-USDT pools",
+    "six frozen pre-2024 one-hour windows",
+    "Swap ABI and decoding",
+    "source-density gate",
+    "conditional HGBT, features, labels, costs and structural exits",
+    "sequential 2024H1 evaluation contract",
+    "no credentials or orders"
+  ]
+}

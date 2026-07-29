@@ -1,0 +1,17 @@
+name: Frozen signed Uniswap source carrier (superseded)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  superseded:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preserve explicit authority boundary
+        run: |
+          echo 'This full-source carrier is superseded on the claim branch by ml-uniswap-signed-salvage-r31.yml.'
+          echo 'The replacement reuses immutable partial source evidence, repairs transport-only timestamp failures, and runs the unchanged frozen economic engine plus the separately disclosed account correction.'
+          echo 'No market rule, model feature, action, stop, target, risk, leverage, credential or order authority is changed.'

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-SINGLE-LINUX-005",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "recorded_at": "2026-07-26T22:04:20+09:00",
+  "pre_outcome_status": {
+    "source_gate_result_opened": false,
+    "future_return_opened": false,
+    "model_fitted": false,
+    "strategy_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false
+  },
+  "observed_execution_defect": "Linux and Windows copies queued the identical Blockscout-backed source gate under SHA-scoped non-cancelling concurrency. The duplicate operating-system replay did not provide independent source evidence and delayed the source decision.",
+  "correction": [
+    "Retain Ubuntu slim as the single authoritative source-gate runner.",
+    "Remove the duplicate Windows workflow.",
+    "Use pull-request-or-branch-scoped concurrency with superseded executions cancelled.",
+    "Preserve the same canonical factory, token and fee identities, six frozen pre-2024 windows, ABI decoder, timestamps, density gates and outcome seal."
+  ],
+  "unchanged": [
+    "Uniswap V3 WETH-USDC and WETH-USDT pool identities",
+    "Swap topic and signed inventory-transfer interpretation",
+    "120-second information delay",
+    "pre-2024 model chronology and account rule",
+    "sequential 2024H1 evaluation contract",
+    "no credentials or orders"
+  ],
+  "scientific_outcome_used_to_choose_correction": false,
+  "orders_submitted": false
+}

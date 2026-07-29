@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260726-ML-UNISWAP-SLIM-RUNNER-001",
+  "claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "timing": "BEFORE_ANY_SOURCE_GATE_RESULT_OR_MARKET_OUTCOME",
+  "observed_problem": "The source-gate job remained queued on the ARM runner. No endpoint response, pool resolution, Swap count, decode result, price, label, model metric, trade, PnL, official-period access or order result had been opened.",
+  "change": "Run the identical lightweight source-gate workflow on the GitHub-hosted ubuntu-slim runner instead of ubuntu-24.04-arm.",
+  "unchanged": [
+    "canonical factory and token addresses",
+    "factory-resolved pool set and fee tiers",
+    "Swap ABI and event topic",
+    "six frozen pre-2024 probe windows",
+    "all source density and decoding gates",
+    "raw-log and hash preservation",
+    "outcome-sealed prohibition",
+    "conditional ML model, features, chronology and economic gates",
+    "official-period seal",
+    "credential and order prohibition"
+  ],
+  "scientific_outcome_opened_before_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
