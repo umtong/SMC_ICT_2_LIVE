@@ -1,0 +1,145 @@
+{
+  "artifact": {
+    "all_labeled_sha256": "54344fc8d9adc58782b7785e30681651a4eb8f011b7f25a49ed4b93809258a7c",
+    "artifact_digest": "sha256:af1ed5f7afb4c2ef00b5a6922948d007741d89e70bf6ff992bc1ee34548f92f4",
+    "artifact_id": 8712038780,
+    "downloaded_zip_sha256": "af1ed5f7afb4c2ef00b5a6922948d007741d89e70bf6ff992bc1ee34548f92f4",
+    "fills": 6939,
+    "rows": 7848,
+    "workflow_run_id": 30421166628
+  },
+  "audited_pr": 378,
+  "audited_source_sha": "6464b3ccbac2b650f6e8bd0fe4b8dd338c602cc7",
+  "audited_system_id": "ALDS-CSD-DELIVERY-GPT56-V1",
+  "claim_id": "CLM-20260729-2243-ALDS-CSD-AUDIT-001",
+  "decision": "Retire the exact ALDS-CSD implementation. Correct stage separation would admit no stable model/gate. The deterministic semantic contract has negative after-cost expectancy and a collapsing fixed-small-risk one-slot account. Do not rescue it with validation-aware selection, ML thresholds, risk, leverage, or official-period retuning.",
+  "orders_submitted": false,
+  "published_evaluation_diagnostic": {
+    "account_multiple": 1.0183937783127854,
+    "completed_trades": 1,
+    "end_nav": 10183.937783127854,
+    "geometric_daily_growth": 1.9985571382052925e-05,
+    "liquidations": 0,
+    "max_drawdown": 0.0,
+    "max_leverage": 20.0,
+    "risk_rate": 0.01,
+    "start_nav": 10000.0,
+    "top5_profit_share": 1.0
+  },
+  "ranking_change": false,
+  "result_id": "RES-20260729-ALDS-CSD-SEMANTIC-AUDIT-001",
+  "schema_version": 1,
+  "selection_audit": {
+    "development_only_diagnostic": {
+      "development_2022H1_r": 6.8704170337,
+      "development_2022H2_r": 1.2172804225,
+      "development_fills": 144,
+      "development_mean_r": 0.0561645657,
+      "development_sum_r": 8.0876974561,
+      "family": "DPC",
+      "validation_2023H1_r": -16.4422045529,
+      "validation_2023H2_r": -43.1355128604,
+      "validation_fills": 136,
+      "validation_mean_r": -0.4380714516,
+      "validation_sum_r": -59.5777174133
+    },
+    "finding": "The route labeled as the winner had negative 2022 development in both halves and stable=0; three 2023 winners made the combined objective positive. Every enumerated model/gate route had stable=0. The two development-positive HGB rows both failed 2023 by -59.5777R, so no route passed the stated development/validation sequence.",
+    "published_gate": {
+      "atr_max": 1.3,
+      "development_2022H1_r": -0.0477875658,
+      "development_2022H2_r": -0.3212228711,
+      "development_fills": 4,
+      "development_mean_r": -0.0922526092,
+      "development_sum_r": -0.3690104369,
+      "family": "SRR_terminal",
+      "min_rr": 1.0,
+      "model": "hgb",
+      "objective": 3.9121207371,
+      "role": "published_combined_objective_winner",
+      "run_max": 5.0,
+      "same_bar": 0.0,
+      "score_quantile": 0.9,
+      "stable": 0.0,
+      "validation_2023H1_r": 2.0304959335,
+      "validation_2023H2_r": 1.57771692,
+      "validation_fills": 3,
+      "validation_mean_r": 1.2027376178,
+      "validation_sum_r": 3.6082128535,
+      "validation_top5_share": 1.0
+    },
+    "stable_gate_routes": 0,
+    "total_gate_routes": 1896
+  },
+  "semantic_contract": {
+    "DPC": [
+      "pullback_sweep trigger",
+      "body-close CSD confirmed before a later retest",
+      "HTF state agreement",
+      "strictly more important external target",
+      "minimum 2R terminal geometry"
+    ],
+    "SRR": [
+      "body-close CSD confirmed before a later retest",
+      "terminal state transition",
+      "node importance at least 3",
+      "strictly more important external target",
+      "minimum 2R terminal geometry"
+    ],
+    "strict_event_economics": [
+      {
+        "candidates": 429,
+        "fills": 382,
+        "mean_r": -0.31624110997889604,
+        "median_r": -1.055276732364661,
+        "profit_factor": 0.5953264136846272,
+        "sum_r": -120.80410401193828,
+        "top5_positive_share": 0.22250945259814023,
+        "variant": "strict_contract_union",
+        "win_rate": 0.24345549738219896,
+        "year": 2021
+      },
+      {
+        "candidates": 599,
+        "fills": 527,
+        "mean_r": -0.24409122277961356,
+        "median_r": -1.0698561538465299,
+        "profit_factor": 0.696179987354638,
+        "sum_r": -128.63607440485634,
+        "top5_positive_share": 0.16825690688497286,
+        "variant": "strict_contract_union",
+        "win_rate": 0.24478178368121442,
+        "year": 2022
+      },
+      {
+        "candidates": 435,
+        "fills": 391,
+        "mean_r": -0.46337349344108514,
+        "median_r": -1.098330914030088,
+        "profit_factor": 0.4565523056964425,
+        "sum_r": -181.1790359354643,
+        "top5_positive_share": 0.3005065948982911,
+        "variant": "strict_contract_union",
+        "win_rate": 0.2071611253196931,
+        "year": 2023
+      }
+    ],
+    "strict_one_slot_account": {
+      "account_multiple": 0.15223972243719888,
+      "final_nav": 1522.3972243719888,
+      "geometric_daily_growth": -0.0017175177855507373,
+      "nav_note": "fatal-screen realized NAV; exact UTC intratrade marks are unnecessary after negative event economics",
+      "notional_cap": 3.0,
+      "pending_orders": 136,
+      "policy": "strict_contract_union",
+      "profit_factor": 0.617039380271926,
+      "realized_nav_max_drawdown": 0.8530300755754513,
+      "risk_fraction": 0.005,
+      "slot_skips": 170,
+      "start_nav": 10000.0,
+      "top5_positive_share": 0.12318163292295119,
+      "trades": 1114,
+      "win_rate": 0.2333931777378815
+    }
+  },
+  "verdict": "BOTH_PROGRAMIZATION_AND_ECONOMIC_FAILURE"
+}
