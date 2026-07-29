@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-BIND-AUTHORITATIVE-SOURCE-SCHEMA-013",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "parent_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T04:33:00+09:00",
+  "timing": "BEFORE_ANY_DURABLE_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_state": {
+    "workflow_run": 30483064641,
+    "state": "IN_PROGRESS_SOURCE_AUTHORITY_WITHOUT_DURABLE_ARTIFACT",
+    "source_decision_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "programization_defect": "run_pinned_snapshot_source.py installs ExactBatchClient and then calls source.source_gate. That lower gate executes the corrected token-specific decoder through the imported module state, but it does not invoke source_gate_blockscout_authoritative.source_gate, the wrapper that binds source_schema_id, source_correction_id and event_semantics into SOURCE_GATE_RESULT.json and SOURCE_MANIFEST.json. A PASS would therefore be rejected by the unchanged economic authority's source identity validation before market/model execution.",
+  "correction": {
+    "scope": "temporary materialized run_pinned_snapshot_source.py call site only",
+    "old_call": "result = source.source_gate(args.output)",
+    "new_call": "result = authority.source_gate(args.output)",
+    "client_binding": "source.BlockscoutClient remains ExactBatchClient before the wrapper call, so authority._base_source_gate resolves the same exact transport and batch cache",
+    "output_binding": "the existing authoritative wrapper writes the already-frozen STABLECOIN_SUPPLY_USDT_ISSUE_REDEEM_USDC_ZERO_TRANSFER_V1 identity and correction 010 semantics",
+    "fail_closed": "replace exactly one old call, require no pre-existing new call, and test that the wrapper augments both result and manifest without changing events"
+  },
+  "unchanged": [
+    "source commit 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+    "USDT Issue/Redeem and USDC zero-address event filtering and decoding",
+    "all 36 source months and source density gates",
+    "12/64-block exact availability",
+    "fail-closed Blockscout response policy",
+    "event rows and event hash",
+    "features, model, labels, payoff, costs, risk grid and official boundaries",
+    "no credentials and no orders"
+  ]
+}
