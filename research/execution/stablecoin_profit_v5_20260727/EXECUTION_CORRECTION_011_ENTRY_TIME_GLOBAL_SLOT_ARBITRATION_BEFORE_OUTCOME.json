@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260730-STABLECOIN-V5-ENTRY-TIME-GLOBAL-SLOT-ARBITRATION-011",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-TAKEOVER-001",
+  "original_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T03:39:00+09:00",
+  "timing": "BEFORE_ANY_SOURCE_DECISION_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_failure": {
+    "workflow_run": 30480650339,
+    "state": "IN_PROGRESS_SOURCE_GATE_WITHOUT_DURABLE_SOURCE_DECISION",
+    "source_decision_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "programization_defect": "All stablecoin actions execute only at the first next-minute open after event finalization. The frozen route grouped and occupied the global slot by decision_ms, so an earlier event in the same minute could reserve the slot before any order was executable and suppress a later event that was also fully known by the shared entry_ms.",
+  "correction": {
+    "candidate_clock": "retain every event-specific causal feature row and probability",
+    "competition_clock": "sort and group candidates by executable entry_ms rather than decision_ms",
+    "same_entry_choice": "among all candidates known before the same executable entry, choose the highest precomputed cost-adjusted EV; use later decision_ms only as a deterministic tie-breaker",
+    "slot_start": "the pending/open global slot begins at entry_ms, not before order activation",
+    "slot_end": "unchanged structural exit or boundary mark semantics",
+    "winner_removal": "unchanged exact event removal followed by full rerouting under the corrected entry-time arbitration"
+  },
+  "unchanged": [
+    "source events and 12/64-block availability",
+    "model features, labels, hyperparameters and calibration",
+    "event-specific probabilities and EV equations",
+    "first next-minute execution price",
+    "structural target and stop",
+    "funding and 12/18/24bp costs",
+    "one global slot",
+    "no elapsed-time liquidation",
+    "risk/notional grid and profit-first advancement",
+    "no credentials and no orders"
+  ]
+}
