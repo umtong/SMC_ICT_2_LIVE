@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-ML-DONCHIAN-LIFECYCLE-001",
+  "claim_id": "CLM-20260730-ML-DONCHIAN-LIFECYCLE-001",
+  "verdict": "RETIRED_PROGRAMIZATION_DEFECT_FIXED_ML_POLICY_UNSTABLE_BELOW_GATE",
+  "target_status": "NOT_MET",
+  "ranking_change": false,
+  "official_2024_2026_opened": false,
+  "programization_audit": {
+    "defect": "newly confirmed 15-minute pivots were promoted without a later causal structure break",
+    "median_hold_hours_before": 4.083333333333333,
+    "median_hold_hours_after_bos_gate": 13.016666666666667,
+    "2023_structural_return_before_24bps": -0.011016518609698656,
+    "2023_structural_return_after_24bps": 0.1969430873036048,
+    "2022_structural_return_after_24bps": -0.089766242736672
+  },
+  "direct_raw_r_hgbt": {
+    "2022_return": 0.10643022394994395,
+    "2022_winner_removed_return": -0.08783569213503595,
+    "frozen_2023_return": 0.16781485194214318,
+    "seen_2024H1_return": 0.037334834811345585,
+    "seen_2024H1_geometric_daily_growth": 0.00020142009047452447,
+    "model_mae_skill_range": [-0.3756000752431867, -0.1625643807429975],
+    "accepted": false
+  },
+  "robust_fixed_zero_ml": {
+    "constant_legacy_2021H2_return": 0.03227168847097017,
+    "clipped_regression_2021H2_return": 0.008831542974479634,
+    "clipped_regression_2022_return": -0.0173688145720704,
+    "hgb_classifier_2021H2_return": 0.017704083965901285,
+    "hgb_classifier_2022_return": -0.04585954418360161,
+    "logistic_2021H2_return": -0.06557892932386133,
+    "logistic_2022_return": -0.004825271599752545
+  },
+  "decision_reasons": [
+    "The semantic fix was economically material but failed persistently across 2022 and 2023.",
+    "Every robust ML policy underperformed the constant legacy policy in the chronological 2021H2 diagnostic and was negative in 2022.",
+    "The positive heavy-tail regressor was worse than a constant by MAE, winner-dependent, and selection-sensitive to funding valuation.",
+    "Already-seen positive 2024H1 paths from failed pre-2024 policies were not promoted.",
+    "No risk, leverage, entry-lookback, exit-lookback, ATR, session, or adjacent-threshold rescue was attempted."
+  ],
+  "reproduction": {
+    "event_inventory_full": {"BTCUSDT": 1415, "ETHUSDT": 1440},
+    "event_inventory_replayed_through_2024H1": {"BTCUSDT": 813, "ETHUSDT": 884},
+    "event_and_outcome_frames_semantically_identical": true,
+    "summary_outputs_byte_identical": true,
+    "focused_tests_passed": 6,
+    "source_archive_sha256": "cb0774202e24d90091347c660944d1b57074f390dc6414d3c6f881d9c4106560",
+    "canonical_pandas_artifact_id": 8712672241,
+    "portable_runtime_artifact_id": 8661372527
+  },
+  "orders_submitted": false
+}
