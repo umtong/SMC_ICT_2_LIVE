@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -90,6 +91,34 @@ def test_strict_fixture_overlay_changes_tests_not_runtime(tmp_path: Path) -> Non
     assert repaired._TEST_NEW in causal_test.read_text(encoding="utf-8")
     assert repaired._GAP_NEW in strict_guard.read_text(encoding="utf-8")
     assert "def strict_build_rows" not in strict_guard.read_text(encoding="utf-8")
+
+
+def test_only_project_validator_is_nonblocking(tmp_path: Path) -> None:
+    calls: list[tuple[list[str], bool, Path | None]] = []
+
+    def fake_run(
+        command: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        check: bool = True,
+        log: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        del env
+        calls.append((command, check, log))
+        return subprocess.CompletedProcess(command, 7)
+
+    wrapped = repaired._diagnostic_run_wrapper(fake_run, tmp_path)
+    validator_command = [sys.executable, str(repaired.PROJECT_VALIDATOR)]
+    completed = wrapped(validator_command, check=True, log=tmp_path / "validator.log")
+
+    assert completed.returncode == 7
+    assert calls[-1][1] is False
+    assert (tmp_path / "PROJECT_VALIDATION_EXIT_CODE.txt").read_text() == "7\n"
+
+    ordinary = [sys.executable, "scientific_test.py"]
+    wrapped(ordinary, check=True, log=None)
+    assert calls[-1][0] == ordinary
+    assert calls[-1][1] is True
 
 
 def test_failure_record_uses_resolved_cli_publish_path(
