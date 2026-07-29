@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-AAVE-ZENODO-LIQUIDATION-001",
+  "result_id": "RES-20260730-AAVE-ZENODO-LIQUIDATION-001",
+  "source_result_id": "RES-20260730-AAVE-ZENODO-LIQUIDATION-SOURCE-001",
+  "status": "RETIRED_PROGRAMIZATION_CORRECTED_Q3_ECONOMIC_FAILURE_PRE2024",
+  "hard_validity_status": "PASS_SOURCE_CAUSAL_ACCOUNT_SCREEN",
+  "economic_status": "NEGATIVE_2023Q3_SELECTION",
+  "source_correction": {
+    "raw_2023_rows": 7095,
+    "unique_2023_liquidations": 473,
+    "duplicate_factor": 15,
+    "five_minute_clusters": 241,
+    "decision": "Use exact deduplicated transaction-level events only; raw rows are not independent observations."
+  },
+  "account_contract": {
+    "symbols": ["ETHUSDT", "BTCUSDT"],
+    "global_slot": 1,
+    "latency_ms": 500,
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "cost_paths_bps": [12, 18, 24],
+    "actual_bybit_funding": true,
+    "elapsed_time_exit": false,
+    "stage_boundary": "NAV mark, not strategy close"
+  },
+  "event_counts": {
+    "all_2023": 241,
+    "fit_2023H1": 66,
+    "selection_2023Q3": 100,
+    "quarantined_2023Q4": 75
+  },
+  "raw_structural_accounts": {
+    "fit_2023H1_long": {
+      "12bps": {"return": 0.168962, "trades": 13, "profit_factor": 3.8902, "median_r": -1.0, "exact_winner_reroute_return": 0.127815},
+      "18bps": {"return": 0.151963, "trades": 13, "profit_factor": 3.5996, "median_r": -1.0, "exact_winner_reroute_return": 0.114997},
+      "24bps": {"return": 0.137276, "trades": 13, "profit_factor": 3.3485, "median_r": -1.0, "exact_winner_reroute_return": 0.103824}
+    },
+    "selection_2023Q3_long": {
+      "12bps": {"return": -0.094687, "trades": 36, "profit_factor": 0.4230, "median_r": -1.0, "exact_winner_reroute_return": -0.097234},
+      "18bps": {"return": -0.102713, "trades": 36, "profit_factor": 0.3741, "median_r": -1.0, "exact_winner_reroute_return": -0.103781},
+      "24bps": {"return": -0.108856, "trades": 36, "profit_factor": 0.3355, "median_r": -1.0, "exact_winner_reroute_return": -0.108855}
+    },
+    "selection_2023Q3_short": {
+      "12bps": {"return": -0.041179, "trades": 19, "profit_factor": 0.5162, "median_r": -1.0, "exact_winner_reroute_return": -0.065627},
+      "18bps": {"return": -0.044203, "trades": 19, "profit_factor": 0.4817, "median_r": -1.0, "exact_winner_reroute_return": -0.069056},
+      "24bps": {"return": -0.046863, "trades": 19, "profit_factor": 0.4513, "median_r": -1.0, "exact_winner_reroute_return": -0.071975}
+    }
+  },
+  "ml_selection_2023Q3": {
+    "ridge": {
+      "12bps": {"return": -0.060242, "trades": 29, "profit_factor": 0.5446, "exact_winner_reroute_return": -0.063303},
+      "18bps": {"return": -0.068728, "trades": 29, "profit_factor": 0.4811, "exact_winner_reroute_return": -0.074487},
+      "24bps": {"return": -0.075229, "trades": 29, "profit_factor": 0.4312, "exact_winner_reroute_return": -0.079852},
+      "skill": {
+        "long_mae": 10.806825,
+        "long_constant_mae": 2.519589,
+        "long_spearman": 0.146907,
+        "short_mae": 1.082100,
+        "short_constant_mae": 0.607193,
+        "short_spearman": 0.057615
+      }
+    },
+    "hist_gradient_boosting_regressor": {
+      "12bps": {"return": -0.046611, "trades": 18, "profit_factor": 0.4364, "exact_winner_reroute_return": -0.083367},
+      "18bps": {"return": -0.050982, "trades": 18, "profit_factor": 0.3852, "exact_winner_reroute_return": -0.091322},
+      "24bps": {"return": -0.054208, "trades": 18, "profit_factor": 0.3453, "exact_winner_reroute_return": -0.097724},
+      "skill": {
+        "long_mae": 3.370332,
+        "long_constant_mae": 2.519589,
+        "short_mae": 0.812620,
+        "short_constant_mae": 0.607193
+      }
+    },
+    "logistic_positive_value": {
+      "12bps": {"return": -0.056194, "trades": 28, "profit_factor": 0.5629, "exact_winner_reroute_return": -0.063555},
+      "18bps": {"return": -0.064783, "trades": 28, "profit_factor": 0.4969, "exact_winner_reroute_return": -0.070567},
+      "24bps": {"return": -0.071347, "trades": 28, "profit_factor": 0.4453, "exact_winner_reroute_return": -0.075989},
+      "skill": {
+        "long_auc": 0.408854,
+        "long_brier": 0.180351,
+        "long_constant_brier": 0.040992,
+        "short_auc": 0.647163,
+        "short_brier": 0.079128,
+        "short_constant_brier": 0.058411
+      }
+    },
+    "hist_gradient_boosting_classifier": {
+      "12bps": {"return": -0.021150, "trades": 21, "profit_factor": 0.7801, "exact_winner_reroute_return": -0.038151},
+      "18bps": {"return": -0.029706, "trades": 21, "profit_factor": 0.6909, "exact_winner_reroute_return": -0.042801},
+      "24bps": {"return": -0.036591, "trades": 21, "profit_factor": 0.6189, "exact_winner_reroute_return": -0.046759},
+      "skill": {
+        "long_auc": 0.638021,
+        "long_brier": 0.042756,
+        "long_constant_brier": 0.040992,
+        "short_auc": 0.542553,
+        "short_brier": 0.058699,
+        "short_constant_brier": 0.058411
+      }
+    },
+    "eligible_models": 0
+  },
+  "quarantined_not_evidence": {
+    "2023Q4_long_24bps": {"return": 0.018068, "trades": 14, "profit_factor": 1.2851},
+    "reason": "Q4 was computed in the same local diagnostic batch but Q3 had already failed the frozen gate. It is not selection or confirmation evidence and cannot reopen the family."
+  },
+  "decision": {
+    "calendar_2023Q4_opened_as_evidence": false,
+    "official_2024_opened": false,
+    "risk_leverage_search_opened": false,
+    "ranking_changed": false,
+    "reason": "The apparent 2023H1 long alpha was a sparse regime-specific tail. Both readable structural actions lost in Q3 at every cost, exact winner rerouting remained negative, and all ML policies were negative or baseline-inferior."
+  },
+  "known_limitations": [
+    "The compact branch result does not yet transport the full local event/action evaluator and ledgers; do not merge it as a reusable implementation until that source bundle is added.",
+    "The source record was published in 2026 and is used only to reconstruct timestamped pre-2024 events; event availability is conservatively delayed by 180 seconds.",
+    "The fast discovery account records event-level NAV and boundary marks. A more granular liquidation-NAV path is unnecessary to decide an already negative Q3 candidate."
+  ],
+  "orders_submitted": false,
+  "paper_live_started": false
+}
