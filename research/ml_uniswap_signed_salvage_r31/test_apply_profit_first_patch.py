@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,11 +11,13 @@ import apply_profit_first_patch as p
 def test_frozen_source_patch_compiles_and_changes_only_declared_contract(
     tmp_path: Path,
 ) -> None:
-    source = (
+    root = (
         Path(__file__).resolve().parents[1]
         / "ml_uniswap_hedge_transfer_economic_20260726"
-        / "run.py"
     )
+    source = root / "run.py"
+    if not source.exists():
+        subprocess.run([sys.executable, str(root / "reconstruct.py")], check=True)
     output = tmp_path / "run_profit_first.py"
     p.patch(source, output)
     text = output.read_text()
