@@ -1,0 +1,65 @@
+name: Build fixed CPython 3.13 quant wheelhouse
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/r31-fixed-quant-wheels.yml'
+      - 'research/triggers/r31_fixed_quant_wheels/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r31-fixed-quant-wheels-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheelhouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r31-fixed-quant-wheels-001
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download fixed binary dependencies
+        run: |
+          set -euo pipefail
+          mkdir -p wheelhouse
+          python -m pip download --disable-pip-version-check \
+            --only-binary=:all: --no-deps -d wheelhouse \
+            numpy==2.1.3 \
+            pandas==2.2.3 \
+            scipy==1.15.1 \
+            scikit-learn==1.6.1 \
+            pyarrow==18.1.0 \
+            joblib==1.4.2 \
+            threadpoolctl==3.5.0 \
+            python-dateutil==2.9.0.post0 \
+            pytz==2025.1 \
+            tzdata==2025.1 \
+            six==1.17.0
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('wheelhouse')
+          rows=[]
+          for p in sorted(root.glob('*.whl')):
+              rows.append({'file':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+          expected={'numpy','pandas','scipy','scikit_learn','pyarrow','joblib','threadpoolctl','python_dateutil','pytz','tzdata','six'}
+          observed={r['file'].split('-')[0] for r in rows}
+          assert observed==expected,(observed,expected)
+          (root/'MANIFEST.json').write_text(json.dumps({'schema_version':1,'python':'cp313','packages':rows},indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'wheel_count':len(rows),'total_bytes':sum(r['bytes'] for r in rows)},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r31-fixed-quant-wheels-cp313
+          path: wheelhouse
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
