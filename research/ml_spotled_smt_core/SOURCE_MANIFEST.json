@@ -1,0 +1,30 @@
+{
+  "claim_id": "CLM-20260730-ML-SPOTLED-SMT-CORE-TAKEOVER-001",
+  "cross_provider_clock": "exchange timestamps plus fixed 2s source delay; provider local timestamps never compared",
+  "orders_submitted": false,
+  "schema_version": 1,
+  "sources": [
+    {
+      "role": "binance_spot_fit",
+      "provider_path": "https://datasets.tardis.dev/v1/binance/trades/2022/07/01/BTCUSDT.csv.gz",
+      "sha256": "228d3c77cfa924620255836aac8e6ec8cf8fe4ba91a22130d0ed56db4da45846"
+    },
+    {
+      "role": "binance_spot_forward",
+      "provider_path": "https://datasets.tardis.dev/v1/binance/trades/2023/07/01/BTCUSDT.csv.gz",
+      "sha256": "8e466a4e0fe8bed6c661fa8b35b34f7f2c0d6a004760514d73980628670e6b52"
+    },
+    {
+      "role": "bybit_100ms_fit",
+      "artifact_id": 8626087323,
+      "member": "output/compact_states/2022-07-01_BTCUSDT_state.parquet",
+      "sha256": "da8f581e64ba6f5305c57c0d76403b262d1b0ff48ad540e19302f6bf7416c38b"
+    },
+    {
+      "role": "bybit_100ms_forward",
+      "artifact_id": 8626087323,
+      "member": "output/compact_states/2023-07-01_BTCUSDT_state.parquet",
+      "sha256": "8872cd2a21960666f10f3d35c788a16faefd007d02a30389079def794e90389f"
+    }
+  ]
+}
