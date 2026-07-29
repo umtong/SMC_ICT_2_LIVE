@@ -24,6 +24,24 @@ def _source_path(repository: Path) -> Path:
     )
 
 
+def _source_gate_path(repository: Path) -> Path:
+    return (
+        repository
+        / "research"
+        / "ml_stablecoin_issuance_20260726"
+        / "source_gate_blockscout.py"
+    )
+
+
+def _economic_run_path(repository: Path) -> Path:
+    return (
+        repository
+        / "research"
+        / "ml_stablecoin_issuance_economic_20260726"
+        / "run.py"
+    )
+
+
 def test_temporary_source_overlay_repairs_all_four_self_test_references(
     tmp_path: Path,
 ) -> None:
@@ -64,6 +82,27 @@ def test_temporary_source_overlay_fails_closed_on_unexpected_count(
         repaired.repair_materialized_source(tmp_path)
 
 
+def test_exact_availability_prefetch_overlay_is_execution_only(
+    tmp_path: Path,
+) -> None:
+    path = _source_gate_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "before\n" + repaired._SOURCE_LOOP_OLD + "after\n",
+        encoding="utf-8",
+    )
+
+    observed = repaired.repair_materialized_source_prefetch(tmp_path)
+
+    assert observed == path
+    text = path.read_text(encoding="utf-8")
+    assert repaired._SOURCE_LOOP_OLD not in text
+    assert text.count(repaired._SOURCE_LOOP_NEW) == 1
+    assert 'for offset in (12, 64)' in text
+    assert 'cache.update(post_batch(chunk))' in text
+    assert 'client.block_timestamp(block)' in text
+
+
 def test_strict_fixture_overlay_changes_tests_not_runtime(tmp_path: Path) -> None:
     causal_test = (
         tmp_path
@@ -93,7 +132,29 @@ def test_strict_fixture_overlay_changes_tests_not_runtime(tmp_path: Path) -> Non
     assert "def strict_build_rows" not in strict_guard.read_text(encoding="utf-8")
 
 
-def test_only_project_validator_is_nonblocking(tmp_path: Path) -> None:
+def test_entry_time_route_overlay_changes_only_global_competition_clock(
+    tmp_path: Path,
+) -> None:
+    path = _economic_run_path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "before\n" + repaired._ROUTE_OLD + "after\n",
+        encoding="utf-8",
+    )
+
+    observed = repaired.repair_materialized_entry_time_route(tmp_path)
+
+    assert observed == path
+    text = path.read_text(encoding="utf-8")
+    assert repaired._ROUTE_OLD not in text
+    assert text.count(repaired._ROUTE_NEW) == 1
+    assert "executable_ms = candidates[i].entry_ms" in text
+    assert "key=lambda t: (t.ev_bps, t.decision_ms, t.symbol, t.event_id)" in text
+
+
+def test_authority_wrapper_adds_arbitration_test_and_only_validator_is_nonblocking(
+    tmp_path: Path,
+) -> None:
     calls: list[tuple[list[str], bool, Path | None]] = []
 
     def fake_run(
@@ -107,7 +168,18 @@ def test_only_project_validator_is_nonblocking(tmp_path: Path) -> None:
         calls.append((command, check, log))
         return subprocess.CompletedProcess(command, 7)
 
-    wrapped = repaired._diagnostic_run_wrapper(fake_run, tmp_path)
+    wrapped = repaired._authority_run_wrapper(fake_run, tmp_path)
+
+    internal_pytest = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "/tmp/frozen/test_run.py",
+    ]
+    wrapped(internal_pytest, check=True, log=None)
+    assert calls[-1][1] is True
+    assert str(repaired.ARBITRATION_TEST) in calls[-1][0]
+
     validator_command = [sys.executable, str(repaired.PROJECT_VALIDATOR)]
     completed = wrapped(validator_command, check=True, log=tmp_path / "validator.log")
 
@@ -147,5 +219,13 @@ def test_failure_record_uses_resolved_cli_publish_path(
     payload = json.loads((publish / "EXECUTION_FAILURE.json").read_text())
     assert payload["status"] == "EXECUTION_FAILURE_NOT_SCIENTIFIC_RESULT"
     assert payload["error_type"] == "RuntimeError"
+    assert (
+        payload["exact_availability_batch_prefetch_correction_id"]
+        == repaired.PREFETCH_CORRECTION_ID
+    )
+    assert (
+        payload["entry_time_global_slot_arbitration_correction_id"]
+        == repaired.ARBITRATION_CORRECTION_ID
+    )
     assert payload["official_2024_2026_opened"] is False
     assert payload["orders_submitted"] is False
