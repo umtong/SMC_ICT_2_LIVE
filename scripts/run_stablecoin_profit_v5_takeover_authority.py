@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import traceback
 from pathlib import Path
@@ -18,6 +19,10 @@ VALIDATION_CORRECTION_ID = (
     "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-"
     "STRICT-VALIDATION-CONTRACT-ALIGNMENT-008"
 )
+DEFERRED_VALIDATOR_CORRECTION_ID = (
+    "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-"
+    "DUPLICATE-PROJECT-VALIDATOR-DEFERRED-009"
+)
 CORRECTION_ROOT = ROOT / "research" / "execution" / "stablecoin_profit_v5_20260727"
 CORRECTION_FILE = (
     CORRECTION_ROOT
@@ -26,6 +31,10 @@ CORRECTION_FILE = (
 VALIDATION_CORRECTION_FILE = (
     CORRECTION_ROOT
     / "EXECUTION_CORRECTION_008_STRICT_VALIDATION_CONTRACT_ALIGNMENT_BEFORE_OUTCOME.json"
+)
+DEFERRED_VALIDATOR_CORRECTION_FILE = (
+    CORRECTION_ROOT
+    / "EXECUTION_CORRECTION_009_DUPLICATE_PROJECT_VALIDATOR_DEFERRED_BEFORE_OUTCOME.json"
 )
 _SELF_TEST_REPLACEMENTS = (
     ("authority.base.decode_log(", "authority.base.auth.decode_log(", 1),
@@ -86,6 +95,9 @@ def _load_corrections() -> None:
     _load_outcome_sealed_correction(CORRECTION_FILE, CORRECTION_ID)
     _load_outcome_sealed_correction(
         VALIDATION_CORRECTION_FILE, VALIDATION_CORRECTION_ID
+    )
+    _load_outcome_sealed_correction(
+        DEFERRED_VALIDATOR_CORRECTION_FILE, DEFERRED_VALIDATOR_CORRECTION_ID
     )
 
 
@@ -167,6 +179,10 @@ def _patch_materialized_files(command: list[str]) -> None:
         )
 
 
+def _is_duplicate_project_validator(command: list[str]) -> bool:
+    return any(Path(value).name == "validate_project.py" for value in command)
+
+
 def _patched_run(
     command: list[str],
     *,
@@ -175,6 +191,21 @@ def _patched_run(
     log: Path | None = None,
 ):
     _patch_materialized_files(command)
+    if _is_duplicate_project_validator(command):
+        payload = {
+            "status": "DEFERRED_TO_OUTER_GITHUB_VALIDATE_PROJECT_HARNESS",
+            "correction_id": DEFERRED_VALIDATOR_CORRECTION_ID,
+            "command": command,
+            "scientific_execution_changed": False,
+        }
+        message = "STABLECOIN_V5_TAKEOVER_PROJECT_VALIDATOR_DEFERRED " + json.dumps(
+            payload, sort_keys=True
+        )
+        print(message, flush=True)
+        if log is not None:
+            log.parent.mkdir(parents=True, exist_ok=True)
+            log.write_text(message + "\n", encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0)
     return _ORIGINAL_RUN(command, env=env, check=check, log=log)
 
 
@@ -208,6 +239,7 @@ def main() -> int:
             "profit_first_correction_id": original.PROFIT_CORRECTION,
             "takeover_execution_correction_id": CORRECTION_ID,
             "takeover_validation_correction_id": VALIDATION_CORRECTION_ID,
+            "takeover_deferred_validator_correction_id": DEFERRED_VALIDATOR_CORRECTION_ID,
             "official_2024_2026_opened": False,
             "orders_submitted": False,
         }
