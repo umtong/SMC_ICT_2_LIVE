@@ -1,0 +1,90 @@
+name: Exact Bybit channel all-breakout Core audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/bybit_channel_allbreakout_core/**
+      - .github/workflows/bybit-channel-allbreakout-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: bybit-channel-allbreakout-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-introspection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Materialize immutable PR 466 audit source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r24-channel-fullpath-audit-001:audit-source
+          mkdir -p artifact/source
+          for f in SOURCE_MANIFEST.json SOURCE_BUNDLE.tar.gz.b64 materialize.py; do
+            git show "audit-source:research/channel_fullpath_audit/$f" > "artifact/source/$f"
+          done
+          python artifact/source/materialize.py
+          (cd artifact/source && sha256sum independent_audit.py robust_lcb_screen.py > MATERIALIZED_SHA256SUMS.txt)
+
+      - name: Inventory callable interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast, json
+          from pathlib import Path
+          root = Path('artifact/source')
+          output = {}
+          for name in ['independent_audit.py', 'robust_lcb_screen.py']:
+              path = root / name
+              tree = ast.parse(path.read_text())
+              funcs = []
+              classes = []
+              imports = []
+              constants = {}
+              for node in tree.body:
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                      funcs.append({
+                          'name': node.name,
+                          'args': [a.arg for a in node.args.args],
+                          'lineno': node.lineno,
+                      })
+                  elif isinstance(node, ast.ClassDef):
+                      classes.append({'name': node.name, 'lineno': node.lineno})
+                  elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                      imports.append(ast.unparse(node))
+                  elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+                      try:
+                          constants[node.targets[0].id] = ast.literal_eval(node.value)
+                      except Exception:
+                          pass
+              output[name] = {
+                  'functions': funcs,
+                  'classes': classes,
+                  'imports': imports,
+                  'literal_constants': constants,
+              }
+          Path('artifact/INTROSPECTION.json').write_text(json.dumps(output, indent=2, sort_keys=True))
+          PY
+          grep -nE 'ArgumentParser|add_argument|def |class |candidate|route|account|funding|global|entry|exit|stop|channel' \
+            artifact/source/independent_audit.py \
+            > artifact/KEY_LINES.txt || true
+          find artifact -type f -printf '%P\t%s\n' | sort > artifact/FILES.tsv
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bybit-channel-allbreakout-source-introspection
+          path: artifact
+          if-no-files-found: error
+          retention-days: 7
