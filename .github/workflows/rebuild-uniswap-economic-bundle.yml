@@ -7,6 +7,11 @@ on:
     paths:
       - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.part*.b64"
       - ".github/workflows/rebuild-uniswap-economic-bundle.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.part*.b64"
+      - ".github/workflows/rebuild-uniswap-economic-bundle.yml"
   workflow_dispatch:
 
 permissions:
@@ -27,7 +32,6 @@ jobs:
         run: |
           set -euo pipefail
           root=research/uniswap_signed_flow_sqd
-          # All five immutable chunks are now present on the branch.
           cat "$root"/ECONOMIC_BUNDLE.part*.b64 > "$root/ECONOMIC_BUNDLE.tar.gz.b64"
           base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > /tmp/economic-bundle.tar.gz
           echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  /tmp/economic-bundle.tar.gz" | sha256sum -c -
