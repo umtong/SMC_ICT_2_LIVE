@@ -15,11 +15,13 @@ BTCUSDT and ETHUSDT are testbeds for one market-invariant question: does unusual
 - Entry is the first later observable one-minute open after decision +500 ms.
 - Stop is 2 prior-only packet ATR; full target is +1.5R; opposite prior-48-packet close is state loss.
 - Actual signed funding, adverse ambiguity, 0.5% current-NAV structural loss, 3x cap and one global BTC/ETH slot are fixed.
-- There is no elapsed-time, session, UTC-day, year or stage-boundary strategy close.
+- There is no elapsed-time, session, UTC-day, year or research-stage strategy close.
 
 ## Programization validation
 
-Five semantic tests passed. Two fresh complete processes generated all 21 scientific outputs byte-identically. Calendar 2023 was neither loaded nor packetized because the 2022 gate failed.
+A year-boundary audit found a potential semantic defect: a natural strategy outcome after the requested calendar boundary could have been imported into that year’s completed-trade account. The final authority instead marks the open exposure at the last observable price, leaves it incomplete and retains the slot. Re-running the complete tape after this repair did not change any of the 21 scientific files, so no selected 2021/2022 account path had depended on the defect.
+
+Seven semantic tests pass, including strict packet construction, shifted state, +500ms entry, signed funding, global-slot rerouting and year-boundary marking. Two fresh complete processes generated all 21 scientific outputs byte-identically. The plain-text source imports and compiles without local datasets, and GitHub Actions workflow run `30552721014` passed. Calendar 2023 was neither loaded nor packetized because the 2022 gate failed.
 
 ## Event breadth
 
