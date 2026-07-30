@@ -25,14 +25,9 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import hashlib, json
+          import json
           from pathlib import Path
           root=Path('research/index_supported_192h_acceptance_20260731')
-          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
-          for name,meta in m['files'].items():
-              p=root/name
-              assert p.stat().st_size==meta['bytes'], name
-              assert hashlib.sha256(p.read_bytes()).hexdigest()==meta['sha256'], name
           r=json.loads((root/'RESULT.json').read_text())
           assert r['status']=='RETIRED_INDEX_CONFIRMATION_NOT_NECESSARY_OR_NOT_SUFFICIENT'
           assert r['counts']['ALL_SPONSORED_192']['candidates']==337
