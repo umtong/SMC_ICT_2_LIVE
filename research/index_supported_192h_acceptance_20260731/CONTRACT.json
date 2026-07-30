@@ -1,0 +1,35 @@
+{
+  "accounts": [
+    "ALL_SPONSORED_192",
+    "INDEX_CONFIRMED",
+    "INDEX_NONCONFIRMED"
+  ],
+  "claim_id": "CLM-20260731-INDEX-SUPPORTED-192H-ACCEPTANCE-001",
+  "component": {
+    "aggregation": "one hour only from exactly 60 observed one-minute rows; decision hour available at its end",
+    "confirmed": "long index close > prior index high; short index close < prior index low",
+    "nonconfirmed": "exact complement",
+    "prohibited": [
+      "buffer",
+      "distance threshold",
+      "premium threshold",
+      "dwell",
+      "model",
+      "symbol/side selection",
+      "cost/risk/leverage changes",
+      "official period"
+    ],
+    "range": "prior 192 completed index hours, shifted to exclude decision hour",
+    "source": "canonical Bybit streams/index_price_1m.parquet"
+  },
+  "decision_rule": "retain only if confirmed improves full and minimum annual 24bp log growth versus baseline, survives winner deletion, has useful breadth, and nonconfirmed is materially weaker",
+  "parent": {
+    "action": "unchanged immediate +500ms entry, structural stop, full +1.5R, first completed trade-price hour reacceptance inside exact boundary state loss, actual funding, one global slot, 0.5% NAV planned loss, 3x cap, 12/18/24bp, no elapsed-time close",
+    "candidate_sha256": "4f32f36f056a33dbb39cd0d465488aefda8d541ef30667458ffa0392cf95ad96",
+    "event": "completed trade-price hour closes beyond prior 192 completed hours with inherited volume_z168 > 2.2706072565238586; all BTC/ETH long/short",
+    "source_sha256": "ac7475965a6cf73c75546e90b2a123dd0cd25551a25fc2cff9058eb753bf4519"
+  },
+  "result_id": "RES-20260731-INDEX-SUPPORTED-192H-ACCEPTANCE-001",
+  "schema_version": 1,
+  "scientific_boundary": "pre-2024 component audit; no official period, model, risk/leverage, or order authority"
+}

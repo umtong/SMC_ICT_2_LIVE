@@ -1,0 +1,46 @@
+name: Validate index-supported 192h acceptance audit package
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/index_supported_192h_acceptance_20260731/**"
+      - ".github/workflows/index-supported-192h-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize and compile source
+        run: |
+          set -euo pipefail
+          python research/index_supported_192h_acceptance_20260731/materialize.py --out materialized
+          python -m py_compile materialized/run.py
+      - name: Verify compact authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/index_supported_192h_acceptance_20260731')
+          r=json.loads((root/'RESULT.json').read_text())
+          assert r['status']=='RETIRED_INDEX_CONFIRMATION_NOT_NECESSARY_OR_NOT_SUFFICIENT'
+          assert r['counts']['ALL_SPONSORED_192']['candidates']==337
+          assert r['counts']['INDEX_CONFIRMED']['candidates']==335
+          assert r['counts']['INDEX_NONCONFIRMED']['candidates']==2
+          assert abs(r['accounts_24bp']['ALL_SPONSORED_192']['multiple']-1.1585899225959497)<1e-12
+          assert abs(r['accounts_24bp']['INDEX_CONFIRMED']['multiple']-1.15089815437118)<1e-12
+          assert r['winner_deleted_24bp']['INDEX_CONFIRMED']['multiple']>1.0
+          assert r['gate']['confirmed_multiple_above_baseline'] is False
+          assert r['official_opened'] is False and r['ml_opened'] is False and r['orders_submitted'] is False
+          a=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          p=json.loads((root/'TWO_RUN_PARITY.json').read_text())
+          assert a['status']=='PASS' and a['check_count']==677
+          assert p['all_identical'] is True and p['file_count']==39
+          print(json.dumps({'status':'PASS','decision':r['status']},sort_keys=True))
+          PY
