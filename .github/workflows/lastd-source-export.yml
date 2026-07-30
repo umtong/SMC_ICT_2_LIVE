@@ -43,12 +43,16 @@ jobs:
           (output / "SOURCE_SHA256.txt").write_text(f"{actual}  lastd_system.py\n", encoding="utf-8")
           PY
 
+      - name: Install self-test dependencies
+        run: python -m pip install -q numpy pandas scikit-learn pyarrow
+
       - name: Compile and execute contract self-tests
         run: |
           python -m py_compile artifact/lastd-source/lastd_system.py
           python artifact/lastd-source/lastd_system.py --self-test
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: verified-lastd-source-${{ github.sha }}
           path: artifact/lastd-source
