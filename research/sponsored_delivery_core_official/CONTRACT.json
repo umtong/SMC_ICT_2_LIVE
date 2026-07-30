@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-2030-SPONSORED-DELIVERY-CORE-OFFICIAL-001",
+  "result_id": "RES-20260730-SPONSORED-DELIVERY-CORE-OFFICIAL-AUDIT-001",
+  "purpose": "Independent exact-parity official replay of the frozen +1.5R Core action on the inherited high-volume accepted-delivery event.",
+  "testbeds": ["BTCUSDT", "ETHUSDT"],
+  "logic": "A completed high-volume one-hour close accepts price beyond the prior 96 completed-hour external boundary. The initial accepted-delivery position realizes the repeatable Core payoff at +1.5R while the inherited 2ATR stop and opposite prior-48h completed-channel state loss invalidate the same premise.",
+  "event": {
+    "entry_boundary_lookback_hours": 96,
+    "state_exit_lookback_hours": 48,
+    "calendar_2021_volume_z168_threshold": 2.2706072565238586,
+    "selected_sides": ["BTCUSDT:LONG", "ETHUSDT:LONG", "ETHUSDT:SHORT"]
+  },
+  "action": {
+    "entry": "completed one-hour decision plus fixed 500ms represented conservatively by first strictly later observed one-minute open",
+    "hard_stop": "2.0 x prior completed one-hour ATR20 from actual entry",
+    "target": "+1.5R from actual entry and inherited stop distance",
+    "state_exit": "first completed close through the opposite prior-48h channel, executed after the same latency",
+    "funding": "actual signed Bybit funding",
+    "elapsed_time_exit": false
+  },
+  "account": {
+    "one_global_pending_or_open_slot": true,
+    "planned_loss_fraction": 0.005,
+    "notional_cap_x": 3.0,
+    "costs_bp": [13, 18, 24],
+    "winner_deletion": "delete the largest positive-PnL ceil(10% of selected entries) event keys before complete one-slot rerouting"
+  },
+  "chronology": {
+    "preofficial_parity": [2022, 2023],
+    "official_start": "2024-01-01T00:00:00Z",
+    "official_end": "2026-07-01T00:00:00Z",
+    "continuous_nav": true
+  },
+  "source_authority": {
+    "exact_channel_source_sha256": "e468b50035344b355ca610afdd4ee6deaff30a0f8722441c6a38d1ceca963f38",
+    "canonical_pandas_zip_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
+    "original_pr597_source_carrier": "truncated and not materializable",
+    "independent_reconstruction_requirement": "2022 and 2023 candidate counts, trade counts, NAV, PF, median, top-five concentration and 2023 exact winner deletion must reproduce before official evidence is accepted"
+  },
+  "prohibited_rescue": [
+    "event threshold or channel change",
+    "target or stop change",
+    "symbol or side filtering",
+    "cost reduction",
+    "risk or leverage search",
+    "official-period tuning",
+    "additional SMC checklist or ML filter"
+  ],
+  "orders_submitted": false
+}
