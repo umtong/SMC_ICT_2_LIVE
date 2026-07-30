@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-XVENUE-DOLLAR-VOLUME-FLOW-CORE-001",
+  "result_id": "RES-20260730-XVENUE-DOLLAR-VOLUME-FLOW-CORE-001",
+  "signal_venue": "Binance USD-M perpetual",
+  "execution_venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "calibration": ["2021-10-01T00:00:00Z", "2022-01-01T00:00:00Z"],
+  "development": ["2022-01-01T00:00:00Z", "2023-01-01T00:00:00Z"],
+  "packet_target": "calendar-2021Q4 median completed 60m Binance quote volume by symbol",
+  "packet_construction": "non-overlapping consecutive complete 5m rows until fixed quote-volume target is first reached; source gaps invalidate and restart",
+  "event_boundary": "calendar-2021Q4 q90 absolute packet signed taker-flow imbalance",
+  "signed_flow": "(2*taker_buy_quote - quote_volume)/quote_volume",
+  "actions": {
+    "ACCEPT_CONTINUE": "same-sign response flow and response close retains at least 75% of pulse displacement",
+    "REJECT_REVERSE": "opposite-sign response flow and response close retraces at least 50% of pulse displacement",
+    "FLAT": "all other responses"
+  },
+  "execution": {
+    "activation_delay_ms": 500,
+    "fill": "first strictly later observable Bybit one-minute open",
+    "same_minute_ambiguity": "stop first",
+    "stop_gap": "adverse observed open",
+    "favorable_target_gap": "frozen target price"
+  },
+  "portfolio": {
+    "global_pending_or_open_slots": 1,
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bp": [12, 18, 24],
+    "funding": "actual signed Bybit events"
+  },
+  "elapsed_time_exit": false,
+  "winner_stress": "delete top 10% of selected positive-PnL event keys and fully reroute the global slot",
+  "advancement": "ML and 2023 confirmation remain closed after a negative 2022 base action surface"
+}

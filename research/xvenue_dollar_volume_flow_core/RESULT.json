@@ -1,0 +1,94 @@
+{
+  "claim_id": "CLM-20260730-XVENUE-DOLLAR-VOLUME-FLOW-CORE-001",
+  "confirmation_2023_opened": false,
+  "counts": {
+    "development_event_rows": 1390,
+    "resolved_action_rows": 1229,
+    "resolved_by_action": {
+      "ACCEPT_CONTINUE": 920,
+      "REJECT_REVERSE": 309
+    },
+    "resolved_by_symbol": {
+      "BTCUSDT": 489,
+      "ETHUSDT": 740
+    }
+  },
+  "decision": {
+    "base_gate_passed": false,
+    "primary_24bp_multiple": 0.7271098147411853,
+    "primary_24bp_trades": 612,
+    "reason": "The fixed 2022 union and both component actions are negative at 12/18/24 bp; ML and later periods are closed."
+  },
+  "economic_status": "BELOW_GATE_BROAD_SUBCOST_CHURN",
+  "full_result_sha256": "c4b5cd776afa531a14a81758faf3aa8c1d71998bb27d2251ba452687b28f7cac",
+  "hard_validity": "PASS_CAUSAL_PACKET_EXECUTION_AND_TWO_RUN_REPRODUCTION",
+  "ml_opened": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "packet_contracts": {
+    "BTCUSDT": {
+      "calibration_packet_count": 2649,
+      "development_event_counts": {"ACCEPT_CONTINUE": 369, "REJECT_REVERSE": 181},
+      "development_packet_count": 9121,
+      "flow_q90": 0.1391738608794012,
+      "median_packet_duration_min": 45.0,
+      "packet_target_quote_volume": 456180644.84297
+    },
+    "ETHUSDT": {
+      "calibration_packet_count": 2582,
+      "development_event_counts": {"ACCEPT_CONTINUE": 551, "REJECT_REVERSE": 289},
+      "development_packet_count": 11296,
+      "flow_q90": 0.13164716875071847,
+      "median_packet_duration_min": 40.0,
+      "packet_target_quote_volume": 212832883.2809
+    }
+  },
+  "result_id": "RES-20260730-XVENUE-DOLLAR-VOLUME-FLOW-CORE-001",
+  "results": {
+    "ACCEPT_CONTINUE": {
+      "12": {
+        "ordinary": {"completed_trades": 458, "end_nav": 9647.142604618854, "median_notional_return": -0.009730944208065952, "multiple": 0.9647142604618854, "profit_factor": 0.9709615738542057, "trade_close_mdd": 0.17967535943108268},
+        "winner_removed": {"completed_trades": 477, "end_nav": 8602.190371017028, "median_notional_return": -0.009986234174871243, "multiple": 0.8602190371017028, "profit_factor": 0.8866217273834697, "removed_count": 18, "trade_close_mdd": 0.22340952320638466}
+      },
+      "18": {
+        "ordinary": {"completed_trades": 458, "end_nav": 8943.409505939679, "median_notional_return": -0.010330944208065952, "multiple": 0.8943409505939679, "profit_factor": 0.9102436470945728, "trade_close_mdd": 0.20299310134197654},
+        "winner_removed": {"completed_trades": 483, "end_nav": 7920.038364421089, "median_notional_return": -0.010599884691086947, "multiple": 0.7920038364421089, "profit_factor": 0.8274166870296495, "removed_count": 18, "trade_close_mdd": 0.26383130333525356}
+      },
+      "24": {
+        "ordinary": {"completed_trades": 458, "end_nav": 8341.529954912303, "median_notional_return": -0.010930944208065951, "multiple": 0.8341529954912302, "profit_factor": 0.8549759533001047, "trade_close_mdd": 0.22356292091287636},
+        "winner_removed": {"completed_trades": 484, "end_nav": 7144.1475416667345, "median_notional_return": -0.011233367413487674, "multiple": 0.7144147541666734, "profit_factor": 0.7516026267667264, "removed_count": 18, "trade_close_mdd": 0.2966389304057183}
+      }
+    },
+    "REJECT_REVERSE": {
+      "12": {
+        "ordinary": {"completed_trades": 296, "end_nav": 8724.853125259295, "median_notional_return": 0.0005093328808182596, "multiple": 0.8724853125259294, "profit_factor": 0.5695577631113833, "trade_close_mdd": 0.1285376490652152},
+        "winner_removed": {"completed_trades": 279, "end_nav": 8369.022776446358, "median_notional_return": 0.0003231184566872892, "multiple": 0.8369022776446358, "profit_factor": 0.4366015136169052, "removed_count": 17, "trade_close_mdd": 0.16407896395712088}
+      },
+      "18": {
+        "ordinary": {"completed_trades": 296, "end_nav": 8162.230568458214, "median_notional_return": -0.00009066711918174044, "multiple": 0.8162230568458214, "profit_factor": 0.3949231430029356, "trade_close_mdd": 0.1838954681571672},
+        "winner_removed": {"completed_trades": 282, "end_nav": 7903.639972530908, "median_notional_return": -0.00024769216484907654, "multiple": 0.7903639972530908, "profit_factor": 0.2974493061878378, "removed_count": 15, "trade_close_mdd": 0.20975077271616055}
+      },
+      "24": {
+        "ordinary": {"completed_trades": 296, "end_nav": 7688.194310607496, "median_notional_return": -0.0006906671191817403, "multiple": 0.7688194310607496, "profit_factor": 0.2651540598982831, "trade_close_mdd": 0.2311805689392504},
+        "winner_removed": {"completed_trades": 284, "end_nav": 7501.358777257412, "median_notional_return": -0.0008230350490753134, "multiple": 0.7501358777257412, "profit_factor": 0.19414544822520005, "removed_count": 13, "trade_close_mdd": 0.2498641222742588}
+      }
+    },
+    "UNION": {
+      "12": {
+        "ordinary": {"completed_trades": 612, "end_nav": 8987.466245293532, "median_notional_return": -0.00594607698168997, "multiple": 0.8987466245293532, "profit_factor": 0.9247806775680696, "trade_close_mdd": 0.2215576188384003},
+        "winner_removed": {"completed_trades": 635, "end_nav": 7726.939711807519, "median_notional_return": -0.006844329896907107, "multiple": 0.7726939711807519, "profit_factor": 0.8303335667170822, "removed_count": 26, "trade_close_mdd": 0.2949671839832495}
+      },
+      "18": {
+        "ordinary": {"completed_trades": 612, "end_nav": 8045.002806971534, "median_notional_return": -0.00654607698168997, "multiple": 0.8045002806971534, "profit_factor": 0.8485023638097611, "trade_close_mdd": 0.2582255363277077},
+        "winner_removed": {"completed_trades": 647, "end_nav": 6696.290794092083, "median_notional_return": -0.007542987708002945, "multiple": 0.6696290794092083, "profit_factor": 0.7398884435994192, "removed_count": 25, "trade_close_mdd": 0.34135869804457425}
+      },
+      "24": {
+        "ordinary": {"completed_trades": 612, "end_nav": 7271.098147411853, "median_notional_return": -0.00714607698168997, "multiple": 0.7271098147411853, "profit_factor": 0.7807584536617963, "trade_close_mdd": 0.29051067635207706},
+        "winner_removed": {"completed_trades": 645, "end_nav": 6062.088957824191, "median_notional_return": -0.008142987708002945, "multiple": 0.6062088957824191, "profit_factor": 0.6773905775306336, "removed_count": 24, "trade_close_mdd": 0.40131537707932746}
+      }
+    }
+  },
+  "schema_version": 1,
+  "source_archive_sha256": "9fec65277f0a2a5ed83c575e6eed8f9366d4f2f538ae47c7466a5e7372c76718",
+  "status": "RETIRED_2022_DOLLAR_VOLUME_FLOW_BASE_FAILURE"
+}
