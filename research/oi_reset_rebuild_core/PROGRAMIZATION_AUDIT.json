@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-OI-RESET-REBUILD-CORE-001",
+  "result_id": "RES-20260730-OI-RESET-REBUILD-CORE-001",
+  "status": "PASS_PROGRAMIZATION_AUDIT_ECONOMIC_FAILURE_CONFIRMED",
+  "corrections_before_publication": [
+    {
+      "id": "CORR-003_EXACT_CALENDAR_WINDOW_CONTIGUOUS_OI",
+      "finding": "Row-count normalization could exceed 60 UTC calendar days and OI change could span an explicit source gap.",
+      "repair": "Use closed-left time-based 60-day windows and only exactly adjacent 15-minute OI returns."
+    },
+    {
+      "id": "CORR-004_MISSING_OI_NOT_CONTROL",
+      "finding": "A nonfinite current OI change could enter the no-reset comparator by boolean negation.",
+      "repair": "Require finite current OI state for every shock and control."
+    },
+    {
+      "id": "CORR-005_NESTED_NORMALIZATION_READINESS",
+      "finding": "The turnover-surprise quantile could become available before 60 days of finite surprise history existed.",
+      "repair": "Start every rolling layer's readiness clock at its first finite input; nested turnover normalization requires approximately 120 raw-history days."
+    },
+    {
+      "id": "CORR-006_ANNUAL_WINNER_DELETION",
+      "finding": "The continuous diagnostic removed five winners globally instead of five in every UTC calendar year.",
+      "repair": "Remove annual top-five positive completed event keys and rebuild the complete chronological global-slot account."
+    },
+    {
+      "id": "CORR-007_CONTRACT_WINDOW_METADATA",
+      "finding": "The contract recorded only the nominal 5,760-row equivalent although the final engine uses calendar windows.",
+      "repair": "Record 60 calendar days, nominal rows and 120-day nested raw-history readiness explicitly."
+    }
+  ],
+  "source_coverage": {
+    "BTCUSDT": {"eligible_15m_rows": 104981, "noncontiguous_transitions": 13, "missing_15m_intervals": 139, "one_minute_observed_rows": 1576800, "funding_events": 3285, "levels": 4100},
+    "ETHUSDT": {"eligible_15m_rows": 97973, "first_available_date": "2021-03-15", "noncontiguous_transitions": 13, "missing_15m_intervals": 139, "one_minute_observed_rows": 1471680, "funding_events": 3285, "levels": 3803}
+  },
+  "semantic_tests": {"count": 11, "passed": true},
+  "full_invariant_audit": {
+    "event_rows": 1559,
+    "trade_rows": 2026,
+    "timing_violations": 0,
+    "directional_geometry_violations": 0,
+    "nonfinite_scores": 0,
+    "invalid_costs": 0,
+    "prohibited_time_exits": 0,
+    "passed": true
+  },
+  "repeatability": {
+    "scientific_files_compared": 91,
+    "byte_mismatches": 0,
+    "passed": true
+  },
+  "primary_diagnostics_24bp": {
+    "candidates": 462,
+    "long": 240,
+    "short": 222,
+    "median_hold_hours": 3.316666666666667,
+    "event_mean_gross_price_return": -0.00045359208712269627,
+    "event_median_net_return": -0.008576230525243644,
+    "continuous_nav": 6955.577410254199,
+    "continuous_winner_removed_nav": 5396.918836271022
+  },
+  "fixed_horizon_interpretation": "Every 2022 mean gross markout from 15 minutes through 24 hours is below the 24bp cost. In 2023 the 24-hour mean barely clears 24bp, but its median remains negative. The failure is not explained by target placement, state-exit latency or insufficient leverage.",
+  "authority_hashes": {
+    "full_result": "15cb1d781e8a111e10b4266a9360b6fd5483fa9faddebbdb9aabfc5e235b786c",
+    "contract": "7bd712db899b4c140c40f62439ed0c8a9aa7a5b5391d6a2c4de5da779c247620",
+    "runner": "ee1570210c799d3853d87cc63aa308bb6e406c0fa7e7165694a510254cebbda1",
+    "authority_package": "43eff6ed7f0472290249d1b36d50597323de959934addb59a0e072cb5ec922c1"
+  },
+  "known_remaining_programization_defect": null,
+  "conclusion": "The frozen route is a valid frequent intraday economic failure, not a sparse jackpot strategy and not a known implementation failure. OI rebuilding after deleveraging did not identify same-direction sponsorship."
+}
