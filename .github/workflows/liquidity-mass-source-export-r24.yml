@@ -1,0 +1,49 @@
+name: Liquidity mass verified source export r24
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/liquidity-mass-source-export-r24.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-liquidity-mass-router-001
+          fetch-depth: 1
+
+      - name: Verify and package archived implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=research/liquidity_mass_router_20260726
+          out=/tmp/liquidity-mass-source
+          mkdir -p "$out"
+          python -m py_compile "$root/run.py" "$root/test_run.py"
+          cp "$root/run.py" "$root/test_run.py" "$root/preregistration.json" "$root/README.md" "$root/SOURCES.md" "$out/"
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          out=Path('/tmp/liquidity-mass-source')
+          manifest={'schema_version':1,'files':{},'scientific_content_changed':False}
+          for p in sorted(out.iterdir()):
+              if p.is_file():
+                  b=p.read_bytes(); manifest['files'][p.name]={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
+          (out/'EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: liquidity-mass-verified-source-r24-${{ github.sha }}
+          path: /tmp/liquidity-mass-source
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
