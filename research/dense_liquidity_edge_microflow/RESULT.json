@@ -1,0 +1,44 @@
+{
+  "result_id": "RES-20260730-DENSE-LIQUIDITY-EDGE-MICROFLOW-001",
+  "claim_id": "CLM-20260730-1905-DENSE-LIQUIDITY-EDGE-MICROFLOW-001",
+  "source_months": ["202301","202302","202303","202304","202305","202306","202307","202308"],
+  "candidate_minutes": 1425,
+  "exact_events": 1425,
+  "fit_events": 766,
+  "development_events": 659,
+  "flow_q75": 48.89432657809965,
+  "efficiency_boundary": 0.005401012021534907,
+  "fit_state_counts": {"FLAT": 697,"ACCEPT_CONTINUE": 49,"ABSORB_REJECT": 20},
+  "development_state_counts": {"FLAT": 604,"ACCEPT_CONTINUE": 35,"ABSORB_REJECT": 20},
+  "development": {
+    "ACCEPT_CONTINUE": {
+      "base": {"end_nav": 8795.14016111333,"multiple": 0.879514016111333,"geo": -0.0010432422609136793,"trades": 35,"pf": 0.04338868072109601,"median_net_return": -0.002567982226112917,"mdd_close": -0.12048598388866705,"mean_hold_h": 0.03757769047619047,"median_hold_h": 0.007513333333333334,"top1_share": 0.5817394258856663,"top5_share": 1.0,"top10_share": 1.0},
+      "reroute_top5": {"end_nav": 8745.493226752036,"multiple": 0.8745493226752036,"geo": -0.0010892160082123237,"trades": 32,"pf": 0.0,"median_net_return": -0.0025954755774437043,"mdd_close": -0.12545067732479642,"mean_hold_h": 0.03901046006944445,"median_hold_h": 0.007709444444444445,"top1_share": 1.0,"top5_share": 1.0,"top10_share": 1.0},
+      "deleted_event_keys": ["BTCUSDT|1686370829000|-1","BTCUSDT|1686980477000|1","BTCUSDT|1687197695000|1"],
+      "gate_pass": false
+    },
+    "ABSORB_REJECT": {
+      "base": {"end_nav": 9349.637386328206,"multiple": 0.9349637386328206,"geo": -0.0005465784793063921,"trades": 19,"pf": 0.2011616281998121,"median_net_return": -0.002965740522955993,"mdd_close": -0.07193065392608622,"mean_hold_h": 1.8351263888888887,"median_hold_h": 0.079375,"top1_share": 0.5790270255562311,"top5_share": 1.0,"top10_share": 1.0},
+      "reroute_top5": {"end_nav": 9189.528878382454,"multiple": 0.9189528878382455,"geo": -0.0006869218678575706,"trades": 17,"pf": 0.0,"median_net_return": -0.002990226399951321,"mdd_close": -0.08104711216175453,"mean_hold_h": 1.4074170261437908,"median_hold_h": 0.07485916666666667,"top1_share": 1.0,"top5_share": 1.0,"top10_share": 1.0},
+      "deleted_event_keys": ["BTCUSDT|1689173531500|1","BTCUSDT|1692564308500|1"],
+      "gate_pass": false
+    },
+    "FULL_MAP": {
+      "base": {"end_nav": 8223.137126834185,"multiple": 0.8223137126834185,"geo": -0.0015892505264515355,"trades": 54,"pf": 0.10308008991877737,"median_net_return": -0.0027166742713536783,"mdd_close": -0.17768628731658154,"mean_hold_h": 0.6700485288065844,"median_hold_h": 0.013437222222222222,"top1_share": 0.43393202481820425,"top5_share": 1.0000000000000002,"top10_share": 1.0000000000000002},
+      "reroute_top5": {"end_nav": 8036.696256293603,"multiple": 0.8036696256293603,"geo": -0.0017753896697749738,"trades": 49,"pf": 0.0,"median_net_return": -0.0027873963211724616,"mdd_close": -0.19633037437063972,"mean_hold_h": 0.5137637585034013,"median_hold_h": 0.012718888888888889,"top1_share": 1.0,"top5_share": 1.0,"top10_share": 1.0},
+      "deleted_event_keys": ["BTCUSDT|1686370829000|-1","BTCUSDT|1686980477000|1","BTCUSDT|1687197695000|1","BTCUSDT|1689173531500|1","BTCUSDT|1692564308500|1"],
+      "gate_pass": false
+    }
+  },
+  "gross_headroom": {
+    "zero_bp_full_map_multiple": 1.0356199973317846,
+    "zero_bp_full_map_top5_deleted_reroute_multiple": 0.9639423191635084,
+    "six_bp_full_map_multiple": 0.9391098622604351,
+    "interpretation": "small gross edge was winner-concentrated and did not survive 6bp"
+  },
+  "development_survivors": [],
+  "confirmation_opened": false,
+  "official_opened": false,
+  "orders_submitted": false,
+  "status": "RETIRED_DEVELOPMENT_ECONOMIC_OR_DENSITY_FAILURE"
+}
