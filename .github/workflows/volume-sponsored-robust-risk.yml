@@ -34,13 +34,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Materialize exact PR 472 source bundle
+      - name: Probe exact PR 472 source carrier and verify all internal files
         run: |
           set -euo pipefail
-          python research/volume_sponsored_channel/materialize.py
-          python -m py_compile research/volume_sponsored_channel/*.py
-          mkdir -p research_runs/volume_sponsored_robust_risk/source
-          cp research/volume_sponsored_channel/*.py research_runs/volume_sponsored_robust_risk/source/
+          python research/volume_sponsored_robust_risk/source_carrier_probe.py
+          python -m py_compile research_runs/volume_sponsored_robust_risk/source/*.py
           cp research/volume_sponsored_channel/CONTRACT.json research_runs/volume_sponsored_robust_risk/source/
           cp research/volume_sponsored_channel/RESULT.json research_runs/volume_sponsored_robust_risk/source/BASE_RESULT.json
           cp research/volume_sponsored_channel/SOURCE_MANIFEST.json research_runs/volume_sponsored_robust_risk/source/
