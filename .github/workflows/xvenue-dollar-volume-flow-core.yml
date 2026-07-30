@@ -1,0 +1,139 @@
+name: Validate cross-venue dollar-volume flow Core
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/xvenue_dollar_volume_flow_core/**"
+      - ".github/workflows/xvenue-dollar-volume-flow-core.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xvenue-dollar-volume-flow-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+  AW1_ARTIFACT_ID: "8616872985"
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify portable quant runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas; print('runtime-ok')"
+
+      - name: Materialize source and run semantic tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" research/xvenue_dollar_volume_flow_core/materialize.py --out materialized
+          "$PY" -m py_compile materialized/dollar_volume_flow_core.py materialized/test_semantics.py
+          "$PY" materialized/test_semantics.py
+
+      - name: Download and verify registered market dependencies
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/aw1 deps/bybit
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${AW1_ARTIFACT_ID}/zip" \
+            -o deps/aw1.zip
+          echo "7b5ebe136c561a9839b5509bb3f6121631960639f1f18c1d9115993cbc6420fb  deps/aw1.zip" | sha256sum -c -
+          unzip -q deps/aw1.zip -d deps/aw1
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/bybit.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/bybit.zip" | sha256sum -c -
+          unzip -q deps/bybit.zip -d deps/bybit
+          test -f deps/aw1/development/BTCUSDT_1m.npz
+          test -f deps/aw1/development/ETHUSDT_1m.npz
+          test -f deps/bybit/BTCUSDT/bars_1m.pkl.gz
+          test -f deps/bybit/ETHUSDT/bars_1m.pkl.gz
+
+      - name: Reproduce the frozen 2022 screen twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf artifact run2
+          "$PY" materialized/dollar_volume_flow_core.py \
+            --aw1-root deps/aw1 \
+            --bybit-root deps/bybit \
+            --output artifact | tee RUN1.log
+          "$PY" materialized/dollar_volume_flow_core.py \
+            --aw1-root deps/aw1 \
+            --bybit-root deps/bybit \
+            --output run2 | tee RUN2.log
+          for f in artifact/*; do
+            name="$(basename "$f")"
+            cmp "$f" "run2/$name"
+          done
+          cp RUN1.log artifact/RUN1.log
+          cp RUN2.log artifact/RUN2.log
+          cp research/xvenue_dollar_volume_flow_core/CONTRACT.json artifact/CONTRACT.json
+          cp research/xvenue_dollar_volume_flow_core/REPORT.md artifact/REPORT.md
+          cp research/xvenue_dollar_volume_flow_core/SOURCE_MANIFEST.json artifact/SOURCE_MANIFEST.json
+
+      - name: Assert economic failure and closed boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifact/RESULT.json').read_text())
+          assert r['status']=='RETIRED_2022_DOLLAR_VOLUME_FLOW_BASE_FAILURE'
+          assert r['counts']['development_event_rows']==1390
+          assert r['counts']['resolved_action_rows']==1229
+          assert r['results']['UNION']['24']['ordinary']['completed_trades']==612
+          assert abs(r['results']['UNION']['24']['ordinary']['multiple']-0.7271098147411853)<1e-12
+          assert r['results']['ACCEPT_CONTINUE']['24']['ordinary']['multiple']<1.0
+          assert r['results']['REJECT_REVERSE']['24']['ordinary']['multiple']<1.0
+          assert r['results']['UNION']['24']['winner_removed']['multiple']<1.0
+          assert r['ml_opened'] is False
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False
+          print(json.dumps({'status':'PASS','decision':r['decision']},indent=2))
+          PY
+          (cd artifact && find . -type f ! -name SHA256SUMS_FINAL.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS_FINAL.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xvenue-dollar-volume-flow-core
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
