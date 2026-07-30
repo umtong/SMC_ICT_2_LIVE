@@ -1,0 +1,62 @@
+{
+  "claim_id": "CLM-20260730-TURNOVER-TIME-SPONSORED-CORE-001",
+  "gate_2022": false,
+  "loaded_market_years": [
+    2021,
+    2022
+  ],
+  "opened_2023": false,
+  "programization_findings": [
+    "Packet target is frozen at each UTC-day open from the preceding 168 complete clock hours.",
+    "Packets are non-overlapping, never cross UTC day, never reuse a minute and discard incomplete day-end business.",
+    "All range, intensity and ATR states are prior-only shifted completed-packet values.",
+    "Entry activates after completed packet plus fixed 500 ms and uses the first strictly later observable one-minute open.",
+    "Actual signed funding, adverse stop-first ambiguity, global one-slot arbitration and exact winner deletion/full rerouting are applied.",
+    "A natural outcome after the requested calendar boundary is marked at the last observable price, remains incomplete and retains the slot; no future-year exit is imported.",
+    "No elapsed-time, session, UTC-day, year or research-stage strategy close is used."
+  ],
+  "remote_replay_boundary": "Plain-text source imports and compiles without local datasets; full scientific replay requires the registered canonical dataset artifacts and shared loader.",
+  "remote_validation": {
+    "conclusion": "success",
+    "semantic_test_sha256": "e894600e30448889de62c124eb584b4014a76670d8208e589bb0a7cff829de73",
+    "source_sha256": "4927043396f0271dd89bb161eaa9245a8bff2c06e73db3f91f76e375d929ee14",
+    "workflow_run_id": 30552721014
+  },
+  "result_id": "RES-20260730-TURNOVER-TIME-SPONSORED-CORE-001",
+  "schema_version": 2,
+  "semantic_test_sha256": "e894600e30448889de62c124eb584b4014a76670d8208e589bb0a7cff829de73",
+  "semantic_tests": {
+    "command": "python -m pytest -q test_semantics.py",
+    "failed": 0,
+    "passed": 7
+  },
+  "source_sha256": "4927043396f0271dd89bb161eaa9245a8bff2c06e73db3f91f76e375d929ee14",
+  "status": "PASS_CAUSAL_SEMANTICS_SEVEN_TESTS_TWO_FRESH_PROCESS_21_FILE_BYTE_IDENTITY_PORTABLE_CI_SUCCESS",
+  "two_fresh_processes": {
+    "all_byte_identical": true,
+    "file_sha256": {
+      "DAILY_NAV_2021_0BP.csv": "b39e4d29aa070a0c153c987dbacf0d3183fd97fe1d6da14e3ff1f7df8c5e8dba",
+      "DAILY_NAV_2021_12BP.csv": "bb30cd1519a0f5b1f751378f6531d0bfdb9bfc6505e1339d128140fe419ec549",
+      "DAILY_NAV_2021_18BP.csv": "96398a2c8fa71899f4e1cb226a627da0da0486e8879eb3526724cfade9704f27",
+      "DAILY_NAV_2021_24BP.csv": "6968e3b90e13f84da2eee8d376250b9350dd7d6aa491ac6cfc913c5db0b9a3c5",
+      "DAILY_NAV_2022_0BP.csv": "599d807bb98aef63e70f15dea1dc00e349d1c0bc9ef1e04f56810625a753562d",
+      "DAILY_NAV_2022_12BP.csv": "b01e4816699785cec745734e73838da8ccb28f40a4bfe77eeb5f909531765dcc",
+      "DAILY_NAV_2022_18BP.csv": "29dd0e7353a8a09db939137688d71e04f307dfd91d70c95a7fa9600e73434e75",
+      "DAILY_NAV_2022_24BP.csv": "fc99befa50214dc6613bf24086a08d10d43951e83c4b087551cd90b5620f1758",
+      "DAILY_NAV_2022_24BP_WINNER_REMOVED.csv": "af16c23b985e221b1e7ccd854e471dcfff9d0811ff6df6bed5f8dafb2cd264c9",
+      "EVENTS.csv.gz": "1cff1c34037043d4745d4d47bae65ca7d0d729c612d296e9f69b20f01716707c",
+      "PACKETS.csv.gz": "4688d436ec2baca87789bd45fc0ade44378bcdba9675d2a24051d5d2c6ba1c3c",
+      "RESULT.json": "e389db85e82a3e61607a41d62e01f749140283a6e0a364cfd407650aa30fdc01",
+      "TRADES_2021_0BP.csv": "289db1b5f39abd384e4e374bc310e2041a1f63f4d6409b03e7bc2a25230816b1",
+      "TRADES_2021_12BP.csv": "9392644b8d53d37cf684d7ce60bec0607e5aec72d9de6ed72e55b04efad8447c",
+      "TRADES_2021_18BP.csv": "6dde7ffd45b37c93a5fb1404c16f22559a91e948c0341f62d7159146b203e0b2",
+      "TRADES_2021_24BP.csv": "62a861de1ac0fe77e97e19f394532c3de6f27d88aff21172813b6d0751afdfc8",
+      "TRADES_2022_0BP.csv": "6421605048be54b914deacc31f3d39f4ee34abd1670650cd0a4d4fe6401d4832",
+      "TRADES_2022_12BP.csv": "efb8a5b6ec61865f380c746590f70f74161ed22c514172fea28ba3b0a421140f",
+      "TRADES_2022_18BP.csv": "894be58dde18c0d18cd53325f240b7b4644ee6f46dd972539f3d928f6fa5f156",
+      "TRADES_2022_24BP.csv": "43eb43c3a524291c6fe8982e9de718ff9283c4976d837d05b8c4f666c8f6cab1",
+      "TRADES_2022_24BP_WINNER_REMOVED.csv": "cbba39c0d1bf699a22bb680425c54f85829aef82afa8cb5354e09c9b5d9e6ea3"
+    },
+    "scientific_file_count": 21
+  }
+}

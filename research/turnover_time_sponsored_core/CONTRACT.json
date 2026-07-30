@@ -1,0 +1,27 @@
+{
+  "chronology": {
+    "context": [2021],
+    "fatal_screen": [2022],
+    "official_2024_2026": false,
+    "opened_2023": false
+  },
+  "claim_id": "CLM-20260730-TURNOVER-TIME-SPONSORED-CORE-001",
+  "decision": "RETIRED_2022_TURNOVER_TIME_SPONSORED_CORE_FAILURE",
+  "fixed_parameters": {
+    "cost_bps": [0, 12, 18, 24],
+    "external_range_packets": 96,
+    "global_slots": 1,
+    "latency_ms": 500,
+    "notional_cap": 3.0,
+    "packet_target": "median turnover of preceding 168 complete clock hours, frozen at UTC-day open",
+    "risk_fraction": 0.005,
+    "sponsor_z": 2.2706072565238586,
+    "state_loss_opposite_packets": 48,
+    "stop_atr_multiple": 2.0,
+    "target_r_multiple": 1.5
+  },
+  "forbidden_rescue": ["packet target", "z boundary", "range lookback", "target", "stop", "channel", "cost", "symbol/side", "ML", "risk", "leverage"],
+  "logic": "A normal-hour quantity of business completed unusually quickly and closing beyond a pre-existing turnover-time external range is tested as accepted new price; a full +1.5R action tests repeatable Core value before any multi-day runner.",
+  "schema_version": 1,
+  "symbols_are_testbeds": ["BTCUSDT", "ETHUSDT"]
+}
