@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -8,6 +9,7 @@ MODULE_PATH = Path(__file__).with_name("source_probe.py")
 SPEC = importlib.util.spec_from_file_location("source_probe", MODULE_PATH)
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules["source_probe"] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
