@@ -108,12 +108,12 @@ jobs:
         run: |
           set -euo pipefail
           PY="$GITHUB_WORKSPACE/deps/runtime/root/python/bin/python3"
+          sudo rm -rf /mnt/data
           sudo mkdir -p /mnt/data
-          sudo rm -rf /mnt/data/core_tables_py /mnt/data/channel_independent_audit /mnt/data/channel_volume_group_path /mnt/data/channel_volume_risk_precision
-          sudo ln -s "$GITHUB_WORKSPACE/deps/canonical" /mnt/data/core_tables_py
-          sudo cp deps/volume/channel_*.py /mnt/data/
-          sudo mkdir -p /mnt/data/channel_independent_audit
-          sudo chown -R "$USER":"$USER" /mnt/data/channel_independent_audit
+          sudo chown "$USER":"$USER" /mnt/data
+          ln -s "$GITHUB_WORKSPACE/deps/canonical" /mnt/data/core_tables_py
+          cp deps/volume/channel_*.py /mnt/data/
+          mkdir -p /mnt/data/channel_independent_audit
           "$PY" - <<'PY' | tee CANDIDATE_BUILD.log
           import sys
           sys.path.insert(0,'/mnt/data')
@@ -134,6 +134,7 @@ jobs:
         run: |
           set -euo pipefail
           PY="$GITHUB_WORKSPACE/deps/runtime/root/python/bin/python3"
+          mkdir -p /mnt/data/channel_volume_group_path /mnt/data/channel_volume_risk_precision
           "$PY" /mnt/data/channel_volume_group_path.py | tee GROUP_PATH.log
           "$PY" /mnt/data/channel_volume_risk_precision.py | tee RISK_PATH.log
           "$PY" - <<'PY'
@@ -158,8 +159,8 @@ jobs:
           cp deps/volume/SOURCE_MANIFEST.json artifact/source/
           cp /mnt/data/channel_independent_audit/candidates_raw.csv artifact/candidates/ || true
           cp /mnt/data/channel_independent_audit/candidates_raw.pkl.gz artifact/candidates/ || true
-          cp /mnt/data/channel_volume_group_path/* artifact/group/ || true
-          cp /mnt/data/channel_volume_risk_precision/* artifact/risk/ || true
+          cp -r /mnt/data/channel_volume_group_path/. artifact/group/ || true
+          cp -r /mnt/data/channel_volume_risk_precision/. artifact/risk/ || true
           cp *.log artifact/logs/ || true
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
 
