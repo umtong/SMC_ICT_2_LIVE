@@ -1,0 +1,45 @@
+name: Materialize verified direct Core source r35
+
+on:
+  push:
+    branches:
+      - agent/r35-direct-utility-first-minute-acceptance-001
+    paths:
+      - research/triggers/direct-core-materialize-r35/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: direct-core-materialize-r35-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Materialize and verify exact PR 551 source
+        run: |
+          set -euo pipefail
+          python research/execution_aligned_direct_utility_core/materialize.py
+          python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
+      - name: Publish readable verified source on research branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f research/execution_aligned_direct_utility_core/materialized
+          if git diff --cached --quiet; then
+            echo "No materialized changes"
+          else
+            git commit -m "research: materialize verified direct Core source"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
