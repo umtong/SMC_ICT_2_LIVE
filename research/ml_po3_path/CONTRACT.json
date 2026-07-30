@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-2114-ML-PO3-PATH-001",
+  "claim_issue": 401,
+  "base_main": "148872ee68dfb7cce66df2597191b5a63352a7a3",
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "venue": "Bybit USDT-linear perpetual",
+  "mechanism": "The first completed subwindow of an active UTC-aligned 4h or day candle forms an accumulation range. A one-sided move is classified from completed information as rejected manipulation, accepted same-side distribution, or flat. FVG, order block and fixed-RR checklists are not entry gates.",
+  "selected_path": {
+    "period_minutes": 1440,
+    "accumulation_minutes": 240,
+    "acceptance_confirmation": "two consecutive completed 5m closes outside the frozen accumulation range",
+    "entry": "resting limit halfway between the breached accumulation boundary and confirmation close",
+    "stop": "opposite accumulation boundary",
+    "target": "one accumulation-range extension beyond the breached boundary",
+    "pending_expiry": "end of active UTC day only while unfilled",
+    "position_expiry": null,
+    "position_exit": "structural stop or resting target"
+  },
+  "information_clocks": ["completed 1m", "completed 5m", "completed 15m", "completed 1h", "completed 4h", "completed UTC day", "5m OI", "5m account ratio", "exact funding"],
+  "execution": {
+    "fixed_latency_ms": 500,
+    "coarse_fill_rule": "first later observable 1m price after activation",
+    "resting_limit_penetration_bp": 1.0,
+    "same_minute_boundary_order": "adverse stop first",
+    "global_pending_or_open_slots": 1,
+    "entry_fee_bp": 2.0,
+    "target_fee_bp": 2.0,
+    "stop_fee_bp": 5.5,
+    "stop_spread_slippage_bp": 2.0,
+    "funding": "exact signed canonical funding events"
+  },
+  "alpha_discovery_account": {
+    "initial_nav_usdt": 10000,
+    "planned_loss_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "risk_or_leverage_rescue": false
+  },
+  "ml": {
+    "model": "HistGradientBoostingRegressor",
+    "development": "fit 2021 -> forward 2022; fit 2021-2022 -> forward 2023; select worst forward log growth with at least 15 trades per forward year",
+    "selected_parameters": {"max_leaf_nodes": 15, "min_samples_leaf": 120, "l2_regularization": 1.0, "threshold": 0.0002},
+    "official_model": "one frozen refit using resolved information through 2023-12-31"
+  },
+  "canonical_export_manifest_sha256": "8de81d791c9ad177c6fd2046675adda759dc7373aa1d31e01b32d9b7058e8c6d",
+  "caption_corpus_archive_sha256": "395f3c6c401783335eaefc62d5dfac0f8b0641e1c5893d1dc8026beba85ac421",
+  "live_or_paper_orders": false
+}
