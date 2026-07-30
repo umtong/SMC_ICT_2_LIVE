@@ -31,7 +31,21 @@ REPLACEMENTS = [
         '\n\ndef inspect_day(day: date, path: Path) -> tuple[dict[str, Any], list[dict[str, Any]], set[str], set[str], set[str]]:\n',
         '\n\ndef net_inventory_gwei(deposit_gwei: int, release_gwei: int) -> int:\n'
         '    return int(deposit_gwei) - int(release_gwei)\n'
+        '\n\ndef inventory_totals_gwei(deposit_values: Any, release_values: Any) -> tuple[int, int, int]:\n'
+        '    deposits = [int(value) for value in deposit_values]\n'
+        '    releases = [int(value) for value in release_values]\n'
+        '    if len(deposits) != len(releases):\n'
+        '        raise ValueError("deposit/release chronology length mismatch")\n'
+        '    net_values = [\n'
+        '        net_inventory_gwei(deposit, release)\n'
+        '        for deposit, release in zip(deposits, releases, strict=True)\n'
+        '    ]\n'
+        '    return sum(deposits), sum(releases), sum(net_values)\n'
         '\n\ndef inspect_day(day: date, path: Path) -> tuple[dict[str, Any], list[dict[str, Any]], set[str], set[str], set[str]]:\n',
+    ),
+    (
+        '        "principal_amount_eth",\n',
+        '        "principal_amount_gwei",\n        "principal_amount_eth",\n',
     ),
     (
         '    merged[deposit_columns] = merged[deposit_columns].fillna(0)\n',
@@ -60,13 +74,16 @@ REPLACEMENTS = [
         '    merged["net_locked_eth"] = merged["net_locked_gwei"] / 1e9\n',
     ),
     (
+        '    total_deposit_gwei = sum(item["total_gwei"] for item in daily_rows)\n'
         '    total_principal_eth = float(merged["principal_release_eth"].sum())\n'
         '    total_deposit_eth = total_deposit_gwei / 1e9\n'
         '    total_net_eth = float(merged["net_locked_eth"].sum())\n'
         '    if abs((total_deposit_eth - total_principal_eth) - total_net_eth) > 1e-6:\n'
         '        raise ValueError("net-staking amount conservation failed")\n',
-        '    total_principal_gwei = int(merged["principal_release_gwei"].sum())\n'
-        '    total_net_gwei = int(merged["net_locked_gwei"].sum())\n'
+        '    raw_deposit_gwei = sum(int(item["total_gwei"]) for item in daily_rows)\n'
+        '    total_deposit_gwei, total_principal_gwei, total_net_gwei = inventory_totals_gwei(\n'
+        '        merged["deposit_amount_gwei"], merged["principal_release_gwei"]\n'
+        '    )\n'
         '    if net_inventory_gwei(total_deposit_gwei, total_principal_gwei) != total_net_gwei:\n'
         '        raise ValueError("net-staking integer-Gwei conservation failed")\n'
         '    total_deposit_eth = total_deposit_gwei / 1e9\n'
@@ -76,7 +93,9 @@ REPLACEMENTS = [
     (
         '        "deposit_total_eth": total_deposit_eth,\n'
         '        "deposit_unique_pubkeys": len(pubkeys),\n',
-        '        "deposit_total_gwei": total_deposit_gwei,\n'
+        '        "raw_deposit_total_gwei": raw_deposit_gwei,\n'
+        '        "raw_deposit_total_eth": raw_deposit_gwei / 1e9,\n'
+        '        "aligned_deposit_total_gwei": total_deposit_gwei,\n'
         '        "deposit_total_eth": total_deposit_eth,\n'
         '        "deposit_unique_pubkeys": len(pubkeys),\n',
     ),
@@ -105,7 +124,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "build_source.py").write_text(text)
     shutil.copy2(root / "test_build_source.py", args.out / "test_build_source.py")
-    print("materialized deposit-proof and integer-Gwei source reader")
+    print("materialized deposit-proof, common-window and integer-Gwei source reader")
 
 
 if __name__ == "__main__":
