@@ -1,0 +1,68 @@
+{
+  "causality_correction": {
+    "corrected_action_rows": 20615,
+    "corrected_entry_delay_ms": 60000,
+    "cross_stage_exit_count": 0,
+    "decision_year_mismatch_count": 0,
+    "defects_fixed": [
+      "calendar stage was initially assigned from 5m bar start instead of decision availability",
+      "counterfactual labels could initially resolve after the annual development boundary",
+      "simultaneous BTC and ETH candidates were initially ordered by symbol rather than predicted action value"
+    ],
+    "preliminary_figures_discarded": true,
+    "unit_tests_passed": 4,
+    "validator_status": "PASS_NEGATIVE_DECISION"
+  },
+  "claim_id": "CLM-20260729-ML-AUCTION-VALUE-001",
+  "confirmation_2023_opened": false,
+  "confirmation_note": "No 2022 route survived, so the corrected protocol did not fit a 2021-2022 model or select on 2023. Raw 2023 action outcomes exist only as already-exposed mechanism diagnostics and were not used to rescue or select the family.",
+  "data": [
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1","manifest_sha256":"e1acb85412dbbb3f9ee02be9a85ed9994b577fbecd974e9a8e4bc9a48b48b967"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1","manifest_sha256":"a81b529ea4efe71944b4cbdcaf496e3f2e7920b3a504ef7ee97bbbb79890a1e1"},
+    {"dataset_id":"DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2023-CANONICAL-V1","manifest_sha256":"071f6e4df1712a87686eabda318cb7527a1b3cd3e4d0d80a5e82d44d12b31427"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1","manifest_sha256":"030bbe351e198caf5ac8e87ceea8957a8e65439a54fea6bf41c40ac075ee6501"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1","manifest_sha256":"73abd6f4838428d45b5a02cb0c8e19c5c3b9b22a98855fba9039ad1a105123da"},
+    {"dataset_id":"DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2023-CANONICAL-V1","manifest_sha256":"e315062e16d0d27863b4f796a143f0bb0c853f1d671b5086e340fcaeaa5247cd"}
+  ],
+  "decision": "Retire the exact prior-day turnover-profile acceptance/rejection family before official 2024. Raw actions were negative and the causal ML policy produced no positive non-sparse 2022 survivor after correcting stage boundaries and global-slot arbitration.",
+  "next_alpha_requirement": "Change economic mechanism. Do not rescue this family with narrower value-edge filters, adjacent profile bins, higher leverage, looser costs, or more confirmation gates.",
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "ranking_changed": false,
+  "raw_action_diagnostics": [
+    {"action":"CONT","mean_unit_return":-0.0022780030831293973,"median_unit_return":-0.004996971549919411,"n":2980,"positive_fraction":0.16476510067114095,"year":2021},
+    {"action":"CONT","mean_unit_return":-0.002729211012056139,"median_unit_return":-0.004997666492911159,"n":3615,"positive_fraction":0.12586445366528354,"year":2022},
+    {"action":"CONT","mean_unit_return":-0.0035594780043612323,"median_unit_return":-0.004998475123962457,"n":3850,"positive_fraction":0.0722077922077922,"year":2023},
+    {"action":"REV","mean_unit_return":-0.0024736674230360703,"median_unit_return":-0.004998516827792428,"n":2835,"positive_fraction":0.15026455026455027,"year":2021},
+    {"action":"REV","mean_unit_return":-0.0030323508744249947,"median_unit_return":-0.0049986166031042185,"n":3524,"positive_fraction":0.14812712826333713,"year":2022},
+    {"action":"REV","mean_unit_return":-0.00328597937756808,"median_unit_return":-0.004999040099022072,"n":3811,"positive_fraction":0.14746785620572028,"year":2023}
+  ],
+  "result_id": "RES-20260729-ML-AUCTION-VALUE-001",
+  "risk_leverage_optimization_opened": false,
+  "schema_version": 2,
+  "selection_2022": {
+    "best_dense_route": {
+      "file":"action_outcomes.parquet","gate":"mean","gd":-0.0020353955161578,"log_step":0.0005,"mdd":0.5284357039295975,"median":-0.00499697069289,"nav":4753.630465921078,"pf":0.5316535779418791,"return":-0.5246369534078922,"stop_buffer":0.25,"top5_share":0.2748941265757338,"trades":398,"trail_h":12,"value_fraction":0.7
+    },
+    "best_traded_route": {
+      "file":"variant_s05_v80_b25_t12.parquet","gate":"blend","gd":-0.00006220427214342905,"log_step":0.0005,"mdd":0.056335421866459,"median":-0.0049975582604807,"nav":9775.505591721669,"pf":0.701345129674423,"return":-0.0224494408278332,"stop_buffer":0.25,"top5_share":1.0,"trades":19,"trail_h":12,"value_fraction":0.8
+    },
+    "eligible_positive_non_sparse_routes": 0,
+    "model_policy_routes": 20,
+    "profile_stop_configurations": 5,
+    "routes_with_trades": 10,
+    "zero_trade_routes": 10
+  },
+  "source_git_blob_sha": {
+    "CONTRACT.json":"e1b190844bb1de3691e8c658fbdb0771c73f4350",
+    "REPORT.md":"94815f8c27fdb1f0e738e3b1196fe7a91d6e9c0a",
+    "build_features.py":"8d510462fe636dac77e121121eb829d9bed1a335",
+    "build_outcomes.py":"7eddaa5b665a6ab751376cf81886dc53ee6cd514",
+    "build_profiles.py":"152b88ea381cccf66e2414ef20db720100a2c9d3",
+    "run_variant.py":"7df02d64002af85ee0f2aaa75cbeeb770ee6123f",
+    "test_auction_value.py":"278b399d81a5abc1793450ed79be549a315187c4",
+    "validate_result.py":"dd3ebb1771a6d8630f0806541f69add82e083bc0",
+    "variant_models.py":"24f9444a5b1fda652e0bf269114919350c86b3a6"
+  },
+  "status": "ECONOMIC_FAIL"
+}
