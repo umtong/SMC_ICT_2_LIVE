@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ETH-NET-STAKING-INVENTORY-CORE-001",
+  "parent_results": [
+    "RES-20260730-ETH-VALIDATOR-WITHDRAWAL-ECONOMIC-001",
+    "RES-20260730-ETH-PRINCIPAL-EXIT-FLOW-001"
+  ],
+  "comparison_confidence": "LOW_EXPOSED_SEMANTIC_DIAGNOSTIC",
+  "source": {
+    "deposit_provider": "ethPandaOps Xatu public data",
+    "deposit_table": "canonical_beacon_block_deposit",
+    "principal_release_dependency": "workflow 30517717123 artifact 8749615475",
+    "period": ["2023-04-12", "2023-12-31"],
+    "deposit_event_key": "block_root + deposit_data_pubkey + deposit_data_signature",
+    "deposit_amount": "deposit_data_amount decoded from UInt128 physical representation",
+    "principal_release": "already-frozen withdrawal_amount >= 16 ETH stream",
+    "net_locked_eth": "deposit ETH minus principal-scale withdrawal ETH",
+    "availability": "completed UTC source hour plus fixed 180 seconds",
+    "market_outcomes_prohibited_until_source_pass": true,
+    "known_official_source_limitation": "Xatu canonical_beacon_block_deposit public files are documented only through 2025-05-14; a positive pre-2024 result requires a separate full-period deposit-contract source before complete official evaluation"
+  },
+  "economic_screen": {
+    "primary_stream": "net_locked_eth",
+    "negative_controls": ["deposit_eth", "principal_release_eth"],
+    "primary_event": "net locked ETH in the prior-only rolling 720-hour lower or upper decile",
+    "control_event": "control amount in its own prior-only rolling 720-hour upper decile",
+    "market": "Bybit ETHUSDT USDT-linear perpetual",
+    "chronology": {
+      "fit": ["2023-04-12", "2023-09-01"],
+      "forward_development": ["2023-09-01", "2023-11-01"],
+      "frozen_confirmation": ["2023-11-01", "2024-01-01"],
+      "official_2024_2026_opened": false
+    },
+    "actions": ["long", "short", "flat"],
+    "entry": "first observable ETHUSDT one-minute open after source availability plus fixed 500ms order latency",
+    "long_geometry": "completed event-hour low structural invalidation and prior-only 24-hour high objective",
+    "short_geometry": "completed event-hour high structural invalidation and prior-only 24-hour low objective",
+    "same_minute_ambiguity": "structural stop first",
+    "gap_stop": "observed one-minute open when beyond structural stop",
+    "funding": "actual signed Bybit funding",
+    "costs_bp": [13, 18, 24],
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "global_slot": 1,
+    "elapsed_time_liquidation": false,
+    "stage_boundary": "mark and stop new entries; never strategy-close; unresolved labels excluded from model fit",
+    "model": "eight fixed-seed event-bootstrap HGBT regressors of direct 24bp account action value; score equals mean minus 0.5 standard deviation",
+    "model_refit_after_fit": false
+  },
+  "pass_rule": {
+    "primary_cost_bp": 24,
+    "minimum_trades_each_forward_stage": 15,
+    "requirements": [
+      "net-staking ML policy ends above 10000 USDT in development and confirmation",
+      "net-staking exact positive-winner deletion and full rerouting ends above 10000 USDT in both forward stages",
+      "net-staking policy exceeds deposit-only and principal-release controls in both stages",
+      "no forced liquidation or prohibited elapsed-time exit"
+    ]
+  },
+  "prohibitions": [
+    "no change to source definitions or signed net-flow construction after market outcomes",
+    "no threshold, rolling-window, quantile, delay, action-geometry, cost, risk or leverage rescue",
+    "no 2024-2026 opening without a pass and a separately frozen full-period deposit source",
+    "no credentials or orders"
+  ]
+}

@@ -1,0 +1,282 @@
+name: Ethereum net-staking inventory Core
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/eth_net_staking_inventory_core/**
+      - .github/workflows/eth-net-staking-inventory-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: eth-net-staking-inventory-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  PRINCIPAL_SOURCE_ARTIFACT_ID: "8749615475"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified portable runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import pandas,pyarrow; print('runtime-ok')"
+
+      - name: Download verified principal-release dependency
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/principal
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${PRINCIPAL_SOURCE_ARTIFACT_ID}/zip" \
+            -o deps/principal.zip
+          echo "001a60aedf845175164fbd14377bc350d698893b742d9fc09b7e51c2f1c01c54  deps/principal.zip" | sha256sum -c -
+          unzip -q deps/principal.zip -d deps/principal
+          test -f deps/principal/HOURLY_SPLIT_SOURCE.parquet
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('deps/principal/SOURCE_RESULT.json').read_text())
+          assert result['status'] == 'SOURCE_PASS_PRINCIPAL_PARTIAL_SPLIT'
+          assert result['withdrawal_rows'] == 29_982_950
+          print('principal-dependency-ok')
+          PY
+
+      - name: Materialize deposit-proof-aware source reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf research/eth_net_staking_inventory_core/materialized
+          "$PY" research/eth_net_staking_inventory_core/materialize_build_source.py \
+            --out research/eth_net_staking_inventory_core/materialized
+
+      - name: Compile and test source semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" -m py_compile \
+            research/eth_net_staking_inventory_core/materialized/build_source.py \
+            research/eth_net_staking_inventory_core/materialized/test_build_source.py
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          path = pathlib.Path('research/eth_net_staking_inventory_core/materialized/test_build_source.py')
+          spec = importlib.util.spec_from_file_location('test_build_source', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules['test_build_source'] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith('test_'))
+          for name in tests:
+              getattr(module, name)()
+              print('PASS', name)
+          assert len(tests) == 6
+          PY
+
+      - name: Build outcome-sealed net-staking source
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf source_artifact
+          "$PY" research/eth_net_staking_inventory_core/materialized/build_source.py \
+            --principal-source deps/principal/HOURLY_SPLIT_SOURCE.parquet \
+            --output source_artifact \
+            --workers 8 \
+            --batch-days 16 \
+            | tee SOURCE_RUN.log
+          cp research/eth_net_staking_inventory_core/CONTRACT.json source_artifact/CONTRACT.json
+          cp SOURCE_RUN.log source_artifact/SOURCE_RUN.log
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('source_artifact/SOURCE_RESULT.json').read_text())
+          assert result['status'] == 'SOURCE_PASS_NET_STAKING_PRE2024'
+          assert result['deposit_daily_partitions'] == 264
+          assert result['hourly_rows'] == 6314
+          assert result['amount_conservation_pass'] is True
+          assert result['market_outcomes_opened'] is False
+          assert result['bybit_data_opened'] is False
+          assert result['orders_submitted'] is False
+          print(json.dumps(result, indent=2))
+          PY
+          (cd source_artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-net-staking-source
+          path: source_artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  economics:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified portable runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas,pyarrow,scipy,sklearn; print('runtime-ok')"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: eth-net-staking-source
+          path: deps/source
+
+      - name: Download and verify canonical Bybit export
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path('deps/canonical')
+          manifest = json.loads((root / 'EXPORT_MANIFEST.json').read_text())
+          assert manifest['schema_version'] == 1 and len(manifest['tables']) == 18
+          for item in manifest['tables']:
+              path = root / item['symbol'] / (item['table'] + '.pkl.gz')
+              assert path.stat().st_size == item['bytes']
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']
+          print('canonical-ok')
+          PY
+
+      - name: Compile and test economic semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" -m py_compile \
+            research/eth_net_staking_inventory_core/economic_screen.py \
+            research/eth_net_staking_inventory_core/test_economic_screen.py
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          path = pathlib.Path('research/eth_net_staking_inventory_core/test_economic_screen.py')
+          spec = importlib.util.spec_from_file_location('test_economic_screen', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules['test_economic_screen'] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith('test_'))
+          for name in tests:
+              getattr(module, name)()
+              print('PASS', name)
+          assert len(tests) == 7
+          PY
+
+      - name: Run frozen pre-2024 net-staking decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf economic_artifact
+          "$PY" research/eth_net_staking_inventory_core/economic_screen.py \
+            --source deps/source/HOURLY_NET_STAKING_SOURCE.parquet \
+            --canonical-root deps/canonical/ETHUSDT \
+            --output economic_artifact \
+            | tee ECONOMIC_RUN.log
+          cp research/eth_net_staking_inventory_core/CONTRACT.json economic_artifact/CONTRACT.json
+          cp deps/source/SOURCE_RESULT.json economic_artifact/SOURCE_RESULT.json
+          cp deps/source/SHA256SUMS.txt economic_artifact/SOURCE_SHA256SUMS.txt
+          cp deps/canonical/EXPORT_MANIFEST.json economic_artifact/CANONICAL_EXPORT_MANIFEST.json
+          cp ECONOMIC_RUN.log economic_artifact/ECONOMIC_RUN.log
+
+      - name: Assert frozen decision boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('economic_artifact/RESULT.json').read_text())
+          assert result['source_status'] == 'SOURCE_PASS_NET_STAKING_PRE2024'
+          assert result['comparison_confidence'] == 'LOW_EXPOSED_SEMANTIC_DIAGNOSTIC'
+          assert result['chronology']['official_2024_2026_opened'] is False
+          assert result['information_unit']['elapsed_time_liquidation'] is False
+          assert result['orders_submitted'] is False
+          assert result['live_permission'] is False
+          assert result['ranking_change'] is False
+          assert result['status'] in {
+              'PRE2024_EXPOSED_NET_STAKING_DIAGNOSTIC_PASS',
+              'RETIRED_NET_STAKING_INVENTORY_FAILURE',
+          }
+          print(json.dumps({
+              'status': result['status'],
+              'pass_rule_met': result['pass_rule_met'],
+              'failure_reasons': result['pass_rule_failure_reasons'],
+              'net_counts': result['streams']['net']['counts'],
+              'net_development_24': result['streams']['net']['development']['ml_policy']['24'],
+              'net_confirmation_24': result['streams']['net']['confirmation']['ml_policy']['24'],
+              'deposit_development_24': result['streams']['deposit']['development']['ml_policy']['24'],
+              'release_development_24': result['streams']['release']['development']['ml_policy']['24'],
+          }, indent=2))
+          PY
+          (cd economic_artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-net-staking-economic-result
+          path: economic_artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

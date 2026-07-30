@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ETH-NET-STAKING-INVENTORY-CORE-001",
+  "result_id": "RES-20260730-ETH-NET-STAKING-INVENTORY-001",
+  "status": "RETIRED_NET_STAKING_INVENTORY_FAILURE",
+  "comparison_confidence": "LOW_EXPOSED_SEMANTIC_DIAGNOSTIC",
+  "target_status": "NOT_OPENED",
+  "ranking_change": false,
+  "live_permission": false,
+  "orders_submitted": false,
+  "source": {
+    "status": "SOURCE_PASS_NET_STAKING_PRE2024",
+    "period": ["2023-04-12", "2023-12-31"],
+    "deposit_daily_partitions": 264,
+    "deposit_rows": 564032,
+    "deposit_event_keys_unique": 564032,
+    "hourly_rows": 6314,
+    "aligned_deposit_total_eth": 17291369.0,
+    "principal_release_total_eth": 6518259.308444158,
+    "net_locked_total_eth": 10773109.691555843,
+    "deposit_unique_pubkeys": 541003,
+    "deposit_unique_credentials": 50646,
+    "source_confirmation_delay_seconds": 180,
+    "amount_conservation_pass": true
+  },
+  "programization_corrections": [
+    "deposit event identity includes the Merkle deposit proof hash because block-root/pubkey/signature alone was not unique",
+    "deposit UInt128 amounts and Unix-second timestamps are decoded from their physical Xatu representation",
+    "net inventory is conserved in integer Gwei rather than floating ETH",
+    "deposit and principal-release totals are compared only over the common 6314-hour observable chronology; raw deposits before Shapella withdrawal availability are retained separately but excluded from paired net inventory",
+    "unresolved fit actions cannot become later-stage labels; development and confirmation positions are marked, not strategy-closed, at stage boundaries"
+  ],
+  "account_contract": {
+    "market": "Bybit ETHUSDT USDT-linear perpetual",
+    "event": "prior-only rolling 720-hour q10/q90 tails of hourly deposit ETH minus principal-scale release ETH",
+    "controls": ["deposit upper-tail", "principal-release upper-tail"],
+    "actions": ["long", "short", "flat"],
+    "order_latency_ms": 500,
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bp": [13, 18, 24],
+    "actual_signed_funding": true,
+    "global_slot": 1,
+    "elapsed_time_liquidation": false
+  },
+  "net_stream": {
+    "counts": {
+      "shock_events": 1085,
+      "action_rows": 2005,
+      "fit_resolved_actions": 854,
+      "development_actions": 591,
+      "confirmation_actions": 557
+    },
+    "development_24bp": {
+      "ml_trades": 8,
+      "ml_end_nav": 9819.945396910869,
+      "ml_profit_factor": 0.3373665409360078,
+      "ml_median_account_return": -0.004986965922084214,
+      "ml_winner_deleted_end_nav": 9753.585644788172,
+      "response_end_nav": 8912.256499325877,
+      "source_sign_end_nav": 8053.690092867889,
+      "raw_long_mean_account_value_bp": -25.980756085458882,
+      "raw_short_mean_account_value_bp": -13.163183105012822
+    },
+    "confirmation_24bp": {
+      "ml_trades": 10,
+      "ml_end_nav": 9813.33182110039,
+      "ml_profit_factor": 0.4779940488395767,
+      "ml_median_account_return": -0.004916124313777097,
+      "ml_winner_deleted_end_nav": 9644.080245960002,
+      "response_end_nav": 7507.048545449864,
+      "source_sign_end_nav": 6747.877763912313,
+      "raw_long_mean_account_value_bp": -7.453439855781663,
+      "raw_short_mean_account_value_bp": -32.000561405596486
+    }
+  },
+  "controls": {
+    "deposit_development_24bp": {
+      "ml_trades": 3,
+      "ml_end_nav": 10081.360424105113,
+      "winner_deleted_end_nav": 9900.25
+    },
+    "deposit_confirmation_24bp": {
+      "ml_trades": 8,
+      "ml_end_nav": 9610.241608387367
+    },
+    "release_development_24bp": {
+      "ml_trades": 18,
+      "ml_end_nav": 9887.353831666776,
+      "winner_deleted_end_nav": 9755.909361900749
+    },
+    "release_confirmation_24bp": {
+      "ml_trades": 1,
+      "ml_end_nav": 10082.266300477762,
+      "winner_deleted_end_nav": 10000.0
+    }
+  },
+  "pass_rule_met": false,
+  "pass_rule_failure_reasons": [
+    "development net ML selected only 8 trades and ended at 9819.95 USDT",
+    "development exact winner deletion ended at 9753.59 USDT",
+    "development net ML underperformed the best sparse control",
+    "confirmation net ML selected only 10 trades and ended at 9813.33 USDT",
+    "confirmation exact winner deletion ended at 9644.08 USDT",
+    "confirmation net ML underperformed the best one-trade control"
+  ],
+  "decision": [
+    "The net-staking source is valid and materially different from withdrawals alone.",
+    "After programization corrections, both raw long and short account actions are negative at 24bp in development and confirmation.",
+    "The ML policy is negative, sparse and winner-dependent in both forward stages; deterministic response and source-sign policies lose more.",
+    "Retire this exact net-staking information unit without changing source definitions, tail quantiles, delay, geometry, cost, risk or leverage.",
+    "Official 2024-2026 remains unopened and the protected-boundary Expansion remains the provisional rank one."
+  ],
+  "reproduction": {
+    "commit": "375c01676f965e4ea565527d871be0c28d884dea",
+    "workflow_run": 30520701817,
+    "source_artifact_id": 8750636543,
+    "source_artifact_zip_sha256": "cfc782501f14577447bf279a5ae140dc90caaca8e7680016bfbddea32dcd22c9",
+    "economic_artifact_id": 8750651510,
+    "economic_artifact_zip_sha256": "486974a5b8709f1df6dab29c254fea56d8eb9683428440f54b68d6d993f4168e",
+    "full_result_sha256": "011bdfeabe80a45796dc22233a12e5782b1360e70b3beb1f495cfae2b9b55aae"
+  }
+}
