@@ -1,0 +1,57 @@
+name: Extract pinned Ethereum blockspace-demand source
+
+on:
+  push:
+    branches:
+      - agent/r28-eth-blockspace-demand-core-001
+    paths:
+      - '.github/workflows/eth-blockspace-source-r28.yml'
+      - 'research/eth_blockspace_demand/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/eth-blockspace-source-r28.yml'
+      - 'research/eth_blockspace_demand/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eth-blockspace-source-r28-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r28-eth-blockspace-demand-core-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify and extract pre-2024 source only
+        run: |
+          set -euo pipefail
+          root=research/eth_blockspace_demand
+          out=research_runs/eth_blockspace_source_r28
+          mkdir -p "$out"
+          python "$root/source_extract.py" --self-test
+          python "$root/source_extract.py" \
+            --output "$out/coinmetrics_eth_2020_2023.csv" \
+            --manifest "$out/SOURCE_MANIFEST.json"
+          python -m json.tool "$root/CONTRACT.json" >/dev/null
+          python -m json.tool "$out/SOURCE_MANIFEST.json" >/dev/null
+          sha256sum "$root/CONTRACT.json" "$root/source_extract.py" \
+            "$out/coinmetrics_eth_2020_2023.csv" "$out/SOURCE_MANIFEST.json" \
+            > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-blockspace-source-r28-${{ github.run_id }}
+          path: research_runs/eth_blockspace_source_r28
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ETH-BLOCKSPACE-DEMAND-CORE-001",
+  "source": {
+    "repository": "coinmetrics/data",
+    "path": "csv/eth.csv",
+    "ref": "master",
+    "expected_git_blob_sha1": "d8e4f389b37626f432a923805e5cc5fa2ad5490b",
+    "license": "CC BY-NC 4.0",
+    "pre2024_output_start": "2020-01-01",
+    "pre2024_output_end": "2023-12-31",
+    "availability_rule": "source day d becomes actionable no earlier than d+2 00:00 UTC"
+  },
+  "retained_columns": [
+    "time",
+    "FeeTotNtv",
+    "IssTotNtv",
+    "TxCnt",
+    "TxTfrCnt",
+    "AdrActCnt",
+    "FlowInExNtv",
+    "FlowOutExNtv",
+    "ReferenceRateUSD",
+    "AssetCompletionTime",
+    "AssetEODCompletionTime"
+  ],
+  "screen": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbol": "ETHUSDT",
+    "market_source": "existing verified canonical only",
+    "development": "2021 source normalization; 2022 first forward screen; unchanged 2023 confirmation",
+    "raw_horizons_hours": [6, 12, 24],
+    "costs_bp": [12, 18, 24],
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "fixed_latency_ms": 500,
+    "official_2024_2026_sealed": true,
+    "orders_submitted": false
+  }
+}
