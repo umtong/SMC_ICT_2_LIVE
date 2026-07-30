@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'research/ml_gmx_v1_liquidation_20260726/**'
+      - 'research/gmx_v1_liquidation_takeover/**'
       - '.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'
   workflow_dispatch:
 
@@ -24,6 +25,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
       PYTHONFAULTHANDLER: '1'
       ROOT: research/ml_gmx_v1_liquidation_20260726
+      TAKEOVER: research/gmx_v1_liquidation_takeover
       OUT: research_runs/gmx_v1_liquidation_takeover/source_gate
     steps:
       - uses: actions/checkout@v4
@@ -46,20 +48,21 @@ jobs:
             python -m py_compile \
               "$ROOT/probe_gmx_v1_liquidations.py" \
               "$ROOT/probe_gmx_v1_liquidations_semantic.py" \
+              "$TAKEOVER/fast_source_gate.py" \
               "$ROOT/test_probe_gmx_v1_liquidations.py" \
               "$ROOT/test_probe_gmx_v1_liquidations_semantic.py"
-            PYTHONPATH="$ROOT" python -m pytest -vv \
+            PYTHONPATH="$ROOT:$TAKEOVER" python -m pytest -vv \
               "$ROOT/test_probe_gmx_v1_liquidations.py" \
               "$ROOT/test_probe_gmx_v1_liquidations_semantic.py"
-            PYTHONPATH="$ROOT" python "$ROOT/probe_gmx_v1_liquidations_semantic.py" --self-test
+            PYTHONPATH="$ROOT:$TAKEOVER" python "$ROOT/probe_gmx_v1_liquidations_semantic.py" --self-test
             python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
             python -m json.tool "$ROOT/CORRECTION_001_POOL_ACCOUNTING_NOT_CLOB_FLOW_BEFORE_OUTCOME.json" >/dev/null
           } 2>&1 | tee "$OUT/PRECHECK.log"
 
-      - name: Run outcome-sealed source gate
+      - name: Run outcome-sealed source gate with transport-only optimization
         run: |
           set -euo pipefail
-          PYTHONPATH="$ROOT" python "$ROOT/probe_gmx_v1_liquidations_semantic.py" \
+          PYTHONPATH="$ROOT:$TAKEOVER" python "$TAKEOVER/fast_source_gate.py" \
             --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
 
       - name: Enforce source-only authority
