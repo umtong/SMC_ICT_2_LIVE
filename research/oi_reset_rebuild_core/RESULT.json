@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-OI-RESET-REBUILD-CORE-001",
+  "result_id": "RES-20260730-OI-RESET-REBUILD-CORE-001",
+  "status": "RETIRED_PRE2024_DETERMINISTIC_ECONOMIC_FAILURE",
+  "hard_validity": "PASS_CAUSAL_CANONICAL_PRE2024_DETERMINISTIC_SCREEN",
+  "economic_status": "BELOW_GATE",
+  "ranking_change": false,
+  "official_2024_2026_opened": false,
+  "ml_opened": false,
+  "ml_authorized": false,
+  "orders": "none",
+  "authority_full_result_sha256": "15cb1d781e8a111e10b4266a9360b6fd5483fa9faddebbdb9aabfc5e235b786c",
+  "authority_contract_sha256": "7bd712db899b4c140c40f62439ed0c8a9aa7a5b5391d6a2c4de5da779c247620",
+  "authority_package_sha256": "43eff6ed7f0472290249d1b36d50597323de959934addb59a0e072cb5ec922c1",
+  "data_root_manifest_sha256": "8de81d791c9ad177c6fd2046675adda759dc7373aa1d31e01b32d9b7058e8c6d",
+  "event_summary_24bp": {
+    "PRIMARY_REBUILD": {
+      "candidates": 462,
+      "2021": 75,
+      "2022": 157,
+      "2023": 230,
+      "BTCUSDT": 272,
+      "ETHUSDT": 190,
+      "mean_gross_price_return": -0.00045359208712269627,
+      "mean_net_return": -0.0028140665842435533,
+      "median_net_return": -0.008576230525243644,
+      "positive_rate": 0.3658008658008658
+    },
+    "CONTROL_NO_RESET": {
+      "candidates": 610,
+      "2022": 236,
+      "2023": 206,
+      "mean_gross_price_return": 0.00005525,
+      "mean_net_return": -0.00236580
+    },
+    "CONTROL_NO_REBUILD": {
+      "candidates": 487,
+      "2022": 169,
+      "2023": 233,
+      "mean_gross_price_return": 0.00283425,
+      "mean_net_return": 0.00040868
+    }
+  },
+  "primary_account_24bp": {
+    "2021": {"final_nav": 8960.148551461807, "trades": 53, "profit_factor": 0.381, "max_drawdown": 0.1063, "median_hold_hours": 3.43},
+    "2022": {"final_nav": 8813.321145147642, "geometric_daily_growth": -0.00034602, "trades": 127, "profit_factor": 0.679, "max_drawdown": 0.1744, "median_hold_hours": 2.27, "winner_removed_nav": 7909.118772752708},
+    "2023": {"final_nav": 8808.02184157394, "geometric_daily_growth": -0.00034767, "trades": 153, "profit_factor": 0.723, "max_drawdown": 0.1499, "median_hold_hours": 4.32, "winner_removed_nav": 7950.762596471407},
+    "continuous_2021_2023": {"final_nav": 6955.577410254199, "geometric_daily_growth": -0.00033149, "trades": 333, "profit_factor": 0.637, "max_drawdown": 0.3162, "median_hold_hours": 3.27, "winner_removed_nav": 5396.918836271022}
+  },
+  "control_account_24bp": {
+    "CONTROL_NO_RESET": {"2022_final_nav": 9294.361718463188, "2023_final_nav": 9695.236670832113, "continuous_final_nav": 8276.93},
+    "CONTROL_NO_REBUILD": {"2022_final_nav": 10592.466079363652, "2022_winner_removed_nav": 9457.09, "2023_final_nav": 9724.880397977344, "2023_winner_removed_nav": 9087.05, "continuous_final_nav": 9528.44619677194}
+  },
+  "programization": {
+    "corrections_before_publication": [
+      "exact UTC 60-day windows and contiguous 15-minute OI returns",
+      "missing current OI cannot become the no-reset control",
+      "nested turnover-surprise distribution requires its own 60 days of finite history",
+      "continuous winner deletion removes five events per UTC calendar year",
+      "contract records calendar-window and nested-readiness semantics"
+    ],
+    "semantic_tests": 11,
+    "tests_passed": true,
+    "checked_event_rows": 1559,
+    "checked_trade_rows": 2026,
+    "invariant_violations": 0,
+    "byte_identical_scientific_files": 91
+  },
+  "decision": "The reset-retention-rebuild state is frequent and intraday but negative before cost and inferior to both matched controls. The hypothesis that rapid OI rebuilding after deleveraging identifies same-direction sponsorship is rejected under the frozen information unit. ML, risk and leverage cannot rescue it."
+}
