@@ -1,0 +1,36 @@
+{
+  "causality": [
+    "completed bars only",
+    "width-two pivots after second right bar",
+    "one-use external levels",
+    "adverse stop-first",
+    "barrier release after observed minute",
+    "state exit owns delayed execution minute",
+    "continuous 2021-2022 NAV without reset"
+  ],
+  "claim_id": "CLM-20260730-LIQUIDITY-VOID-LIFECYCLE-TAKEOVER-001",
+  "data_boundary": "2021-01-01T00:00:00Z/2022-12-31T23:59:59Z",
+  "decision_gate": ">=60 completed trades, positive 24bp marked NAV, PF>1, nonnegative median, both halves positive, top-five positive-PnL share <=50%, winner-deleted full reroute positive",
+  "execution": {
+    "actual_signed_funding": true,
+    "cost_bps": [0, 12, 18, 24],
+    "elapsed_time_exit": false,
+    "entry": "first later observable 1m open",
+    "latency_ms": 500,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "risk_fraction": 0.005
+  },
+  "formation": {
+    "age_minutes": 15,
+    "expiry_days": [3, 7],
+    "fvg_width_atr": [0.1, 0.25],
+    "move_atr": [1.0, 1.5]
+  },
+  "issue": 699,
+  "logic": "First later return to an aged union of genuine same-direction FVGs from one closed displacement run: completed-minute acceptance inside authorizes traversal to distal edge; rejection outside proximal edge authorizes original-direction continuation to nearest live external pool; otherwise flat.",
+  "ml_boundary": "Ridge/HGBT take-flat comparison opens only after a deterministic 2022 24bp action has >=60 completed trades and nonnegative mean. This condition did not occur.",
+  "parent_issue": 448,
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "venue": "Bybit USDT linear perpetual"
+}
