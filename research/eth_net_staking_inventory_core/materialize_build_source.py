@@ -34,6 +34,17 @@ REPLACEMENTS = [
         '\n\ndef inspect_day(day: date, path: Path) -> tuple[dict[str, Any], list[dict[str, Any]], set[str], set[str], set[str]]:\n',
     ),
     (
+        '    merged[deposit_columns] = merged[deposit_columns].fillna(0)\n',
+        '    merged[deposit_columns] = merged[deposit_columns].fillna(0)\n'
+        '    for column in (\n'
+        '        "deposit_event_count",\n'
+        '        "deposit_amount_gwei",\n'
+        '        "deposit_unique_pubkeys",\n'
+        '        "deposit_unique_credentials",\n'
+        '    ):\n'
+        '        merged[column] = merged[column].astype("int64")\n',
+    ),
+    (
         '    merged["principal_release_eth"] = merged["principal_amount_eth"]\n'
         '    merged["net_locked_eth"] = merged["deposit_eth"] - merged["principal_release_eth"]\n',
         '    merged["principal_release_gwei"] = merged["principal_amount_gwei"].astype("int64")\n'
