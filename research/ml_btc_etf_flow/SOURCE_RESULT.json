@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-BTC-ETF-FLOW-001",
+  "result_id": "RES-20260730-BTC-ETF-FLOW-SOURCE-001",
+  "status": "SOURCE_PASS",
+  "provider": "Farside Investors",
+  "source_url": "https://farside.co.uk/bitcoin-etf-flow-all-data/",
+  "transport": "Jina Reader HTTPS fallback after direct HTTP 403",
+  "parser": "markdown_line_serialized",
+  "rows": 634,
+  "start": "2024-01-11T00:00:00Z",
+  "end": "2026-06-30T00:00:00Z",
+  "availability_rule": "flow dated d becomes usable at 00:00 UTC on d+1",
+  "reported_total_nonmissing": 634,
+  "maximum_absolute_total_component_difference": 2.2737367544323206e-13,
+  "transport_response_bytes": 66086,
+  "transport_response_sha256": "dfe9adf5be50c2b71cb82088ff24aaf03096bfd14c09224d0ad6f39104dbd8ea",
+  "csv_sha256": "f0163457a671599d39f5d4ac70c310b000b29675e64b49f80107865bc39632b3",
+  "parquet_sha256": "5a6314dba84ab3b99589b6a306a5556708d7c36cb4a1dfece418113a4f731529",
+  "workflow_run_id": 30515303616,
+  "artifact_id": 8748629264,
+  "artifact_digest": "sha256:ca179450ad57caaefeaf17a1a9c3617f872d25a248e853c1bdb173d5620ba810",
+  "market_outcomes_opened_before_pass": false,
+  "orders_submitted": false,
+  "known_limitations": [
+    "The current final provider table is used; historical row revisions and original publication timestamps are not reconstructed.",
+    "A conservative next-UTC-day availability rule is used for every row.",
+    "Jina Reader is transport only; the provider URL and response hashes remain the source identity.",
+    "Dash cells remain missing; the provider-reported Total is authoritative."
+  ]
+}
