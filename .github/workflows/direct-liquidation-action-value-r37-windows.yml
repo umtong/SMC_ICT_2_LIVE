@@ -1,0 +1,138 @@
+name: Direct forced-liquidation action-value fatal screen Windows
+
+on:
+  push:
+    branches: [agent/r37-direct-liquidation-action-value-001]
+    paths:
+      - '.github/workflows/direct-liquidation-action-value-r37-windows.yml'
+      - 'research/direct_liquidation_action_value/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: direct-liquidation-action-value-r37-windows-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  fatal-screen-windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r37-direct-liquidation-action-value-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime and materialize source
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install 'numpy==2.1.3' 'pandas==2.2.3' 'scipy==1.15.1' 'scikit-learn==1.6.1'
+          @'
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          root=Path('research/direct_liquidation_action_value')
+          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          b64=''.join((root/'run.py.gz.b64').read_text().split())
+          assert len(b64)==m['base64_chars']
+          gz=base64.b64decode(b64)
+          assert hashlib.sha256(gz).hexdigest()==m['gzip_sha256']
+          raw=gzip.decompress(gz)
+          assert len(raw)==m['source_bytes']
+          assert hashlib.sha256(raw).hexdigest()==m['source_sha256']
+          (root/'run.py').write_bytes(raw)
+          '@ | python -
+          python -m py_compile research/direct_liquidation_action_value/run.py
+          python -m json.tool research/direct_liquidation_action_value/CONTRACT.json | Out-Null
+      - name: Download immutable event ledger and liquidation samples
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $events = Join-Path $env:RUNNER_TEMP 'events'
+          $liq = Join-Path $env:RUNNER_TEMP 'liquidations'
+          New-Item -ItemType Directory -Force -Path $events,$liq | Out-Null
+          $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+          $zip = Join-Path $env:RUNNER_TEMP 'events.zip'
+          Invoke-WebRequest -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/artifacts/8631380906/zip" -Headers $headers -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $events -Force
+          $eventFiles = Get-ChildItem -Path $events -Recurse -Filter 'events_2022-*.csv'
+          if ($eventFiles.Count -ne 6) { throw "Expected six event files, found $($eventFiles.Count)" }
+          foreach ($date in @('2022-01-01','2022-03-01','2022-05-01','2022-07-01','2022-09-01','2022-11-01')) {
+            $y=$date.Substring(0,4); $m=$date.Substring(5,2); $d=$date.Substring(8,2)
+            $out=Join-Path $liq "liquidations_${date}.csv.gz"
+            Invoke-WebRequest -Uri "https://datasets.tardis.dev/v1/bybit/liquidations/$y/$m/$d/PERPETUALS.csv.gz" -OutFile $out
+          }
+          @'
+          import gzip, hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])
+          records=[]
+          for p in sorted((root/'liquidations').glob('*.csv.gz')):
+              with gzip.open(p,'rb') as f:
+                  while f.read(1<<20):
+                      pass
+              records.append({'file':p.name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'bytes':p.stat().st_size})
+          (root/'LIQUIDATION_SOURCE.json').write_text(json.dumps(records,indent=2,sort_keys=True)+'\n')
+          '@ | python -
+      - name: Run exact evaluator twice and validate
+        shell: pwsh
+        run: |
+          $root='research/direct_liquidation_action_value'
+          $events=Join-Path $env:RUNNER_TEMP 'events'
+          $liq=Join-Path $env:RUNNER_TEMP 'liquidations'
+          $out1=Join-Path $env:RUNNER_TEMP 'direct_liq_out_1'
+          $out2=Join-Path $env:RUNNER_TEMP 'direct_liq_out_2'
+          python "$root/run.py" --events-dir $events --liquidations-dir $liq --output $out1
+          python "$root/run.py" --events-dir $events --liquidations-dir $liq --output $out2
+          @'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          tmp=Path(os.environ['RUNNER_TEMP'])
+          def hashes(root):
+              return {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
+          a=hashes(tmp/'direct_liq_out_1'); b=hashes(tmp/'direct_liq_out_2')
+          assert a==b, (a,b)
+          repo=Path('research/direct_liquidation_action_value')
+          evidence=repo/'evidence'
+          if evidence.exists(): shutil.rmtree(evidence)
+          evidence.mkdir(parents=True)
+          for p in (tmp/'direct_liq_out_1').iterdir():
+              if p.is_file(): shutil.copy2(p,evidence/p.name)
+          shutil.copy2(tmp/'LIQUIDATION_SOURCE.json',evidence/'LIQUIDATION_SOURCE.json')
+          r=json.loads((evidence/'RESULT.json').read_text())
+          c=json.loads((repo/'CONTRACT.json').read_text())
+          assert r['claim_id']==c['claim_id']
+          assert r['rank_eligible'] is False and r['official_2024_2026_opened'] is False and r['orders_submitted'] is False
+          assert r['hard_validity_status']=='PASS_CAUSAL_SOURCE_EVENT_JOIN_AND_FIXED_ACTION_ACCOUNT'
+          print(json.dumps({'status':r['status'],'development_pass':r['development_pass'],'confirmation_opened':r['confirmation_opened']},sort_keys=True))
+          '@ | python -
+      - name: Commit compact evidence
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/direct_liquidation_action_value/evidence
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m 'Record direct liquidation action-value fatal screen'
+            git push origin HEAD:agent/r37-direct-liquidation-action-value-001
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-liquidation-action-value-r37-windows-${{ github.run_id }}
+          path: research/direct_liquidation_action_value/evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
