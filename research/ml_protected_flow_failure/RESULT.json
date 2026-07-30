@@ -1,0 +1,85 @@
+{
+  "candidate_counts": {
+    "BTCUSDT": {
+      "candidates": 607,
+      "candidates_by_year": {
+        "2021": 190,
+        "2022": 189,
+        "2023": 228
+      }
+    },
+    "ETHUSDT": {
+      "candidates": 519,
+      "candidates_by_year": {
+        "2021": 136,
+        "2022": 174,
+        "2023": 209
+      }
+    }
+  },
+  "claim_id": "CLM-20260729-2351-ML-PROTECTED-FLOW-FAILURE-001",
+  "decision_reason": [
+    "Raw after-cost mean R was negative in 2022 and 2023 for both immediate and first-rebalance actions.",
+    "The 2021 H1-to-H2 HGBT diagnostic had negative MAE skill versus a constant and negative rank correlation for both actions.",
+    "Every selected 2022 route depended on winners: exact top-10%-winner deletion with slot rerouting was negative at 12, 18 and 24bp.",
+    "The unchanged frozen route lost in 2023 at every tested cost, so the official 2024 interval remained unopened."
+  ],
+  "official_2024_2026_opened": false,
+  "payload_manifest": "PAYLOAD_MANIFEST.json",
+  "primary_24bps": {
+    "frozen_2023_confirmation": {
+      "completed_trades": 90,
+      "final_nav": 9394.600339611821,
+      "geometric_daily_growth": -0.00017108125632570026,
+      "maximum_drawdown": 0.07352134064297866,
+      "median_trade_r": -0.05429459691510161,
+      "profit_factor": 0.6761617697159159,
+      "total_return": -0.06053996603881784
+    },
+    "model_diagnostic": {
+      "market": {
+        "all_mean_r": -0.026764961969501264,
+        "constant_mae": 0.801471944635169,
+        "mae": 0.8369249467977831,
+        "mae_skill": -0.035453002162614045,
+        "spearman": -0.07962990395984332,
+        "test": 198,
+        "top_quartile_mean_r": 0.023595499891082367,
+        "train": 125
+      },
+      "rebalance": {
+        "all_mean_r": -0.045994649180372646,
+        "constant_mae": 0.786232247755801,
+        "mae": 0.8612666593414688,
+        "mae_skill": -0.07503441158566782,
+        "spearman": -0.07437099819753097,
+        "test": 196,
+        "top_quartile_mean_r": -0.027726675751317875,
+        "train": 125
+      }
+    },
+    "selected_2022": {
+      "completed_trades": 90,
+      "final_nav": 10294.032752368448,
+      "geometric_daily_growth": 7.9398466758418e-05,
+      "maximum_drawdown": 0.04429808073992625,
+      "median_trade_r": -0.6473670178831568,
+      "profit_factor": 1.1337809260822787,
+      "top5_positive_share": 0.3913848387220116,
+      "total_return": 0.029403275236844717
+    },
+    "winner_removed_2022": {
+      "completed_trades": 83,
+      "final_nav": 9066.893433969783,
+      "geometric_daily_growth": -0.0002683349439930316,
+      "maximum_drawdown": 0.10170242255276418,
+      "profit_factor": 0.5608261000980387,
+      "total_return": -0.09331065660302174
+    }
+  },
+  "ranking_change": false,
+  "result_id": "RES-20260729-ML-PROTECTED-FLOW-FAILURE-001",
+  "schema_version": 1,
+  "target_status": "NOT_MET",
+  "verdict": "RETIRED_ECONOMIC_FAILURE_PRE_2024"
+}
