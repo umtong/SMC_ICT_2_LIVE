@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-DAILY-MACRO-RISK-CORE-001",
+  "claim_id": "CLM-20260730-DAILY-MACRO-RISK-CORE-001",
+  "status": "RETIRED_PRE_ACCOUNT_SUBCOST_OR_UNSTABLE",
+  "source": {
+    "VIXCLS_raw_sha256": "e8d40253d5a88354fc86543b98025d4627caa80a019ef04abc2fd426786ff702",
+    "DTWEXBGS_raw_sha256": "2a3d37179ce9eae11b8d456251b1ffbf4cc33b136a32f8be4847383ba1216408",
+    "DGS10_raw_sha256": "402f40d2923a43b991721ba2c60aaabb4fe32acf92e6837f3e26468c5e4cbf8f",
+    "availability_delay_hours": 48
+  },
+  "frozen_rule": {
+    "composite": "0.50*z(delta_log_VIX)+0.25*z(delta_log_broad_USD)+0.25*z(delta_10y_yield)",
+    "direction": "negative sign of composite",
+    "absolute_q75_2021": 0.6902440830721088,
+    "selected_asset_2022": "ETHUSDT"
+  },
+  "pre2024_24h_24bp": {
+    "2022_ETHUSDT": {
+      "events": 74,
+      "mean_bps": -26.235363977898636,
+      "median_bps": -22.183080313061048,
+      "profit_factor": 0.8301127890285315,
+      "winner_removed_mean_bps": -75.89883560882538,
+      "half_year_mean_bps": [-8.023750330608618, -46.52830489916465]
+    },
+    "2023_ETHUSDT": {
+      "events": 79,
+      "mean_bps": -17.957750621818164,
+      "median_bps": -26.916665157566577,
+      "profit_factor": 0.8162509636408536,
+      "winner_removed_mean_bps": -51.81691354557657,
+      "half_year_mean_bps": [-1.9831053136078796, -28.274709050037302]
+    },
+    "2022_BTCUSDT_mean_bps": -56.887988454045384,
+    "2023_BTCUSDT_mean_bps": -34.67830153681534
+  },
+  "ml_opened": false,
+  "structural_account_opened": false,
+  "risk_search_opened": false,
+  "official_2024_2026_opened": false,
+  "ranking_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
