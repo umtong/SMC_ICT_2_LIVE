@@ -1,0 +1,69 @@
+name: Materialize direct-utility Core source for passive audit
+
+on:
+  push:
+    branches: [agent/r35-direct-utility-passive-entry-audit-001]
+    paths:
+      - '.github/workflows/direct-utility-passive-source-r35.yml'
+      - 'research/direct_utility_passive_entry_audit/CONTRACT.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: direct-utility-passive-source-r35
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r35-direct-utility-passive-entry-audit-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch and verify exact PR 551 source carrier
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/direct_core_source"
+          vendor=research/direct_utility_passive_entry_audit/vendor
+          mkdir -p "$work" "$vendor"
+          git fetch --no-tags --depth=1 origin agent/r31-exec-aligned-direct-utility-core-001
+          root=research/execution_aligned_direct_utility_core
+          for name in materialize.py SOURCE_MANIFEST.json \
+            SOURCE_BUNDLE.part01.b64 SOURCE_BUNDLE.part02.b64 SOURCE_BUNDLE.part03.b64 \
+            SOURCE_BUNDLE.part04.b64 SOURCE_BUNDLE.part05.b64 SOURCE_BUNDLE.part06.b64; do
+            git show FETCH_HEAD:"$root/$name" > "$work/$name"
+          done
+          python "$work/materialize.py"
+          cp "$work/materialized"/*.py "$vendor"/
+          cp "$work/materialized"/*.cpp "$vendor"/ 2>/dev/null || true
+          cp "$work/materialized/results/pre_grid.csv" "$vendor"/ 2>/dev/null || true
+          cp "$work/materialized/results/pre_cost_diagnostics.csv" "$vendor"/ 2>/dev/null || true
+          git show FETCH_HEAD:"$root/CONTRACT.json" > "$vendor/BASE_CONTRACT.json"
+          git show FETCH_HEAD:"$root/RESULT.json" > "$vendor/BASE_RESULT.json"
+          sha256sum "$vendor"/* > "$vendor/SOURCE_SHA256SUMS.txt"
+      - name: Commit exact source and base compact evidence
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/direct_utility_passive_entry_audit/vendor
+          if git diff --cached --quiet; then
+            echo 'Source already committed'
+            exit 0
+          fi
+          git commit -m 'Vendor exact direct-utility Core source for passive audit'
+          git push origin HEAD:agent/r35-direct-utility-passive-entry-audit-001
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-utility-passive-source-r35-${{ github.run_id }}
+          path: research/direct_utility_passive_entry_audit/vendor
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
