@@ -1,0 +1,45 @@
+{
+  "account": {
+    "actual_signed_funding": true,
+    "costs_bp": [12, 18, 24],
+    "elapsed_time_exit": false,
+    "global_slots": 1,
+    "latency_ms": 500,
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005,
+    "stage_boundary": "mark and retain slot"
+  },
+  "actions": {
+    "ACCEPT_CONTINUE": "raid direction to frozen adjacent still-live endpoint; excursion-extreme hard stop; completed close inside is state loss",
+    "REJECT_REVERSE": "opposite direction to frozen adjacent still-live endpoint; excursion-extreme hard stop; completed close outside is state loss",
+    "WAIT_FLAT": "no order; reconsider only on next informational state while endpoints remain live"
+  },
+  "chronology": {
+    "2021": "fit only resolved outcomes",
+    "2022": "untouched first policy screen",
+    "2023": "sealed unless 2022 gate passes",
+    "official": "sealed unless unchanged 2023 gate passes"
+  },
+  "claim_id": "CLM-20260730-SEQUENTIAL-LIQUIDITY-EVIDENCE-001",
+  "features": {
+    "full": ["raid_side", "pool_tf_rank", "source_day", "source_week", "source_4h", "co_consumed_count", "co_consumed_max_tf", "pool_age_h", "dist_up_atr", "dist_down_atr", "approach_efficiency", "pre_return_1h_signed", "pre_return_4h_signed", "pre_compression", "risk_fraction", "reward_fraction", "rr", "action_accept", "action_reject", "state_log_index", "level_close_atr", "penetration_atr", "reclaim_depth_atr", "outside_close_fraction", "event_path_efficiency", "current_body_signed_atr", "current_range_atr", "turnover_z", "event_oi_change", "oi_change_1h", "account_imbalance_signed", "account_change_signed", "funding_rate_signed", "raid_fvg_max_atr", "opposing_fvg_max_atr", "peer_return_30m_signed", "peer_same_side_break", "peer_outside_distance_atr"],
+    "structural_comparator": ["raid_side", "pool_tf_rank", "source_day", "source_week", "source_4h", "co_consumed_count", "co_consumed_max_tf", "pool_age_h", "dist_up_atr", "dist_down_atr", "approach_efficiency", "pre_return_1h_signed", "pre_return_4h_signed", "pre_compression", "risk_fraction", "reward_fraction", "rr", "action_accept", "action_reject"]
+  },
+  "gate": ["minimum_trades", "positive_18bp", "nonnegative_24bp", "pf_above_one", "nonnegative_median", "both_halfyears_positive", "winner_deleted_positive", "beats_all_mandatory_comparators", "passed"],
+  "logic": "first external-liquidity interaction begins sequential acceptance/rejection evidence; choose ACCEPT_CONTINUE, REJECT_REVERSE or WAIT_FLAT by direct cost-after action value",
+  "model": {
+    "l2_regularization": 10.0,
+    "learning_rate": 0.04,
+    "loss": "squared_error",
+    "max_depth": 3,
+    "max_iter": 160,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 100,
+    "random_state": 20260730
+  },
+  "orders_submitted": false,
+  "pools": ["completed prior-day high/low", "completed prior-week high/low", "right-confirmed one-use 4h swing high/low"],
+  "result_id": "RES-20260730-SEQUENTIAL-LIQUIDITY-EVIDENCE-001",
+  "schema_version": 1,
+  "state_clock": ["first interaction five-minute bar", "level-side transition", "new interaction excursion extreme", "exact UTC-hour boundary"]
+}
