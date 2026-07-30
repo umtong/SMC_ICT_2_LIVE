@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1930-NATIVE-FLOW-IMPACT-CORE-001",
+  "result_id": "RES-20260730-NATIVE-FLOW-IMPACT-CORE-001",
+  "venue": "Bybit USDT-linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "event": {
+    "window_seconds": 30,
+    "prior_turnover_baseline_minutes": 60,
+    "minimum_turnover_z": 2.0,
+    "minimum_absolute_signed_turnover_imbalance": 0.60,
+    "cooldown_seconds": 300
+  },
+  "actions": ["CONTINUE", "REVERSE", "FLAT"],
+  "state": "native sparse500 initiative flow, price-impact efficiency, late flow reversal, prior completed 5m ATR/returns/turnover, OI, account ratio and BTC/ETH peer state",
+  "execution": {
+    "activation_delay_ms": 500,
+    "entry": "first native observation at or after activation",
+    "stop": "max(0.30 percent of entry, 2 times prior completed 5m ATR return)",
+    "target": "1.5R",
+    "same_bucket": "stop_first",
+    "funding": "actual signed",
+    "elapsed_time_exit": false
+  },
+  "account": {
+    "costs_bps": [12, 18, 24],
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "global_slots": 1
+  },
+  "chronology": {
+    "fit_months": ["2023-01", "2023-04", "2023-07"],
+    "confirmation_months": ["2023-10", "2023-12"],
+    "official_2024": "sealed unless broad positive 24bp confirmation"
+  },
+  "no_rescue": ["event threshold", "window", "cooldown", "geometry", "model", "side", "session", "level gate", "SMC checklist", "risk", "leverage"],
+  "orders_submitted": false
+}
