@@ -38,27 +38,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install runtime and materialize source
+      - name: Install runtime and materialize exact source
         shell: pwsh
         run: |
           python -m pip install --upgrade 'pip==25.1.1'
           python -m pip install 'numpy==2.1.3' 'pandas==2.2.3' 'scipy==1.15.1' 'scikit-learn==1.6.1'
-          @'
-          import base64, gzip, hashlib, json
-          from pathlib import Path
-          root=Path('research/direct_liquidation_action_value')
-          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
-          b64=''.join((root/'run.py.gz.b64').read_text().split())
-          print(json.dumps({'observed_base64_chars':len(b64),'declared_base64_chars':m['base64_chars']}))
-          gz=base64.b64decode(b64)
-          assert hashlib.sha256(gz).hexdigest()==m['gzip_sha256']
-          raw=gzip.decompress(gz)
-          assert len(raw)==m['source_bytes']
-          assert hashlib.sha256(raw).hexdigest()==m['source_sha256']
-          (root/'run.py').write_bytes(raw)
-          '@ | python -
+          python research/direct_liquidation_action_value/materialize.py
           python -m py_compile research/direct_liquidation_action_value/run.py
           python -m json.tool research/direct_liquidation_action_value/CONTRACT.json | Out-Null
+          python -m json.tool research/direct_liquidation_action_value/MATERIALIZATION_REPORT.json | Out-Null
       - name: Download immutable event ledger and liquidation samples
         shell: pwsh
         env:
@@ -115,12 +103,15 @@ jobs:
           for p in (tmp/'direct_liq_out_1').iterdir():
               if p.is_file(): shutil.copy2(p,evidence/p.name)
           shutil.copy2(tmp/'LIQUIDATION_SOURCE.json',evidence/'LIQUIDATION_SOURCE.json')
+          shutil.copy2(repo/'MATERIALIZATION_REPORT.json',evidence/'MATERIALIZATION_REPORT.json')
           r=json.loads((evidence/'RESULT.json').read_text())
           c=json.loads((repo/'CONTRACT.json').read_text())
+          m=json.loads((evidence/'MATERIALIZATION_REPORT.json').read_text())
+          assert m['selected'] is not None
           assert r['claim_id']==c['claim_id']
           assert r['rank_eligible'] is False and r['official_2024_2026_opened'] is False and r['orders_submitted'] is False
           assert r['hard_validity_status']=='PASS_CAUSAL_SOURCE_EVENT_JOIN_AND_FIXED_ACTION_ACCOUNT'
-          print(json.dumps({'status':r['status'],'development_pass':r['development_pass'],'confirmation_opened':r['confirmation_opened']},sort_keys=True))
+          print(json.dumps({'status':r['status'],'development_pass':r['development_pass'],'confirmation_opened':r['confirmation_opened'],'carrier':m['selected']['candidate']},sort_keys=True))
           '@ | python -
       - name: Commit compact evidence
         shell: pwsh
