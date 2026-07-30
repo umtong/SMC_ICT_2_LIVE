@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1905-DENSE-LIQUIDITY-EDGE-MICROFLOW-001",
+  "result_id": "RES-20260730-DENSE-LIQUIDITY-EDGE-MICROFLOW-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbol": "BTCUSDT",
+  "source_months": [
+    "DS-BYBIT-LINEAR-BTCUSDT-202301-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202302-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202303-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202304-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202305-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202306-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202307-MICROBAR-SPARSE500-V5",
+    "DS-BYBIT-LINEAR-BTCUSDT-202308-MICROBAR-SPARSE500-V5"
+  ],
+  "chronology": {
+    "distribution_fit": "2023-01-01/2023-04-30",
+    "development": "2023-05-01/2023-08-31",
+    "confirmation": "sealed because development failed",
+    "official": "sealed"
+  },
+  "event": "armed prior-day high/low first observed 500ms trade-through after price had been 0.5 ATR inside; 5-second sensor",
+  "features": [
+    "side-aligned turnover imbalance",
+    "5s turnover / causal prior-30m 5s median",
+    "price progress / ATR",
+    "outside dwell fraction",
+    "trade count",
+    "fragmentation",
+    "prior 30m approach efficiency"
+  ],
+  "frozen_boundaries": {
+    "flow": "fit event-level q75 turnover ratio",
+    "efficiency": "fit high-flow aligned event median impact efficiency",
+    "imbalance_min": 0.6,
+    "accept_outside_dwell_min": 0.6,
+    "absorb_outside_dwell_max": 0.4
+  },
+  "actions": {
+    "ACCEPT_CONTINUE": "same direction; 0.25 ATR inside-level stop; +1.5R; 5m close-back-inside state exit",
+    "ABSORB_REJECT": "opposite direction; raid-extreme+0.25 ATR stop; prior-day midpoint target; 5m close-back-outside state exit",
+    "FULL_MAP": "union"
+  },
+  "execution": "decision after 5s, fixed 500ms, first later observed trade bucket; exact entry-minute microbar, later 1m stop-first",
+  "account": {
+    "risk": 0.005,
+    "cap": 3.0,
+    "costs_bp": [12,18,24],
+    "primary_cost_bp": 24,
+    "one_global_slot": true,
+    "actual_funding": true,
+    "elapsed_time_close": false
+  },
+  "development_gate": {
+    "min_trades": 40,
+    "positive_nav": true,
+    "pf_gt": 1,
+    "median_trade_nonnegative": true,
+    "top5_deleted_full_reroute_positive": true
+  },
+  "orders_submitted": false
+}
