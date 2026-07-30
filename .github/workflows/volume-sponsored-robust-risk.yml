@@ -86,10 +86,13 @@ jobs:
               research_runs/volume_sponsored_robust_risk/result-b/RESULT.json
           cp research_runs/volume_sponsored_robust_risk/result-a/RESULT.json \
              research_runs/volume_sponsored_robust_risk/RESULT.json
-          sha256sum research_runs/volume_sponsored_robust_risk/RESULT.json \
-                    research/volume_sponsored_robust_risk/audit.py \
-                    research_runs/volume_sponsored_robust_risk/source/* \
-            > research_runs/volume_sponsored_robust_risk/SHA256SUMS.txt
+          {
+            sha256sum research_runs/volume_sponsored_robust_risk/RESULT.json
+            sha256sum research/volume_sponsored_robust_risk/audit.py
+            find research_runs/volume_sponsored_robust_risk/source -type f -print0 \
+              | sort -z \
+              | xargs -0 sha256sum
+          } > research_runs/volume_sponsored_robust_risk/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
