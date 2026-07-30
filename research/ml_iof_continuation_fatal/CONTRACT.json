@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-ML-IOF-CONTINUATION-001",
+  "result_id": "RES-20260730-IOF-FIRST-PULLBACK-FATAL-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "data": "verified canonical 2021-2023 1m/5m/15m/4h/1d plus mark and exact funding",
+  "economic_mechanism": "An established scale-matched higher-timeframe order flow delivers price from confirmed internal liquidity toward still-unconsumed external liquidity. A completed 15m displacement is actionable only on the first causal 5m pullback/resumption that preserves the confirmed internal origin.",
+  "htf_state": {
+    "pivot_span": 2,
+    "causal_availability": "pivot usable only after two completed right-side 4h bars",
+    "bull": "latest two confirmed 4h highs and lows are HH + HL",
+    "bear": "latest two confirmed 4h highs and lows are LH + LL"
+  },
+  "displacement": {
+    "timeframe": "15m",
+    "event": "completed close breaks latest confirmed internal swing in HTF direction",
+    "body_efficiency_min": 0.6,
+    "range_floor": "prior-only 96 completed 15m bar median range"
+  },
+  "entry": {
+    "trigger": "first later completed 5m bar trades into displacement-body midpoint and closes through it in the delivery direction while protected origin remains intact",
+    "activation_latency_ms": 500,
+    "execution": "first strictly later observed 1m open"
+  },
+  "risk_and_exit": {
+    "protected_origin": "latest confirmed opposite 15m pivot",
+    "hard_stop": "protected origin plus 1bp adverse buffer",
+    "target": "nearest causally available still-unconsumed confirmed 4h or prior completed UTC-day external liquidity",
+    "elapsed_time_exit": false,
+    "stage_boundary_exit": false,
+    "same_minute": "stop first",
+    "stop_gap": "adverse observed open"
+  },
+  "account": {
+    "one_global_pending_or_open_slot": true,
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bps": [12, 18, 24],
+    "stop_slippage_bps": 4,
+    "actual_signed_funding": true
+  },
+  "decision_rule": "A negative, sub-cost, sparse or winner-dependent deterministic 2022/unchanged-2023 result retires this exact implementation before ML, risk or official 2024-2026. No pivot, displacement, pullback, target, cost, risk, leverage, session or symbol-side rescue is permitted after outcome.",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}

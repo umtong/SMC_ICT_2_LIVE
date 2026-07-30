@@ -1,0 +1,61 @@
+{
+  "account_24bp": [
+    {"accepted_pending": 471, "action": "NEAR", "cost_bps": 24, "final_nav": 8485.395371946614, "mdd": 0.16622381326991476, "mean_return": -0.0006356159525049589, "median_return": 0.00017039218098009143, "multiple": 0.8485395371946614, "pf": 0.6711948174189197, "positive": 140, "trades": 255, "year": 2021},
+    {"accepted_pending": 411, "action": "HOLD", "cost_bps": 24, "final_nav": 8492.365136113947, "mdd": 0.16580245314710285, "mean_return": -0.0007352870664699873, "median_return": -0.004804005451700299, "multiple": 0.8492365136113947, "pf": 0.7181067228992969, "positive": 100, "trades": 218, "year": 2021},
+    {"accepted_pending": 368, "action": "NEAR", "cost_bps": 24, "final_nav": 8284.241498264795, "mdd": 0.17504361886954167, "mean_return": -0.000827999331636041, "median_return": 0.0001484827632395014, "multiple": 0.8284241498264795, "pf": 0.6179203916961579, "positive": 119, "trades": 225, "year": 2022},
+    {"accepted_pending": 325, "action": "HOLD", "cost_bps": 24, "final_nav": 8583.480293610113, "mdd": 0.14367339707104254, "mean_return": -0.0007354117996712266, "median_return": -0.004907882650442371, "multiple": 0.8583480293610113, "pf": 0.7237594667149173, "positive": 93, "trades": 204, "year": 2022},
+    {"accepted_pending": 319, "action": "NEAR", "cost_bps": 24, "final_nav": 7819.905573254026, "mdd": 0.22482679459390575, "mean_return": -0.0013799316752231778, "median_return": -0.0008874448173748928, "multiple": 0.7819905573254027, "pf": 0.40297023984170044, "positive": 75, "trades": 177, "year": 2023},
+    {"accepted_pending": 296, "action": "HOLD", "cost_bps": 24, "final_nav": 7388.217825028812, "mdd": 0.2611782174971189, "mean_return": -0.0018335945215433482, "median_return": -0.004999999999999887, "multiple": 0.7388217825028811, "pf": 0.38573917713608374, "positive": 61, "trades": 164, "year": 2023}
+  ],
+  "all_12bp_and_18bp_accounts_negative": true,
+  "claim_id": "CLM-20260729-ML-IOF-CONTINUATION-001",
+  "contract": {
+    "actions": ["NEAR", "HOLD", "FLAT"], "actual_funding": true, "costs_bps": [12, 18, 24], "elapsed_time_exit": false,
+    "event": "aligned completed 4h/1h order flow, completed 15m displacement through a confirmed internal swing, first later completed 5m pullback/resumption respecting the protected 15m origin",
+    "latency_ms": 500, "notional_cap": 3.0, "one_global_pending_open_slot": true, "risk_fraction": 0.005, "symbols": ["BTCUSDT", "ETHUSDT"]
+  },
+  "decision": [
+    "NEAR and HOLD raw actions are negative at 12/18/24bp in 2021, 2022 and 2023.",
+    "The 2022 24bp one-slot NEAR path ended at 0.828424x over 225 trades, PF 0.617920.",
+    "The 2022 24bp one-slot HOLD path ended at 0.858348x over 204 trades, PF 0.723759.",
+    "Winner deletion worsens both paths, and unchanged 2023 is more negative.",
+    "ML is not opened because the deterministic information unit has no cost headroom."
+  ],
+  "event_funnel": {
+    "BTCUSDT": {"by_year_filled": {"2021": 228, "2022": 160, "2023": 141}, "cancelled_before_entry": 376, "displacements": 935, "filled_candidates": 529, "invalid_geometry": 0, "no_target": 30},
+    "ETHUSDT": {"by_year_filled": {"2021": 190, "2022": 182, "2023": 142}, "cancelled_before_entry": 344, "displacements": 887, "filled_candidates": 514, "invalid_geometry": 0, "no_target": 29}
+  },
+  "full_result_sha256": "0fdd0013df1c0ae30c380ab33c95c97b81c761e8ba24e154733be85584a7f169",
+  "information_cutoff": "2023-12-31T23:59:59Z",
+  "orders": "none",
+  "programization_findings": [
+    "Pivots become usable only after two completed right-side bars.",
+    "A 15m displacement must align with completed 1h and 4h order-flow states.",
+    "The counter-direction 5m pullback and later resumption occur on different completed bars.",
+    "Pending setups occupy the global slot until causal cancellation, replacement or fill.",
+    "Entry and state exits activate after 500ms and use the first strictly later observed 1m open.",
+    "Same-minute stop/target ambiguity is adverse stop first; gap stops use the observed open.",
+    "No elapsed-time, scheduled or stage-boundary strategy close is used."
+  ],
+  "raw_24bp": [
+    {"action": "HOLD", "cost_bps": 24, "events": 418, "mean_return": -0.004776237512764783, "median_holding_hours": 3.5833333333333335, "median_return": -0.00946864754916507, "positive_rate": 0.44976076555023925, "profit_factor": 0.6654811090718924, "resolved": 417, "year": 2021},
+    {"action": "HOLD", "cost_bps": 24, "events": 342, "mean_return": -0.002226191253019808, "median_holding_hours": 4.125, "median_return": -0.007094976066035149, "positive_rate": 0.45614035087719296, "profit_factor": 0.8025189125648905, "resolved": 342, "year": 2022},
+    {"action": "HOLD", "cost_bps": 24, "events": 283, "mean_return": -0.004383756657618993, "median_holding_hours": 3.1, "median_return": -0.005573816388968297, "positive_rate": 0.3568904593639576, "profit_factor": 0.3895796392795602, "resolved": 283, "year": 2023},
+    {"action": "NEAR", "cost_bps": 24, "events": 418, "mean_return": -0.0035898522507651514, "median_holding_hours": 2.3, "median_return": 0.000513518536949933, "positive_rate": 0.5334928229665071, "profit_factor": 0.6683368185801148, "resolved": 418, "year": 2021},
+    {"action": "NEAR", "cost_bps": 24, "events": 342, "mean_return": -0.00246526940904401, "median_holding_hours": 2.7, "median_return": 0.0007526813522432808, "positive_rate": 0.5292397660818714, "profit_factor": 0.7376089300620894, "resolved": 342, "year": 2022},
+    {"action": "NEAR", "cost_bps": 24, "events": 283, "mean_return": -0.003381446258320442, "median_holding_hours": 2.1166666666666667, "median_return": -0.0013441289707832181, "positive_rate": 0.4098939929328622, "profit_factor": 0.4115785800985319, "resolved": 283, "year": 2023}
+  ],
+  "result_id": "RES-20260730-ML-IOF-CONTINUATION-001",
+  "schema_version": 1,
+  "stage": "DETERMINISTIC_2021_2023_PRE_MODEL_SCREEN",
+  "status": "RETIRED_PRE2024_DETERMINISTIC_ORDERFLOW_CONTINUATION_FAILURE",
+  "target_status": "NOT_MET",
+  "winner_removal_24bp": {
+    "2021_HOLD": {"multiple": 0.7522445099444945, "profit_factor": 0.5341523427814197, "removed_count": 10, "trades": 222},
+    "2021_NEAR": {"multiple": 0.7571661189937645, "profit_factor": 0.4676642841649637, "removed_count": 14, "trades": 253},
+    "2022_HOLD": {"multiple": 0.7745551944215957, "profit_factor": 0.5455157527566988, "removed_count": 10, "trades": 202},
+    "2022_NEAR": {"multiple": 0.7504133745442996, "profit_factor": 0.4324498520959654, "removed_count": 12, "trades": 223},
+    "2023_HOLD": {"multiple": 0.687582198051553, "profit_factor": 0.2695207165383554, "removed_count": 7, "trades": 166},
+    "2023_NEAR": {"multiple": 0.7114099386355311, "profit_factor": 0.2330584904460187, "removed_count": 8, "trades": 182}
+  }
+}
