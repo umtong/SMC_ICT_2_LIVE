@@ -1,0 +1,39 @@
+name: YT Trinity DuckDB CLI bridge
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/yt-trinity-duckdb-cli.yml
+  push:
+    branches: [agent/r23-yt-trinity-transport-001]
+    paths:
+      - .github/workflows/yt-trinity-duckdb-cli.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download verified DuckDB CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            -o duckdb_cli-linux-amd64.zip \
+            https://github.com/duckdb/duckdb/releases/download/v1.5.5/duckdb_cli-linux-amd64.zip
+          echo "08c0ca117111fcede14239d0093792352befdc174218c344d232c13279643d05  duckdb_cli-linux-amd64.zip" | sha256sum --check --strict
+          unzip -q duckdb_cli-linux-amd64.zip -d duckdb-cli
+          chmod +x duckdb-cli/duckdb
+          duckdb-cli/duckdb --version | tee duckdb-cli/VERSION.txt
+          sha256sum duckdb-cli/duckdb > duckdb-cli/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-duckdb-cli-${{ github.sha }}
+          path: duckdb-cli
+          if-no-files-found: error
+          retention-days: 7

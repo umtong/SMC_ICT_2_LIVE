@@ -1,0 +1,193 @@
+name: YT Trinity YouTube.js transport probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/yt_trinity_transport/probe_youtubejs_transport.mjs
+      - .github/workflows/yt-trinity-youtubejs-transport-probe.yml
+  push:
+    branches: [agent/r23-yt-trinity-transport-001]
+    paths:
+      - research/yt_trinity_transport/probe_youtubejs_transport.mjs
+      - .github/workflows/yt-trinity-youtubejs-transport-probe.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-youtubejs-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Download pinned Linux CPython 3.13 Parquet runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-wheel
+          python -m pip download \
+            --only-binary=:all: \
+            --no-deps \
+            --platform manylinux_2_28_x86_64 \
+            --python-version 3.13 \
+            --implementation cp \
+            --abi cp313 \
+            --dest runtime-wheel \
+            pyarrow==18.1.0
+          sha256sum runtime-wheel/* > runtime-wheel/SHA256SUMS
+
+      - name: Install transport dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p transport-node
+          cd transport-node
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact \
+            youtubei.js@17.0.1 \
+            @nadimtuhin/ytranscript@1.3.0
+          ln -s "$PWD/node_modules" "$GITHUB_WORKSPACE/node_modules"
+          npm ls --depth=0 > "$GITHUB_WORKSPACE/dependency-${RUNNER_OS}.txt"
+
+      - name: Probe YouTube.js transcript and public audio range
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "artifact/youtubejs-${RUNNER_OS}"
+          node research/yt_trinity_transport/probe_youtubejs_transport.mjs \
+            "artifact/youtubejs-${RUNNER_OS}" \
+            2>&1 | tee "artifact/youtubejs-${RUNNER_OS}/stdout.log"
+
+      - name: Probe independent ytranscript CLI
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "artifact/ytranscript-${RUNNER_OS}"
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import time
+
+          samples = [
+              ("chartbro", "0h9lpMUBSlE"),
+              ("swipalnam", "-Tp2fhvVVGM"),
+              ("indicator_sensei", "2U0s_i07vMY"),
+              ("known_previous_success", "F6wDs1HRTSo"),
+          ]
+          out = pathlib.Path("artifact") / f"ytranscript-{os.environ['RUNNER_OS']}"
+          out.mkdir(parents=True, exist_ok=True)
+          executable = pathlib.Path("transport-node/node_modules/.bin/ytranscript")
+          rows = []
+          for channel_slug, video_id in samples:
+              started = time.monotonic()
+              row = {"channel_slug": channel_slug, "video_id": video_id}
+              if not executable.exists():
+                  row.update(
+                      returncode=None,
+                      stdout="",
+                      stderr=f"missing executable: {executable}",
+                      nonempty=False,
+                  )
+              else:
+                  try:
+                      proc = subprocess.run(
+                          [
+                              str(executable),
+                              "get",
+                              "--",
+                              video_id,
+                              "--lang",
+                              "ko",
+                              "--format",
+                              "json",
+                          ],
+                          capture_output=True,
+                          text=True,
+                          timeout=120,
+                          check=False,
+                      )
+                      row.update(
+                          returncode=proc.returncode,
+                          stdout=proc.stdout,
+                          stderr=proc.stderr,
+                          nonempty=proc.returncode == 0 and bool(proc.stdout.strip()),
+                      )
+                  except subprocess.TimeoutExpired as exc:
+                      row.update(
+                          returncode=None,
+                          stdout=(exc.stdout or "") if isinstance(exc.stdout, str) else "",
+                          stderr=(exc.stderr or "") if isinstance(exc.stderr, str) else "",
+                          nonempty=False,
+                          timeout=True,
+                      )
+              row["elapsed_seconds"] = round(time.monotonic() - started, 3)
+              rows.append(row)
+              (out / f"{video_id}.json").write_text(
+                  json.dumps(row, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8",
+              )
+          decision = {
+              "schema_version": 1,
+              "runner_os": os.environ["RUNNER_OS"],
+              "recovered_video_count": sum(bool(row.get("nonempty")) for row in rows),
+              "videos": rows,
+          }
+          decision["decision"] = (
+              "TRANSPORT_RECOVERED" if decision["recovered_video_count"] else "NO_RECOVERY"
+          )
+          (out / "probe.json").write_text(
+              json.dumps(decision, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Hash immutable evidence
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import pathlib
+
+          root = pathlib.Path("artifact")
+          rows = []
+          for path in sorted(p for p in root.rglob("*") if p.is_file() and p.name != "SHA256SUMS"):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}")
+          (root / "SHA256SUMS").write_text("\n".join(rows) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload transport evidence and pinned runtime
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-youtubejs-${{ runner.os }}-${{ github.sha }}
+          path: |
+            artifact
+            dependency-${{ runner.os }}.txt
+            runtime-wheel
+          if-no-files-found: warn
+          retention-days: 30

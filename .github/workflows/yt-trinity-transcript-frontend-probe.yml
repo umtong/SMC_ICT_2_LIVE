@@ -1,0 +1,95 @@
+name: YT Trinity public transcript frontend probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/yt_trinity_transport/probe_transcript_frontend.mjs
+      - .github/workflows/yt-trinity-transcript-frontend-probe.yml
+  push:
+    branches: [agent/r23-yt-trinity-transport-001]
+    paths:
+      - research/yt_trinity_transport/probe_transcript_frontend.mjs
+      - .github/workflows/yt-trinity-transcript-frontend-probe.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        service:
+          - quicktranscript
+          - transcriptube
+          - scribetube
+          - citeclip
+          - pastecontext
+          - memra
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pinned Playwright browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frontend-node
+          cd frontend-node
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact playwright@1.55.0
+          npx playwright install --with-deps chromium
+          ln -s "$PWD/node_modules" "$GITHUB_WORKSPACE/node_modules"
+          npm ls --depth=0 > "$GITHUB_WORKSPACE/dependency-${{ matrix.service }}.txt"
+
+      - name: Submit one representative public video
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "artifact/${{ matrix.service }}"
+          node research/yt_trinity_transport/probe_transcript_frontend.mjs \
+            "${{ matrix.service }}" \
+            "artifact/${{ matrix.service }}" \
+            "https://www.youtube.com/watch?v=-Tp2fhvVVGM" \
+            2>&1 | tee "artifact/${{ matrix.service }}/stdout.log"
+
+      - name: Hash evidence
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import pathlib
+
+          root = pathlib.Path("artifact")
+          rows = []
+          for path in sorted(p for p in root.rglob("*") if p.is_file() and p.name != "SHA256SUMS"):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.as_posix()}")
+          (root / "SHA256SUMS").write_text("\n".join(rows) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-frontend-${{ matrix.service }}-${{ github.sha }}
+          path: |
+            artifact
+            dependency-${{ matrix.service }}.txt
+          if-no-files-found: error
+          retention-days: 30

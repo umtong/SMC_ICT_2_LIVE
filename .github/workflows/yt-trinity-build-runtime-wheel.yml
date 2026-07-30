@@ -1,0 +1,49 @@
+name: YT Trinity build pinned local runtime wheel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r23-yt-trinity-transport-001]
+    paths:
+      - .github/workflows/yt-trinity-build-runtime-wheel.yml
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download pinned Arrow wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip download \
+            --only-binary=:all: \
+            --no-deps \
+            --dest wheel \
+            pyarrow==18.1.0
+          sha256sum wheel/* > wheel/SHA256SUMS
+          python - <<'PY'
+          import json, pathlib, platform, sys
+          path = next(pathlib.Path('wheel').glob('pyarrow-*.whl'))
+          manifest = {
+              'schema_version': 1,
+              'python': sys.version,
+              'platform': platform.platform(),
+              'wheel': path.name,
+          }
+          pathlib.Path('wheel/MANIFEST.json').write_text(
+              json.dumps(manifest, indent=2) + '\n', encoding='utf-8'
+          )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pyarrow-18.1.0-cp313-runtime
+          path: wheel
+          if-no-files-found: error
+          retention-days: 7
