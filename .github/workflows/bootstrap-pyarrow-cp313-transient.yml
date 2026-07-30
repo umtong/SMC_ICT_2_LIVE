@@ -1,4 +1,4 @@
-name: Transient PyArrow CPython 3.13 wheel bootstrap
+name: Transient natural-destination local bootstrap
 
 on:
   pull_request:
@@ -10,23 +10,31 @@ permissions:
   contents: read
 
 jobs:
-  wheel:
+  bootstrap:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Download Linux CPython 3.13 PyArrow wheel
+      - name: Materialize exact parent source and download matching parquet reader
         run: |
           set -euo pipefail
+          root=research/smc_core_expansion_single_policy_20260730
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
           python -m pip download --only-binary=:all: --no-deps 'pyarrow==25.0.0' -d wheel
           sha256sum wheel/* > wheel/SHA256SUMS
+          find "$root/materialized" -maxdepth 1 -type f -print -exec sha256sum {} \;
           ls -lah wheel
       - uses: actions/upload-artifact@v4
         with:
-          name: pyarrow25-cp313-manylinux-wheel
-          path: wheel
+          name: natural-destination-local-bootstrap
+          path: |
+            wheel
+            research/smc_core_expansion_single_policy_20260730/materialized
+            research/smc_core_expansion_single_policy_20260730/SOURCE_MANIFEST.json
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
