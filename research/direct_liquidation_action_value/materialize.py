@@ -32,14 +32,13 @@ def unique_candidates(base: str, parts: list[str]) -> Iterable[tuple[str, str]]:
     for index, part in enumerate(parts):
         yield from emit(f"part_{index:02d}", part)
     if parts:
-        yield from emit("parts_concat", "".join(parts))
-        yield from emit("primary_then_parts", base + "".join(parts))
-        yield from emit("parts_then_primary", "".join(parts) + base)
+        joined = "".join(parts)
+        yield from emit("parts_concat", joined)
+        yield from emit("primary_then_parts", base + joined)
+        yield from emit("parts_then_primary", joined + base)
 
 
 def decode_candidate(text: str) -> bytes:
-    # A copied text carrier can lose only terminal padding; restoring padding is
-    # harmless because the manifest hashes remain the authority.
     padded = text + ("=" * ((-len(text)) % 4))
     return base64.b64decode(padded, validate=False)
 
@@ -84,7 +83,7 @@ def main() -> None:
             attempts.append(attempt)
             selected = attempt
             break
-        except Exception as exc:  # report every transport failure deterministically
+        except Exception as exc:
             attempt["status"] = "decode_or_decompress_error"
             attempt["error"] = f"{type(exc).__name__}: {exc}"
             attempts.append(attempt)
@@ -98,12 +97,14 @@ def main() -> None:
         "attempts": attempts,
         "selected": selected,
     }
-    REPORT_PATH.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report_text = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    REPORT_PATH.write_text(report_text, encoding="utf-8")
 
     if selected is None:
+        print(report_text)
         raise RuntimeError(
             "No declared carrier or deterministic carrier combination matched "
-            "the manifest gzip and source hashes. See MATERIALIZATION_REPORT.json."
+            "the manifest gzip and source hashes."
         )
 
     print(json.dumps(selected, sort_keys=True))
