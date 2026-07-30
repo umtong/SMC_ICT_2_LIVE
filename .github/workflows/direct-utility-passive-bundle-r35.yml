@@ -31,11 +31,11 @@ jobs:
           rm -rf "$out"
           mkdir -p "$out"
           python - <<'PY'
-          import gzip, hashlib, io, json, tarfile
+          import base64, gzip, hashlib, io, json, tarfile, textwrap
           from pathlib import Path
           root=Path('research/direct_utility_passive_entry_audit/vendor')
           out=Path('research/direct_utility_passive_entry_audit/local_bundle')
-          names=sorted(p for p in root.iterdir() if p.is_file() and p.name != 'EXPORT_TRIGGER.txt')
+          names=sorted(p for p in root.iterdir() if p.is_file() and not p.name.startswith('EXPORT_TRIGGER'))
           rawbuf=io.BytesIO()
           with tarfile.open(fileobj=rawbuf, mode='w') as tar:
               for p in names:
@@ -45,14 +45,13 @@ jobs:
           gzbuf=io.BytesIO()
           with gzip.GzipFile(fileobj=gzbuf,mode='wb',mtime=0,filename='') as g: g.write(rawbuf.getvalue())
           raw=gzbuf.getvalue()
-          import base64
           text=base64.b64encode(raw).decode('ascii')
           parts=[]
           for i in range(0,len(text),7000):
               part=text[i:i+7000]
               name=f'PART_{i//7000+1:02d}.b64'
-              (out/name).write_text(part+'\n',encoding='ascii')
-              parts.append({'path':name,'chars':len(part),'sha256':hashlib.sha256(part.encode()).hexdigest()})
+              (out/name).write_text('\n'.join(textwrap.wrap(part,100))+'\n',encoding='ascii')
+              parts.append({'path':name,'chars':len(part),'sha256':hashlib.sha256(part.encode()).hexdigest(),'line_width':100})
           manifest={'archive_sha256':hashlib.sha256(raw).hexdigest(),'archive_bytes':len(raw),'base64_chars':len(text),'parts':parts,'files':[{'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in names]}
           (out/'MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
           print(json.dumps(manifest,sort_keys=True))
@@ -61,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.email '41898282+@users.noreply.github.com'
           git add research/direct_utility_passive_entry_audit/local_bundle
-          git commit -m 'Commit split passive-audit source bundle'
+          git commit -m 'Commit wrapped passive-audit source bundle'
           git push origin HEAD:agent/r35-direct-utility-passive-entry-audit-001
