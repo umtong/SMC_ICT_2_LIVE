@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BYBIT-CHANNEL-REBALANCE-CORE-001",
+  "result_id": "RES-20260730-BYBIT-CHANNEL-REBALANCE-CORE-001",
+  "status": "PREREGISTERED",
+  "upstream": {
+    "all_breakout_pr": 479,
+    "volume_sponsored_pr": 472,
+    "event_inventory_count": 2855,
+    "event_rule": "completed 60m close outside the prior 96 completed hours",
+    "symbols": ["BTCUSDT", "ETHUSDT"]
+  },
+  "hypothesis": "Immediate next-minute breakout entry chases displacement; the first causal five-minute retest of the consumed frozen boundary that closes back in the breakout direction may provide a repeatable Core continuation entry.",
+  "entry": {
+    "candidate": "every upstream all-breakout event",
+    "retest": "first later completed 5m bar whose range touches the frozen consumed 96h boundary and whose close is back in the breakout direction",
+    "activation_latency_ms": 500,
+    "execution": "first strictly later observable canonical Bybit 1m price",
+    "pending_occupies_global_slot": true,
+    "cancellation": [
+      "completed 60m close back inside the frozen pre-breakout range before fill",
+      "opposite frozen external boundary consumed before fill",
+      "source gap",
+      "later same-symbol breakout state replaces the pending state"
+    ]
+  },
+  "risk_and_exit": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "initial_stop": "causal retest extreme plus adverse 1bp buffer, capped outward by the original event 2ATR disaster stop",
+    "state_exit": "completed loss of the protected retest origin after a later causal structure expansion",
+    "channel_exit": "completed opposite prior-48h channel close",
+    "elapsed_time_exit": false,
+    "scheduled_close": false,
+    "same_minute_ambiguity": "stop_first",
+    "gap_stop": "observed adverse open"
+  },
+  "account": {
+    "global_pending_plus_open_slots": 1,
+    "simultaneous_arbitration": "largest normalized breakout distance",
+    "funding": "actual signed Bybit funding",
+    "cost_round_trip_bps": [13, 18, 24],
+    "nav_start": 10000.0
+  },
+  "chronology": {
+    "pre2024": ["2021", "2022", "2023"],
+    "official_open_gate": "positive 2022 and 2023 at 18bp and 24bp, PF above one, non-sparse, and exact winner-deletion with complete rerouting positive",
+    "official_period": "2024-01-01 through 2026-06-30 continuous NAV",
+    "ml_before_gate": false
+  },
+  "prohibited_rescue": [
+    "channel lookback tuning",
+    "ATR tuning",
+    "symbol or side filtering",
+    "session filtering",
+    "confirmation threshold search",
+    "stop or target search",
+    "cost reduction",
+    "risk or leverage search",
+    "ML filtering after deterministic failure"
+  ],
+  "orders_submitted": false
+}
