@@ -9,12 +9,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 BUNDLES = (
-    ("source_bundle.tar.gz.b64", "628ec87150c307802c02fe43b4e64b2c524745563f333ea3e2d7dd6aaf444bd9"),
-    ("evidence_bundle.tar.gz.b64", "774dacfeabd5ded71f7f3196fcc429c0cfb121fb484547906c976bfa36bc2ba0"),
+    ("source_bundle.tar.gz.b64", "628ec87150c307802c02fe43b4e64b2c524745563f333ea3e2d7dd6aaf444bd9", True),
+    ("evidence_bundle.tar.gz.b64", "774dacfeabd5ded71f7f3196fcc429c0cfb121fb484547906c976bfa36bc2ba0", False),
 )
 
-for payload_name, expected_sha256 in BUNDLES:
+for payload_name, expected_sha256, required in BUNDLES:
     payload = ROOT / payload_name
+    if not payload.is_file():
+        if required:
+            raise SystemExit(f"missing required payload: {payload_name}")
+        print(
+            f"WARNING: optional historical evidence carrier is absent: {payload_name}; "
+            "source validation continues, but the compact committed result is not a full evidence replay"
+        )
+        continue
     encoded = "".join(payload.read_text(encoding="utf-8").split())
     raw = base64.b64decode(encoded, validate=True)
     actual = hashlib.sha256(raw).hexdigest()
