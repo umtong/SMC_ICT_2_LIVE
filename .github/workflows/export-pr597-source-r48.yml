@@ -1,4 +1,4 @@
-name: Export exact PR597 source for reactivation parity audit
+name: Recover published Core authorities for reactivation audit
 
 on:
   push:
@@ -24,41 +24,81 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Recover and validate exact PR597 source
+      - name: Audit PR597 carrier and recover exact PR550 Core implementation
         shell: bash
         run: |
           set -euo pipefail
-          commit=56c7baf4fa7d809d0ee9e471267c6ed5cbf1b543
-          src=research/xvenue_sponsorship_core_expansion_20260730
           out=artifact
-          git fetch --depth=1 origin "$commit"
-          mkdir -p "$out/carrier" "$out/materialized"
-          for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json RESULT_FULL.json.gz.b64 REPORT.md VALIDATION_ATTESTATION.json materialize.py; do
-            git show "$commit:$src/$f" > "$out/carrier/$f"
+          mkdir -p "$out/pr597_carrier" "$out/pr550_core"
+
+          pr597=56c7baf4fa7d809d0ee9e471267c6ed5cbf1b543
+          src597=research/xvenue_sponsorship_core_expansion_20260730
+          git fetch --depth=1 origin "$pr597"
+          for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json REPORT.md VALIDATION_ATTESTATION.json; do
+            git show "$pr597:$src597/$f" > "$out/pr597_carrier/$f"
           done
+
+          pr550=ab94c89a4d9aad7997bb93de8e69c2acba0a7a6f
+          src550=research/protected_boundary_core_realization
+          git fetch --depth=1 origin "$pr550"
+          git show "$pr550:$src550/AUDIT_SOURCE.py.gz.b64" > "$out/pr550_core/AUDIT_SOURCE.py.gz.b64"
+          git show "$pr550:$src550/SOURCE_MANIFEST.json" > "$out/pr550_core/SOURCE_MANIFEST.json"
+          git show "$pr550:$src550/RESULT.json" > "$out/pr550_core/RESULT.json"
+          git show "$pr550:$src550/REPORT.md" > "$out/pr550_core/REPORT.md"
+
           python - <<'PY'
           from pathlib import Path
-          import base64, hashlib, json, re
-          p=Path('artifact/carrier/SOURCE_BUNDLE.tar.gz.b64')
+          import base64, gzip, hashlib, json, re
+
+          out=Path('artifact')
+          p=out/'pr597_carrier'/'SOURCE_BUNDLE.tar.gz.b64'
           original=p.read_text(encoding='utf-8-sig')
           compact=''.join(original.split())
-          bad=sorted(set(re.sub(r'[A-Za-z0-9+/=]', '', compact)))
           clean=''.join(re.findall(r'[A-Za-z0-9+/=]', compact))
-          raw=base64.b64decode(clean, validate=True)
-          observed=hashlib.sha256(raw).hexdigest()
-          expected='0ea2750a9e089a2b4d9e994deb3f5903da4ae589a57522fcd13a7c023b5d8131'
-          audit={'original_chars':len(original),'compact_chars':len(compact),'clean_chars':len(clean),'invalid_chars':bad,'decoded_bytes':len(raw),'observed_sha256':observed,'expected_sha256':expected}
-          Path('artifact/CARRIER_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
-          if observed != expected:
-              raise SystemExit(f'source SHA mismatch: {observed}')
-          Path('artifact/source.tar.gz').write_bytes(raw)
+          audit={
+              'original_chars':len(original),
+              'compact_chars':len(compact),
+              'clean_chars':len(clean),
+              'clean_mod4':len(clean)%4,
+              'manifest_expected_base64_bytes':23213,
+              'manifest_expected_archive_sha256':'0ea2750a9e089a2b4d9e994deb3f5903da4ae589a57522fcd13a7c023b5d8131',
+              'recoverable':False,
+          }
+          try:
+              raw=base64.b64decode(clean,validate=True)
+              audit['decoded_bytes']=len(raw)
+              audit['observed_archive_sha256']=hashlib.sha256(raw).hexdigest()
+              audit['recoverable']=audit['observed_archive_sha256']==audit['manifest_expected_archive_sha256']
+              if audit['recoverable']:
+                  (out/'pr597_carrier'/'SOURCE_BUNDLE.tar.gz').write_bytes(raw)
+          except Exception as exc:
+              audit['decode_error']=repr(exc)
+          (out/'PR597_CARRIER_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
+
+          core=out/'pr550_core'
+          manifest=json.loads((core/'SOURCE_MANIFEST.json').read_text())
+          text=''.join((core/'AUDIT_SOURCE.py.gz.b64').read_text(encoding='utf-8-sig').split())
+          gz=base64.b64decode(text,validate=True)
+          observed_gz=hashlib.sha256(gz).hexdigest()
+          if observed_gz != manifest['gzip_sha256']:
+              raise SystemExit(f'PR550 gzip SHA mismatch: {observed_gz}')
+          source=gzip.decompress(gz)
+          observed_source=hashlib.sha256(source).hexdigest()
+          if observed_source != manifest['source_sha256']:
+              raise SystemExit(f'PR550 source SHA mismatch: {observed_source}')
+          (core/manifest['source_filename']).write_bytes(source)
+          (core/'RECOVERY_ATTESTATION.json').write_text(json.dumps({
+              'gzip_sha256':observed_gz,
+              'source_sha256':observed_source,
+              'source_bytes':len(source),
+              'status':'PASS_EXACT_PR550_CORE_SOURCE_RECOVERY',
+          },indent=2,sort_keys=True)+'\n')
           PY
-          tar -xzf "$out/source.tar.gz" -C "$out/materialized"
-          python -m py_compile "$out/materialized"/*.py
+          python -m py_compile "$out/pr550_core/protected_boundary_core_realization.py"
           (cd "$out" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: pr597-exact-source-r48-${{ github.sha }}
+          name: published-core-authorities-r48-${{ github.sha }}
           path: artifact
           if-no-files-found: error
           compression-level: 0
