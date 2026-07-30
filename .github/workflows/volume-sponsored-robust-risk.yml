@@ -1,0 +1,47 @@
+name: Volume-sponsored robust-risk audit
+
+on:
+  push:
+    branches:
+      - agent/r30-volume-sponsored-robust-risk-001
+    paths:
+      - "research/volume_sponsored_channel/**"
+      - "research/volume_sponsored_robust_risk/**"
+      - ".github/workflows/volume-sponsored-robust-risk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: volume-sponsored-robust-risk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-inspection:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Materialize exact PR 472 source bundle
+        run: |
+          set -euo pipefail
+          python research/volume_sponsored_channel/materialize.py
+          python -m py_compile research/volume_sponsored_channel/*.py
+          mkdir -p research_runs/volume_sponsored_robust_risk/source
+          cp research/volume_sponsored_channel/*.py research_runs/volume_sponsored_robust_risk/source/
+          cp research/volume_sponsored_channel/CONTRACT.json research_runs/volume_sponsored_robust_risk/source/
+          cp research/volume_sponsored_channel/RESULT.json research_runs/volume_sponsored_robust_risk/source/BASE_RESULT.json
+          cp research/volume_sponsored_channel/SOURCE_MANIFEST.json research_runs/volume_sponsored_robust_risk/source/
+          sha256sum research_runs/volume_sponsored_robust_risk/source/* > research_runs/volume_sponsored_robust_risk/source/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: volume-sponsored-robust-risk-source-${{ github.sha }}
+          path: research_runs/volume_sponsored_robust_risk/source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
