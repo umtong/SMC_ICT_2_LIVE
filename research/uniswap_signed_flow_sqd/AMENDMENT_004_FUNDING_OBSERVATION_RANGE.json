@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001",
+  "recorded_before_accepting_any_market_model_or_pnl_result": true,
+  "market_outcome_from_pre_patch_engine_accepted": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "defects": [
+    "the canonical funding calendar begins before ETHUSDT one-minute observations, so mapping every early funding event to a market price is invalid and can abort a correct source run",
+    "after an isolated missing one-minute row, selecting the last calendar row does not satisfy the intended last fully observed price semantics"
+  ],
+  "correction": "Discard funding events before the first observed ETHUSDT price and map every later event to the most recent fully observed positive one-minute close available at the funding timestamp, crossing missing calendar rows causally.",
+  "patch": {
+    "path": "research/uniswap_signed_flow_sqd/PATCH_004_FUNDING_OBSERVED_MARK.patch",
+    "sha256": "010f63f4af5beb9553254d3fb5b1dfb624ce50835cc05bd8aee79c768a3cd1cb"
+  },
+  "final_member_sha256": {
+    "full_history_sqd.py": "304d74a50b1cfbc01d03258be8cd93a9d875b58cc06fe23a1bbd75faa6247bae",
+    "test_full_history_sqd.py": "4ec2563f07e6c832b20b8260d7e81ee07b886ea1d56d323b1622ea1102fd26a2",
+    "economic_screen.py": "7349a2756fb427fcb57516d8513133cd3a25a9d445f7623354a213dbdbc5878d",
+    "test_economic_screen.py": "07753a03e0402c22677fb634dd83d06dfb165336484131e54f0e3b63e9043dcd"
+  },
+  "canonical_smoke_test": {
+    "funding_rows_after_observation_filter": 3065,
+    "first_mapped_funding_timestamp_ms": 1615795200000,
+    "first_mark_price_proxy": 1794.1,
+    "focused_tests_passed": 15
+  }
+}
