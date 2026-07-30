@@ -1,0 +1,214 @@
+--- economic_screen.py
++++ economic_screen.py
+@@ -116,6 +116,23 @@
+     bars1m = bars1m[bars1m.start_time_ms < cutoff].copy()
+     bars15 = bars15[bars15.start_time_ms < cutoff].copy()
+     funding = funding[funding.timestamp_ms < cutoff].copy()
++
++    # Funding is charged on position value at the funding timestamp, not the
++    # entry notional.  The canonical export contains the exact signed rate but
++    # no mark-price column, so use the last fully observed one-minute close at
++    # each funding timestamp as a causal mark proxy.
++    available = bars1m.available_at_ms.to_numpy(np.int64)
++    observed = bars1m.observed.to_numpy(bool)
++    closes = bars1m.close.to_numpy(float)
++    ftime = funding.timestamp_ms.to_numpy(np.int64)
++    fidx = np.searchsorted(available, ftime, side="right") - 1
++    valid = (fidx >= 0) & (fidx < len(bars1m))
++    if not valid.all():
++        raise EconomicError("funding event lacks a prior observable price")
++    prices = closes[fidx]
++    if not observed[fidx].all() or not np.isfinite(prices).all() or (prices <= 0).any():
++        raise EconomicError("funding mark proxy is not fully observable")
++    funding["mark_price_proxy"] = prices
+     return bars1m, bars15, funding
+ 
+ 
+@@ -481,6 +498,24 @@
+     return float(funding_prefix[right] - funding_prefix[left])
+ 
+ 
++def funding_cashflow(
++    funding_times: np.ndarray,
++    funding_rate_price_prefix: np.ndarray,
++    *,
++    side: int,
++    quantity: float,
++    start_ms: int,
++    end_ms: int,
++) -> float:
++    """Signed funding PnL using funding-time marked position value."""
++    left = int(np.searchsorted(funding_times, start_ms, side="right"))
++    right = int(np.searchsorted(funding_times, end_ms, side="right"))
++    rate_price = float(
++        funding_rate_price_prefix[right] - funding_rate_price_prefix[left]
++    )
++    return -float(side) * float(quantity) * rate_price
++
++
+ def exit_for_action(row: Mapping[str, Any], side: int) -> tuple[int | None, float | None, str]:
+     outcome = str(row["outcome"])
+     exit_time = row.get("exit_time_ms")
+@@ -503,16 +538,20 @@
+     *,
+     position: Position,
+     funding_times: np.ndarray,
+-    funding_prefix: np.ndarray,
++    funding_rate_price_prefix: np.ndarray,
+ ) -> None:
+     if position.exit_time_ms is None or position.exit_bar_open is None:
+         return
+     exit_price = position.exit_bar_open
+     gross = position.side * position.quantity * (exit_price - position.entry_price)
+-    rate_sum = funding_sum(
+-        funding_times, funding_prefix, position.entry_time_ms, position.exit_time_ms
++    funding_pnl = funding_cashflow(
++        funding_times,
++        funding_rate_price_prefix,
++        side=position.side,
++        quantity=position.quantity,
++        start_ms=position.entry_time_ms,
++        end_ms=position.exit_time_ms,
+     )
+-    funding_pnl = -position.side * position.notional * rate_sum
+     exit_fee = abs(position.quantity * exit_price) * position.cost_fraction / 2.0
+     post = state.cash + gross + funding_pnl - exit_fee
+     pnl = post - position.pre_nav
+@@ -542,8 +581,15 @@
+     p.exit_bar_open = float(p.stop_level)
+     p.exit_kind = "TERMINAL_ADVERSE_SOURCE_END"
+     ft = funding.timestamp_ms.to_numpy(np.int64)
+-    fp = np.concatenate([[0.0], np.cumsum(funding.funding_rate.to_numpy(float))])
+-    settle_position(state, position=p, funding_times=ft, funding_prefix=fp)
++    frp = np.concatenate(
++        [[0.0], np.cumsum(
++            funding.funding_rate.to_numpy(float)
++            * funding.mark_price_proxy.to_numpy(float)
++        )]
++    )
++    settle_position(
++        state, position=p, funding_times=ft, funding_rate_price_prefix=frp
++    )
+ 
+ 
+ def choose_action(row: Mapping[str, Any], p_up: float, cost_fraction: float) -> int:
+@@ -574,7 +620,12 @@
+     state = initial_state if initial_state is not None else AccountState()
+     excluded = excluded_keys or set()
+     ft = funding.timestamp_ms.to_numpy(np.int64)
+-    fp = np.concatenate([[0.0], np.cumsum(funding.funding_rate.to_numpy(float))])
++    frp = np.concatenate(
++        [[0.0], np.cumsum(
++            funding.funding_rate.to_numpy(float)
++            * funding.mark_price_proxy.to_numpy(float)
++        )]
++    )
+ 
+     subset = events[(events.entry_time_ms >= start_ms) & (events.entry_time_ms < end_ms)]
+     for row in subset.to_dict("records"):
+@@ -583,7 +634,7 @@
+         if state.position is not None:
+             pos = state.position
+             if pos.exit_time_ms is not None and pos.exit_time_ms < entry_time:
+-                settle_position(state, position=pos, funding_times=ft, funding_prefix=fp)
++                settle_position(state, position=pos, funding_times=ft, funding_rate_price_prefix=frp)
+             else:
+                 continue
+         if event_key in excluded:
+@@ -638,7 +689,7 @@
+             state,
+             position=state.position,
+             funding_times=ft,
+-            funding_prefix=fp,
++            funding_rate_price_prefix=frp,
+         )
+     return state
+ 
+@@ -658,10 +709,17 @@
+         return float("nan")
+     mark = float(market["close"][idx])
+     ft = funding.timestamp_ms.to_numpy(np.int64)
+-    fp = np.concatenate([[0.0], np.cumsum(funding.funding_rate.to_numpy(float))])
++    frp = np.concatenate(
++        [[0.0], np.cumsum(
++            funding.funding_rate.to_numpy(float)
++            * funding.mark_price_proxy.to_numpy(float)
++        )]
++    )
+     gross = p.side * p.quantity * (mark - p.entry_price)
+-    rate_sum = funding_sum(ft, fp, p.entry_time_ms, timestamp_ms)
+-    funding_pnl = -p.side * p.notional * rate_sum
++    funding_pnl = funding_cashflow(
++        ft, frp, side=p.side, quantity=p.quantity,
++        start_ms=p.entry_time_ms, end_ms=timestamp_ms,
++    )
+     hypothetical_exit_fee = abs(p.quantity * mark) * p.cost_fraction / 2.0
+     return float(state.cash + gross + funding_pnl - hypothetical_exit_fee)
+ 
+@@ -682,7 +740,12 @@
+     pos_idx = 0
+     active: Position | None = None
+     ft = funding.timestamp_ms.to_numpy(np.int64)
+-    fp = np.concatenate([[0.0], np.cumsum(funding.funding_rate.to_numpy(float))])
++    frp = np.concatenate(
++        [[0.0], np.cumsum(
++            funding.funding_rate.to_numpy(float)
++            * funding.mark_price_proxy.to_numpy(float)
++        )]
++    )
+     times = market["times"]
+ 
+     for t in day_ends:
+@@ -707,8 +770,10 @@
+             else:
+                 mark = float(market["close"][idx])
+                 gross = active.side * active.quantity * (mark - active.entry_price)
+-                rate_sum = funding_sum(ft, fp, active.entry_time_ms, int(t))
+-                funding_pnl = -active.side * active.notional * rate_sum
++                funding_pnl = funding_cashflow(
++                    ft, frp, side=active.side, quantity=active.quantity,
++                    start_ms=active.entry_time_ms, end_ms=int(t),
++                )
+                 fee = abs(active.quantity * mark) * active.cost_fraction / 2.0
+                 nav = cash + gross + funding_pnl - fee
+         rows.append({"timestamp_ms": int(t), "nav": float(nav)})
+--- test_economic_screen.py
++++ test_economic_screen.py
+@@ -38,10 +38,20 @@
+     assert price == 90.0 and kind == "TARGET"
+ 
+ 
+-def test_funding_sign() -> None:
++def test_funding_sign_and_marked_position_value() -> None:
+     times = np.array([10, 20, 30], dtype=np.int64)
+-    prefix = np.array([0.0, 0.001, 0.003, 0.006])
+-    assert abs(e.funding_sum(times, prefix, 10, 30) - 0.005) < 1e-12
++    rates = np.array([0.001, 0.002, 0.003])
++    prices = np.array([100.0, 110.0, 120.0])
++    prefix = np.concatenate([[0.0], np.cumsum(rates * prices)])
++    # Event at entry time 10 is excluded; events at 20 and 30 are included.
++    long_pnl = e.funding_cashflow(
++        times, prefix, side=1, quantity=2.0, start_ms=10, end_ms=30
++    )
++    short_pnl = e.funding_cashflow(
++        times, prefix, side=-1, quantity=2.0, start_ms=10, end_ms=30
++    )
++    assert abs(long_pnl + 2.0 * (0.002 * 110.0 + 0.003 * 120.0)) < 1e-12
++    assert abs(short_pnl + long_pnl) < 1e-12
+ 
+ 
+ def test_partition_labels_cannot_cross_boundaries() -> None:
+@@ -120,8 +130,11 @@
+     )
+     state.position = position
+     state.ledger.append(position)
+-    funding = pd.DataFrame({"timestamp_ms": np.array([], dtype=np.int64),
+-                            "funding_rate": np.array([], dtype=float)})
++    funding = pd.DataFrame({
++        "timestamp_ms": np.array([], dtype=np.int64),
++        "funding_rate": np.array([], dtype=float),
++        "mark_price_proxy": np.array([], dtype=float),
++    })
+     e.settle_terminal_adverse_source_end(state, end_ms=10_000, funding=funding)
+     assert state.position is None
+     assert position.exit_kind == "TERMINAL_ADVERSE_SOURCE_END"
