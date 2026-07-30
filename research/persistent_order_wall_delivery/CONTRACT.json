@@ -1,0 +1,72 @@
+{
+  "account": {
+    "additional_round_trip_stress_bp": [
+      12,
+      18,
+      24
+    ],
+    "initial_nav_usdt": 10000,
+    "notional_cap_multiple": 3.0,
+    "risk_fraction": 0.005
+  },
+  "chronology": {
+    "confirmation": "2023-07-01",
+    "context": "2023-03-01",
+    "development": "2023-05-01",
+    "official_2024_2026": "sealed unless development and confirmation pass frozen 24bp gate"
+  },
+  "claim_id": "CLM-20260730-PERSISTENT-ORDER-WALL-DELIVERY-001",
+  "execution": {
+    "barriers": "executable bid/ask",
+    "boundary": "mark unresolved sample-day exposure; never strategy-close",
+    "entry": "first actual Bybit quote at or after adjudication completion + 500ms",
+    "funding": "canonical signed funding rate valued at first observable quote midpoint at/after event",
+    "global_slots": 1,
+    "latency_ms": 500,
+    "long_entry": "cross ask",
+    "same_timestamp_priority": "STOP > TARGET > STATE_LOSS",
+    "short_entry": "cross bid",
+    "state_loss": "completed one-second state then +500ms"
+  },
+  "issue": 646,
+  "logic": {
+    "absorb": "same/outward tick replenishes >=50% and final executable midpoint returns to pre-wall side",
+    "accept": "same/outward tick remains <25% and >=80% of one-second quote midpoints remain beyond wall",
+    "actions": [
+      "ABSORB",
+      "ACCEPT",
+      "FLAT"
+    ],
+    "consumption": "attacking actual trades at/through wall accumulate >=50% of activation quantity",
+    "liquidity_definition": "exact tick price with March-frozen q95 top-five notional and completed five-second persistence",
+    "target": "nearest live persistent wall already active before source-wall consumption"
+  },
+  "orders": false,
+  "products": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "programization_corrections_before_outcomes": [
+    "absorption stop extreme includes every actual trade from first wall contact through completed adjudication, not only attacking prints through threshold",
+    "funding notional uses first observable quote midpoint at the actual funding timestamp rather than entry price"
+  ],
+  "role_of_products": "sparse test arenas for one common executable-liquidity mechanism",
+  "schema_version": 1,
+  "source": {
+    "artifact_id": 8626196096,
+    "availability_clock": "provider local_timestamp",
+    "dataset_id": "DS-TARDIS-BYBIT-BTCETH-L2-FIRSTDAY-202303_202307-R1",
+    "dates": [
+      "2023-03-01",
+      "2023-05-01",
+      "2023-07-01"
+    ],
+    "interpolation": false,
+    "types": [
+      "book_snapshot_5",
+      "quotes",
+      "trades"
+    ]
+  },
+  "venue": "Bybit USDT-linear perpetual"
+}

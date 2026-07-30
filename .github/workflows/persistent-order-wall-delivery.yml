@@ -1,0 +1,82 @@
+name: Validate persistent executable-wall delivery
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'research/persistent_order_wall_delivery/**'
+      - '.github/workflows/persistent-order-wall-delivery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install fixed runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==2.1.3 pandas==2.2.3 pyarrow==18.1.0
+
+      - name: Materialize and verify frozen source bundle
+        run: |
+          python research/persistent_order_wall_delivery/materialize.py
+
+      - name: Apply outcome-sealed state/account corrections
+        run: |
+          python research/persistent_order_wall_delivery/patch_completed_state.py
+
+      - name: Apply official wide-snapshot schema correction
+        run: |
+          python research/persistent_order_wall_delivery/patch_wide_snapshot.py
+
+      - name: Semantic self-test
+        run: |
+          python research/persistent_order_wall_delivery/materialized/run.py --self-test
+
+      - name: Run frozen March-May-July fatal screen
+        run: |
+          set -o pipefail
+          python research/persistent_order_wall_delivery/materialized/run.py \
+            --manifest research/persistent_order_wall_delivery/materialized/SOURCE_MANIFEST.json \
+            --funding research/persistent_order_wall_delivery/materialized/FUNDING_2023_BTCETH.csv \
+            --cache "$RUNNER_TEMP/persistent-wall-cache" \
+            --output persistent_wall_output | tee persistent_wall_run.log
+
+      - name: Validate result identity and decision boundary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("persistent_wall_output/RESULT.json")
+          r = json.loads(p.read_text())
+          assert r["claim_id"] == "CLM-20260730-PERSISTENT-ORDER-WALL-DELIVERY-001"
+          assert r["result_id"] == "RES-20260730-PERSISTENT-ORDER-WALL-DELIVERY-001"
+          assert r["orders_submitted"] is False
+          assert r["official_2024_2026_opened"] is False
+          assert set(r["stages"]) == {"context", "development", "confirmation"}
+          print(json.dumps({
+              "status": r["status"],
+              "development_pass": r["development_pass"],
+              "confirmation_pass": r["confirmation_pass"],
+              "total_actions": r["total_actions"],
+          }, sort_keys=True))
+          PY
+          sha256sum persistent_wall_output/* > persistent_wall_output/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: persistent-order-wall-result
+          path: |
+            persistent_wall_output/
+            persistent_wall_run.log
+          compression-level: 6
+          if-no-files-found: error
