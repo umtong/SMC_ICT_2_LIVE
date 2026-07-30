@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - agent/r37-dense-liquidity-edge-microflow-001
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/dense_liquidity_edge_microflow/**
+      - tests/test_dense_liquidity_edge_microflow.py
+      - .github/workflows/dense-liquidity-edge-microflow.yml
   workflow_dispatch:
 
 permissions:
