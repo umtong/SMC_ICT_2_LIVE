@@ -1,4 +1,4 @@
-name: Export protected-boundary source for slot-router audit
+name: Export protected-boundary and direct-Core sources for slot-router audit
 
 on:
   push:
@@ -16,10 +16,13 @@ permissions:
   contents: read
   actions: read
 
+env:
+  DIRECT_CORE_REF: agent/r31-exec-aligned-direct-utility-core-001
+
 jobs:
   export-source:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,13 +31,14 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
-      - name: Materialize immutable source and verify hashes
+      - name: Materialize immutable protected-boundary source
+        shell: bash
         run: |
           set -euo pipefail
           root=research/volume_protected_boundary_20260730
-          python "$root/materialize.py" | tee SOURCE_EXPORT.log
+          python "$root/materialize.py" | tee PROTECTED_SOURCE_EXPORT.log
           python -m py_compile "$root"/materialized_source/*.py
           python - <<'PY'
           import hashlib, json
@@ -44,19 +48,57 @@ jobs:
           out={'source_archive_sha256':man['source']['archive_sha256'],'files':{}}
           for p in sorted((root/'materialized_source').glob('*.py')):
               out['files'][p.name]={'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
-          Path('SOURCE_EXPORT_MANIFEST.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          Path('PROTECTED_SOURCE_EXPORT_MANIFEST.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+
+      - name: Recover and materialize immutable direct-Core source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "${DIRECT_CORE_REF}:direct-core-source"
+          root=research/execution_aligned_direct_utility_core
+          rm -rf "$root"
+          mkdir -p "$root"
+          while IFS= read -r path; do
+            rel="${path#${root}/}"
+            mkdir -p "$root/$(dirname "$rel")"
+            git show "direct-core-source:$path" > "$root/$rel"
+          done < <(git ls-tree -r --name-only direct-core-source "$root")
+          python "$root/materialize.py" | tee DIRECT_CORE_SOURCE_EXPORT.log
+          python -m py_compile "$root"/materialized/*.py
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('research/execution_aligned_direct_utility_core')
+          man=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          out={'source_archive_sha256':man['archive_sha256'],'files':{}}
+          for p in sorted((root/'materialized').rglob('*')):
+              if p.is_file():
+                  out['files'][str(p.relative_to(root/'materialized'))]={
+                      'bytes':p.stat().st_size,
+                      'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+                  }
+          Path('DIRECT_CORE_SOURCE_EXPORT_MANIFEST.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
           print(json.dumps(out,indent=2,sort_keys=True))
           PY
 
       - uses: actions/upload-artifact@v4
         with:
-          name: protected-boundary-source-${{ github.sha }}
+          name: expansion-direct-core-sources-${{ github.sha }}
           path: |
             research/volume_protected_boundary_20260730/materialized_source
             research/volume_protected_boundary_20260730/SOURCE_MANIFEST.json
             research/volume_protected_boundary_20260730/CONTRACT.json
-            SOURCE_EXPORT_MANIFEST.json
-            SOURCE_EXPORT.log
+            research/execution_aligned_direct_utility_core/materialized
+            research/execution_aligned_direct_utility_core/CONTRACT.json
+            research/execution_aligned_direct_utility_core/RESULT.json
+            research/execution_aligned_direct_utility_core/REPORT.md
+            research/execution_aligned_direct_utility_core/SOURCE_MANIFEST.json
+            PROTECTED_SOURCE_EXPORT_MANIFEST.json
+            DIRECT_CORE_SOURCE_EXPORT_MANIFEST.json
+            PROTECTED_SOURCE_EXPORT.log
+            DIRECT_CORE_SOURCE_EXPORT.log
           if-no-files-found: error
           retention-days: 7
           compression-level: 6
