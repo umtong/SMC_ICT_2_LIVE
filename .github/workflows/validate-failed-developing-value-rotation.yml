@@ -1,0 +1,48 @@
+name: Validate failed developing-value rotation carrier
+
+on:
+  pull_request:
+    paths:
+      - 'research/failed_developing_value_rotation/**'
+      - '.github/workflows/validate-failed-developing-value-rotation.yml'
+  workflow_dispatch:
+
+jobs:
+  carrier:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install compact test dependencies
+        run: python -m pip install --disable-pip-version-check numpy pandas pytest
+      - name: Verify source carrier, semantics and compact decision
+        run: |
+          set -euo pipefail
+          cd research/failed_developing_value_rotation
+          echo 'af58884749f68996594269bb13a5f7c910ce9df51a73cf1071dcc3ec1b9555a3  run.py.gz.b64.part01' | sha256sum -c -
+          echo '1e6d42f463abb9aac8027cda919d10a5f48b27036ff79e249e77d8cbf16a59e7  run.py.gz.b64.part02' | sha256sum -c -
+          echo '118885a2ca0ea3af0f6854957f161deb16d44b90993167045860e7a333081743  materialize.py' | sha256sum -c -
+          echo '5874b6b929c4596c19882acb29f34bce225caf6ce23e81477390841439fa7634  test_semantics.py' | sha256sum -c -
+          python materialize.py
+          echo 'a759217e357337d1b2814a2d64ba4e6551a753197268f01369246081352b026f  materialized/run.py' | sha256sum -c -
+          cp materialized/run.py run.py
+          python -m py_compile run.py
+          python -m pytest -q test_semantics.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('RESULT.json').read_text())
+          validation=json.loads(Path('VALIDATION_ATTESTATION.json').read_text())
+          manifest=json.loads(Path('SOURCE_MANIFEST.json').read_text())
+          assert result['decision']=='RETIRED_2022_FAILED_DEVELOPING_VALUE_ROTATION_FAILURE'
+          assert result['loaded_market_years']==[2021, 2022]
+          assert result['opened_2023'] is False
+          assert not result['gate_actions_2022']
+          assert validation['status']=='PASS_PROGRAMIZATION_CORRECTED_SIX_TESTS_THREE_PROCESS_42_FILE_IDENTITY_PORTABLE_IMPORT'
+          assert validation['process_replays']['all_scientific_outputs_byte_identical'] is True
+          assert validation['process_replays']['scientific_file_count']==42
+          assert manifest['opened_2023'] is False
+          print('carrier valid')
+          PY
