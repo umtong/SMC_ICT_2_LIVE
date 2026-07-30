@@ -1,0 +1,135 @@
+name: Validate liquidity-consuming protected-origin Core
+
+on:
+  push:
+    branches: [agent/r37-liquidity-consuming-origin-core-001]
+    paths:
+      - '.github/workflows/liquidity-consuming-origin-core-r37.yml'
+      - 'research/liquidity_consuming_origin_core/**'
+  pull_request:
+    paths:
+      - '.github/workflows/liquidity-consuming-origin-core-r37.yml'
+      - 'research/liquidity_consuming_origin_core/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: liquidity-consuming-origin-r37-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+      CANONICAL_ARTIFACT_ID: '8712672241'
+      CANONICAL_SHA256: '950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r37-liquidity-consuming-origin-core-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen runtime
+        run: |
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install 'numpy==2.1.3' 'pandas==2.2.3'
+
+      - name: Materialize and verify source
+        run: |
+          set -euo pipefail
+          root=research/liquidity_consuming_origin_core
+          python - <<'PY'
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          root = Path('research/liquidity_consuming_origin_core')
+          m = json.loads((root / 'SOURCE_MANIFEST.json').read_text())
+          b64 = ''.join((root / 'RUN_SOURCE.py.gz.b64').read_text().split())
+          assert len(b64) == m['base64_chars']
+          gz = base64.b64decode(b64)
+          assert len(gz) == m['gzip_bytes']
+          assert hashlib.sha256(gz).hexdigest() == m['gzip_sha256']
+          raw = gzip.decompress(gz)
+          assert len(raw) == m['source_bytes']
+          assert hashlib.sha256(raw).hexdigest() == m['source_sha256']
+          (root / 'run_origin.py').write_bytes(raw)
+          PY
+          python -m py_compile "$root/run_origin.py"
+          (cd "$root" && python test_origin_semantics.py)
+          python -m json.tool "$root/CONTRACT.json" >/dev/null
+          python -m json.tool "$root/RESULT.json" >/dev/null
+          python -m json.tool "$root/VALIDATION.json" >/dev/null
+
+      - name: Download exact canonical pandas artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" > "$RUNNER_TEMP/canonical.zip"
+          echo "${CANONICAL_SHA256}  $RUNNER_TEMP/canonical.zip" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/canonical"
+          unzip -q "$RUNNER_TEMP/canonical.zip" -d "$RUNNER_TEMP/canonical"
+          test -f "$RUNNER_TEMP/canonical/BTCUSDT/bars_1m.pkl.gz"
+          test -f "$RUNNER_TEMP/canonical/ETHUSDT/bars_1m.pkl.gz"
+
+      - name: Replay twice and compare byte-for-byte
+        run: |
+          set -euo pipefail
+          root=research/liquidity_consuming_origin_core
+          out1="$RUNNER_TEMP/origin_out_1"
+          out2="$RUNNER_TEMP/origin_out_2"
+          python "$root/run_origin.py" --input "$RUNNER_TEMP/canonical" --output "$out1"
+          python "$root/run_origin.py" --input "$RUNNER_TEMP/canonical" --output "$out2"
+          diff -qr "$out1" "$out2"
+
+      - name: Validate frozen scientific decision
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, math
+          from pathlib import Path
+          out = Path(os.environ['RUNNER_TEMP']) / 'origin_out_1'
+          r = json.loads((out / 'RESULT.json').read_text())
+          assert r['claim_id'] == 'CLM-20260730-2210-LIQUIDITY-CONSUMING-ORIGIN-CORE-001'
+          assert r['development_pass'] is False
+          assert r['confirmation_opened'] is False
+          assert r['official_2024_2026_opened'] is False
+          assert sum(x['raids_origin_candidates'] for x in r['source_event_summary']) == 33
+          def get(items, route, cost):
+              return next(x for x in items if x['route'] == route and math.isclose(x['cost'], cost))
+          limit = get(r['summary'], 'MIDPOINT_LIMIT', 0.0024)
+          limit_rr = get(r['reroute'], 'MIDPOINT_LIMIT', 0.0024)
+          response = get(r['summary'], 'FIRST_RESPONSE', 0.0024)
+          assert limit['selected_entries'] == 20 and limit['trades'] == 20
+          assert math.isclose(limit['multiple'], 1.0057188450982848, rel_tol=0, abs_tol=1e-12)
+          assert math.isclose(limit_rr['multiple'], 0.9457971256252111, rel_tol=0, abs_tol=1e-12)
+          assert response['selected_entries'] == 13 and response['trades'] == 12 and response['open_marks'] == 1
+          assert math.isclose(response['multiple'], 0.993594689451179, rel_tol=0, abs_tol=1e-12)
+          print(json.dumps({'development_pass': False, 'events': 33, 'midpoint_24bp': limit['multiple'], 'midpoint_reroute': limit_rr['multiple'], 'response_24bp': response['multiple']}, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: liquidity-consuming-origin-core-r37-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/origin_out_1
+            research/liquidity_consuming_origin_core/CONTRACT.json
+            research/liquidity_consuming_origin_core/RESULT.json
+            research/liquidity_consuming_origin_core/REPORT.md
+            research/liquidity_consuming_origin_core/VALIDATION.json
+            research/liquidity_consuming_origin_core/SOURCE_MANIFEST.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
