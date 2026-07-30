@@ -1,0 +1,34 @@
+name: Export materialized direct-Core source
+
+on:
+  push:
+    branches:
+      - agent/r32-core-expansion-one-slot-001
+    paths:
+      - .github/workflows/export-direct-core-materialized-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Materialize SHA-bound Core source
+        run: python research/execution_aligned_direct_utility_core/materialize.py
+      - name: Verify reconstructed files
+        run: |
+          python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
+          find research/execution_aligned_direct_utility_core/materialized -type f -print0 | sort -z | xargs -0 sha256sum > research/execution_aligned_direct_utility_core/materialized/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-materialized-source
+          path: research/execution_aligned_direct_utility_core/materialized
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
