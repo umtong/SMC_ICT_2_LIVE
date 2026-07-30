@@ -55,6 +55,25 @@ class DenseLiquidityEdgeTests(unittest.TestCase):
         p.process_trade(61_000, 99.4, 1.0, 'SELL', True)
         self.assertTrue(p.armed['HIGH'])
 
+    def test_sensor_survives_utc_day_boundary(self):
+        p = module.MonthProcessor('BTCUSDT', 2023, 1)
+        p.atr = 2.0
+        p.prev_high = 100.0
+        p.prev_low = 90.0
+        p.day_str = '2023-01-31'
+        anchor = 86_399_995
+        p.process_trade(anchor, 100.0, 1.0, 'BUY', True)
+        self.assertEqual(len(p.active), 1)
+        p.day_high, p.day_low = 100.0, 99.0
+        p.end_day(finalize_active=False)
+        self.assertEqual(len(p.active), 1)
+        p.start_day(module.date(2023, 2, 1), 100.0, 99.0)
+        # The next-day trade is after anchor+10s+500ms and must become entry.
+        p.process_trade(anchor + 11_000, 100.2, 1.0, 'BUY', False)
+        self.assertEqual(len(p.active), 0)
+        self.assertEqual(len(p.features), 1)
+        self.assertEqual(p.features[0]['status'], 'ok')
+
 
 if __name__ == '__main__':
     unittest.main()
