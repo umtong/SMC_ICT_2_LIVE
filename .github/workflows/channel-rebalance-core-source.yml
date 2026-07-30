@@ -1,4 +1,4 @@
-name: Channel first-rebalance Core source recovery
+name: Channel first-rebalance Core verification
 
 on:
   push:
@@ -15,11 +15,12 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  recover:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,32 +31,91 @@ jobs:
       - name: Install fixed scientific dependencies
         run: |
           python -m pip install --disable-pip-version-check numpy==2.3.3 pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.1 pytest==8.3.4
-      - name: Recover exact upstream sources
+      - name: Verify local and upstream source bundles
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/upstream/all /tmp/upstream/audit artifact/upstream artifact/materialized/all artifact/materialized/audit
+          root=research/channel_rebalance_core
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
+          pytest -q "$root/materialized/test_rebalance_semantics.py"
 
+          mkdir -p /tmp/upstream/all /tmp/upstream/audit evidence/upstream evidence/upstream_source/all evidence/upstream_source/audit
           git fetch --quiet origin agent/r24-bybit-channel-allbreakout-core-001
           git archive FETCH_HEAD research/bybit_channel_allbreakout_core | tar -x -C /tmp/upstream/all
           all_root=/tmp/upstream/all/research/bybit_channel_allbreakout_core
-          python "$all_root/materialize.py" --out "$GITHUB_WORKSPACE/artifact/materialized/all"
-          cp "$all_root"/{CONTRACT.json,RESULT.json,REPORT.md,SOURCE_BUNDLE_MANIFEST.json} artifact/upstream/
+          python "$all_root/materialize.py" --out "$GITHUB_WORKSPACE/evidence/upstream_source/all"
+          cp "$all_root"/{CONTRACT.json,RESULT.json,REPORT.md,SOURCE_BUNDLE_MANIFEST.json} evidence/upstream/
+          pytest -q evidence/upstream_source/all/test_semantics.py
 
           git fetch --quiet origin agent/r24-channel-fullpath-audit-001
           git archive FETCH_HEAD research/channel_fullpath_audit | tar -x -C /tmp/upstream/audit
           audit_root=/tmp/upstream/audit/research/channel_fullpath_audit
           python "$audit_root/materialize.py"
-          cp "$audit_root"/{independent_audit.py,robust_lcb_screen.py,SOURCE_MANIFEST.json} artifact/materialized/audit/
+          cp "$audit_root"/{independent_audit.py,robust_lcb_screen.py,SOURCE_MANIFEST.json} evidence/upstream_source/audit/
+          python -m py_compile evidence/upstream_source/audit/*.py
+      - name: Download exact registered canonical data and candidate tape
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/channel-core-data /tmp/channel-core-candidates
+          gh api /repos/${{ github.repository }}/actions/artifacts/8712672241/zip > /tmp/canonical.zip
+          echo '950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  /tmp/canonical.zip' | sha256sum -c -
+          unzip -q /tmp/canonical.zip -d /tmp/channel-core-data
 
-          cp research/channel_rebalance_core/CONTRACT.json artifact/
-          python -m py_compile artifact/materialized/all/*.py artifact/materialized/audit/*.py
-          pytest -q artifact/materialized/all/test_semantics.py
-          find artifact -type f -print0 | sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
+          gh api /repos/${{ github.repository }}/actions/artifacts/8747482602/zip > /tmp/candidates.zip
+          echo '65eed083cf749a3f48a46f1928a2cce19d8425051a98a481a42d55b0a9a14a22  /tmp/candidates.zip' | sha256sum -c -
+          unzip -q /tmp/candidates.zip -d /tmp/channel-core-candidates
+          test -f /tmp/channel-core-candidates/ALL_CANDIDATES.pkl.gz
+      - name: Recompute exact pre-2024 result
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/research/channel_rebalance_core"
+          export CORE_ROOT=/tmp/channel-core-data
+          export CANDIDATES_PKL=/tmp/channel-core-candidates/ALL_CANDIDATES.pkl.gz
+          export OUTPUT_DIR="$GITHUB_WORKSPACE/evidence/result"
+          mkdir -p "$OUTPUT_DIR"
+          (
+            cd "$root/materialized"
+            ./run_all.sh | tee "$OUTPUT_DIR/RUN.log"
+            python validate_result.py
+          )
+          echo '8a13968bfa8e1fc8673efaac6bdc688476ca1be74f4f93bf0553f019afc666dc  evidence/result/PRE2024_RESULT.json' | sha256sum -c -
+      - name: Reconcile committed decision evidence
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          root=Path('research/channel_rebalance_core')
+          committed=json.loads((root/'RESULT.json').read_text())
+          replay=json.loads(Path('evidence/result/PRE2024_RESULT.json').read_text())
+          validation=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          assert committed['status']=='RETIRED_PRE2024_REBALANCE_CORE_FAILURE'
+          assert replay['status']==committed['status']
+          assert replay['gate']['passed'] is False
+          assert committed['decision']['official_2024_2026_opened'] is False
+          assert committed['decision']['ml_opened'] is False
+          assert validation['status']=='PASS'
+          for year in ('2021','2022','2023'):
+              for cost in ('13','18','24'):
+                  a=committed['economics']['pre2024_years'][year][cost]['ordinary']
+                  b=replay['pre2024'][year][cost]['ordinary']
+                  assert a['completed_trades']==b['completed_trades']
+                  assert math.isclose(a['total_return'],b['total_return'],rel_tol=0,abs_tol=1e-12)
+                  assert math.isclose(a['pf'],b['pf'],rel_tol=0,abs_tol=1e-12)
+          assert not committed['decision']['orders_submitted']
+          print('committed result reconciles to exact replay')
+          PY
+          cp research/channel_rebalance_core/{CONTRACT.json,RESULT.json,REPORT.md,DIAGNOSTIC.json,VALIDATION_ATTESTATION.json,SOURCE_MANIFEST.json} evidence/
+          find evidence -type f -print0 | sort -z | xargs -0 sha256sum > evidence/SHA256SUMS
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: channel-rebalance-core-source-${{ github.sha }}
-          path: artifact
+          name: channel-rebalance-core-verification-${{ github.sha }}
+          path: evidence
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
