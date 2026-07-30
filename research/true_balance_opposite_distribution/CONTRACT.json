@@ -1,0 +1,56 @@
+{
+  "account": {
+    "cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "funding": "actual signed Bybit",
+    "global_slots": 1,
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005
+  },
+  "balance": "completed UTC day; 64-bin turnover profile; open/close inside 70% value area; both UTC halves trade both sides of POC",
+  "chronology": {
+    "2021": "mechanism diagnostic",
+    "2022": "untouched deterministic forward screen",
+    "2023": "sealed unless gate passes",
+    "official_2024_2026": "sealed"
+  },
+  "claim_id": "CLM-20260730-TRUE-BALANCE-OPPOSITE-DISTRIBUTION-001",
+  "elapsed_time_exit": false,
+  "entry": "fixed 500ms after decision, conservatively first strictly later 1m open",
+  "event": "first next-day raid of one balance edge, first completed 5m reclaim, then first completed 5m close beyond opposite edge before raid-extreme invalidation",
+  "exits": [
+    "target",
+    "stop",
+    "state_loss"
+  ],
+  "gate": "2022 >=50 trades, ordinary positive at 18/24bp, 24bp PF>1, exact top-10%-positive-event deletion plus full slot reroute positive",
+  "live_permission": false,
+  "logic": "true completed two-sided balance -> next-day one-edge raid -> completed reclaim inside -> completed opposite-edge close -> distribution to nearest live external pool",
+  "orders_submitted": false,
+  "prohibited_rescue": [
+    "value-area bins",
+    "reclaim counts",
+    "session filters",
+    "body threshold",
+    "target/stop alternatives",
+    "FVG/OB/MSS gates",
+    "symbol-side exceptions",
+    "lower costs",
+    "ML",
+    "risk",
+    "leverage"
+  ],
+  "result_id": "RES-20260730-TRUE-BALANCE-OPPOSITE-DISTRIBUTION-001",
+  "role": "testbeds, not thesis",
+  "schema_version": 1,
+  "state_loss": "completed 5m close back inside old balance; execute at first later 1m open",
+  "stop": "1bp beyond frozen raid extreme",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "target": "nearest available and still-unconsumed prior-10-day daily or confirmed 4h external pool"
+}
