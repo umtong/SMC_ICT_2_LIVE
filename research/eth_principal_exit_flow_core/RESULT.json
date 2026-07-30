@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ETH-PRINCIPAL-EXIT-FLOW-CORE-001",
+  "result_id": "RES-20260730-ETH-PRINCIPAL-EXIT-FLOW-001",
+  "status": "RETIRED_PRINCIPAL_PARTIAL_SEMANTIC_SPLIT_FAILURE",
+  "comparison_confidence": "LOW_EXPOSED_SEMANTIC_DIAGNOSTIC",
+  "target_status": "NOT_OPENED",
+  "ranking_change": false,
+  "live_permission": false,
+  "orders_submitted": false,
+  "source": {
+    "status": "SOURCE_PASS_PRINCIPAL_PARTIAL_SPLIT",
+    "period": ["2023-04-12", "2023-12-31"],
+    "daily_partitions": 264,
+    "hourly_rows": 6314,
+    "withdrawal_rows": 29982950,
+    "min_withdrawal_index": 0,
+    "max_withdrawal_index": 29982949,
+    "total_eth": 8113549.485337371,
+    "principal_scale_threshold_eth": 16.0,
+    "principal_rows": 202571,
+    "principal_row_share": 0.006756206443995671,
+    "principal_eth": 6518259.308444158,
+    "principal_amount_share": 0.8033794974966029,
+    "partial_rows": 29780379,
+    "partial_eth": 1595290.176893213,
+    "gap_8_to_16_rows": 0,
+    "gap_8_to_16_eth": 0.0,
+    "row_conservation_pass": true,
+    "amount_conservation_pass": true,
+    "source_confirmation_delay_seconds": 180
+  },
+  "chronology": {
+    "fit": ["2023-04-12", "2023-09-01"],
+    "forward_development": ["2023-09-01", "2023-11-01"],
+    "frozen_confirmation": ["2023-11-01", "2024-01-01"],
+    "stage_boundary": "mark only; unresolved labels excluded from model fit",
+    "model_refit_after_fit": false,
+    "official_2024_2026_opened": false
+  },
+  "account_contract": {
+    "actions": ["long_absorption", "short_acceptance", "flat"],
+    "order_latency_ms": 500,
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bp": [13, 18, 24],
+    "actual_signed_funding": true,
+    "global_slot": 1,
+    "elapsed_time_liquidation": false
+  },
+  "principal_scale": {
+    "counts": {
+      "shock_events": 563,
+      "action_rows": 1034,
+      "fit_resolved_actions": 417,
+      "development_actions": 331,
+      "confirmation_actions": 285
+    },
+    "development_24bp": {
+      "response": {
+        "trades": 73,
+        "end_nav": 10080.474153998945,
+        "total_return": 0.008047415399894398,
+        "profit_factor": 1.0334107951946678,
+        "median_account_return": -0.005,
+        "top5_positive_pnl_share": 0.44729666248584554,
+        "targets": 26,
+        "stops": 47
+      },
+      "ml": {
+        "trades": 21,
+        "end_nav": 9624.545673320226,
+        "total_return": -0.037545432667977385,
+        "profit_factor": 0.48310417276321044,
+        "median_account_return": -0.005,
+        "top5_positive_pnl_share": 1.0,
+        "targets": 7,
+        "stops": 14
+      },
+      "ml_winner_deleted": {
+        "removed_event_keys": 3,
+        "trades": 18,
+        "end_nav": 9376.515343692374,
+        "profit_factor": 0.12997078687846586
+      },
+      "prediction": {
+        "spearman": 0.2146048316186296,
+        "mae": 0.0035769304189284274,
+        "zero_baseline_mae": 0.0057141153946404484
+      }
+    },
+    "confirmation_24bp": {
+      "response": {
+        "trades": 74,
+        "end_nav": 8149.710800800137,
+        "total_return": -0.18502891991998627,
+        "profit_factor": 0.275883387144872,
+        "median_account_return": -0.005,
+        "top5_positive_pnl_share": 0.714077346427462,
+        "targets": 18,
+        "stops": 56
+      },
+      "ml": {
+        "trades": 2,
+        "end_nav": 10031.854968975373,
+        "total_return": 0.003185496897537332,
+        "profit_factor": 1.6319009640493756,
+        "top5_positive_pnl_share": 1.0,
+        "targets": 1,
+        "stops": 1
+      },
+      "ml_winner_deleted": {
+        "removed_event_keys": 1,
+        "trades": 1,
+        "end_nav": 9950.0,
+        "profit_factor": 0.0
+      },
+      "raw_long_24bp": {
+        "actions": 143,
+        "mean_account_value_bp": 1.7189640959986914,
+        "median_account_value_bp": -50.0,
+        "positive_share": 0.3076923076923077
+      },
+      "raw_short_24bp": {
+        "actions": 142,
+        "mean_account_value_bp": -34.67318231196596,
+        "median_account_value_bp": -50.0,
+        "positive_share": 0.11267605633802817
+      }
+    }
+  },
+  "partial_reward_control": {
+    "counts": {
+      "shock_events": 561,
+      "action_rows": 1030,
+      "fit_resolved_actions": 442,
+      "development_actions": 294,
+      "confirmation_actions": 294
+    },
+    "development_ml_24bp": {
+      "trades": 20,
+      "end_nav": 10184.784273847989,
+      "total_return": 0.01847842738479888,
+      "profit_factor": 1.2559751082935808,
+      "median_account_return": -0.004966189204781192,
+      "top5_positive_pnl_share": 0.9730752742103812,
+      "targets": 5,
+      "stops": 14,
+      "boundary_marks": 1
+    },
+    "confirmation_ml_24bp": {
+      "trades": 18,
+      "end_nav": 9598.551074461007,
+      "total_return": -0.0401448925538993,
+      "profit_factor": 0.45025127911335794,
+      "median_account_return": -0.005,
+      "top5_positive_pnl_share": 1.0,
+      "targets": 3,
+      "stops": 15
+    }
+  },
+  "pass_rule_met": false,
+  "pass_rule_failure_reasons": [
+    "development principal ML NAV 9624.55 was negative",
+    "development principal winner-deleted NAV 9376.52 was negative",
+    "development principal ML underperformed the partial-reward control NAV 10184.78",
+    "confirmation principal ML selected only two trades",
+    "confirmation principal winner-deleted NAV was 9950.00"
+  ],
+  "decision": [
+    "The 16 ETH split is a real source-semantic separation: 0.676% of rows carried 80.34% of withdrawn ETH and no 8-16 ETH observations existed.",
+    "The principal-scale deterministic response was only marginally positive in development and collapsed unchanged in confirmation.",
+    "The principal-scale ML policy was negative in development and its confirmation gain depended on two trades; winner deletion made it negative.",
+    "The partial-reward control also changed sign, so neither stream supplies a repeatable Core.",
+    "Retire the entire exact validator-withdrawal action family without changing the 16 ETH boundary, source event, geometry, cost, risk or leverage.",
+    "Official 2024-2026 remains unopened."
+  ],
+  "reproduction": {
+    "workflow_run": 30517717123,
+    "source_artifact_id": 8749615475,
+    "source_artifact_zip_sha256": "001a60aedf845175164fbd14377bc350d698893b742d9fc09b7e51c2f1c01c54",
+    "source_result_sha256": "bf64aa1c9d534e9395684a7596b92a2bbe52ba41a533c61f45ec127ff323ea09",
+    "economic_artifact_id": 8749623962,
+    "economic_artifact_zip_sha256": "e3a68b9f14c3de4747b0c503c8960fc058065b5828744ba89b225cf455db63e0",
+    "full_result_sha256": "6f860f30f90523bbf14fd4c2279ca1b46d29a7c9f5ee24c85e1908bf0e0779be",
+    "canonical_export_zip_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02"
+  }
+}
