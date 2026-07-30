@@ -18,6 +18,7 @@ JINA_URLS = (
     "https://r.jina.ai/https://farside.co.uk/bitcoin-etf-flow-all-data/",
 )
 END_EXCLUSIVE = pd.Timestamp("2026-07-01T00:00:00Z")
+DATE_RE = re.compile(r"^\d{1,2}\s+[A-Za-z]{3}\s+\d{4}$")
 
 
 def sha256(raw: bytes) -> str:
@@ -63,16 +64,16 @@ def select_html_table(raw: bytes) -> pd.DataFrame:
 
 
 def split_markdown_row(line: str) -> list[str]:
-    values = [x.strip() for x in line.strip().strip("|").split("|")]
-    return values
+    return [x.strip() for x in line.strip().strip("|").split("|")]
 
 
-def select_markdown_table(raw: bytes) -> pd.DataFrame:
-    text = raw.decode("utf-8", errors="replace")
+def select_pipe_markdown_table(text: str) -> pd.DataFrame | None:
     lines = text.splitlines()
     header_index = None
     header: list[str] = []
     for i, line in enumerate(lines):
+        if "|" not in line:
+            continue
         values = split_markdown_row(line)
         lowered = [v.lower() for v in values]
         if "date" in lowered and "total" in lowered and len(values) >= 10:
@@ -80,13 +81,13 @@ def select_markdown_table(raw: bytes) -> pd.DataFrame:
             header = values
             break
     if header_index is None:
-        raise RuntimeError("No Markdown ETF table header was found")
+        return None
     rows = []
     for line in lines[header_index + 1:]:
         values = split_markdown_row(line)
         if values and all(re.fullmatch(r":?-{3,}:?", v.replace(" ", "")) for v in values):
             continue
-        if not values or not re.fullmatch(r"\d{2}\s+[A-Za-z]{3}\s+\d{4}", values[0]):
+        if not values or not DATE_RE.fullmatch(values[0]):
             if rows:
                 break
             continue
@@ -94,11 +95,61 @@ def select_markdown_table(raw: bytes) -> pd.DataFrame:
             values += [""] * (len(header) - len(values))
         rows.append(values[:len(header)])
     if not rows:
-        raise RuntimeError("Markdown ETF table contained no dated rows")
+        return None
     table = pd.DataFrame(rows, columns=header)
     date_col = next(c for c in table.columns if c.strip().lower() == "date")
     total_col = next(c for c in table.columns if c.strip().lower() == "total")
     return table.rename(columns={date_col: "date", total_col: "total"})
+
+
+def select_line_serialized_table(text: str) -> pd.DataFrame:
+    """Parse Jina Reader output where each table cell is emitted on its own line."""
+    tokens = [line.strip() for line in text.splitlines() if line.strip()]
+    header_start = None
+    header_end = None
+    for i, token in enumerate(tokens):
+        if token.lower() != "date":
+            continue
+        for j in range(i + 1, min(i + 30, len(tokens))):
+            if tokens[j].lower() == "total":
+                candidate = tokens[i:j + 1]
+                if len(candidate) >= 10 and len({x.lower() for x in candidate}) == len(candidate):
+                    header_start, header_end = i, j
+                    break
+        if header_start is not None:
+            break
+    if header_start is None or header_end is None:
+        raise RuntimeError("No line-serialized ETF header from Date through Total was found")
+
+    header = tokens[header_start:header_end + 1]
+    expected_values = len(header) - 1
+    rows: list[list[str]] = []
+    cursor = header_end + 1
+    while cursor < len(tokens):
+        if not DATE_RE.fullmatch(tokens[cursor]):
+            cursor += 1
+            continue
+        date_value = tokens[cursor]
+        values = tokens[cursor + 1:cursor + 1 + expected_values]
+        if len(values) != expected_values or any(DATE_RE.fullmatch(v) for v in values):
+            raise RuntimeError(f"Malformed serialized ETF row at {date_value}: {values}")
+        rows.append([date_value, *values])
+        cursor += 1 + expected_values
+    if not rows:
+        raise RuntimeError("Line-serialized ETF table contained no dated rows")
+
+    table = pd.DataFrame(rows, columns=header)
+    date_col = next(c for c in table.columns if c.strip().lower() == "date")
+    total_col = next(c for c in table.columns if c.strip().lower() == "total")
+    return table.rename(columns={date_col: "date", total_col: "total"})
+
+
+def select_markdown_table(raw: bytes) -> tuple[pd.DataFrame, str]:
+    text = raw.decode("utf-8", errors="replace")
+    pipe = select_pipe_markdown_table(text)
+    if pipe is not None:
+        return pipe, "markdown_pipe"
+    return select_line_serialized_table(text), "markdown_line_serialized"
 
 
 def fetch_table(session: requests.Session) -> tuple[pd.DataFrame, dict, bytes]:
@@ -107,7 +158,7 @@ def fetch_table(session: requests.Session) -> tuple[pd.DataFrame, dict, bytes]:
     attempts.append({"url": URL, "status": response.status_code, "bytes": len(response.content), "sha256": sha256(response.content)})
     if response.status_code == 200:
         try:
-            return select_html_table(response.content), {"transport": "direct", "attempts": attempts}, response.content
+            return select_html_table(response.content), {"transport": "direct", "parser": "html", "attempts": attempts}, response.content
         except Exception as exc:
             attempts[-1]["parse_error"] = f"{type(exc).__name__}: {exc}"
     for proxy in JINA_URLS:
@@ -116,7 +167,8 @@ def fetch_table(session: requests.Session) -> tuple[pd.DataFrame, dict, bytes]:
         if proxied.status_code != 200:
             continue
         try:
-            return select_markdown_table(proxied.content), {"transport": "jina_reader", "attempts": attempts}, proxied.content
+            table, parser = select_markdown_table(proxied.content)
+            return table, {"transport": "jina_reader", "parser": parser, "attempts": attempts}, proxied.content
         except Exception as exc:
             attempts[-1]["parse_error"] = f"{type(exc).__name__}: {exc}"
     raise RuntimeError("Farside source unavailable through direct and Jina transports: " + json.dumps(attempts))
@@ -129,7 +181,7 @@ def main() -> int:
     args.output.mkdir(parents=True, exist_ok=True)
 
     session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0 SMC-ICT-ETF-flow-research/2.0"})
+    session.headers.update({"User-Agent": "Mozilla/5.0 SMC-ICT-ETF-flow-research/3.0"})
     table, transport, raw = fetch_table(session)
     (args.output / "farside_transport_response.bin").write_bytes(raw)
 
