@@ -1,0 +1,75 @@
+name: Export direct-utility Core source for slot-router audit
+
+on:
+  push:
+    branches:
+      - agent/gpt56-expansion-core-slot-router-001
+    paths:
+      - ".github/workflows/export-direct-core-source-gpt56.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_REF: agent/r31-exec-aligned-direct-utility-core-001
+
+jobs:
+  export-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/gpt56-expansion-core-slot-router-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Recover immutable direct-Core bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "${SOURCE_REF}:direct-core-source"
+          root=research/execution_aligned_direct_utility_core
+          rm -rf "$root"
+          mkdir -p "$root"
+          while IFS= read -r path; do
+            rel="${path#${root}/}"
+            mkdir -p "$root/$(dirname "$rel")"
+            git show "direct-core-source:$path" > "$root/$rel"
+          done < <(git ls-tree -r --name-only direct-core-source "$root")
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('research/execution_aligned_direct_utility_core')
+          man=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          files={}
+          for p in sorted((root/'materialized').rglob('*')):
+              if p.is_file():
+                  files[str(p.relative_to(root/'materialized'))]={
+                      'bytes':p.stat().st_size,
+                      'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+                  }
+          out={'archive_sha256':man['archive_sha256'],'files':files}
+          Path('DIRECT_CORE_SOURCE_EXPORT_MANIFEST.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-source-${{ github.sha }}
+          path: |
+            research/execution_aligned_direct_utility_core/materialized
+            research/execution_aligned_direct_utility_core/CONTRACT.json
+            research/execution_aligned_direct_utility_core/RESULT.json
+            research/execution_aligned_direct_utility_core/REPORT.md
+            research/execution_aligned_direct_utility_core/SOURCE_MANIFEST.json
+            DIRECT_CORE_SOURCE_EXPORT_MANIFEST.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
