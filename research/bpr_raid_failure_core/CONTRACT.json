@@ -1,0 +1,40 @@
+{
+  "account": {
+    "costs_bp": [12, 18, 24],
+    "funding": "actual signed plus 2bp sizing reserve",
+    "global_slots": 1,
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005
+  },
+  "actions": [
+    "CORE_REBALANCE to frozen midpoint",
+    "EXPANSION_DELIVERY to opposite prior-day boundary",
+    "FLAT"
+  ],
+  "chronology": {
+    "development": ["2021", "2022", "2023 unchanged"],
+    "latency_ms": 500,
+    "official_2024_2026_opened": false
+  },
+  "claim_id": "CLM-20260730-BPR-RAID-FAILURE-CORE-001",
+  "decision_rule": "retire without retuning if sparse, sub-cost, negative, unstable, or winner-dependent; official opens only after >=60 one-slot trades and positive PF/NAV/winner-reroute in each pre-2024 year at 18/24bp",
+  "event": {
+    "atr_reference": "20 completed 5m true ranges ending i-3",
+    "bar_timeframe": "5m",
+    "bpr": "exact overlap of raid FVG and later opposing FVG after close through raid origin",
+    "entry": "first later BPR touch must close back out in second-displacement direction",
+    "external_pools": "previous completed UTC-day high/low and midpoint",
+    "genuine_fvg": "three-candle strict gap; middle body >= prior-only ATR20; gap >=0.05 prior-only ATR20"
+  },
+  "forced_elapsed_exit": false,
+  "invalidation": "hard raid-to-BPR extreme or completed 5m close through far BPR edge",
+  "logic": "external-liquidity raid failure, opposing genuine-FVG overlap BPR, first-return rejection releases trapped raid-direction inventory",
+  "orders_submitted": false,
+  "products_as_testbeds": ["BTCUSDT", "ETHUSDT"],
+  "result_id": "RES-20260730-BPR-RAID-FAILURE-CORE-001",
+  "schema_version": 1,
+  "source": {
+    "dataset": "canonical exact Bybit 2021-2023 subset",
+    "dependency_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02"
+  }
+}
