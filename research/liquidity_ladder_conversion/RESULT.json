@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-LIQUIDITY-LADDER-CONVERSION-001",
+  "result_id": "RES-20260730-LIQUIDITY-LADDER-CONVERSION-001",
+  "status": "RETIRED_2022_LIQUIDITY_LADDER_CONVERSION_BELOW_BREADTH_GATE",
+  "target_status": "NOT_MET",
+  "programization_corrections": [
+    "The ladder formation window begins at the prior scale-matched 4h swing that started the old leg, not at the last 4h swing broken by the reversal close.",
+    "An empty global-slot path is a valid zero-trade outcome in winner-deletion diagnostics.",
+    "A scale target consumed before decision cannot remain a target; same-bar prior target touch invalidates the action."
+  ],
+  "coverage": {
+    "BTCUSDT": {"pivots_4h": 1916, "pivots_1h": 7598, "pivots_15m": 29777, "reversals": 367, "candidate_events": 36},
+    "ETHUSDT": {"pivots_4h": 1764, "pivots_1h": 7029, "pivots_15m": 27486, "reversals": 348, "candidate_events": 24},
+    "resolved_events": 60
+  },
+  "pre2024": {
+    "2021_24bp": {"multiple": 1.0024625888, "trades": 27, "pf": 1.0546506, "median": 0.0009210, "median_hold_min": 382.0, "winner_removed_multiple": 0.9812852930},
+    "2022_12bp": {"multiple": 1.0051356517, "trades": 19, "pf": 1.1478644, "median": 0.0014058, "median_hold_min": 451.0, "winner_removed_multiple": 0.9923790761},
+    "2022_18bp": {"multiple": 1.0024353989, "trades": 19, "pf": 1.0701550, "median": 0.0010726, "median_hold_min": 451.0, "winner_removed_multiple": 0.9905369155},
+    "2022_24bp": {"multiple": 0.9999234618, "trades": 19, "pf": 0.9977941, "median": 0.0008996, "median_hold_min": 451.0, "winner_removed_multiple": 0.9958796603}
+  },
+  "selection_2022": {"passed": false, "survivors": []},
+  "confirmation_2023_opened": false,
+  "official_opened": false,
+  "ml_opened": false,
+  "orders_submitted": false,
+  "ranking_changed": false,
+  "decision": "The source-grounded ladder role conversion moved the raw surface close to break-even and retained a positive median, unlike broad first-pullback families. It nevertheless produced only 19 one-slot trades in 2022, failed 24bp and exact winner deletion, and therefore cannot support a steady-compounding Core. Retire without pivot, rung-count, body, scale, target/stop, session, SMC-gate, asset-side, cost, ML, risk or leverage rescue."
+}
