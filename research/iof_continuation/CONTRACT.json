@@ -1,0 +1,49 @@
+{
+  "account": {
+    "actual_funding": true,
+    "costs_bps": [12, 18, 24],
+    "notional_cap": 3.0,
+    "one_global_pending_open_slot": true,
+    "risk_fraction": 0.005
+  },
+  "actions": {
+    "FLAT": "no order",
+    "HOLD": "prior-day boundary if live, otherwise latest live confirmed 4h swing",
+    "NEAR": "nearest still-unconsumed confirmed 1h pool between entry and scale-matched draw, otherwise the draw",
+    "elapsed_time_exit": false,
+    "state_exit": "completed 1h or 4h close through the entry-time protected origin",
+    "stop": "1bp beyond the causally confirmed opposite 15m protected origin"
+  },
+  "causal_state": {
+    "bear_close_location_max": 0.2,
+    "bull_close_location_min": 0.8,
+    "displacement_min_body_fraction": 0.6,
+    "displacement_min_range_atr": 1.0,
+    "displacement_timeframe": "15m",
+    "higher_timeframes": ["4h", "1h"],
+    "pivot_left_bars": 2,
+    "pivot_right_bars": 2,
+    "pullback": "first later opposite-color completed 5m bar, followed only on a later bar by a close through the prior pullback segment extreme",
+    "pullback_timeframe": "5m",
+    "replacement": "later qualifying same-symbol 15m displacement"
+  },
+  "chronology": {
+    "2021": "deterministic diagnostic/model fit only",
+    "2022": "first route/policy selection",
+    "2023": "unchanged confirmation only after positive survivor",
+    "official": "sealed after deterministic failure"
+  },
+  "claim_id": "CLM-20260729-ML-IOF-CONTINUATION-001",
+  "data": "registered canonical Bybit 2021-2023 1m/5m/15m/1h/4h/day, OI/account ratio and exact funding",
+  "decision": "ML cannot open unless deterministic action family is cost-positive, non-sparse and winner-resistant.",
+  "execution": {
+    "entry": "first strictly later observed 1m open",
+    "gap_stop": "observed adverse open",
+    "latency_ms": 500,
+    "same_minute": "stop first"
+  },
+  "orders": "none",
+  "result_id": "RES-20260730-ML-IOF-CONTINUATION-001",
+  "schema_version": 1,
+  "symbols": ["BTCUSDT", "ETHUSDT"]
+}
