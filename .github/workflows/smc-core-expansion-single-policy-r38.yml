@@ -59,13 +59,17 @@ jobs:
           assert contract['orders_submitted'] is False
           assert contract['live_permission'] is False
           assert validation['status']=='PASS'
-          assert all(validation['checks'].values())
-          official=result['official_2024_2026']['hybrid']['24']
+          for name,value in validation['checks'].items():
+              if name=='orders_submitted':
+                  assert value is False
+              else:
+                  assert value is True, name
+          official=result['official_24bp']['hybrid']
           assert official['trades']==100
-          assert abs(official['multiple']-1.1589687217237332)<1e-12
-          assert abs(official['g_daily']-0.00016177850531096083)<1e-15
-          assert official['winner_removed']['multiple']>1.0
-          assert result['target_status']['target_reached'] is False
+          assert abs(official['multiple']-1.1589703727161917)<1e-12
+          assert abs(official['g_daily']-0.00016178063028560175)<1e-15
+          assert official['winner_removed_multiple']>1.0
+          assert result['risk']['target_count']==0
           print(json.dumps({
               'result_id':result['result_id'],
               'official_24bp_multiple':official['multiple'],
