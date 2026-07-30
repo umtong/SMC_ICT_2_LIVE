@@ -7,13 +7,18 @@ on:
     paths:
       - '.github/workflows/eth-blockspace-source-r28.yml'
       - 'research/eth_blockspace_demand/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/eth-blockspace-source-r28.yml'
+      - 'research/eth_blockspace_demand/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: eth-blockspace-source-r28
+  group: eth-blockspace-source-r28-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
