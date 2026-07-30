@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260731-48H24H-GATE-AUDIT-001",
+  "result_id": "RES-20260731-48H24H-GATE-AUDIT-001",
+  "purpose": "Determine whether PR #578's disconnected median/half-year/minimum-trade gates incorrectly blocked an otherwise coherent account policy, but only after exact parent source/result parity.",
+  "parent": {
+    "issue": 576,
+    "pull_request": 578,
+    "branch": "agent/r36-48h24h-sponsored-lifecycle-001",
+    "result_id": "RES-20260730-48H24H-SPONSORED-LIFECYCLE-001"
+  },
+  "frozen_strategy": {
+    "venue": "Bybit USDT linear perpetual",
+    "symbols_and_sides": ["BTCUSDT:LONG", "ETHUSDT:LONG", "ETHUSDT:SHORT"],
+    "event": "completed one-hour close beyond the prior 48 completed hours",
+    "sponsorship": "prior-only log turnover z168 > 2.2706072565238586",
+    "entry": "first observed complete one-minute open strictly after completed decision plus 500ms",
+    "stop": "2 ATR20 from executable entry",
+    "exit": "first later executable open after completed close through the opposite prior-24h channel, or earlier hard stop",
+    "funding": "actual signed funding",
+    "portfolio": "one global pending/open slot",
+    "risk": 0.005,
+    "notional_cap": 3.0,
+    "principal_cost_bp": 24,
+    "elapsed_time_liquidation": false
+  },
+  "audit_order": [
+    "recover the published parent source and declared runtime",
+    "reuse the registered canonical Drive partitions without reacquisition",
+    "reproduce 2022, 2023 and research-exposed official parent paths",
+    "stop all economic interpretation on any parity mismatch",
+    "only after parity, test full-path winner deletion and rerouting"
+  ],
+  "prohibited_changes": [
+    "event threshold",
+    "symbol or side selection",
+    "entry, stop or exit",
+    "cost, funding, risk or leverage",
+    "session or regime filter",
+    "ML rescue",
+    "official-period tuning"
+  ],
+  "official_outcome_already_exposed": true,
+  "orders_submitted": false
+}

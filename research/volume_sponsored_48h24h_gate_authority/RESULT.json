@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260731-48H24H-GATE-AUDIT-001",
+  "claim_id": "CLM-20260731-48H24H-GATE-AUDIT-001",
+  "status": "HARD_INVALID_PARENT_PARITY_FAILURE_UNTRANSPORTED_DATA_TRANSFORM_AUTHORITY",
+  "target_status": "NOT_MET",
+  "strategy_changed": false,
+  "research_exposed": true,
+  "hard_validity_status": "FAIL_EXACT_PARENT_SOURCE_RESULT_PARITY",
+  "economic_status": "NOT_ADJUDICATED",
+  "ranking_change": false,
+  "live_permission": false,
+  "orders_submitted": false,
+  "parent_expected": {
+    "2022_24bp": {"multiple": 1.3031107602166192, "trades": 51},
+    "2023_24bp": {"multiple": 1.1993842590180963, "trades": 75},
+    "official_2024_2026_24bp": {"multiple": 1.3525318555240424, "trades": 143}
+  },
+  "accessible_canonical_replay": {
+    "2022_24bp": {
+      "multiple": 1.3025904902751448,
+      "trades": 51,
+      "profit_factor": 2.773754574502,
+      "median_net_return": -0.013310005611852976,
+      "median_hold_h": 27.8,
+      "marked_mdd": 0.03470412630961528
+    },
+    "2023_24bp": {
+      "multiple": 1.1935093716941507,
+      "trades": 75,
+      "profit_factor": 1.6148195060938908,
+      "median_net_return": -0.01210257189555433,
+      "median_hold_h": 22.933333333333334
+    },
+    "official_24bp_quarantined": {
+      "ordinary": {
+        "multiple": 1.4342635998774498,
+        "geometric_daily_growth": 0.00039552945847787235,
+        "trades": 141,
+        "profit_factor": 1.8283805605441332,
+        "median_net_return": -0.014139724678880004,
+        "median_hold_h": 34.38333333333333,
+        "marked_mdd": 0.08088997822699828,
+        "top5_positive_pnl_share": 0.36919636126845584,
+        "halfyear_returns": {
+          "2024H1": 0.106375490583281,
+          "2024H2": 0.0692382670193521,
+          "2025H1": 0.05744712228587878,
+          "2025H2": 0.11434787521080847,
+          "2026H1": 0.028898390733323343
+        },
+        "holding_buckets": {
+          "<=24h": {"trades": 54, "pnl": -3405.043555255765},
+          "24-48h": {"trades": 30, "pnl": -1018.3968644666668},
+          "48-120h": {"trades": 37, "pnl": 2428.0608048615677},
+          ">120h": {"trades": 20, "pnl": 6338.0156136353735}
+        }
+      },
+      "top5_parent_event_deletion_full_reroute": {
+        "multiple": 1.2710060973364545,
+        "geometric_daily_growth": 0.00026298280798608964,
+        "trades": 144,
+        "profit_factor": 1.550877002249778,
+        "marked_mdd": 0.07749301768123318
+      },
+      "top10pct_all_selected_parent_event_deletion_full_reroute": {
+        "multiple": 1.129110334234618,
+        "geometric_daily_growth": 0.00013315580281592077,
+        "trades": 145,
+        "profit_factor": 1.271093569751161,
+        "marked_mdd": 0.10056220245018554
+      }
+    }
+  },
+  "parity": {
+    "2022": {
+      "trade_count_match": true,
+      "nav_match": false,
+      "absolute_multiple_error": 0.0005202699414743606
+    },
+    "2023": {
+      "trade_count_match": true,
+      "nav_match": false,
+      "absolute_multiple_error": 0.005874887323945588
+    },
+    "official_24bp": {
+      "trade_count_match": false,
+      "expected_trades": 143,
+      "observed_trades": 141,
+      "nav_match": false,
+      "absolute_multiple_error": 0.08173174435340735
+    }
+  },
+  "reproduction": {
+    "exact_declared_runtime_used": true,
+    "runtime": {"python": "3.13.5", "numpy": "2.3.5", "pandas": "2.2.3", "pyarrow": "18.1.0"},
+    "fresh_complete_runs": 2,
+    "byte_identical_result": true,
+    "byte_identical_candidate_tape": true,
+    "byte_identical_outcome_tape": true,
+    "published_authority_runner_git_blob_sha": "fef6d30c9b70d9c8d6d02f252445d2b7e127e796",
+    "local_extended_replay_source_sha256": "be051447da93bcc790a8fec722ac2492442de7b6fcfd93da80d2137abf587de4",
+    "full_local_result_sha256": "af9b23d90f7e77680b515678ae234d63169c42978b4cc5d92217bbb7a1253bc8",
+    "accessible_canonical_selected_tree_sha256": "6dbf5f3cdc6d9579c00629fc4be7e3a3577b11ae8288d764018ce12beffef576",
+    "parent_declared_tree_sha256": "62bc91ae11f2a8852bb52d56b24f5e0459d256e5d2a70c8ed64a3ff7ef13a44f"
+  },
+  "decision": "The frozen parent cannot be reproduced from the accessible registered canonical partitions under the declared runtime. The exact 64-file transformed snapshot or deterministic transform that produced PR #578 was not transported. Therefore neither the original disconnected-gate retirement nor the favorable current-canonical replay may be promoted as economic evidence. Preserve both only as quarantined diagnostics and move to a materially different alpha source unless the exact parent dependency is recovered."
+}
