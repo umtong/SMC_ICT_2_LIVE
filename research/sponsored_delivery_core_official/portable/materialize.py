@@ -23,10 +23,12 @@ def main() -> None:
     chunks: list[str] = []
     for part in manifest["parts"]:
         path = ROOT / part["file"]
-        raw = path.read_bytes()
-        assert len("".join(raw.decode().split())) == part["chars"]
-        assert sha256(raw) == part["sha256"]
-        chunks.append("".join(raw.decode().split()))
+        compact = "".join(path.read_text().split())
+        # GitHub's text contents API may normalize the terminal newline. The
+        # scientific identity is therefore enforced on the reconstructed
+        # archive and every extracted member, not on transport whitespace.
+        assert len(compact) == part["chars"]
+        chunks.append(compact)
     text = "".join(chunks)
     assert len(text) == manifest["base64_chars"]
     archive = base64.b64decode(text, validate=True)
