@@ -23,27 +23,51 @@ EXPECTED_PARTS = {
 
 
 def normalize_carrier(raw: str) -> str:
-    # Wrapped text may contain newlines, a UTF BOM or connector transport
-    # markers. Only the RFC 4648 Base64 alphabet is scientific payload.
     return "".join(ch for ch in raw if ch in BASE64_ALPHABET)
 
 
+def exact_part(name: str, raw: str, expected_len: int, expected_sha: str) -> tuple[str, dict | None]:
+    text = normalize_carrier(raw)
+    observed_sha = hashlib.sha256(text.encode()).hexdigest()
+    if len(text) == expected_len and observed_sha == expected_sha:
+        return text, None
+
+    # The connector duplicated one valid Base64 character in prior attempts.
+    # Permit only a uniquely hash-proven deletion of one added character.
+    if len(text) == expected_len + 1:
+        matches: list[tuple[int, str]] = []
+        for i, ch in enumerate(text):
+            candidate = text[:i] + text[i + 1 :]
+            if hashlib.sha256(candidate.encode()).hexdigest() == expected_sha:
+                matches.append((i, ch))
+        if len(matches) == 1:
+            i, ch = matches[0]
+            return text[:i] + text[i + 1 :], {
+                "part": name,
+                "transport_recovery": "UNIQUE_ONE_CHARACTER_DELETION_TO_FROZEN_SHA256",
+                "index": i,
+                "character": ch,
+            }
+
+    raise RuntimeError(
+        f"carrier part mismatch {name}: {len(text)}/{observed_sha} "
+        f"!= {expected_len}/{expected_sha}"
+    )
+
+
 parts = sorted(ROOT.glob("SOURCE_BUNDLE.b64.part*"))
+recoveries: list[dict] = []
 if parts:
     observed_names = [part.name for part in parts]
     if observed_names != sorted(EXPECTED_PARTS):
         raise RuntimeError(f"carrier part set mismatch: {observed_names}")
     texts = []
     for part in parts:
-        text = normalize_carrier(part.read_text())
         expected_len, expected_sha = EXPECTED_PARTS[part.name]
-        observed_sha = hashlib.sha256(text.encode()).hexdigest()
-        if len(text) != expected_len or observed_sha != expected_sha:
-            raise RuntimeError(
-                f"carrier part mismatch {part.name}: "
-                f"{len(text)}/{observed_sha} != {expected_len}/{expected_sha}"
-            )
+        text, recovery = exact_part(part.name, part.read_text(), expected_len, expected_sha)
         texts.append(text)
+        if recovery is not None:
+            recoveries.append(recovery)
     encoded = "".join(texts)
 else:
     encoded = normalize_carrier((ROOT / "SOURCE_BUNDLE.tar.gz.b64").read_text())
@@ -73,6 +97,7 @@ print(
     json.dumps(
         {
             "carrier_parts": [part.name for part in parts],
+            "carrier_recoveries": recoveries,
             "carrier_sha256": hashlib.sha256(encoded.encode()).hexdigest(),
             "materialized": sorted(manifest),
             "output": str(OUT),
