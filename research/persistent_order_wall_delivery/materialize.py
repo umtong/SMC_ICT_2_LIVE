@@ -26,7 +26,8 @@ if parts:
         raise RuntimeError(f"carrier part set mismatch: {observed_names}")
     texts = []
     for part in parts:
-        text = part.read_text().strip()
+        # Base64 is intentionally wrapped for reliable GitHub text transport.
+        text = "".join(part.read_text().split())
         expected_len, expected_sha = EXPECTED_PARTS[part.name]
         observed_sha = hashlib.sha256(text.encode()).hexdigest()
         if len(text) != expected_len or observed_sha != expected_sha:
@@ -37,7 +38,7 @@ if parts:
         texts.append(text)
     encoded = "".join(texts)
 else:
-    encoded = (ROOT / "SOURCE_BUNDLE.tar.gz.b64").read_text().strip()
+    encoded = "".join((ROOT / "SOURCE_BUNDLE.tar.gz.b64").read_text().split())
 
 raw = base64.b64decode(encoded, validate=True)
 tar_bytes = gzip.decompress(raw)
