@@ -1,0 +1,48 @@
+name: Rebuild signed Uniswap economic bundle carrier
+
+on:
+  push:
+    branches:
+      - agent/r34-uniswap-signed-flow-sqd-takeover-001
+    paths:
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.part*.b64"
+      - ".github/workflows/rebuild-uniswap-economic-bundle.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-uniswap-economic-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r34-uniswap-signed-flow-sqd-takeover-001
+      - name: Rebuild and verify carrier
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          cat "$root"/ECONOMIC_BUNDLE.part*.b64 > "$root/ECONOMIC_BUNDLE.tar.gz.b64"
+          base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > /tmp/economic-bundle.tar.gz
+          echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  /tmp/economic-bundle.tar.gz" | sha256sum -c -
+          mkdir -p /tmp/economic-bundle
+          tar -xzf /tmp/economic-bundle.tar.gz -C /tmp/economic-bundle
+          echo "5bf93ac504fad6d676a64d1e1ee900794529a4f9a7d9f7d5dc4741793d1e233e  /tmp/economic-bundle/full_history_sqd.py" | sha256sum -c -
+          echo "b517d95fa3f8a07041653e00dcaffe0b5392087d23fbc5376563f4ce8890869a  /tmp/economic-bundle/test_full_history_sqd.py" | sha256sum -c -
+          echo "67d662fb0255621df687157a0535dd35f06417e12beb4a195cf7d3d5bd32de0f  /tmp/economic-bundle/economic_screen.py" | sha256sum -c -
+          echo "69e1fbdea120c47362fd71f4205770f49bba92620965a769f967f579b5413d92  /tmp/economic-bundle/test_economic_screen.py" | sha256sum -c -
+      - name: Publish exact carrier
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.tar.gz.b64
+          if ! git diff --cached --quiet; then
+            git commit -m "Repair signed Uniswap economic bundle carrier"
+            git push origin HEAD:agent/r34-uniswap-signed-flow-sqd-takeover-001
+          fi
