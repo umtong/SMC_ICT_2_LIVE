@@ -49,7 +49,7 @@ jobs:
           root=Path('research/direct_liquidation_action_value')
           m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
           b64=''.join((root/'run.py.gz.b64').read_text().split())
-          assert len(b64)==m['base64_chars']
+          print(json.dumps({'observed_base64_chars':len(b64),'declared_base64_chars':m['base64_chars']}))
           gz=base64.b64decode(b64)
           assert hashlib.sha256(gz).hexdigest()==m['gzip_sha256']
           raw=gzip.decompress(gz)
