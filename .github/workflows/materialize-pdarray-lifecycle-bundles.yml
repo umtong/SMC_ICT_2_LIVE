@@ -1,0 +1,49 @@
+name: Materialize corrected PD-array lifecycle evidence
+
+on:
+  push:
+    branches:
+      - agent/r23-ml-pdarray-lifecycle-001
+    paths:
+      - research/ml_pdarray_lifecycle/bundle_parts/**
+      - research/ml_pdarray_lifecycle/evidence_parts/**
+      - research/ml_pdarray_lifecycle/source_bundle_manifest.json
+      - research/ml_pdarray_lifecycle/evidence_bundle_manifest.json
+      - research/ml_pdarray_lifecycle/materialize_bundles.py
+      - .github/workflows/materialize-pdarray-lifecycle-bundles.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: materialize-pdarray-lifecycle-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Decode and verify frozen source and result bundles
+        run: python research/ml_pdarray_lifecycle/materialize_bundles.py
+      - name: Publish materialized evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/__init__.py research/ml_pdarray_lifecycle research/results/ml_pdarray_lifecycle tests/test_ml_pdarray_lifecycle.py confirm_2023.py model_diagnostics.py
+          if git diff --cached --quiet; then
+            echo "Evidence already materialized."
+          else
+            git commit -m "research: materialize corrected PD-array lifecycle evidence"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
