@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-VOLUME-PROTECTED-BOUNDARY-BOOTSTRAP-RISK-001",
+  "result_id": "RES-20260730-VOLUME-PROTECTED-BOUNDARY-BOOTSTRAP-RISK-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "one_global_pending_or_position_slot": true,
+  "event": "completed 1h close outside the prior 96 completed hours with log-volume z168 above the calendar-2021 upper-quartile threshold",
+  "volume_z168_threshold": 2.2706072565238586,
+  "selected_symbol_sides": [
+    "BTCUSDT:LONG",
+    "ETHUSDT:LONG",
+    "ETHUSDT:SHORT"
+  ],
+  "entry": "fixed 500ms after completed decision, conservatively first later observable 1m open",
+  "promotion": "first later completed 1h close beyond the original signal close in the breakout direction promotes the original frozen boundary",
+  "exit": "2ATR20 disaster stop, completed opposite prior-48h channel, or post-promotion completed reacceptance inside the original boundary; no elapsed-time or scheduled close",
+  "funding": "actual signed Bybit funding",
+  "cost_paths_round_trip_bps": [
+    13,
+    18,
+    24
+  ],
+  "discovery_risk": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0
+  },
+  "risk_selection": {
+    "period": "2022-01-01 through 2023-12-31",
+    "grid": [
+      0.005,
+      0.01,
+      0.02,
+      0.03,
+      0.04,
+      0.05,
+      0.06,
+      0.075,
+      0.1,
+      0.125,
+      0.15,
+      0.2,
+      0.3,
+      0.4,
+      0.6
+    ],
+    "notional_cap": 12.0,
+    "primary_cost_bps": 24,
+    "method": "maximum 10th-percentile daily log growth from 10,000 three-month block-bootstrap paths among positive/liquidation-guard paths",
+    "selected_planned_loss_fraction": 0.075
+  },
+  "official_interval": [
+    "2024-01-01T00:00:00Z",
+    "2026-07-01T00:00:00Z"
+  ],
+  "start_nav_usdt": 10000,
+  "daily_boundary": "00:00 UTC realistic liquidation value",
+  "orders_submitted": false,
+  "live_permission": false
+}
