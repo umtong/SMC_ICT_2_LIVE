@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-L2-MATURE-MICRO-AUCTION-001",
+  "claim_id": "CLM-20260730-L2-MATURE-MICRO-AUCTION-001",
+  "status": "RETIRED_SPARSE_AND_NEGATIVE_L2_MATURE_AUCTION",
+  "source": "verified Tardis compact L2 artifact 8626196096 plus canonical Bybit 2023 1m/funding",
+  "actions_generated": 8,
+  "development": {
+    "date": "2023-05-01",
+    "eligible_actions": 1,
+    "24bp_multiple": 0.9956521277,
+    "24bp_trades": 1,
+    "24bp_pf": 0.0,
+    "action": "ABSORB",
+    "exit": "STATE_LOSS"
+  },
+  "confirmation": {
+    "date": "2023-07-01",
+    "eligible_actions": 1,
+    "0bp_multiple": 0.9994067506,
+    "24bp_multiple": 0.9953573998,
+    "24bp_trades": 1,
+    "24bp_pf": 0.0,
+    "action": "ACCEPT",
+    "exit": "STOP"
+  },
+  "context": {
+    "date": "2023-03-01",
+    "eligible_actions": 6,
+    "0bp_multiple": 1.0172730869,
+    "12bp_multiple": 0.9953304841,
+    "24bp_multiple": 0.9871657994,
+    "winner_reroute_24bp_multiple": 0.9858913309
+  },
+  "programization": {
+    "causal_pivot_availability": true,
+    "maturity_before_raid": true,
+    "first_raid_uniqueness": true,
+    "provider_local_timestamp": true,
+    "first_l2_state_after_raid_plus_500ms": true,
+    "strict_minute_after_exact_l2_entry": true,
+    "scale_matched_targets": true,
+    "state_loss_executes_after_completed_close": true,
+    "actual_signed_funding": true,
+    "adverse_same_minute_stop_first": true,
+    "boundary_mark_not_strategy_exit": true
+  },
+  "decision": [
+    "The actual L2 score did not create enough mature-auction opportunities: one development trade and one unchanged confirmation trade.",
+    "Both forward trades lost after realistic cost; the confirmation trade lost even before cost.",
+    "Do not rescue with maturity counts, range scale, score comparison, target, stop, cost, symbol/side, risk, leverage or ML.",
+    "A denser study must define persistent executable order walls directly rather than requiring a chart-derived mature range first."
+  ],
+  "development_pass": false,
+  "confirmation_pass": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}
