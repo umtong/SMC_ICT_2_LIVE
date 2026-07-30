@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -68,3 +69,33 @@ def test_xatu_unix_seconds_decode_is_utc() -> None:
     assert MODULE.datetime_values(array) == [
         datetime.fromtimestamp(value, tz=timezone.utc)
     ]
+
+
+def test_inspect_accepts_unordered_physical_rows_with_contiguous_event_keys() -> None:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    day = date(2023, 4, 12)
+    start = int(datetime(2023, 4, 12, 22, 0, tzinfo=timezone.utc).timestamp())
+    amount_a = (1_000_000_000).to_bytes(16, "little")
+    amount_b = (2_000_000_000).to_bytes(16, "little")
+    table = pa.table(
+        {
+            "slot": pa.array([6209537, 6209536], type=pa.uint32()),
+            "slot_start_date_time": pa.array([start + 12, start], type=pa.int64()),
+            "epoch": pa.array([194047, 194047], type=pa.uint32()),
+            "block_root": pa.array(["0x" + "11" * 32, "0x" + "22" * 32]),
+            "withdrawal_index": pa.array([1, 0], type=pa.uint32()),
+            "withdrawal_validator_index": pa.array([11, 10], type=pa.uint32()),
+            "withdrawal_address": pa.array(["0x" + "aa" * 20, "0x" + "bb" * 20]),
+            "withdrawal_amount": pa.array([amount_a, amount_b], type=pa.binary(16)),
+        }
+    )
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "probe.parquet"
+        pq.write_table(table, path)
+        summary, hourly = MODULE.inspect_file(day, path)
+    assert summary["min_withdrawal_index"] == 0
+    assert summary["max_withdrawal_index"] == 1
+    assert summary["total_eth"] == 3.0
+    assert sum(row["event_count"] for row in hourly) == 2
