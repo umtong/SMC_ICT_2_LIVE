@@ -32,17 +32,11 @@ jobs:
         run: |
           set -euo pipefail
           root=research/uniswap_signed_flow_sqd
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment00.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment01.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment02.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment03.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment04.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment05.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment06.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment07.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment08.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment09.b64")" -eq 2000
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment10.b64")" -eq 2000
+          wc -c "$root"/ECONOMIC_BUNDLE.segment*.b64
+          sha256sum "$root"/ECONOMIC_BUNDLE.segment*.b64
+          for n in 00 01 02 03 04 05 06 07 08 09 10; do
+            test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment${n}.b64")" -eq 2000
+          done
           test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment11.b64")" -eq 280
           echo "daffd0f01affc1e6db814fc9490f0d29f6852649697beaea88506bdb9b067fd5  $root/ECONOMIC_BUNDLE.segment00.b64" | sha256sum -c -
           echo "76ad5f0bb3cd2ae875e6fe64299596950c3ecd94fcf86094a348d87c109b0134  $root/ECONOMIC_BUNDLE.segment01.b64" | sha256sum -c -
