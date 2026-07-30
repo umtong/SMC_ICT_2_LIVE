@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-FOUR-ASSET-COMMON-DIRECT-UTILITY-001",
+  "claim_id": "CLM-20260730-FOUR-ASSET-COMMON-DIRECT-UTILITY-001",
+  "status": "RETIRED_OFFICIAL_BROAD_NEGATIVE_COMMON_STATE_CORE",
+  "target_status": "NOT_MET",
+  "pre2024_selected": {
+    "q": 0.97,
+    "cost_bp": 24,
+    "2022": {"multiple": 1.0602258760932028, "trades": 505, "profit_factor": 1.0428806411507403, "geometric_daily_growth": 0.00016023742863824353, "winner_reroute_multiple": 1.059898938697578},
+    "2023": {"multiple": 1.1035998929582111, "trades": 478, "profit_factor": 1.07886075497385, "geometric_daily_growth": 0.0002701117239263251, "winner_reroute_multiple": 1.1095348123508781}
+  },
+  "official_2024_2026": {
+    "12bp": {"multiple": 0.963132240820693, "geometric_daily_growth": -0.00004118835665656295, "trades": 1253, "profit_factor": 0.9897556543578124, "realized_trade_mdd": 0.14951562266961727, "winner_reroute_multiple": 0.9133621666578454},
+    "18bp": {"multiple": 0.7857145621970977, "geometric_daily_growth": -0.000264396735022987, "trades": 1253, "profit_factor": 0.9341736217434083, "realized_trade_mdd": 0.23247046457103737, "winner_reroute_multiple": 0.710358840634653},
+    "24bp": {"multiple": 0.6500134129165225, "geometric_daily_growth": -0.00047221553368692604, "trades": 1253, "profit_factor": 0.8823234743804883, "realized_trade_mdd": 0.3601527006957562, "winner_reroute_multiple": 0.6035133022783447, "median_holding_min": 146.0, "top10_positive_pnl_share": 0.024707160426312148}
+  },
+  "24bp_halfyears": [
+    {"period": "2024H1", "trades": 315, "pnl_usdt": -1450.9644628904982},
+    {"period": "2024H2", "trades": 334, "pnl_usdt": -972.0996541161425},
+    {"period": "2025H1", "trades": 301, "pnl_usdt": -485.35595499343714},
+    {"period": "2025H2", "trades": 181, "pnl_usdt": 7.518490532236399},
+    {"period": "2026H1", "trades": 122, "pnl_usdt": -598.9642893669177}
+  ],
+  "programization": {
+    "first_run": "terminated by simultaneous multi-year model/score/market retention; no economic result was used",
+    "correction": "annual sequential fit and scoring, q>=0.97 candidate retention only, and realized account gate before liquidation-value expansion; strategy contract unchanged",
+    "model_update_delay_hours": 6,
+    "symbol_identity_feature": false
+  },
+  "decision": [
+    "The failure is broad rather than winner-concentrated: 1,253 official trades and only 2.47% top-ten positive-PnL share at 24 bp.",
+    "Do not tune q, symbol, side, CatBoost hyperparameters, stop, target, cost, risk or leverage.",
+    "Retire completed-five-minute price/OI/premium common-state direct utility and change the economic information source."
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}
