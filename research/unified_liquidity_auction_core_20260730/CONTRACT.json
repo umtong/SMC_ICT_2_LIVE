@@ -1,0 +1,50 @@
+{
+  "actions": [
+    "REJECT",
+    "CONTINUE",
+    "FLAT"
+  ],
+  "actual_funding": true,
+  "base_cost_bp": 15,
+  "chronology": "fully resolved 2021 fit -> 2022 forward; 2023 sealed unless 2022 full gate passes",
+  "claim_id": "CLM-20260730-2335-UNIFIED-LIQUIDITY-AUCTION-CORE-001",
+  "data_years": [
+    2021,
+    2022,
+    2023
+  ],
+  "decision_latency_ms": 500,
+  "elapsed_time_close": false,
+  "event_clock": "completed 15m first consumption of pre-known prior-day/prior-week/confirmed4h pool",
+  "execution_proxy": "first complete 1m open strictly later than activation",
+  "model": {
+    "parameter_grid": false,
+    "params": {
+      "l2_regularization": 5,
+      "learning_rate": 0.035,
+      "max_depth": 4,
+      "max_iter": 250,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 50,
+      "random_state": 20260730
+    },
+    "target": "fixed 0.5%-risk/3x-cap 15bp account return",
+    "threshold": 0.0,
+    "type": "HistGradientBoostingRegressor"
+  },
+  "notional_cap": 3.0,
+  "official_opened": false,
+  "one_global_slot": true,
+  "orders_submitted": false,
+  "risk_fraction": 0.005,
+  "schema_version": 1,
+  "stress_costs_bp": [
+    18,
+    24
+  ],
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "symbols_are_testbeds": true
+}
