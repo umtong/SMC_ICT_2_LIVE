@@ -1,7 +1,10 @@
 {
   "claim_id": "CLM-20260730-TURNOVER-TIME-SPONSORED-CORE-001",
   "gate_2022": false,
-  "loaded_market_years": [2021, 2022],
+  "loaded_market_years": [
+    2021,
+    2022
+  ],
   "opened_2023": false,
   "programization_findings": [
     "Packet target is frozen at each UTC-day open from the preceding 168 complete clock hours.",
@@ -9,18 +12,28 @@
     "All range, intensity and ATR states are prior-only shifted completed-packet values.",
     "Entry activates after completed packet plus fixed 500 ms and uses the first strictly later observable one-minute open.",
     "Actual signed funding, adverse stop-first ambiguity, global one-slot arbitration and exact winner deletion/full rerouting are applied.",
-    "No elapsed-time, session, UTC-day, year or stage-boundary strategy close is used."
+    "A natural outcome after the requested calendar boundary is marked at the last observable price, remains incomplete and retains the slot; no future-year exit is imported.",
+    "No elapsed-time, session, UTC-day, year or research-stage strategy close is used."
   ],
-  "remote_replay_boundary": "Source and compact evidence are transportable; full GitHub replay requires registered canonical dataset artifacts not stored in this branch.",
+  "remote_replay_boundary": "Plain-text source imports and compiles without local datasets; full scientific replay requires the registered canonical dataset artifacts and shared loader.",
+  "remote_validation": {
+    "conclusion": "success",
+    "semantic_test_sha256": "e894600e30448889de62c124eb584b4014a76670d8208e589bb0a7cff829de73",
+    "source_sha256": "4927043396f0271dd89bb161eaa9245a8bff2c06e73db3f91f76e375d929ee14",
+    "workflow_run_id": 30552721014
+  },
   "result_id": "RES-20260730-TURNOVER-TIME-SPONSORED-CORE-001",
-  "schema_version": 1,
-  "semantic_test_sha256": "d24edc816409c7edf8bae77a2ca4dde3ff27c2f3f0bedad50ac063e70c29a677",
-  "semantic_tests": {"command": "python -m pytest -q test_semantics.py", "failed": 0, "passed": 5},
-  "source_sha256": "9cb5a661c42c8a8b926e658e51b15322fa63cbcb2ee1370c480dbd3d580b0484",
-  "status": "PASS_LOCAL_CAUSAL_SEMANTICS_AND_TWO_FRESH_PROCESS_BYTE_IDENTITY",
+  "schema_version": 2,
+  "semantic_test_sha256": "e894600e30448889de62c124eb584b4014a76670d8208e589bb0a7cff829de73",
+  "semantic_tests": {
+    "command": "python -m pytest -q test_semantics.py",
+    "failed": 0,
+    "passed": 7
+  },
+  "source_sha256": "4927043396f0271dd89bb161eaa9245a8bff2c06e73db3f91f76e375d929ee14",
+  "status": "PASS_CAUSAL_SEMANTICS_SEVEN_TESTS_TWO_FRESH_PROCESS_21_FILE_BYTE_IDENTITY_PORTABLE_CI_SUCCESS",
   "two_fresh_processes": {
     "all_byte_identical": true,
-    "scientific_file_count": 21,
     "file_sha256": {
       "DAILY_NAV_2021_0BP.csv": "b39e4d29aa070a0c153c987dbacf0d3183fd97fe1d6da14e3ff1f7df8c5e8dba",
       "DAILY_NAV_2021_12BP.csv": "bb30cd1519a0f5b1f751378f6531d0bfdb9bfc6505e1339d128140fe419ec549",
@@ -43,6 +56,7 @@
       "TRADES_2022_18BP.csv": "894be58dde18c0d18cd53325f240b7b4644ee6f46dd972539f3d928f6fa5f156",
       "TRADES_2022_24BP.csv": "43eb43c3a524291c6fe8982e9de718ff9283c4976d837d05b8c4f666c8f6cab1",
       "TRADES_2022_24BP_WINNER_REMOVED.csv": "cbba39c0d1bf699a22bb680425c54f85829aef82afa8cb5354e09c9b5d9e6ea3"
-    }
+    },
+    "scientific_file_count": 21
   }
 }
