@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-STRICT-FIXTURE-ALIGNMENT-003",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "parent_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "prior_execution": {
+    "workflow_run": 30475866939,
+    "source_self_test_passed": true,
+    "source_decision_observed": false,
+    "market_outcome_observed": false,
+    "strict_test_summary": "2 failed, 12 passed",
+    "failures": [
+      "mid-minute source event fixture expected entry_index-1 even though that bar had not completed at decision time",
+      "entry-gap cost-only fixture used p_up=0.99, whose frozen 24bp expected value was non-positive, so no order was authorized"
+    ]
+  },
+  "repairs": [
+    "replace the stale entry_index-1 fixture assertion with the exact completed-close search used by the strict causal rule",
+    "set only the synthetic entry-gap self-test probability from 0.99 to 1.0 so the frozen pre-entry action is actually positive before testing cost-only invalidation"
+  ],
+  "runtime_engine_changed": false,
+  "scientific_contract_changed": false,
+  "unchanged": [
+    "strict_build_rows runtime implementation",
+    "strict_trade_from_row runtime implementation",
+    "all source events and availability timestamps",
+    "features, model, calibration, thresholds and labels",
+    "target, stop, costs, risk/notional grid and one global slot",
+    "no elapsed-time liquidation and official-period authorization",
+    "credentials and orders prohibition"
+  ],
+  "source_decision_observed": false,
+  "market_outcome_observed": false,
+  "model_fit_observed": false,
+  "trade_or_pnl_observed": false,
+  "official_2024_2026_observed": false,
+  "orders_submitted": false
+}

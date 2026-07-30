@@ -1,0 +1,45 @@
+{
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-PUBLIC-ETH-RPC-LOG-TRANSPORT-015",
+  "observed_run": {
+    "artifact_id": 8741154738,
+    "credentials_used": false,
+    "label_computed": false,
+    "market_archive_opened": false,
+    "model_fitted": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false,
+    "source_pass_fail_observed": false,
+    "status": "SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE",
+    "trade_or_pnl_opened": false,
+    "workflow_run": 30485219744
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "schema_version": 1,
+  "superseded_attempt": {
+    "scientific_inference_permitted": false,
+    "source_pass_fail_observed": false,
+    "state_when_correction_recorded": "IN_PROGRESS_WITHOUT_RESULT_ARTIFACT",
+    "workflow_run": 30512315067
+  },
+  "timing": "AFTER_DURABLE_TRANSPORT_FAILURE_BEFORE_ANY_SOURCE_PASS_FAIL_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "transport_correction": {
+    "decoder_or_deduplication_changed": false,
+    "empty_policy": "only successful eth_getLogs result=[] is empty",
+    "endpoints": [
+      "https://ethereum-rpc.publicnode.com",
+      "https://public.1rpc.io/eth"
+    ],
+    "exact_log_identity": "contract, transactionHash, logIndex",
+    "log_filters": "unchanged frozen token address and topic filters",
+    "log_timestamp": "exact eth_getBlockByNumber timestamp, no interpolation",
+    "method": "provider-independent Ethereum JSON-RPC eth_getLogs",
+    "model_or_payoff_changed": false,
+    "month_block_boundaries": "unchanged Blockscout boundary-safe source route",
+    "range_policy": "retain correction 014 fixed windows and recursively split only on fail-closed transport/range errors",
+    "risk_or_chronology_changed": false,
+    "scientific_contract_changed": false,
+    "source_event_or_filter_changed": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-ERROR-AWARE-MULTI-RPC-FAILOVER-016",
+  "observed_run": {
+    "artifact_id": 8751428002,
+    "credentials_used": false,
+    "label_computed": false,
+    "market_archive_opened": false,
+    "model_fitted": false,
+    "official_2024_2026_opened": false,
+    "orders_submitted": false,
+    "source_pass_fail_observed": false,
+    "status": "SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE",
+    "trade_or_pnl_opened": false,
+    "workflow_run": 30521782836
+  },
+  "schema_version": 1,
+  "timing": "AFTER_DURABLE_TRANSPORT_FAILURE_BEFORE_ANY_SOURCE_PASS_FAIL_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "transport_correction": {
+    "decoder_or_deduplication_changed": false,
+    "endpoint_policy": "try Blockscout per-instance ETH RPC, dRPC, rpcfree, Yearn read proxy, NodeFlare and PublicNode in order; a JSON-RPC error is an endpoint failure, not a successful response",
+    "observed_errors": [
+      "PublicNode eth_getLogs limited to 50 blocks",
+      "fallback endpoint returned method not available"
+    ],
+    "scientific_contract_changed": false,
+    "source_event_or_filter_changed": false,
+    "successful_empty_policy_changed": false,
+    "timestamp_or_availability_changed": false
+  }
+}

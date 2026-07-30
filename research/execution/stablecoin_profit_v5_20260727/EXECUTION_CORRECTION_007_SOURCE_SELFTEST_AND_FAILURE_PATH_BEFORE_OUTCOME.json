@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-SOURCE-SELFTEST-AND-FAILURE-PATH-001",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "parent_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_before_source_or_market_outcome": true,
+  "observed_failure": {
+    "workflow_run": 30210813687,
+    "source_unit_tests": "10 passed",
+    "self_test_error": "authority.base.decode_log does not exist; decoder is authority.base.auth.decode_log",
+    "failure_writer_error": "undefined publish_dir in exception path"
+  },
+  "repairs": [
+    "after materializing immutable source snapshot 73aac90e, replace exactly one self-test-only namespace reference authority.base.decode_log with authority.base.auth.decode_log in the temporary checkout",
+    "on execution exception, resolve and write to the CLI publish path instead of an undefined local variable"
+  ],
+  "scientific_contract_changed": false,
+  "unchanged": [
+    "source event semantics and source hashes",
+    "USDT Issue/Redeem and USDC zero-address mint/burn definitions",
+    "12-block and 64-block availability clocks",
+    "features, HGBT, isotonic calibration and action threshold",
+    "structural target, structural stop and first-passage labels",
+    "same-second event grouping and pre-entry information boundary",
+    "one global BTC/ETH slot",
+    "12/18/24 bp cost paths",
+    "risk and notional grid",
+    "no elapsed-time liquidation",
+    "official 2024H1 authorization rule",
+    "no credentials and no orders"
+  ],
+  "source_decision_observed": false,
+  "market_outcome_observed": false,
+  "model_fit_observed": false,
+  "trade_or_pnl_observed": false,
+  "official_2024_2026_observed": false,
+  "orders_submitted": false
+}
