@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-SCALE-MATCHED-DAILY-TRANSFER-MICROFLOW-001",
+  "result_id": "RES-20260730-SCALE-MATCHED-DAILY-TRANSFER-MICROFLOW-001",
+  "status": "COMPLETED_RESEARCH_EXPOSED_LOCAL_FATAL_SCREEN",
+  "logic": [
+    "The previous completed UTC-day high and low are paired daily-scale external liquidity.",
+    "The first one-sided raid and completed 15-minute reclaim begins a candidate liquidity-acquisition narrative, not an automatic reversal entry.",
+    "A later completed five-minute displacement through a causally confirmed swing must create a genuine three-candle FVG; the raid extreme remains the protected origin.",
+    "The FVG midpoint is the internal rebalance and the untouched opposite prior-day boundary is the scale-matched external draw.",
+    "Entry, stop, target and exit are consequences of the same external-to-internal-to-external narrative."
+  ],
+  "actions": {
+    "PASSIVE": "rest at the genuine 5m FVG midpoint with 1bp penetration; pending order occupies the global slot",
+    "CONFIRMED": "first midpoint interaction plus ten complete post-touch 500ms buckets that retain the FVG and recover in the narrative direction; enter after sensor availability plus 500ms",
+    "FLAT": "no fill, structural cancellation, origin loss or target consumption before entry"
+  },
+  "data": {
+    "canonical_pandas_artifact_id": 8712672241,
+    "canonical_pandas_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "development_months": {"BTCUSDT": ["2021-01","2021-04","2021-07","2021-10"], "ETHUSDT": ["2021-04","2021-07","2021-10"]},
+    "forward_months": {"BTCUSDT": ["2022-01","2022-04","2022-07","2022-10"], "ETHUSDT": ["2022-01","2022-04","2022-07","2022-10"]},
+    "microbar": "registered official-Bybit sparse500 V5 public-trade shards with exact first/high/low/last event offsets",
+    "coverage_limit": "quarterly-month fatal screen, not a complete annual or official account path"
+  },
+  "execution": {
+    "pivot_span": 2,
+    "pivot_availability": "after both right-side bars complete and only from the following bar",
+    "activation_delay_ms": 500,
+    "passive_fill": "exact public-trade interaction; no touch-only fill and no pre-entry bucket extrema",
+    "confirmed_sensor_ms": 10000,
+    "barrier_order": "exact event offsets in the entry minute; exact ties adverse stop-first; later ambiguous 1m bars stop-first",
+    "funding": "actual signed Bybit funding",
+    "global_slot": 1,
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bp": [12,18,24],
+    "elapsed_time_exit": false
+  },
+  "programization_corrections": [
+    "post-touch sensor starts at the next full 500ms bucket",
+    "entry-bucket extrema before exact fill cannot trigger later barriers",
+    "all genuine-FVG source bars must be complete",
+    "slot release follows the fully observed exit minute",
+    "cost tags use rounded basis points"
+  ],
+  "chronology": "2021 quarterly development diagnostic; unchanged 2022 quarterly forward screen; no ML or later period after forward failure",
+  "prohibited_rescue": ["symbol or side subset","FVG or pivot threshold","session","target or stop","cost relaxation","risk or leverage","ML filter"],
+  "orders_submitted": false
+}
