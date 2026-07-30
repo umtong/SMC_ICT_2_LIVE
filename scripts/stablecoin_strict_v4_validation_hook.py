@@ -19,7 +19,11 @@ RUNNER_TEMP = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
 WORK = RUNNER_TEMP / "stablecoin_profit_v5_validator_work"
 PUBLISH = RUNNER_TEMP / "stablecoin_profit_v5_validator_result"
 MARKER = RUNNER_TEMP / "stablecoin_profit_v5_validator_summary.json"
-AUTHORITY = ROOT / "scripts" / "run_stablecoin_profit_v5_post_reconstruct_authority.py"
+AUTHORITY = (
+    ROOT
+    / "scripts"
+    / "run_stablecoin_profit_v5_transport_window_authority.py"
+)
 
 
 def run(
@@ -64,6 +68,16 @@ def main() -> int:
             "pandas==2.2.3",
             "scikit-learn==1.6.1",
             "pyarrow==18.1.0",
+        ]
+    )
+    run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_stablecoin_v5_exec_repair.py",
+            "tests/test_stablecoin_transport_window_authority.py",
         ]
     )
     shutil.rmtree(WORK, ignore_errors=True)
