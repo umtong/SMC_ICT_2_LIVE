@@ -1,0 +1,62 @@
+{
+  "2022_24bp": {
+    "completed_trades": 31,
+    "daily_mdd": 0.104838098210846,
+    "end_nav": 9022.770743666939,
+    "exit_reasons": {"state_loss": 6, "stop": 22, "target": 3},
+    "geometric_daily_growth": -0.00028169628409102643,
+    "half_years": [
+      {"end_nav": 9315.682988495553, "multiple": 0.9315682988495553, "period": "2022H1", "return": -0.06843170115044472, "start_nav": 10000.0},
+      {"end_nav": 9022.770743666939, "multiple": 0.9685570832336879, "period": "2022H2", "return": -0.03144291676631206, "start_nav": 9315.682988495553}
+    ],
+    "mean_trade_return": -0.0033054984668935963,
+    "median_holding_minutes": 13.0,
+    "median_trade_return": -0.004781926896253069,
+    "multiple": 0.9022770743666939,
+    "profit_factor": 0.16641053374170778,
+    "winner_removed": {
+      "completed_trades": 28,
+      "daily_mdd": 0.11675960424920162,
+      "end_nav": 8832.403957507984,
+      "exit_reasons": {"state_loss": 6, "stop": 22},
+      "geometric_daily_growth": -0.0003401006911717408,
+      "multiple": 0.8832403957507984,
+      "profit_factor": 0.0,
+      "wins": 0,
+      "removed_event_keys": [
+        "BTCUSDT|19205|-1|1659343500000|1659347160000",
+        "BTCUSDT|19305|-1|1667995020000|1671044460000",
+        "ETHUSDT|19217|1|1660364700000|1660394460000"
+      ]
+    },
+    "wins": 3
+  },
+  "2022_zero_cost": {
+    "completed_trades": 31,
+    "daily_mdd": 0.0728892684931034,
+    "end_nav": 9381.075123351966,
+    "exit_reasons": {"state_loss": 6, "stop": 22, "target": 3},
+    "median_trade_return": -0.004541964805269792,
+    "multiple": 0.9381075123351966,
+    "profit_factor": 0.3968085919404292,
+    "winner_removed_multiple": 0.8983487325659854,
+    "wins": 4
+  },
+  "claim_id": "CLM-20260730-DEVELOPING-VALUE-MIGRATION-CORE-001",
+  "decision": "RETIRED_2022_SPARSE_AND_NEGATIVE_GROSS_DEVELOPING_VALUE_MIGRATION_FAILURE",
+  "event_count": 53,
+  "event_funnels": {
+    "BTCUSDT": {"accepted_value_states": 119, "days_with_complete_prior_profile": 729, "edge_loss_before_rebalance": 56, "final_events": 30, "packet_pairs_completed": 728, "poc_preconsumed_in_decision_bar": 18, "rebalance_state_found": 51, "sub_24bp_target_headroom": 2},
+    "ETHUSDT": {"accepted_value_states": 108, "days_with_complete_prior_profile": 656, "edge_loss_before_rebalance": 54, "final_events": 23, "packet_pairs_completed": 656, "poc_preconsumed_in_decision_bar": 15, "rebalance_state_found": 45, "sub_24bp_target_headroom": 3}
+  },
+  "events_by_symbol": {"BTCUSDT": 30, "ETHUSDT": 23},
+  "events_by_year": {"2021": 22, "2022": 31},
+  "gate_2022": false,
+  "gate_2023": false,
+  "implementation_sha256": "212e6988a6fde4e61aecec0e8fd5502e388f079ddb1cd430f41b03096de33d91",
+  "interpretation": "The state was both too sparse for a steady-compounding Core and negative before non-price cost; execution refinement cannot rescue it. The exact packet fraction, profile, first-rebalance action and POC target are retired without adjacent tuning.",
+  "loaded_market_years_before_gate": [2021, 2022],
+  "opened_2023": false,
+  "result_id": "RES-20260730-DEVELOPING-VALUE-MIGRATION-CORE-001",
+  "schema_version": 1
+}
