@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-EXACT-RPC-FILTER-RESPONSE-VALIDATION-017",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "timing": "AFTER_DURABLE_TRANSPORT_RESPONSE_MISMATCH_BEFORE_ANY_SOURCE_PASS_FAIL_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_run": {
+    "workflow_run": 30523666892,
+    "job_id": 90809609505,
+    "artifact_id": 8752764515,
+    "status": "SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE",
+    "failure_type": "ValueError",
+    "failure_message": "burn filter mismatch",
+    "source_pass_fail_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "diagnosis": {
+    "transport_reached_real_logs": true,
+    "decoder_rejected_a_returned_log": true,
+    "economic_result_observed": false,
+    "meaning": "At least one public JSON-RPC provider returned an eth_getLogs row that did not satisfy the exact requested indexed-topic filter. Treating that response as authoritative would contaminate the frozen USDC burn event set."
+  },
+  "transport_correction": {
+    "scientific_contract_changed": false,
+    "source_event_or_filter_changed": false,
+    "decoder_or_deduplication_changed": false,
+    "month_or_block_boundary_changed": false,
+    "availability_delay_changed": false,
+    "market_model_payoff_account_changed": false,
+    "response_policy": "Before accepting a provider response, verify every returned row against the exact requested contract address and every non-null topic position. A mismatch is a provider failure and must fall through to the next provider. Successful result=[] alone is an empty interval. All-provider failure remains fail-closed."
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
