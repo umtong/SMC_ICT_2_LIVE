@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-FAILED-DEVELOPING-VALUE-ROTATION-001",
+  "result_id": "RES-20260730-FAILED-DEVELOPING-VALUE-ROTATION-001",
+  "logic": "Two equal-turnover packets establish repeated value outside a frozen prior-day auction; the first later completed five-minute loss of the migrated near edge tests trapped outside inventory rotating to the old value edge or old POC.",
+  "profiles": {"bins": 64, "value_fraction": 0.70, "packet_fraction_of_prior_day_turnover": 0.125},
+  "actions": ["OLD_EDGE_ROTATION", "OLD_POC_ROTATION", "FLAT"],
+  "execution": {"latency_ms": 500, "risk_fraction": 0.005, "notional_cap": 3.0, "costs_bp": [0,12,18,24], "global_slots": 1, "actual_signed_funding": true, "elapsed_time_exit": false},
+  "hard_stop": "one basis point beyond the full causal packet-1-start through failure-decision excursion",
+  "state_loss": "first later completed five-minute close back through the migrated near edge, executed after the same latency",
+  "chronology": {"mechanism_diagnostic": [2021], "research_exposed_development": [2022], "opened_2023": false, "opened_official_2024_2026": false},
+  "forbidden_rescue": ["packet fraction", "profile bins", "value fraction", "acceptance count", "target", "stop", "cost", "symbol/side", "session", "FVG/OB/MSS", "ML", "risk", "leverage"]
+}
