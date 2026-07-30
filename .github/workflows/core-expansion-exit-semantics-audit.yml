@@ -1,0 +1,47 @@
+name: Validate Core Expansion exit-semantics audit package
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/core_expansion_exit_semantics_audit_20260731/**"
+      - ".github/workflows/core-expansion-exit-semantics-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize and compile corrected source
+        run: |
+          set -euo pipefail
+          python research/core_expansion_exit_semantics_audit_20260731/materialize.py --out materialized
+          python -m py_compile materialized/run.py
+      - name: Verify compact scientific authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/core_expansion_exit_semantics_audit_20260731')
+          r=json.loads((root/'RESULT.json').read_text())
+          assert r['status']=='COMPLETED_LATENT_DEFECT_FIXED_ECONOMICALLY_IMMATERIAL'
+          assert r['event_parity']['exact_parent_match'] is True
+          assert r['ledger_parity']['exact_parent_match'] is True
+          assert r['focused_tests']=={'checks':7,'status':'PASS'}
+          assert r['comparison']['official']['UNIVERSAL__CORE_1.5R']['24']['delta']==0.0
+          assert r['comparison']['official']['UNIVERSAL__CORE_PLUS_CAUSAL_RUNNER']['24']['delta']==0.0
+          assert r['comparison']['official']['UNIVERSAL__CORE_1.5R']['24']['target_gap_count']==0
+          assert r['comparison']['official']['UNIVERSAL__CORE_1.5R']['24']['stop_gap_count']==0
+          assert r['comparison']['official']['UNIVERSAL__CORE_1.5R']['24']['exact_boundary_exit_count']==0
+          assert r['ranking_change'] is False and r['official_reopened'] is False and r['orders_submitted'] is False
+          a=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          p=json.loads((root/'TWO_RUN_PARITY.json').read_text())
+          assert a['status']=='PASS' and a['all_economic_deltas_zero'] is True
+          assert p['all_identical'] is True and p['file_count']==32
+          print(json.dumps({'status':'PASS','decision':r['status']},sort_keys=True))
+          PY
