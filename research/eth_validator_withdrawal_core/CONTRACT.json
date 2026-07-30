@@ -1,38 +1,68 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "claim_id": "CLM-20260730-ETH-VALIDATOR-WITHDRAWAL-CORE-001",
-  "stage": "OUTCOME_SEALED_SOURCE_GATE",
   "protocol": "EIP-4895 beacon-chain withdrawals as execution-payload operations",
   "source": {
     "provider": "ethPandaOps Xatu public data",
     "table": "canonical_beacon_block_withdrawal",
     "url_template": "https://data.ethpandaops.io/xatu/mainnet/databases/default/canonical_beacon_block_withdrawal/YYYY/M/D.parquet",
     "schema_repository": "ethpandaops/xatu-data",
-    "license": "CC BY 4.0"
+    "license": "CC BY 4.0",
+    "source_event_key": "withdrawal_index",
+    "pre2024_coverage": ["2023-04-12", "2023-12-31"],
+    "official_coverage_probe": ["2024-01-01", "2026-06-30"],
+    "required_columns": [
+      "slot",
+      "slot_start_date_time",
+      "epoch",
+      "block_root",
+      "withdrawal_index",
+      "withdrawal_validator_index",
+      "withdrawal_address",
+      "withdrawal_amount"
+    ],
+    "availability": "completed source hour plus fixed 180-second confirmation delay"
   },
-  "pre2024_coverage": ["2023-04-12", "2023-12-31"],
-  "official_coverage_probe": ["2024-01-01", "2026-06-30"],
-  "fixed_probe_dates": [
-    "2023-04-12",
-    "2023-04-13",
-    "2023-07-01",
-    "2023-12-31",
-    "2024-01-01",
-    "2025-10-05",
-    "2026-06-30"
-  ],
-  "required_columns": [
-    "slot",
-    "slot_start_date_time",
-    "epoch",
-    "block_root",
-    "withdrawal_index",
-    "withdrawal_validator_index",
-    "withdrawal_address",
-    "withdrawal_amount"
-  ],
-  "source_event_key": "withdrawal_index",
-  "market_outcomes_opened": false,
-  "bybit_data_opened": false,
-  "orders_submitted": false
+  "source_gate": {
+    "status": "SOURCE_PASS_FULL_PRE2024_CHRONOLOGY",
+    "daily_partitions": 264,
+    "withdrawal_rows": 29982950,
+    "min_withdrawal_index": 0,
+    "max_withdrawal_index": 29982949,
+    "hourly_rows": 6314,
+    "source_artifact_id": 8748379469,
+    "source_artifact_zip_sha256": "f6c90bb97d2dd9b0d5d140b4f09822589efc51a3f0c7d704768a432595dfa001"
+  },
+  "economic_screen": {
+    "status": "FROZEN_AND_EXECUTED_PRE2024",
+    "source_event": "completed hourly withdrawal amount at or above the prior-only rolling 720-hour 90th percentile",
+    "fit": ["2023-04-12", "2023-09-01"],
+    "forward_development": ["2023-09-01", "2023-11-01"],
+    "frozen_confirmation": ["2023-11-01", "2024-01-01"],
+    "actions": ["long_absorption", "short_acceptance", "flat"],
+    "long_geometry": "event-hour low structural invalidation and prior-only 24-hour high objective",
+    "short_geometry": "event-hour high structural invalidation and prior-only 24-hour low objective",
+    "entry": "first observable ETHUSDT one-minute open after source availability plus fixed 500ms order latency",
+    "same_minute_ambiguity": "structural stop first",
+    "gap_stop": "observed one-minute open when beyond the structural stop",
+    "funding": "actual signed Bybit funding",
+    "costs_bp": [13, 18, 24],
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "global_slot": 1,
+    "elapsed_time_liquidation": false,
+    "model": "eight fixed-seed event-bootstrap HGBT regressors of direct 24bp account action value; score is mean minus 0.5 standard deviation",
+    "model_refit_after_fit": false,
+    "economic_artifact_id": 8749088855,
+    "economic_artifact_zip_sha256": "682836da3e81ebabe20e5501ccc334ddaee048e30661ca7e240b7b6f4f0cc938"
+  },
+  "information_boundaries": {
+    "pre2024_market_outcomes_opened": true,
+    "official_2024_2026_opened": false,
+    "stage_boundary_strategy_close": false,
+    "orders_submitted": false,
+    "live_permission": false
+  },
+  "decision_rule": "A negative, sign-unstable, sparse or winner-dependent forward confirmation retires the exact information unit without threshold, delay, geometry, cost, risk or leverage rescue.",
+  "final_status": "RETIRED_PRE2024_ECONOMIC_FAILURE"
 }
