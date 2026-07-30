@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-DIRECT-CORE-Q099-SOURCE-AUTHORITY-001",
+  "claim_id": "CLM-20260730-DIRECT-CORE-Q099-SOURCE-AUTHORITY-001",
+  "status": "HARD_INVALID_UNTRANSPORTED_Q099_SOURCE_AUTHORITY",
+  "target_status": "NOT_MET",
+  "ranking_changed": false,
+  "integration_eligible": false,
+  "live_permission": false,
+  "orders_submitted": false,
+  "transported_source": {
+    "branch": "agent/r32-core-expansion-one-slot-001",
+    "source_file_sha256": {
+      "direct_core_account.py": "c9fd25f0b08cb93a0246f5313030e8220cd5313428695afd385548fd28934c16",
+      "direct_core_common.py": "5761f542236d3e7f8bba51b7ea6e926ca6c277d7e7fd7efa5c8160ceb7d4ea25",
+      "evaluate_direct_core.py": "bfbacd3ea5956593fa04ce98af2194119b056e3b7e8cead20e7c5553f6f6fffb",
+      "train_score.py": "4b38ae07ecb81a76b2aa307f3be6fb2a80a1320cfd36f41aae88160ced1ddb7f"
+    },
+    "pre_grid_sha256": "1fecec8da627ac62955b044eb69811c4aa968925875ddcc392b03367942ca576"
+  },
+  "transported_pre_grid": {
+    "q_0_985": {
+      "eligible": true,
+      "ordinary_2022_trades": 385,
+      "ordinary_2023_trades": 79,
+      "rerouted_2022_trades": 386,
+      "rerouted_2023_trades": 78
+    },
+    "q_0_99": {
+      "eligible": false,
+      "ordinary_2022_trades": 273,
+      "ordinary_2023_trades": 55,
+      "rerouted_2022_trades": 272,
+      "rerouted_2023_trades": 54
+    }
+  },
+  "selection_rule": "Every ordinary and exact-winner-rerouted 2022/2023 growth value must be positive and both ordinary annual trade counts must be at least 60.",
+  "contradicted_compact_claim": {
+    "result_id": "RES-20260730-DIRECT-CORE-LIFECYCLE-UNIVERSALITY-AUDIT-001",
+    "claimed_selected_q": 0.99,
+    "claimed_official_15bp_multiple": 1.2058880666843566,
+    "claimed_official_trades": 473,
+    "missing_dependencies": [
+      "exact scientific source that selected q=0.99",
+      "fitted models",
+      "training-sample fingerprint",
+      "scored candidate tape",
+      "complete trade ledger",
+      "daily NAV"
+    ]
+  },
+  "decision": [
+    "The transported source's own frozen selection output makes q=0.99 ineligible because 2023 ordinary and rerouted breadth are below 60.",
+    "The later compact q=0.99 result cannot be derived from the identified transported source and does not identify a materially different source/runtime/model artifact.",
+    "This is not negative-alpha evidence against an unknown exact q=0.99 implementation; it is a hard source-authority failure.",
+    "Do not integrate, rank, size, or deploy this Core unless the exact source, fitted models, score tape, trades, and daily NAV are recovered and independently reproduced."
+  ]
+}
