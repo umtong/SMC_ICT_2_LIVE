@@ -30,8 +30,9 @@
   },
   "actions": {
     "entry": "first observed 500ms trade price after state completion plus fixed 500ms",
-    "accept_target": "next pre-existing active external pool in raid direction",
-    "reject_target": "pre-existing opposite active external pool",
+    "accept_target": "next pre-existing active external pool in raid direction; required only if ACCEPT is selected",
+    "reject_target": "pre-existing opposite active external pool; required only if ABSORB_REJECT is selected",
+    "irrelevant_target_gate": false,
     "accept_stop": "opposite extreme of completed state window plus one tick",
     "reject_stop": "raid/state outward extreme plus one tick",
     "state_exit": "completed five-second reversal of the accepted/rejected state",
