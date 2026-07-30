@@ -1,0 +1,141 @@
+name: ALDS exact-CSD delivery causal evaluation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r56-alds-csd-delivery-001
+    paths:
+      - research/alds_csd_delivery_gpt56/**
+      - .github/workflows/alds-csd-delivery-gpt56.yml
+  pull_request:
+    branches:
+      - main
+      - agent/r56-alds-csd-delivery-001
+    paths:
+      - research/alds_csd_delivery_gpt56/**
+      - .github/workflows/alds-csd-delivery-gpt56.yml
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: alds-csd-delivery-gpt56-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: research/alds_csd_delivery_gpt56/requirements.txt
+
+      - name: Install deterministic research runtime
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q -r research/alds_csd_delivery_gpt56/requirements.txt
+
+      - name: Reconstruct and validate isolated ALDS sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd research/alds_csd_delivery_gpt56
+          cat runtime_bundle.b64.part* | base64 -d > runtime.tgz
+          tar -xzf runtime.tgz
+          cat runner_small.b64.part* | base64 -d | gzip -dc > runner.py
+          cat materializer_v2_small.b64.part* | base64 -d | gzip -dc > materialize_canonical.py
+          python runtime_compat_patch.py alds_scale.py
+          python -m py_compile parquet_flat.py materialize_canonical.py runtime_compat_patch.py alds_engine.py alds_scale.py alds_csd.py runner.py
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          runner = Path("runner.py")
+          materializer = Path("materialize_canonical.py")
+          assert hashlib.sha256(runner.read_bytes()).hexdigest() == "a2dddc873ab2c8d725b30b06b6941b9eaf804dff32d86bc392c32d8dc7e34a8b"
+          assert hashlib.sha256(materializer.read_bytes()).hexdigest() == "5ed6dc1043f9e336923e7b67047ed70b3441244caa4dd19820d0fd03a7a0f8be"
+          source = runner.read_text(encoding="utf-8")
+          scale = Path("alds_scale.py").read_text(encoding="utf-8")
+          assert 'loss="squared_error"' in source
+          assert 'selection_score_pre2024' in source
+          assert 'stable_pre2024' in source
+          assert 'known_col = f"{prefix}_known_at_ms"' in scale
+          assert 'd["d_known_at_ms"] = d["d_known_at_ms"].astype("int64")' in scale
+          print({"runner_lines": len(source.splitlines()), "runner_bytes": len(source.encode())})
+          PY
+
+      - name: Restore immutable canonical archive cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical-downloads
+          key: alds-csd-btceth-2021-2026-canonical-v1
+
+      - name: Materialize verified canonical Bybit shards
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifact/alds-csd-delivery-gpt56
+          python research/alds_csd_delivery_gpt56/materialize_canonical.py \
+            --cache artifact/canonical-downloads \
+            --root artifact/canonical
+
+      - name: Run causal CSD delivery research and 2024-2026 evaluation
+        env:
+          PYTHONPATH: research/alds_csd_delivery_gpt56
+          OMP_NUM_THREADS: "2"
+          OPENBLAS_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/alds_csd_delivery_gpt56/runner.py \
+            --data-root artifact/canonical \
+            --output artifact/alds-csd-delivery-gpt56 \
+            2>&1 | tee artifact/alds-csd-delivery-gpt56/SCREEN_STDOUT.log
+
+      - name: Publish compact run summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path("artifact/alds-csd-delivery-gpt56/RUN_SUMMARY.json")
+          if not p.exists():
+              print("RUN_SUMMARY.json missing")
+              raise SystemExit(0)
+          s = json.loads(p.read_text(encoding="utf-8")); w = s["winner"]; nav = w["evaluation_nav"]
+          lines = [
+              "## ALDS exact-CSD delivery causal evaluation",
+              f"- decision: `{s['decision']}`",
+              f"- winner model: `{s['winner_model']}`",
+              f"- pre-2024 stable gate: `{w['stable_pre2024']}`",
+              f"- 2022 development R / 2023 validation R: `{w['development']['sum_r']}` / `{w['validation']['sum_r']}`",
+              f"- 2024-2026 evaluation R: `{w['evaluation_r']['sum_r']}`",
+              f"- daily growth / account multiple: `{nav['geometric_daily_growth']}` / `{nav['account_multiple']}`",
+              f"- max drawdown / completed trades: `{nav['max_drawdown']}` / `{nav['completed_trades']}`",
+              f"- top-5 profit share / liquidations: `{nav['top5_profit_share']}` / `{nav['liquidations']}`",
+          ]
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as fh:
+              fh.write("\n".join(lines) + "\n")
+          print("\n".join(lines))
+          PY
+
+      - name: Upload immutable research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alds-csd-delivery-gpt56-${{ github.sha }}
+          path: |
+            artifact/alds-csd-delivery-gpt56
+            artifact/canonical/MATERIALIZATION.json
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 90
