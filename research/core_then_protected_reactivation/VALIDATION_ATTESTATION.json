@@ -1,0 +1,18 @@
+{
+  "parent_source_recovery_note": "PR #550 carrier gzip bytes differ from its manifest, but raw-deflate recovery produced a compiling source that exactly reproduces its stored 599-event ledger and account authorities; PR #597 carrier is truncated and unrecoverable.",
+  "result_sha256": "8e5965e29f8a33096f6e6b41d2720c7898baf54bc2ade9f8444a68299db173c3",
+  "schema_version": 1,
+  "source_sha256": "5164d790bea39aba6f86510753c7283ec6332720c5a2f75cb3900c412d508398",
+  "status": "PASS_CAUSAL_PARENT_PARITY_AND_ACCOUNT_TESTS",
+  "test_command": "python test_core_then_protected_reactivation.py",
+  "test_count": 5,
+  "test_sha256": "bac8e1d0138f7a810024045899279a91964b02cd9d331f52f792942bb421d5e2",
+  "tests": [
+    "exact 599-parent event/entry/exit/stop/funding parity",
+    "exact 2022 and 2023 parent Core account parity",
+    "reactivation strictly after completed Core target and promotion",
+    "one global slot with no overlapping accepted trades",
+    "no elapsed-time or stage-boundary strategy close",
+    "frozen 2022 pass / unchanged 2023 fail / official period sealed"
+  ]
+}
