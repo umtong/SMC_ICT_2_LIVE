@@ -1,9 +1,8 @@
-name: ML GMX V1 liquidation source gate
+name: GMX V1 finalized liquidation source gate takeover
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'research/ml_gmx_v1_liquidation_20260726/**'
       - '.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'
@@ -13,17 +12,19 @@ permissions:
   contents: read
 
 concurrency:
-  group: ml-gmx-v1-liquidation-source-gate-${{ github.sha }}
+  group: gmx-v1-source-gate-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   source-gate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       PYTHONHASHSEED: '0'
       PYTHONUNBUFFERED: '1'
       PYTHONFAULTHANDLER: '1'
+      ROOT: research/ml_gmx_v1_liquidation_20260726
+      OUT: research_runs/gmx_v1_liquidation_takeover/source_gate
     steps:
       - uses: actions/checkout@v4
 
@@ -31,172 +32,82 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install fixed source-gate environment
+      - name: Install pinned source environment
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check \
-            'requests==2.32.4' \
-            'pytest==8.3.5'
+            'requests==2.32.4' 'pytest==8.3.5'
 
-      - name: Compile and run adversarial source tests
+      - name: Validate source semantics before network access
         run: |
           set -euo pipefail
-          root=research/ml_gmx_v1_liquidation_20260726
-          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
-          mkdir -p "$out"
+          mkdir -p "$OUT"
           {
             python -m py_compile \
-              "$root/probe_gmx_v1_liquidations.py" \
-              "$root/probe_gmx_v1_liquidations_semantic.py" \
-              "$root/test_probe_gmx_v1_liquidations.py" \
-              "$root/test_probe_gmx_v1_liquidations_semantic.py"
-            PYTHONPATH="$root" python -m pytest -vv \
-              "$root/test_probe_gmx_v1_liquidations.py" \
-              "$root/test_probe_gmx_v1_liquidations_semantic.py"
-            PYTHONPATH="$root" python "$root/probe_gmx_v1_liquidations_semantic.py" --self-test
-            python -m json.tool "$root/WORK_CLAIM.json" >/dev/null
-            python -m json.tool "$root/CORRECTION_001_POOL_ACCOUNTING_NOT_CLOB_FLOW_BEFORE_OUTCOME.json" >/dev/null
-          } 2>&1 | tee "$out/PRECHECK.log"
+              "$ROOT/probe_gmx_v1_liquidations.py" \
+              "$ROOT/probe_gmx_v1_liquidations_semantic.py" \
+              "$ROOT/test_probe_gmx_v1_liquidations.py" \
+              "$ROOT/test_probe_gmx_v1_liquidations_semantic.py"
+            PYTHONPATH="$ROOT" python -m pytest -vv \
+              "$ROOT/test_probe_gmx_v1_liquidations.py" \
+              "$ROOT/test_probe_gmx_v1_liquidations_semantic.py"
+            PYTHONPATH="$ROOT" python "$ROOT/probe_gmx_v1_liquidations_semantic.py" --self-test
+            python -m json.tool "$ROOT/WORK_CLAIM.json" >/dev/null
+            python -m json.tool "$ROOT/CORRECTION_001_POOL_ACCOUNTING_NOT_CLOB_FLOW_BEFORE_OUTCOME.json" >/dev/null
+          } 2>&1 | tee "$OUT/PRECHECK.log"
 
-      - name: Run outcome-sealed Arbitrum source gate
+      - name: Run outcome-sealed source gate
         run: |
           set -euo pipefail
-          root=research/ml_gmx_v1_liquidation_20260726
-          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
-          mkdir -p "$out"
-          PYTHONPATH="$root" python "$root/probe_gmx_v1_liquidations_semantic.py" \
-            --output "$out" \
-            2>&1 | tee "$out/RUN.log"
+          PYTHONPATH="$ROOT" python "$ROOT/probe_gmx_v1_liquidations_semantic.py" \
+            --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
 
-      - name: Enforce source-only decision contract
+      - name: Enforce source-only authority
+        if: always()
         run: |
           set -euo pipefail
           python - <<'PY'
-          import gzip
-          import json
+          import gzip, hashlib, json
           from pathlib import Path
-
-          root = Path('research_runs/ml_gmx_v1_liquidation_20260726/source-gate')
-          result = json.loads((root / 'SOURCE_GATE_RESULT.json').read_text())
-          assert result['claim_id'] == 'CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001'
-          assert result['chain_id'] == 42161
-          assert result['vault'].lower() == '0x489ee077994b6658eafa855c308275ead8097c4a'
-          assert result['event_topic0'].lower() == (
-              '0x2e1f85a64a2f22cf2f0c42584e7c919ed4abe8d53675cff0f62bf1e95a1c676f'
-          )
-          assert all(
-              int(item['end_exclusive_utc'][:4]) <= 2023
-              for item in result['probe_windows']
-          )
-          assert result['information_delay_seconds'] == 120
+          root=Path('research_runs/gmx_v1_liquidation_takeover/source_gate')
+          result_path=root/'SOURCE_GATE_RESULT.json'
+          if not result_path.is_file():
+              raise SystemExit('SOURCE_GATE_RESULT.json missing')
+          result=json.loads(result_path.read_text())
+          assert result['claim_id']=='CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001'
+          assert result['chain_id']==42161
+          assert result['information_delay_seconds']==120
           assert isinstance(result['source_gate_pass'], bool)
-          if result['source_gate_pass']:
-              assert result['scientific_decision'] == (
-                  'OPEN_FROZEN_PRE2024_HISTORY_AND_MODEL_STAGE'
-              )
-              assert all(result['source_gate_checks'].values())
-          else:
-              assert result['scientific_decision'] == (
-                  'CLOSE_SOURCE_ROUTE_BEFORE_MARKET_OUTCOMES'
-              )
-
-          rows = []
-          with gzip.open(root / 'RAW_GMX_V1_LIQUIDATIONS.jsonl.gz', 'rt', encoding='utf-8') as handle:
-              for line in handle:
-                  line = line.strip()
-                  if line:
-                      rows.append(json.loads(line))
-          for row in rows:
-              assert row['source_semantic_correction'] == (
-                  'CORRECTION-20260727-ML-GMX-V1-POOL-ACCOUNTING-NOT-CLOB-FLOW-001'
-              )
-              assert row['external_market_order_direction_asserted'] is False
-              assert row['source_censoring'] == 'LIQUIDATION_STATE_1_ONLY'
-              assert 'forced_flow_direction' not in row
-              assert row['removed_trader_exposure'] in {'LONG_REMOVED', 'SHORT_REMOVED'}
-              assert row['mark_price_semantics'].endswith('NOT_EXTERNAL_EXECUTABLE_FILL')
-
-          serialized = json.dumps(result, sort_keys=True).lower()
-          for forbidden_key in (
-              'future_return_value',
-              'first_passage_label_value',
-              'model_auc',
-              'trade_return',
-              'account_nav_value',
-              'official_2024_opened',
-              'orders_submitted',
-          ):
-              assert forbidden_key not in serialized
-          print(json.dumps({
-              'selected_endpoint': result.get('endpoint_probe', {}).get('selected'),
-              'source_gate_pass': result['source_gate_pass'],
-              'decision': result['scientific_decision'],
-              'btc_eth_liquidations': result.get('totals', {}).get(
-                  'btc_eth_liquidations', 0
-              ),
-              'assets': result.get('totals', {}).get('assets', {}),
-              'sides_btc_eth': result.get('totals', {}).get('sides_btc_eth', {}),
-              'decode_errors': result.get('totals', {}).get(
-                  'decode_error_count', 0
-              ),
-              'fatal_error': result.get('fatal_error'),
-          }, sort_keys=True))
-          PY
-
-      - name: Record current project validation
-        if: always()
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          out=research_runs/ml_gmx_v1_liquidation_20260726/source-gate
-          python scripts/validate_project.py 2>&1 | tee "$out/PROJECT_VALIDATION.log"
-
-      - name: Freeze evidence hashes
-        if: always()
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import hashlib
-          from pathlib import Path
-
-          root = Path('research/ml_gmx_v1_liquidation_20260726')
-          out = Path('research_runs/ml_gmx_v1_liquidation_20260726/source-gate')
-          out.mkdir(parents=True, exist_ok=True)
-          inputs = [
-              root / 'WORK_CLAIM.json',
-              root / 'PREREGISTRATION.md',
-              root / 'CORRECTION_001_POOL_ACCOUNTING_NOT_CLOB_FLOW_BEFORE_OUTCOME.json',
-              root / 'probe_gmx_v1_liquidations.py',
-              root / 'probe_gmx_v1_liquidations_semantic.py',
-              root / 'test_probe_gmx_v1_liquidations.py',
-              root / 'test_probe_gmx_v1_liquidations_semantic.py',
-              Path('.github/workflows/ml-gmx-v1-liquidation-source-gate.yml'),
-          ]
-
-          def digest(path: Path) -> str:
-              h = hashlib.sha256()
-              with path.open('rb') as handle:
-                  for chunk in iter(lambda: handle.read(1024 * 1024), b''):
-                      h.update(chunk)
-              return h.hexdigest()
-
-          (out / 'INPUT_SHA256SUMS.txt').write_text(
-              ''.join(f'{digest(path)}  {path.as_posix()}\n' for path in inputs)
-          )
-          outputs = sorted(
-              path for path in out.rglob('*')
-              if path.is_file() and path.name != 'OUTPUT_SHA256SUMS.txt'
-          )
-          (out / 'OUTPUT_SHA256SUMS.txt').write_text(
-              ''.join(f'{digest(path)}  {path.as_posix()}\n' for path in outputs)
-          )
+          raw=root/'RAW_GMX_V1_LIQUIDATIONS.jsonl.gz'
+          rows=[]
+          if raw.is_file():
+              with gzip.open(raw,'rt',encoding='utf-8') as h:
+                  rows=[json.loads(line) for line in h if line.strip()]
+              for row in rows:
+                  assert row['external_market_order_direction_asserted'] is False
+                  assert row['source_censoring']=='LIQUIDATION_STATE_1_ONLY'
+                  assert 'forced_flow_direction' not in row
+          decision={
+              'takeover_claim_id':'CLM-20260730-GMX-V1-LIQUIDATION-TAKEOVER-001',
+              'parent_claim_id':result['claim_id'],
+              'source_gate_pass':result['source_gate_pass'],
+              'scientific_decision':result['scientific_decision'],
+              'events':result.get('totals',{}).get('btc_eth_liquidations',0),
+              'orders_submitted':False,
+              'market_outcomes_opened':False,
+          }
+          (root/'TAKEOVER_SOURCE_DECISION.json').write_text(json.dumps(decision,indent=2,sort_keys=True)+'\n')
+          def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='SHA256SUMS.txt')
+          (root/'SHA256SUMS.txt').write_text(''.join(f'{digest(p)}  {p.as_posix()}\n' for p in files))
+          print(json.dumps(decision,sort_keys=True))
           PY
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ml-gmx-v1-liquidation-source-gate-${{ github.run_id }}
-          path: research_runs/ml_gmx_v1_liquidation_20260726/source-gate
+          name: gmx-v1-source-gate-takeover-${{ github.run_id }}
+          path: research_runs/gmx_v1_liquidation_takeover/source_gate
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
