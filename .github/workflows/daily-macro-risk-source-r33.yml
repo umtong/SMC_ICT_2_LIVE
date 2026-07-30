@@ -1,0 +1,48 @@
+name: Extract frozen daily macro-risk source
+
+on:
+  push:
+    branches: [agent/r33-daily-macro-risk-core-001]
+    paths:
+      - '.github/workflows/daily-macro-risk-source-r33.yml'
+      - 'research/daily_macro_risk/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/daily-macro-risk-source-r33.yml'
+      - 'research/daily_macro_risk/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-macro-risk-source-r33-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r33-daily-macro-risk-core-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify and extract pre-2024 source only
+        run: |
+          set -euo pipefail
+          out=research_runs/daily_macro_risk_source_r33
+          python research/daily_macro_risk/source_extract.py --output-dir "$out"
+          python -m json.tool "$out/SOURCE_MANIFEST.json" >/dev/null
+          find "$out" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daily-macro-risk-source-r33-${{ github.run_id }}
+          path: research_runs/daily_macro_risk_source_r33
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
