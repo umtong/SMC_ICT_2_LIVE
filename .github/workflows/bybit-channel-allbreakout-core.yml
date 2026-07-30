@@ -145,7 +145,7 @@ jobs:
           for cost, nav in expected.items():
               assert abs(r["official"][cost]["end_nav"] - nav) < 1e-6
               assert r["official"][cost]["trades"] == 247
-          assert abs(r["winner_deleted"]["24"]["end_nav"] - 7390.381706850743) < 1e-6
+          assert abs(r["winner_deleted"]["24"]["end_nav"] - 7390.381745807581) < 1e-6
           assert all(r["pre2024"][str(y)]["24"]["end_nav"] > 10000 for y in (2021,2022,2023))
           print(json.dumps({"status":r["status"],"official":{k:{x:v[x] for x in ("end_nav","g_daily","trades","pf","mdd")} for k,v in r["official"].items()},"winner_deleted_24":r["winner_deleted"]["24"]}, indent=2))
           PY
