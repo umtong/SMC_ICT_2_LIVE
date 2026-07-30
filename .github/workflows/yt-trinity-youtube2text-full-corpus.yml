@@ -1,0 +1,383 @@
+name: YT Trinity full youtube2text transcript corpus
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/harvest_youtube2text.py
+      - research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_30218664372.jsonl
+      - research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl
+      - .github/workflows/yt-trinity-youtube2text-full-corpus.yml
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+concurrency:
+  group: yt-trinity-youtube2text-full-corpus-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      shard_count: ${{ steps.matrix.outputs.shard_count }}
+      inventory_count: ${{ steps.matrix.outputs.inventory_count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate parser and freeze exact inventory
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/yt_trinity_ml/harvest_youtube2text.py
+          python research/yt_trinity_ml/harvest_youtube2text.py --self-test
+          mkdir -p artifact/inventory
+          if [[ -f research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl ]]; then
+            source=research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl
+          else
+            source=research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_30218664372.jsonl
+          fi
+          cp "$source" artifact/inventory/videos.jsonl
+          SOURCE="$source" python - <<'PY'
+          import hashlib
+          import json
+          import math
+          import os
+          from pathlib import Path
+
+          path = Path('artifact/inventory/videos.jsonl')
+          rows = [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
+          ids = [str(row['video_id']) for row in rows]
+          if not rows or len(ids) != len(set(ids)):
+              raise SystemExit('inventory is empty or contains duplicate video ids')
+          shard_count = math.ceil(len(rows) / 3)
+          runners = ('ubuntu-latest', 'macos-14', 'windows-latest')
+          matrix = {
+              'include': [
+                  {
+                      'shard_index': index,
+                      'shard_count': shard_count,
+                      'runner': runners[index % len(runners)],
+                  }
+                  for index in range(shard_count)
+              ]
+          }
+          metadata = {
+              'schema_version': 1,
+              'source_path': os.environ['SOURCE'],
+              'inventory_count': len(rows),
+              'inventory_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+              'shard_count': shard_count,
+              'videos_per_shard_max': 3,
+          }
+          Path('artifact/inventory/manifest.json').write_text(
+              json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write('matrix=' + json.dumps(matrix, separators=(',', ':')) + '\n')
+              handle.write(f'shard_count={shard_count}\n')
+              handle.write(f'inventory_count={len(rows)}\n')
+          print(json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-youtube2text-inventory-${{ github.sha }}
+          path: artifact/inventory
+          if-no-files-found: error
+          retention-days: 30
+
+  harvest:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 30
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-youtube2text-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - name: Fetch quota-safe three-video shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="artifact/shard-${{ matrix.shard_index }}"
+          python research/yt_trinity_ml/harvest_youtube2text.py \
+            --inventory artifact/inventory/videos.jsonl \
+            --output "$out" \
+            --shard-index "${{ matrix.shard_index }}" \
+            --shard-count "${{ matrix.shard_count }}" \
+            2>&1 | tee "$out.stdout.log"
+      - name: Hash shard evidence
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          root = Path('artifact/shard-${{ matrix.shard_index }}')
+          if not root.exists():
+              raise SystemExit('shard output is missing')
+          rows = []
+          for path in sorted(candidate for candidate in root.rglob('*') if candidate.is_file() and candidate.name != 'SHA256SUMS'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}")
+          (root / 'SHA256SUMS').write_text('\n'.join(rows) + '\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-youtube2text-shard-${{ matrix.shard_index }}-${{ github.sha }}
+          path: |
+            artifact/shard-${{ matrix.shard_index }}
+            artifact/shard-${{ matrix.shard_index }}.stdout.log
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, harvest]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-youtube2text-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-youtube2text-shard-*-${{ github.sha }}
+          path: artifact/shards
+          merge-multiple: false
+      - name: Merge all public videos without hiding unresolved rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          import shutil
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          inventory_path = Path('artifact/inventory/videos.jsonl')
+          inventory_manifest_path = Path('artifact/inventory/manifest.json')
+          inventory = [json.loads(line) for line in inventory_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+          inventory_by_id = {str(row['video_id']): row for row in inventory}
+          output = Path('artifact/yt-trinity-youtube2text-corpus')
+          transcript_root = output / 'transcripts'
+          transcript_root.mkdir(parents=True, exist_ok=True)
+          rows_by_id = {}
+          shard_manifests = []
+
+          for videos_path in sorted(Path('artifact/shards').rglob('videos.jsonl')):
+              shard_root = videos_path.parent
+              manifest_path = shard_root / 'manifest.json'
+              if manifest_path.exists():
+                  shard_manifests.append(json.loads(manifest_path.read_text(encoding='utf-8')))
+              for line in videos_path.read_text(encoding='utf-8').splitlines():
+                  if not line.strip():
+                      continue
+                  row = json.loads(line)
+                  video_id = str(row['video_id'])
+                  if video_id in rows_by_id:
+                      raise RuntimeError(f'duplicate shard outcome: {video_id}')
+                  if video_id not in inventory_by_id:
+                      raise RuntimeError(f'unexpected shard outcome: {video_id}')
+                  rows_by_id[video_id] = row
+              source_transcripts = shard_root / 'transcripts'
+              if source_transcripts.exists():
+                  for source in sorted(path for path in source_transcripts.rglob('*') if path.is_file()):
+                      relative = source.relative_to(source_transcripts)
+                      destination = transcript_root / relative
+                      destination.parent.mkdir(parents=True, exist_ok=True)
+                      shutil.copy2(source, destination)
+
+          for video_id, inventory_row in inventory_by_id.items():
+              if video_id not in rows_by_id:
+                  rows_by_id[video_id] = {
+                      **inventory_row,
+                      'channel_display_name': {
+                          'swipalnam': '쉽알남',
+                          'chartbro': '차트브로',
+                          'indicator_sensei': '지표센세',
+                      }.get(str(inventory_row.get('channel_slug')), str(inventory_row.get('channel_slug'))),
+                      'caption_provider': 'youtube2text.org/api/transcribe',
+                      'caption_status': 'retry_required',
+                      'caption_error': 'missing shard artifact or outcome',
+                      'caption_segment_count': 0,
+                      'caption_character_count': 0,
+                  }
+
+          rows = [
+              rows_by_id[video_id]
+              for video_id in sorted(inventory_by_id, key=lambda value: (str(inventory_by_id[value].get('channel_slug')), value))
+          ]
+          videos_raw = ''.join(json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n' for row in rows)
+          output.mkdir(parents=True, exist_ok=True)
+          (output / 'videos.jsonl').write_text(videos_raw, encoding='utf-8')
+
+          digest = hashlib.sha256()
+          digest.update(videos_raw.encode('utf-8'))
+          for path in sorted(candidate for candidate in transcript_root.rglob('*') if candidate.is_file()):
+              digest.update(path.relative_to(output).as_posix().encode('utf-8'))
+              digest.update(path.read_bytes())
+
+          counts = Counter(str(row.get('caption_status')) for row in rows)
+          channel_counts = {
+              channel: dict(sorted(Counter(str(row.get('caption_status')) for row in rows if row.get('channel_slug') == channel).items()))
+              for channel in sorted({str(row.get('channel_slug')) for row in rows})
+          }
+          classification_resolved = {'ok', 'asr_required', 'unavailable'}
+          classification_complete = all(str(row.get('caption_status')) in classification_resolved for row in rows)
+          content_complete = all(str(row.get('caption_status')) in {'ok', 'unavailable'} for row in rows)
+          if content_complete:
+              decision = 'PASS_COMPLETE_TEXT'
+          elif classification_complete:
+              decision = 'PARTIAL_ASR_REQUIRED'
+          else:
+              decision = 'PARTIAL_REQUIRES_RETRY'
+          inventory_manifest = json.loads(inventory_manifest_path.read_text(encoding='utf-8'))
+          manifest = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'provider': 'youtube2text.org/api/transcribe',
+              'source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'built_at_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'inventory': inventory_manifest,
+              'inventory_count': len(inventory),
+              'received_outcome_count': len(rows_by_id),
+              'status_counts': dict(sorted(counts.items())),
+              'channel_status_counts': channel_counts,
+              'caption_classification_complete': classification_complete,
+              'transcript_content_complete': content_complete,
+              'decision': decision,
+              'transcript_video_count': counts.get('ok', 0),
+              'asr_required_count': counts.get('asr_required', 0),
+              'unavailable_count': counts.get('unavailable', 0),
+              'retry_required_count': sum(counts.get(name, 0) for name in ('retry_required', 'rate_limited', 'authentication_failed', 'truncated_retry_required')),
+              'transcript_segment_count': sum(int(row.get('caption_segment_count') or 0) for row in rows),
+              'transcript_character_count': sum(int(row.get('caption_character_count') or 0) for row in rows),
+              'videos_sha256': hashlib.sha256(videos_raw.encode('utf-8')).hexdigest(),
+              'corpus_digest_sha256': digest.hexdigest(),
+              'shard_manifest_count': len(shard_manifests),
+              'shard_manifests': shard_manifests,
+              'timing_disclosure': 'youtube2text supplies plain text; passage timestamps are proportional duration estimates, not native caption times',
+          }
+          (output / 'manifest.json').write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - name: Build deterministic concept and rule evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/yt_trinity_ml/build_concept_index.py \
+            --corpus artifact/yt-trinity-youtube2text-corpus \
+            | tee artifact/CONCEPT_INDEX_STDOUT.json
+          python research/yt_trinity_ml/extract_rule_ontology.py \
+            --corpus artifact/yt-trinity-youtube2text-corpus \
+            | tee artifact/RULE_ONTOLOGY_STDOUT.json
+      - name: Hash merged corpus
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          root = Path('artifact/yt-trinity-youtube2text-corpus')
+          rows = []
+          for path in sorted(candidate for candidate in root.rglob('*') if candidate.is_file() and candidate.name != 'SHA256SUMS'):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}")
+          (root / 'SHA256SUMS').write_text('\n'.join(rows) + '\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-youtube2text-corpus-${{ github.sha }}
+          path: |
+            artifact/yt-trinity-youtube2text-corpus
+            artifact/CONCEPT_INDEX_STDOUT.json
+            artifact/RULE_ONTOLOGY_STDOUT.json
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist recoverable corpus pointer
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifact/yt-trinity-youtube2text-corpus/manifest.json || exit 0
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path('artifact/yt-trinity-youtube2text-corpus/manifest.json')
+          raw = manifest_path.read_bytes()
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'provider': 'youtube2text.org/api/transcribe',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-youtube2text-corpus-{os.environ['GITHUB_SHA']}",
+              'manifest_sha256': hashlib.sha256(raw).hexdigest(),
+              'manifest': json.loads(raw),
+          }
+          Path('research/yt_trinity_ml/YOUTUBE2TEXT_CORPUS_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/YOUTUBE2TEXT_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record full youtube2text corpus run ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1

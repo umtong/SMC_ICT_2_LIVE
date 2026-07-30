@@ -1,0 +1,360 @@
+name: YT Trinity full cloud transcript corpus
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/harvest_ytt_api.py
+      - research/yt_trinity_ml/build_public_inventory_union.py
+      - research/yt_trinity_ml/channels.json
+      - control/yt-trinity-ytt-api-full-trigger.json
+      - .github/workflows/yt-trinity-ytt-api-full-corpus.yml
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: yt-trinity-ytt-api-full-corpus-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install inventory transport
+        run: python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+      - name: Build exact uploads/videos/shorts/streams union
+        run: |
+          python research/yt_trinity_ml/build_public_inventory_union.py
+          mkdir -p artifact/inventory
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl artifact/inventory/
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json artifact/inventory/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-exact-public-inventory-${{ github.sha }}
+          path: artifact/inventory
+          if-no-files-found: error
+          retention-days: 30
+
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      pass: ${{ steps.control.outputs.pass }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: control
+        name: Verify cloud API against known-positive caption
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          url = "https://api.youtubetotext.com/full_transcript/F6wDs1HRTSo?meta=true"
+          request = urllib.request.Request(url, headers={"User-Agent": "SMC-ICT-2-LIVE/1.0"})
+          with urllib.request.urlopen(request, timeout=45) as response:
+              payload = json.loads(response.read())
+          transcript = payload.get("transcript") if isinstance(payload, dict) else None
+          passed = isinstance(transcript, list) and len(transcript) >= 100
+          Path("control.json").write_text(json.dumps({
+              "passed": passed,
+              "segment_count": len(transcript) if isinstance(transcript, list) else 0,
+              "language_code": payload.get("language_code") if isinstance(payload, dict) else None,
+              "source_type": payload.get("source_type") if isinstance(payload, dict) else None,
+              "error": payload.get("error") if isinstance(payload, dict) else None,
+              "reason": payload.get("reason") if isinstance(payload, dict) else None,
+          }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"pass={'true' if passed else 'false'}\n")
+          if not passed:
+              raise SystemExit(f"positive control failed: {payload}")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-ytt-positive-control-${{ github.sha }}
+          path: control.json
+          if-no-files-found: error
+          retention-days: 14
+
+  harvest:
+    needs: [prepare, probe]
+    if: needs.probe.outputs.pass == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - channel: swipalnam
+            shard_index: 0
+            shard_count: 1
+            os: ubuntu-latest
+          - channel: chartbro
+            shard_index: 0
+            shard_count: 2
+            os: macos-14
+          - channel: chartbro
+            shard_index: 1
+            shard_count: 2
+            os: ubuntu-latest
+          - channel: indicator_sensei
+            shard_index: 0
+            shard_count: 2
+            os: macos-14
+          - channel: indicator_sensei
+            shard_index: 1
+            shard_count: 2
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-exact-public-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - name: Build rate-safe channel shard
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          SHARD_INDEX: ${{ matrix.shard_index }}
+          SHARD_COUNT: ${{ matrix.shard_count }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path("artifact/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl")
+          rows = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines() if line.strip()]
+          rows = [row for row in rows if row["channel_slug"] == os.environ["CHANNEL"]]
+          rows.sort(key=lambda row: row["video_id"])
+          index = int(os.environ["SHARD_INDEX"])
+          count = int(os.environ["SHARD_COUNT"])
+          selected = [row for position, row in enumerate(rows) if position % count == index]
+          if not selected or len(selected) > 49:
+              raise SystemExit(f"unsafe shard size: {len(selected)}")
+          path = Path("artifact/inventory-shard.jsonl")
+          path.write_text("".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in selected), encoding="utf-8")
+          print(json.dumps({"channel": os.environ["CHANNEL"], "shard_index": index, "shard_count": count, "videos": len(selected)}))
+          PY
+      - name: Fetch every caption with stable no-caption verification
+        continue-on-error: true
+        run: |
+          python research/yt_trinity_ml/harvest_ytt_api.py \
+            --inventory artifact/inventory-shard.jsonl \
+            --channel "${{ matrix.channel }}" \
+            --output "artifact/shard/${{ matrix.channel }}-${{ matrix.shard_index }}" \
+            --attempts 2 \
+            --pace-seconds 6.4
+      - name: Hash shard evidence
+        if: always()
+        shell: bash
+        run: |
+          root="artifact/shard/${{ matrix.channel }}-${{ matrix.shard_index }}"
+          if [[ -d "$root" ]]; then
+            (
+              cd "$root"
+              find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-ytt-${{ matrix.channel }}-${{ matrix.shard_index }}-${{ github.sha }}
+          path: artifact/shard/${{ matrix.channel }}-${{ matrix.shard_index }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, probe, harvest]
+    if: always() && needs.probe.outputs.pass == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-exact-public-inventory-${{ github.sha }}
+          path: artifact/inventory
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-ytt-*-${{ github.sha }}
+          path: artifact/shards
+          merge-multiple: false
+      - name: Merge exact caption classifications and transcripts
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import shutil
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          inventory_path = Path("artifact/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl")
+          inventory = [json.loads(line) for line in inventory_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+          expected = {row["video_id"]: row for row in inventory}
+          shard_roots = sorted(Path("artifact/shards").glob("*/"))
+          rows_by_id = {}
+          output = Path("artifact/yt-trinity-corpus")
+          transcript_root = output / "transcripts"
+          transcript_root.mkdir(parents=True, exist_ok=True)
+          shard_manifests = []
+          for wrapper in shard_roots:
+              candidates = list(wrapper.rglob("videos.jsonl"))
+              for videos_path in candidates:
+                  root = videos_path.parent
+                  manifest_path = root / "manifest.json"
+                  if manifest_path.exists():
+                      shard_manifests.append(json.loads(manifest_path.read_text(encoding="utf-8")))
+                  for line in videos_path.read_text(encoding="utf-8").splitlines():
+                      if not line.strip():
+                          continue
+                      row = json.loads(line)
+                      video_id = row["video_id"]
+                      if video_id in rows_by_id:
+                          raise RuntimeError(f"duplicate shard outcome: {video_id}")
+                      rows_by_id[video_id] = row
+                  source_transcripts = root / "transcripts"
+                  if source_transcripts.exists():
+                      for source in source_transcripts.rglob("*"):
+                          if source.is_file():
+                              relative = source.relative_to(source_transcripts)
+                              destination = transcript_root / relative
+                              destination.parent.mkdir(parents=True, exist_ok=True)
+                              shutil.copy2(source, destination)
+          missing = sorted(set(expected) - set(rows_by_id))
+          extra = sorted(set(rows_by_id) - set(expected))
+          if extra:
+              raise RuntimeError(f"unexpected transcript outcomes: {extra}")
+          for video_id in missing:
+              rows_by_id[video_id] = {
+                  **expected[video_id],
+                  "caption_status": "retry_required",
+                  "caption_error": "missing shard outcome",
+                  "caption_segment_count": 0,
+                  "caption_character_count": 0,
+              }
+          rows = [rows_by_id[video_id] for video_id in sorted(expected, key=lambda item: (expected[item]["channel_slug"], item))]
+          raw = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
+          output.mkdir(parents=True, exist_ok=True)
+          (output / "videos.jsonl").write_text(raw, encoding="utf-8")
+          counts = Counter(row.get("caption_status") for row in rows)
+          channel_counts = {}
+          for channel in sorted({row["channel_slug"] for row in rows}):
+              channel_counts[channel] = dict(sorted(Counter(row.get("caption_status") for row in rows if row["channel_slug"] == channel).items()))
+          resolved = {"ok", "verified_no_caption", "unavailable"}
+          all_resolved = all(row.get("caption_status") in resolved for row in rows)
+          manifest = {
+              "schema_version": 1,
+              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+              "provider": "api.youtubetotext.com/full_transcript",
+              "source_sha": os.environ["GITHUB_SHA"],
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "built_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "inventory_count": len(inventory),
+              "inventory_sha256": hashlib.sha256(inventory_path.read_bytes()).hexdigest(),
+              "status_counts": dict(sorted(counts.items())),
+              "channel_status_counts": channel_counts,
+              "caption_attempt_complete": all_resolved,
+              "decision": "PASS_NATIVE_CAPTION_CLASSIFICATION" if all_resolved else "PARTIAL_REQUIRES_RETRY",
+              "transcript_video_count": counts.get("ok", 0),
+              "verified_no_caption_count": counts.get("verified_no_caption", 0),
+              "unavailable_count": counts.get("unavailable", 0),
+              "retry_required_count": counts.get("retry_required", 0),
+              "transcript_segment_count": sum(int(row.get("caption_segment_count") or 0) for row in rows),
+              "transcript_character_count": sum(int(row.get("caption_character_count") or 0) for row in rows),
+              "videos_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+              "shard_manifests": shard_manifests,
+          }
+          (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - name: Build corpus evidence index and rule ontology
+        if: always()
+        run: |
+          if [[ -f artifact/yt-trinity-corpus/videos.jsonl ]]; then
+            python research/yt_trinity_ml/build_concept_index.py --corpus artifact/yt-trinity-corpus | tee artifact/CONCEPT_INDEX_STDOUT.json
+            python research/yt_trinity_ml/extract_rule_ontology.py --corpus artifact/yt-trinity-corpus | tee artifact/RULE_ONTOLOGY_STDOUT.json
+          fi
+          (
+            cd artifact/yt-trinity-corpus
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-full-caption-corpus-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact corpus result pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          manifest_path = Path("artifact/yt-trinity-corpus/manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else None
+          pointer = {
+              "schema_version": 1,
+              "workflow": "YT Trinity full cloud transcript corpus",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"yt-trinity-full-caption-corpus-{os.environ['GITHUB_SHA']}",
+              "manifest": manifest,
+          }
+          Path("research/yt_trinity_ml/FULL_CAPTION_CORPUS_POINTER.json").write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/FULL_CAPTION_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record full YT Trinity caption corpus ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - name: Enforce resolved classification
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("artifact/yt-trinity-corpus/manifest.json")
+          if not path.exists(): raise SystemExit("caption corpus manifest missing")
+          manifest = json.loads(path.read_text(encoding="utf-8"))
+          if not manifest.get("caption_attempt_complete"):
+              raise SystemExit(f"unresolved caption classifications: {manifest}")
+          PY

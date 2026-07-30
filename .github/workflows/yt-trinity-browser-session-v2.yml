@@ -1,0 +1,449 @@
+name: YT Trinity browser guest-session transcript v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-browser-session-v2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-browser-session-v2-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: macos-14
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install rendered-browser and extractor stack
+        run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+          python -m yt_dlp --version > yt-dlp-version.txt
+          node --version > node-version.txt
+      - name: Inspect watch, mobile, embed and privacy-enhanced players
+        shell: bash
+        run: |
+          mkdir -p artifact/browser-v2 /tmp/yt-session
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('node:fs');
+
+          const videos = {
+            chartbro: '0h9lpMUBSlE',
+            swipalnam: '-Tp2fhvVVGM',
+            indicator_sensei: '2U0s_i07vMY',
+            known_positive_control: 'F6wDs1HRTSo',
+          };
+          const surfaces = {
+            watch: id => `https://www.youtube.com/watch?v=${id}&hl=ko`,
+            mobile: id => `https://m.youtube.com/watch?v=${id}&hl=ko`,
+            embed: id => `https://www.youtube.com/embed/${id}?hl=ko&cc_load_policy=1&autoplay=0`,
+            nocookie: id => `https://www.youtube-nocookie.com/embed/${id}?hl=ko&cc_load_policy=1&autoplay=0`,
+          };
+          const compact = value => String(value ?? '').replace(/\s+/g, ' ').trim();
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          function walk(value, visit, depth = 0) {
+            if (!value || typeof value !== 'object' || depth > 30) return;
+            visit(value);
+            if (Array.isArray(value)) {
+              for (const item of value) walk(item, visit, depth + 1);
+            } else {
+              for (const item of Object.values(value)) walk(item, visit, depth + 1);
+            }
+          }
+          function summarizePlayer(player) {
+            if (!player || typeof player !== 'object') return null;
+            const tracks = player?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+            const streaming = player?.streamingData || {};
+            const formats = [...(streaming.formats || []), ...(streaming.adaptiveFormats || [])];
+            return {
+              status: player?.playabilityStatus?.status || null,
+              reason: player?.playabilityStatus?.reason || null,
+              caption_tracks: tracks.map(track => ({
+                language_code: track.languageCode || null,
+                kind: track.kind || '',
+                name: track.name?.simpleText || track.name?.runs?.map(run => run.text).join('') || '',
+                base_url: track.baseUrl || null,
+              })),
+              audio_formats: formats.filter(format => String(format.mimeType || '').startsWith('audio/')).map(format => ({
+                itag: format.itag,
+                mime_type: format.mimeType || null,
+                content_length: format.contentLength || null,
+                url: format.url || null,
+              })),
+            };
+          }
+          function countTranscriptSegments(payload) {
+            let count = 0;
+            let chars = 0;
+            walk(payload, node => {
+              const renderer = node?.transcriptSegmentRenderer;
+              if (!renderer) return;
+              const text = compact(renderer.snippet?.runs?.map(run => run.text).join('') || renderer.snippet?.simpleText || '');
+              if (text) { count += 1; chars += text.length; }
+            });
+            return { count, chars };
+          }
+          function transcriptParams(initialData) {
+            const values = [];
+            walk(initialData, node => {
+              const endpoint = node?.getTranscriptEndpoint;
+              if (endpoint?.params) values.push(endpoint.params);
+            });
+            return [...new Set(values)];
+          }
+          function extractConfig() {
+            const data = globalThis.ytcfg?.data_ || {};
+            const get = key => globalThis.ytcfg?.get?.(key) ?? data[key] ?? null;
+            return {
+              api_key: get('INNERTUBE_API_KEY'),
+              context: get('INNERTUBE_CONTEXT'),
+              visitor_data: get('VISITOR_DATA'),
+              client_name: get('INNERTUBE_CONTEXT_CLIENT_NAME'),
+              client_version: get('INNERTUBE_CONTEXT_CLIENT_VERSION'),
+            };
+          }
+          async function fetchCaption(context, baseUrl) {
+            if (!baseUrl) return { status: null, bytes: 0, segments: 0 };
+            const joiner = baseUrl.includes('?') ? '&' : '?';
+            const target = baseUrl.includes('fmt=') ? baseUrl : `${baseUrl}${joiner}fmt=json3`;
+            try {
+              const response = await context.request.get(target, { timeout: 30000 });
+              const body = await response.text();
+              let segments = 0;
+              try {
+                const payload = JSON.parse(body);
+                segments = Array.isArray(payload.events)
+                  ? payload.events.filter(event => Array.isArray(event.segs) && event.segs.some(seg => compact(seg.utf8))).length
+                  : 0;
+              } catch (_) {}
+              return { status: response.status(), bytes: Buffer.byteLength(body), segments };
+            } catch (error) {
+              return { status: null, bytes: 0, segments: 0, error: `${error.name}:${error.message}`.slice(-1000) };
+            }
+          }
+          async function probeAudio(context, audioFormats) {
+            for (const format of audioFormats || []) {
+              if (!format.url) continue;
+              try {
+                const response = await context.request.get(format.url, {
+                  headers: { Range: 'bytes=0-4095' },
+                  timeout: 30000,
+                });
+                return {
+                  status: response.status(),
+                  bytes: (await response.body()).length,
+                  itag: format.itag,
+                  mime_type: format.mime_type,
+                };
+              } catch (error) {
+                return { status: null, bytes: 0, error: `${error.name}:${error.message}`.slice(-1000) };
+              }
+            }
+            return { status: null, bytes: 0 };
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              locale: 'ko-KR',
+              timezoneId: 'Asia/Seoul',
+              viewport: { width: 1365, height: 900 },
+              userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0 Safari/537.36',
+            });
+            await context.addCookies([
+              { name: 'SOCS', value: 'CAI', domain: '.youtube.com', path: '/', secure: true, sameSite: 'Lax' },
+              { name: 'PREF', value: 'hl=ko&gl=KR', domain: '.youtube.com', path: '/', secure: true, sameSite: 'Lax' },
+            ]);
+            const rows = [];
+            for (const [channel, videoId] of Object.entries(videos)) {
+              for (const [surface, urlBuilder] of Object.entries(surfaces)) {
+                if (rows.length) await sleep(3500);
+                const page = await context.newPage();
+                const networkPlayers = [];
+                page.on('response', async response => {
+                  if (!response.url().includes('/youtubei/v1/player')) return;
+                  try {
+                    const payload = await response.json();
+                    const summary = summarizePlayer(payload);
+                    if (summary) networkPlayers.push({ http_status: response.status(), ...summary });
+                  } catch (_) {}
+                });
+                const row = {
+                  channel, video_id: videoId, surface,
+                  navigation_ok: false, challenge_detected: false,
+                  transcript_endpoint_count: 0, transcript_segments: 0, transcript_chars: 0,
+                  caption_segments: 0, audio_probe: { status: null, bytes: 0 },
+                  player: null, network_players: [], errors: [],
+                };
+                try {
+                  const response = await page.goto(urlBuilder(videoId), { waitUntil: 'domcontentloaded', timeout: 60000 });
+                  row.navigation_ok = Boolean(response && response.ok());
+                  await page.waitForTimeout(6000);
+                  const bodyText = compact(await page.locator('body').innerText({ timeout: 10000 }).catch(() => ''));
+                  row.challenge_detected = /sign in to confirm|not a bot|unusual traffic|봇이 아님|로그인하여/i.test(bodyText);
+                  row.title = await page.title();
+                  row.body_prefix = bodyText.slice(0, 250);
+                  const extracted = await page.evaluate(() => {
+                    const player = globalThis.ytInitialPlayerResponse || null;
+                    const initialData = globalThis.ytInitialData || null;
+                    const data = globalThis.ytcfg?.data_ || {};
+                    const get = key => globalThis.ytcfg?.get?.(key) ?? data[key] ?? null;
+                    return {
+                      player,
+                      initialData,
+                      config: {
+                        api_key: get('INNERTUBE_API_KEY'),
+                        context: get('INNERTUBE_CONTEXT'),
+                        visitor_data: get('VISITOR_DATA'),
+                        client_name: get('INNERTUBE_CONTEXT_CLIENT_NAME'),
+                        client_version: get('INNERTUBE_CONTEXT_CLIENT_VERSION'),
+                      },
+                    };
+                  });
+                  row.player = summarizePlayer(extracted.player);
+                  const params = transcriptParams(extracted.initialData);
+                  row.transcript_endpoint_count = params.length;
+                  for (const param of params.slice(0, 3)) {
+                    if (!extracted.config?.api_key || !extracted.config?.context) continue;
+                    try {
+                      const transcriptResponse = await page.evaluate(async ({ apiKey, contextValue, transcriptParam }) => {
+                        const response = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${encodeURIComponent(apiKey)}&prettyPrint=false`, {
+                          method: 'POST',
+                          credentials: 'include',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ context: contextValue, params: transcriptParam }),
+                        });
+                        return { status: response.status, payload: await response.json().catch(() => null) };
+                      }, { apiKey: extracted.config.api_key, contextValue: extracted.config.context, transcriptParam: param });
+                      const counted = countTranscriptSegments(transcriptResponse.payload);
+                      row.transcript_http_status = transcriptResponse.status;
+                      row.transcript_segments = Math.max(row.transcript_segments, counted.count);
+                      row.transcript_chars = Math.max(row.transcript_chars, counted.chars);
+                    } catch (error) {
+                      row.errors.push(`transcript:${error.name}:${error.message}`.slice(-1000));
+                    }
+                    if (row.transcript_segments > 0) break;
+                  }
+                  await page.waitForTimeout(1500);
+                  row.network_players = networkPlayers.map(player => ({
+                    http_status: player.http_status,
+                    status: player.status,
+                    reason: player.reason,
+                    caption_track_count: player.caption_tracks.length,
+                    audio_format_count: player.audio_formats.length,
+                  }));
+                  const playerCandidates = [row.player, ...networkPlayers].filter(Boolean);
+                  const captionTrack = playerCandidates.flatMap(player => player.caption_tracks || [])[0];
+                  const audioFormats = playerCandidates.flatMap(player => player.audio_formats || []);
+                  const caption = await fetchCaption(context, captionTrack?.base_url);
+                  row.caption_http_status = caption.status;
+                  row.caption_bytes = caption.bytes;
+                  row.caption_segments = caption.segments;
+                  if (caption.error) row.errors.push(caption.error);
+                  row.audio_probe = await probeAudio(context, audioFormats);
+                } catch (error) {
+                  row.errors.push(`${error.name}:${error.message}`.slice(-2000));
+                } finally {
+                  if (row.player) {
+                    row.player = {
+                      status: row.player.status,
+                      reason: row.player.reason,
+                      caption_track_count: row.player.caption_tracks.length,
+                      audio_format_count: row.player.audio_formats.length,
+                    };
+                  }
+                  rows.push(row);
+                  await page.close();
+                }
+              }
+            }
+
+            const cookies = await context.cookies();
+            const lines = ['# Netscape HTTP Cookie File'];
+            for (const cookie of cookies) {
+              const includeSubdomains = cookie.domain.startsWith('.') ? 'TRUE' : 'FALSE';
+              lines.push([
+                cookie.domain, includeSubdomains, cookie.path, cookie.secure ? 'TRUE' : 'FALSE',
+                cookie.expires > 0 ? Math.floor(cookie.expires) : 0,
+                cookie.name, cookie.value,
+              ].join('\t'));
+            }
+            fs.writeFileSync('/tmp/yt-session/cookies.txt', lines.join('\n') + '\n', { mode: 0o600 });
+            await browser.close();
+            const output = {
+              schema_version: 1,
+              run_id: Number(process.env.GITHUB_RUN_ID),
+              source_sha: process.env.GITHUB_SHA,
+              cookie_names: cookies.map(cookie => cookie.name).sort(),
+              positive_control_passed: rows.some(row => row.channel === 'known_positive_control' && (row.transcript_segments > 0 || row.caption_segments > 0)),
+              failed_sample_recovered_count: rows.filter(row => row.channel !== 'known_positive_control' && (row.transcript_segments > 0 || row.caption_segments > 0)).length,
+              audio_route_found: rows.some(row => row.audio_probe?.status >= 200 && row.audio_probe?.status < 400 && row.audio_probe?.bytes > 0),
+              rows,
+            };
+            fs.writeFileSync('artifact/browser-v2/browser.json', JSON.stringify(output, null, 2) + '\n');
+            console.log(JSON.stringify({
+              positive_control_passed: output.positive_control_passed,
+              failed_sample_recovered_count: output.failed_sample_recovered_count,
+              audio_route_found: output.audio_route_found,
+            }, null, 2));
+          })().catch(error => { console.error(error); process.exitCode = 1; });
+          JS
+      - name: Reuse exact browser guest cookies in yt-dlp
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          import time
+          from pathlib import Path
+
+          positive = 'F6wDs1HRTSo'
+          failed = {
+              'chartbro': '0h9lpMUBSlE',
+              'swipalnam': '-Tp2fhvVVGM',
+              'indicator_sensei': '2U0s_i07vMY',
+          }
+          profiles = ['default', 'mweb', 'ios', 'tv_simply', 'web_embedded', 'android_vr']
+          rows = []
+
+          def run(video_id, profile):
+              command = [
+                  sys.executable, '-m', 'yt_dlp', '--dump-single-json', '--skip-download',
+                  '--ignore-no-formats-error', '--no-playlist', '--no-warnings',
+                  '--cookies', '/tmp/yt-session/cookies.txt', '--impersonate', 'chrome',
+                  '--js-runtimes', 'node', '--socket-timeout', '35', '--retries', '1',
+                  '--extractor-retries', '1', '--sleep-requests', '4', '--sleep-subtitles', '4',
+              ]
+              if profile != 'default':
+                  command.extend(['--extractor-args', f'youtube:player_client={profile}'])
+              command.append(f'https://www.youtube.com/watch?v={video_id}')
+              try:
+                  completed = subprocess.run(command, text=True, capture_output=True, timeout=120, check=False)
+                  stdout, stderr, code = completed.stdout.strip(), completed.stderr.strip(), completed.returncode
+              except subprocess.TimeoutExpired as exc:
+                  stdout = exc.stdout or ''
+                  stderr = (exc.stderr or '') + '\nTIMEOUT'
+                  code = 124
+              payload = None
+              if stdout:
+                  try: payload = json.loads(stdout.splitlines()[-1])
+                  except Exception: pass
+              subtitles = (payload or {}).get('subtitles') or {}
+              automatic = (payload or {}).get('automatic_captions') or {}
+              return {
+                  'video_id': video_id,
+                  'profile': profile,
+                  'returncode': code,
+                  'title': (payload or {}).get('title'),
+                  'subtitle_languages': sorted(subtitles),
+                  'automatic_caption_languages': sorted(automatic),
+                  'track_count': sum(len(value or []) for value in subtitles.values()) + sum(len(value or []) for value in automatic.values()),
+                  'audio_format_count': sum(1 for fmt in ((payload or {}).get('formats') or []) if str(fmt.get('vcodec')) == 'none'),
+                  'stderr_tail': stderr[-2500:],
+              }
+
+          winner = None
+          for index, profile in enumerate(profiles):
+              if index: time.sleep(6)
+              row = run(positive, profile)
+              row['channel'] = 'known_positive_control'
+              rows.append(row)
+              if row['track_count'] > 0 or row['audio_format_count'] > 0:
+                  winner = profile
+                  break
+          if winner:
+              for channel, video_id in failed.items():
+                  time.sleep(7)
+                  row = run(video_id, winner)
+                  row['channel'] = channel
+                  rows.append(row)
+          result = {
+              'winner_profile': winner,
+              'positive_control_passed': any(row['channel'] == 'known_positive_control' and row['track_count'] > 0 for row in rows),
+              'audio_route_found': any(row['audio_format_count'] > 0 for row in rows),
+              'failed_sample_recovered_count': sum(row['channel'] != 'known_positive_control' and row['track_count'] > 0 for row in rows),
+              'rows': rows,
+          }
+          Path('artifact/browser-v2/ytdlp.json').write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps({key: result[key] for key in ('winner_profile', 'positive_control_passed', 'audio_route_found', 'failed_sample_recovered_count')}, ensure_ascii=False, indent=2))
+          PY
+          rm -f /tmp/yt-session/cookies.txt
+          cp node-version.txt yt-dlp-version.txt artifact/browser-v2/
+      - name: Merge and hash session evidence
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          browser_path = Path('artifact/browser-v2/browser.json')
+          ytdlp_path = Path('artifact/browser-v2/ytdlp.json')
+          browser = json.loads(browser_path.read_text(encoding='utf-8')) if browser_path.exists() else None
+          ytdlp = json.loads(ytdlp_path.read_text(encoding='utf-8')) if ytdlp_path.exists() else None
+          result = {
+              'schema_version': 1,
+              'browser': browser,
+              'yt_dlp_with_browser_cookies': ytdlp,
+              'decision': (
+                  'CAPTION_ROUTE_RECOVERED'
+                  if ((browser and (browser.get('positive_control_passed') and browser.get('failed_sample_recovered_count', 0) > 0))
+                      or (ytdlp and (ytdlp.get('positive_control_passed') and ytdlp.get('failed_sample_recovered_count', 0) > 0)))
+                  else 'AUDIO_ROUTE_RECOVERED'
+                  if ((browser and browser.get('audio_route_found')) or (ytdlp and ytdlp.get('audio_route_found')))
+                  else 'NO_ROUTE_RECOVERED'
+              ),
+          }
+          Path('artifact/browser-v2/result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          (
+            cd artifact/browser-v2
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+      - name: Upload browser guest-session evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-browser-session-v2-${{ github.sha }}
+          path: artifact/browser-v2
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist compact browser-session result
+        if: always()
+        run: |
+          if [[ ! -f artifact/browser-v2/result.json ]]; then exit 0; fi
+          cp artifact/browser-v2/result.json research/yt_trinity_ml/CAPTION_BROWSER_SESSION_V2.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/CAPTION_BROWSER_SESSION_V2.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record browser guest-session transcript probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
