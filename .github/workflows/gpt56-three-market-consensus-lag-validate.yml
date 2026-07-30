@@ -1,0 +1,54 @@
+name: Validate three-market consensus-lag decision
+
+on:
+  push:
+    branches: [agent/gpt56-three-market-consensus-lag-001]
+    paths:
+      - "research/three_market_consensus_lag_gpt56/**"
+      - ".github/workflows/gpt56-three-market-consensus-lag-validate.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/three_market_consensus_lag_gpt56/**"
+      - ".github/workflows/gpt56-three-market-consensus-lag-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Materialize and compile deterministic source
+        run: |
+          set -euo pipefail
+          root=research/three_market_consensus_lag_gpt56
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
+      - name: Validate compact decision
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/three_market_consensus_lag_gpt56')
+          c=json.loads((root/'CONTRACT.json').read_text())
+          r=json.loads((root/'RESULT.json').read_text())
+          assert c['result_id']==r['result_id']
+          assert c['action']['elapsed_time_exit'] is False
+          assert r['status']=='RETIRED_THREE_MARKET_CONSENSUS_LAG_SUBCOST_FAILURE'
+          assert r['events']['accepted_total']==18675
+          assert r['events']['resolved']==18669
+          assert r['zero_cost']['continuous']['multiple'] > 3
+          assert r['gross_diagnostics']['mean_gross_bp_per_trade'] < 1
+          assert r['costs']['12bp']['continuous']['multiple'] < 1e-6
+          assert r['programization_audit']['effect'].startswith('4452 old target')
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False and r['live_permission'] is False
+          print('compact result valid')
+          PY

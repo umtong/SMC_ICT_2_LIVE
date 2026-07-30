@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-THREE-MARKET-CONSENSUS-LAG-001",
+  "claim_id": "CLM-20260730-THREE-MARKET-CONSENSUS-LAG-001",
+  "status": "RETIRED_THREE_MARKET_CONSENSUS_LAG_SUBCOST_FAILURE",
+  "economic_status": "BROAD_LOW_CONCENTRATION_ZERO_COST_EDGE_BELOW_REALISTIC_COST",
+  "fit": {
+    "return_scales": {"BTCUSDT":0.00011079024261562154,"SOLUSDT":0.00043735967483371496,"XRPUSDT":0.0002888565941248089},
+    "shock_threshold_q75": 2.3501006550363055,
+    "rearm_dispersion_median": 2.165508985519409
+  },
+  "events": {
+    "raw_two_leader_states": 59505,
+    "accepted_total": 18675,
+    "fit": 5592,
+    "development": 8412,
+    "confirmation": 4671,
+    "resolved": 18669,
+    "exit_counts_after_programization_fix": {"LEADER_CONSENSUS_REVERSAL":10113,"RELATIVE_EXTENSION":5294,"RELATIVE_HALF_CATCHUP_BY_LAGGARD":3261,"STOP":1}
+  },
+  "programization_audit": {
+    "original_target_defect": "relative gap closure allowed leader retracement alone to count as laggard catch-up",
+    "correction": "target also requires the laggard's own consensus-direction move to reach half the frozen gap; leader-consensus reversal has state-loss priority",
+    "effect": "4452 old target classifications became same-time leader-consensus reversals; entry/exit prices and every account path were unchanged"
+  },
+  "zero_cost": {
+    "development": {"multiple":2.482116440060672,"trades":8338,"pf":1.3575013601730008,"mdd":0.012856799021284115},
+    "confirmation": {"multiple":1.2542524340368113,"trades":4639,"pf":1.2700845453920315,"mdd":0.024863457394291633},
+    "continuous": {"multiple":3.1132005865088828,"trades":12977,"pf":1.318154572002639,"mdd":0.024863457394291633}
+  },
+  "gross_diagnostics": {
+    "mean_gross_bp_per_trade": 0.6609365546944063,
+    "median_gross_bp_per_trade": 0.0,
+    "positive_gross_fraction": 0.4448765732188192,
+    "median_holding_seconds": 6.0,
+    "top5_positive_pnl_share": 0.010898803526355394
+  },
+  "costs": {
+    "12bp": {
+      "development": {"multiple":0.000007155740280705863,"trades":8338,"pf":0.04263711757561238},
+      "confirmation": {"multiple":0.01707403146836739,"trades":4639,"pf":0.03758477728211653},
+      "continuous": {"multiple":0.00000012217733473223602,"trades":12977,"pf":0.04263328685870014},
+      "winner_reroute_continuous_multiple": 0.00000011740296536243398
+    },
+    "18bp": {
+      "development": {"multiple":0.00000006138728018134896,"trades":8338,"pf":0.017092601274106337},
+      "confirmation": {"multiple":0.003455310800456536,"trades":4639,"pf":0.017357942276036275},
+      "continuous": {"multiple":0.00000000021211213222126654,"trades":12977,"pf":0.017092612924552424},
+      "winner_reroute_continuous_multiple": 0.00000000020529649333836678
+    },
+    "24bp": {
+      "development": {"multiple":0.000000001103105285012011,"trades":8338,"pf":0.008354181919855512},
+      "confirmation": {"multiple":0.0008983386115706492,"trades":4639,"pf":0.009971351862911999},
+      "continuous": {"multiple":0.0000000000009909620701539352,"trades":12977,"pf":0.008354188246564935},
+      "winner_reroute_continuous_multiple": 0.0000000000009649587494139713
+    }
+  },
+  "decision": [
+    "Two-market consensus contains a real but tiny short-horizon information edge before cost.",
+    "The zero-cost continuous path reached 3.1132x over 12977 trades with only 1.09% top-five positive-PnL share; this is not sparse or jackpot-dependent.",
+    "Mean gross edge was 0.66bp per trade and median zero; 12bp already destroyed the account.",
+    "Do not rescue with another return window, shock threshold, lag ratio, target fraction, state-loss rule, symbol subset, model, risk, leverage or optimistic cost.",
+    "Official 2024-2026 remains unopened; an executable Core requires an information horizon and price distance materially larger than the fee/spread budget."
+  ],
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}

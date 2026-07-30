@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-THREE-MARKET-CONSENSUS-LAG-001",
+  "result_id": "RES-20260730-THREE-MARKET-CONSENSUS-LAG-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT","SOLUSDT","XRPUSDT"],
+  "source": "registered sparse observed 500ms public-trade bars, January-June 2023",
+  "information_unit": {
+    "state": "completed common five-second state with fresh last trade no older than two seconds",
+    "fit_normalization": "January-February median absolute ten-second log return per symbol",
+    "shock_threshold": "pooled January-February upper quartile of absolute normalized ten-second return",
+    "event": "exactly two markets share a same-sign shock while the third has the same sign but less than one-third of the leader-median normalized displacement",
+    "rearm": "three-market normalized dispersion below its January-February median"
+  },
+  "action": {
+    "side": "trade the laggard in the two-market consensus direction",
+    "entry": "first observed 500ms bucket after fixed 500ms activation",
+    "target": "laggard itself moves at least half the frozen gap in the consensus direction and closes at least half the relative gap",
+    "state_loss": "relative gap extends another half or completed leader consensus reverses",
+    "hard_stop": "max(2x prior completed one-minute ATR20,0.5%)",
+    "elapsed_time_exit": false
+  },
+  "account": {
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "costs_bp": [12,18,24],
+    "funding": "actual signed Bybit funding",
+    "same_bucket": "adverse hard-stop priority"
+  },
+  "chronology": {
+    "fit_context": "January-February 2023",
+    "development": "March-April 2023",
+    "confirmation": "May-June 2023 unchanged",
+    "official_2024_2026": "sealed"
+  },
+  "orders_submitted": false
+}
