@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1910-DIRECT-CORE-NATIVE-FLOW-001",
+  "result_id": "RES-20260730-DIRECT-CORE-NATIVE-FLOW-001",
+  "status": "RETIRED_PRE2024_NATIVE_FLOW_NO_BROAD_VALUE",
+  "hard_validity_status": "PASS_BASE_PARITY_AND_CAUSAL_PRE2024_FATAL_SCREEN",
+  "economic_status": "NO_INCREMENTAL_ACTION_VALUE",
+  "base_parity": {
+    "selected_q": 0.985,
+    "official_15bp_multiple": 1.1537848046667967,
+    "official_15bp_trades": 685,
+    "official_24bp_multiple": 0.9500077241655834
+  },
+  "chronology": {
+    "fit_months": ["2023-01", "2023-04", "2023-07"],
+    "confirmation_months": ["2023-10", "2023-12"],
+    "official_2024_opened": false
+  },
+  "model_stats": {
+    "fit_rows": 35328,
+    "confirmation_rows": 71375,
+    "base_confirm_spearman": 0.235299408901036,
+    "control_confirm_spearman": 0.22812834005454588,
+    "augmented_confirm_spearman": 0.22715990304891923,
+    "control_positive_predictions": 0,
+    "augmented_positive_predictions": 0,
+    "microflow_feature_count": 42
+  },
+  "confirmation_24bp": {
+    "base_source_q0985": {
+      "trades": 5,
+      "multiple": 0.9973714300271417,
+      "pf": 0.823882883871436,
+      "winner_deleted_reroute_multiple": 0.9974495596363478
+    },
+    "refit_control_q0985": {"trades": 0, "multiple": 1.0},
+    "native_microflow_q0985": {"trades": 0, "multiple": 1.0}
+  },
+  "gate": {
+    "required_spearman_increment": 0.02,
+    "required_minimum_trades": 20,
+    "required_24bp_multiple_above_one": true,
+    "required_winner_reroute_above_one": true,
+    "passed": false
+  },
+  "decision": "Exact source parity passed. Native sparse500 state reduced confirmation ranking correlation and produced no positive actions, so it is not a missing programization sensor. Retire the extension and preserve the source Core only as weak, cost-sensitive evidence.",
+  "orders_submitted": false,
+  "live_permission": false
+}
