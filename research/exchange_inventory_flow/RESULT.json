@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-EXCHANGE-INVENTORY-FLOW-CORE-001",
+  "claim_id": "CLM-20260730-EXCHANGE-INVENTORY-FLOW-CORE-001",
+  "status": "RETIRED_PRE_ACCOUNT_SUBCOST_OR_UNSTABLE",
+  "source": {
+    "btc_git_blob_sha1": "5e50f336d268e1f3a38e9885b5aaef36de529700",
+    "eth_git_blob_sha1": "d8e4f389b37626f432a923805e5cc5fa2ad5490b",
+    "btc_filtered_sha256": "1198af51ac8ecaae4ecc836fa40ef5e2778d9325f9e382e545f6de2b22997450",
+    "eth_filtered_sha256": "5647edf657992abf92dc14a98cd2596c5ae55e96518eaba6481926850a8a19db",
+    "daily_rows_each": 1461,
+    "availability_delay_hours": 48
+  },
+  "frozen_rule": {
+    "direction": "positive net inflow SHORT; negative net inflow LONG",
+    "normalization": "prior-only trailing 180-day z-score of net inflow divided by exchange-held supply",
+    "btc_abs_z_q80": 1.1015372005193431,
+    "eth_abs_z_q80": 1.0115797396809256,
+    "simultaneous_arbitration": "larger absolute z-score"
+  },
+  "pre2024": {
+    "2022_24bp": {
+      "events": 109,
+      "mean_bps": 4.792755655023655,
+      "median_bps": -32.73917598275335,
+      "profit_factor": 1.035475113826002,
+      "winner_removed_mean_bps": -48.33300375113376
+    },
+    "2023_24bp": {
+      "events": 67,
+      "mean_bps": -27.57109161811744,
+      "median_bps": -48.81900872850053,
+      "profit_factor": 0.7101796088744033,
+      "winner_removed_mean_bps": -62.042941846820256
+    },
+    "half_year_24bp_mean_bps": {
+      "2022H1": -24.34068151814004,
+      "2022H2": 39.17021151935682,
+      "2023H1": -27.15688947377113,
+      "2023H2": -27.701037388892765
+    }
+  },
+  "ml_opened": false,
+  "structural_account_opened": false,
+  "risk_search_opened": false,
+  "official_2024_2026_opened": false,
+  "ranking_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
