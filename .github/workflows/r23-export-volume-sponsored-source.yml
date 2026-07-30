@@ -1,0 +1,58 @@
+name: R23 export volume-sponsored source
+
+on:
+  push:
+    branches: [agent/r23-smc-action-value-001]
+    paths:
+      - .github/workflows/r23-export-volume-sponsored-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch immutable PR 472 source carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r24-volume-sponsored-channel-001:volume-source
+          mkdir -p payload/research/volume_sponsored_channel
+          for f in SOURCE_MANIFEST.json SOURCE_BUNDLE.tar.gz.b64 materialize.py; do
+            git show "volume-source:research/volume_sponsored_channel/$f" > "payload/research/volume_sponsored_channel/$f"
+          done
+
+      - name: Materialize and verify source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python payload/research/volume_sponsored_channel/materialize.py
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path('payload/research/volume_sponsored_channel')
+          manifest = json.loads((root / 'SOURCE_MANIFEST.json').read_text())
+          rows = []
+          for item in manifest['files']:
+              p = root / item['path']
+              rows.append({
+                  'path': item['path'],
+                  'bytes': p.stat().st_size,
+                  'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+              })
+          (root / 'EXPORTED_SOURCE_INDEX.json').write_text(json.dumps(rows, indent=2) + '\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r23-volume-sponsored-materialized-source
+          path: payload/research/volume_sponsored_channel
+          if-no-files-found: error
+          retention-days: 30
