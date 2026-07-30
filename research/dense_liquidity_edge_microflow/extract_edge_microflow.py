@@ -300,11 +300,12 @@ class MonthProcessor:
         self.armed = {'HIGH': True, 'LOW': True}; self.seq = {'HIGH': 0, 'LOW': 0}
         self.last_ts = None
 
-    def end_day(self) -> tuple[float, float]:
+    def end_day(self, finalize_active: bool = False) -> tuple[float, float]:
         self._finish_15m(); self._finish_minute()
-        for s in self.active:
-            self.features.append(sensor_features(s, 'no_entry' if s.sensor else 'no_sensor'))
-        self.active = []
+        if finalize_active:
+            for s in self.active:
+                self.features.append(sensor_features(s, 'no_entry' if s.sensor else 'no_sensor'))
+            self.active = []
         if self.day_high is None or self.day_low is None:
             raise RuntimeError(f'no valid trades for {self.day_str}')
         return self.day_high, self.day_low
@@ -348,7 +349,7 @@ def main() -> int:
     out = Path(a.output_dir); out.mkdir(parents=True, exist_ok=True)
     proc = MonthProcessor(a.symbol, a.year, a.month)
     days = month_days(a.year, a.month)
-    all_days = [days[0] - timedelta(days=1)] + days
+    all_days = [days[0] - timedelta(days=1)] + days + [days[-1] + timedelta(days=1)]
     prev_high = prev_low = None
     with tempfile.TemporaryDirectory(prefix='edge-raw-') as td:
         td = Path(td)
@@ -359,13 +360,13 @@ def main() -> int:
             digest = sha256(raw); size = raw.stat().st_size
             proc.start_day(day, prev_high, prev_low)
             rows = 0; min_ts = max_ts = None
-            collect = idx > 0
+            collect = 0 < idx <= len(days)
             for ts, price, qty, side in iter_raw(raw):
                 rows += 1; min_ts = ts if min_ts is None else min(min_ts, ts); max_ts = ts if max_ts is None else max(max_ts, ts)
                 proc.process_trade(ts, price, qty, side, collect)
-            prev_high, prev_low = proc.end_day()
+            prev_high, prev_low = proc.end_day(finalize_active=(idx == len(all_days)-1))
             proc.raw_manifest.append({
-                'symbol': a.symbol, 'day': day.isoformat(), 'role': 'event' if collect else 'warmup',
+                'symbol': a.symbol, 'day': day.isoformat(), 'role': ('event' if collect else ('warmup' if idx == 0 else 'lookahead')),
                 'url': url, 'sha256': digest, 'size_bytes': size, 'rows': rows,
                 'min_timestamp_ms': min_ts, 'max_timestamp_ms': max_ts,
             })
