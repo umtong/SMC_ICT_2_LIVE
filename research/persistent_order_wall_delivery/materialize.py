@@ -5,11 +5,13 @@ import gzip
 import hashlib
 import io
 import json
+import string
 import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "materialized"
+BASE64_ALPHABET = frozenset(string.ascii_letters + string.digits + "+/=")
 EXPECTED_PARTS = {
     "SOURCE_BUNDLE.b64.part00": (7000, "f54f15ea4afea77ab2c2e6390b6722429c3d11162ea8ed212edd5dd7ca714026"),
     "SOURCE_BUNDLE.b64.part01a": (3500, "8662a578fa60d8a12b1a7809052e95044cff9a3cc6c413d058d6785f34c139d6"),
@@ -19,6 +21,13 @@ EXPECTED_PARTS = {
     "SOURCE_BUNDLE.b64.part04": (4120, "2149a305e796294afaff668768399c180e47fc7c910fdf5cec6f3c25654822c5"),
 }
 
+
+def normalize_carrier(raw: str) -> str:
+    # Wrapped text may contain newlines, a UTF BOM or connector transport
+    # markers. Only the RFC 4648 Base64 alphabet is scientific payload.
+    return "".join(ch for ch in raw if ch in BASE64_ALPHABET)
+
+
 parts = sorted(ROOT.glob("SOURCE_BUNDLE.b64.part*"))
 if parts:
     observed_names = [part.name for part in parts]
@@ -26,8 +35,7 @@ if parts:
         raise RuntimeError(f"carrier part set mismatch: {observed_names}")
     texts = []
     for part in parts:
-        # Base64 is intentionally wrapped for reliable GitHub text transport.
-        text = "".join(part.read_text().split())
+        text = normalize_carrier(part.read_text())
         expected_len, expected_sha = EXPECTED_PARTS[part.name]
         observed_sha = hashlib.sha256(text.encode()).hexdigest()
         if len(text) != expected_len or observed_sha != expected_sha:
@@ -38,7 +46,7 @@ if parts:
         texts.append(text)
     encoded = "".join(texts)
 else:
-    encoded = "".join((ROOT / "SOURCE_BUNDLE.tar.gz.b64").read_text().split())
+    encoded = normalize_carrier((ROOT / "SOURCE_BUNDLE.tar.gz.b64").read_text())
 
 raw = base64.b64decode(encoded, validate=True)
 tar_bytes = gzip.decompress(raw)
