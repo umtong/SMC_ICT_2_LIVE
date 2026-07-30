@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-LIQUIDITY-LADDER-CONVERSION-001",
+  "audit_result_id": "RES-20260730-LIQUIDITY-LADDER-CONVERSION-PROGRAM-AUDIT-001",
+  "venue": "Bybit USDT linear perpetual",
+  "testbeds": ["BTCUSDT", "ETHUSDT"],
+  "audit_questions": [
+    "Does the parent executable reproduce exactly?",
+    "Are pool creation/consumption, target freshness, stop validity, state-loss timing and funding valuation causal?",
+    "Was low-resistance liquidity coded as hold-through context rather than repeated entry/exit?",
+    "Does the corrected source-faithful route remain positive and non-sparse in unchanged 2023?"
+  ],
+  "fixed_account": {
+    "costs_bps": [12, 18, 24],
+    "risk": 0.005,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "latency_ms": 500,
+    "actual_funding": true,
+    "elapsed_time_exit": false
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}
