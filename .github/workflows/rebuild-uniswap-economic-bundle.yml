@@ -37,7 +37,8 @@ jobs:
             "$root/ECONOMIC_BUNDLE.segment01.b64"
             "$root/ECONOMIC_BUNDLE.segment02.b64"
             "$root/ECONOMIC_BUNDLE.segment03.b64"
-            "$root/ECONOMIC_BUNDLE.segment04a.b64"
+            "$root/ECONOMIC_BUNDLE.segment04a0.b64"
+            "$root/ECONOMIC_BUNDLE.segment04a1.b64"
             "$root/ECONOMIC_BUNDLE.segment04b.b64"
             "$root/ECONOMIC_BUNDLE.segment05.b64"
             "$root/ECONOMIC_BUNDLE.segment06.b64"
@@ -52,14 +53,16 @@ jobs:
           for n in 00 01 02 03 05 06 07 08 09 10; do
             test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment${n}.b64")" -eq 2000
           done
-          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment04a.b64")" -eq 1000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment04a0.b64")" -eq 500
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment04a1.b64")" -eq 500
           test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment04b.b64")" -eq 1000
           test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment11.b64")" -eq 280
           echo "daffd0f01affc1e6db814fc9490f0d29f6852649697beaea88506bdb9b067fd5  $root/ECONOMIC_BUNDLE.segment00.b64" | sha256sum -c -
           echo "76ad5f0bb3cd2ae875e6fe64299596950c3ecd94fcf86094a348d87c109b0134  $root/ECONOMIC_BUNDLE.segment01.b64" | sha256sum -c -
           echo "8845d271de9d30d67d9ecbaebd3dcb5c2442af9bff1ae2e88209aac3b1703fd7  $root/ECONOMIC_BUNDLE.segment02.b64" | sha256sum -c -
           echo "57b14504132718a3b77656b17d7f7acea4027de39612491edf1432807286afb5  $root/ECONOMIC_BUNDLE.segment03.b64" | sha256sum -c -
-          echo "eaddd1f9a845b0e851cc1afaeaad589ab4290d9c6292ba91b1a69e328a87b833  $root/ECONOMIC_BUNDLE.segment04a.b64" | sha256sum -c -
+          echo "37d298e31e1fda96cf84e9f4648e2f7e108db6899226a6f2f44b54c1c0223f7c  $root/ECONOMIC_BUNDLE.segment04a0.b64" | sha256sum -c -
+          echo "7b85e1f5f7361a2718a22e7c7f85501f65075992a84ae089b97c49e0493d25d0  $root/ECONOMIC_BUNDLE.segment04a1.b64" | sha256sum -c -
           echo "be3762c8d455a161f71c062a939fd45427794fd9ed8b41c9e760f0085dceb75d  $root/ECONOMIC_BUNDLE.segment04b.b64" | sha256sum -c -
           echo "8d400d0315e9aaaa5fc8ec167b03e6662eb5bc9e45c64307dd9264de7f28154b  $root/ECONOMIC_BUNDLE.segment05.b64" | sha256sum -c -
           echo "446252a0b84b9792dd50b806092576bc5ee097a0947d46a726dd2e788c7b9a7f  $root/ECONOMIC_BUNDLE.segment06.b64" | sha256sum -c -
@@ -77,7 +80,8 @@ jobs:
             "$root/ECONOMIC_BUNDLE.segment01.b64" \
             "$root/ECONOMIC_BUNDLE.segment02.b64" \
             "$root/ECONOMIC_BUNDLE.segment03.b64" \
-            "$root/ECONOMIC_BUNDLE.segment04a.b64" \
+            "$root/ECONOMIC_BUNDLE.segment04a0.b64" \
+            "$root/ECONOMIC_BUNDLE.segment04a1.b64" \
             "$root/ECONOMIC_BUNDLE.segment04b.b64" \
             "$root/ECONOMIC_BUNDLE.segment05.b64" \
             "$root/ECONOMIC_BUNDLE.segment06.b64" \
