@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-PROTECTED-BOUNDARY-CORE-REALIZATION-001",
+  "claim_id": "CLM-20260730-PROTECTED-BOUNDARY-CORE-REALIZATION-001",
+  "status": "RETIRED_PRE2024_CONFIRMATION_FAILURE",
+  "hard_validity": {
+    "events": 599,
+    "event_counts": {"2021": 79, "2022": 101, "2023": 146, "2024": 110, "2025": 113, "2026H1": 50},
+    "published_fixed_risk_24bp_parity": {
+      "expected_multiple": 1.4328,
+      "observed_multiple": 1.4321780636387444,
+      "expected_trades": 116,
+      "observed_trades": 116,
+      "expected_pf": 2.086,
+      "observed_pf": 2.083069911057965,
+      "expected_winner_removed_multiple": 1.0980,
+      "observed_winner_removed_multiple": 1.0975047872487398,
+      "observed_trade_close_mdd": 0.048303473726600155
+    }
+  },
+  "selection_2022_24bp": {
+    "R1.0": {"multiple": 1.0623163454583655, "trades": 82, "pf": 1.4204974034361766, "median": 0.0036883751026098874, "h1_return": 0.0717725034841814, "h2_return": -0.008822915306257006, "winner_removed_multiple": 1.0246857591063467, "eligible": false},
+    "R1.5": {"multiple": 1.0870135525823361, "trades": 74, "pf": 1.5444793887454014, "median": 0.004483790679372187, "h1_return": 0.06418783382063853, "h2_return": 0.021448956693809418, "winner_removed_multiple": 1.0432353486665933, "eligible": true},
+    "R2.0": {"multiple": 1.0770956399112772, "trades": 69, "pf": 1.437141178936558, "median": -0.002153273682741409, "h1_return": 0.06986128811697045, "h2_return": 0.006761953044436053, "winner_removed_multiple": 1.0481756965904676, "eligible": false}
+  },
+  "selected": {"target_r": 1.5},
+  "confirmation_2023_24bp": {
+    "multiple": 1.0543552696866074,
+    "trades": 106,
+    "pf": 1.2320742547793577,
+    "median": -0.0006709096338776752,
+    "median_hold_hours": 5.741666666666667,
+    "h1_return": 0.04675045605038619,
+    "h2_return": 0.007265163910141315,
+    "winner_removed_multiple": 0.9984940048529682,
+    "winner_removed_pf": 0.9934729115370973,
+    "winner_removed_median": -0.0013639568123929718,
+    "pass": false
+  },
+  "official_2024_2026_opened": false,
+  "ranking_change": false,
+  "orders_submitted": false,
+  "decision": "The protected-boundary +1.5R full-realization route survived frozen 2022 selection but failed unchanged 2023 because the ordinary median was negative and exact top-10%-of-all-trades positive-event deletion with full rerouting reduced NAV below 1.0x. Preserve the parent as Expansion and the older less-crowded +1.5R route as weak Core; retire this exact decomposition without adjacent rescue.",
+  "source_hashes": {
+    "audit_source_sha256": "632b8c7612166900cfed4f4bfbd941bafab2f8ddfcf0d1738bd764dffcd7e1d4",
+    "full_local_result_sha256": "cc3a508ac38a2064ce90a34bfb1fde759763a7190ce62129ca8ba6b2fc177691"
+  }
+}
