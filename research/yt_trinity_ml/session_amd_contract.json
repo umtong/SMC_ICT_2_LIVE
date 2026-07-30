@@ -1,0 +1,131 @@
+{
+  "alpha": {
+    "after_tp1_stop": "entry_price",
+    "asia": [
+      "20:00",
+      "00:00"
+    ],
+    "atr_period": 14,
+    "confirmation_bars": 6,
+    "final_target": "opposite_reference_liquidity",
+    "london": [
+      "02:00",
+      "05:00"
+    ],
+    "long_close_location_min": 0.62,
+    "minimum_displacement_body_atr": 0.2,
+    "minimum_displacement_range_atr": 0.45,
+    "mss_pivot_lookback_bars": 3,
+    "ny_am": [
+      "07:00",
+      "10:00"
+    ],
+    "passive_queue_penetration_bps": 0.5,
+    "pending_cancel": "structural_invalidation_or_target_only",
+    "references": {
+      "london": [
+        "asia",
+        "previous_day"
+      ],
+      "ny_am": [
+        "london",
+        "previous_day"
+      ]
+    },
+    "short_close_location_max": 0.38,
+    "stop_buffer_atr": 0.05,
+    "sweep_buffer_atr": 0.05,
+    "timezone": "America/New_York",
+    "tp1": "reference_range_midpoint",
+    "tp1_fraction": 0.5
+  },
+  "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+  "corpus": {
+    "channel_counts": {
+      "chartbro": 62,
+      "indicator_sensei": 98,
+      "swipalnam": 26
+    },
+    "merged_corpus_sha256": "db4d48691562f68c7b53c7b12fad88eeeb101fafd9bdb81a7a891bb3a32ad00",
+    "public_video_count": 186,
+    "transcribeyoutube_retry_count": 7,
+    "videos_sha256": "73a5a2d028dd8a31fef7afab9f25e15b456877f4d8e0e3a0db63cca149a470ff",
+    "youtube2text_count": 179
+  },
+  "costs": {
+    "base": {
+      "description": "VIP0 fees plus fixed coarse-lane spread/slippage; 15bp market round trip and 9.5bp passive-entry/taker-exit before funding",
+      "market_entry_effective_bps": 7.5,
+      "passive_entry_effective_bps": 2.0,
+      "taker_exit_effective_bps": 7.5
+    },
+    "stress": {
+      "description": "24bp market and 20bp passive/taker all-in stress before funding",
+      "market_entry_effective_bps": 12.0,
+      "passive_entry_effective_bps": 8.0,
+      "taker_exit_effective_bps": 12.0
+    }
+  },
+  "evaluation": {
+    "end_exclusive_utc": "2024-07-01T00:00:00Z",
+    "new_order_activation_delay_ms": 500,
+    "no_elapsed_time_exit": true,
+    "official_segment": "2024_H1",
+    "one_global_slot": true,
+    "start_nav": 10000.0,
+    "start_utc": "2024-01-01T00:00:00Z",
+    "training_segment": "PRE_2024_2023"
+  },
+  "model": {
+    "base_calibration_days": 90,
+    "eligibility": {
+      "minimum_expected_net_r": 0.0,
+      "minimum_passive_fill_probability": 0.25,
+      "minimum_win_probability": 0.5
+    },
+    "estimator": {
+      "l2_regularization": 2.0,
+      "learning_rate": 0.05,
+      "max_iter": 180,
+      "max_leaf_nodes": 7,
+      "min_samples_leaf": 25,
+      "random_state": 41
+    },
+    "heads": [
+      "target_before_invalidation_probability",
+      "net_r_expectation",
+      "passive_fill_probability"
+    ],
+    "initial_active_at_utc": "2024-01-01T00:00:00Z",
+    "minimum_base_rows": 300,
+    "minimum_calibration_rows": 80,
+    "minimum_passive_fill_rows": 100,
+    "monthly_update_at_utc": "first_calendar_day_00:10"
+  },
+  "risk": {
+    "liquidation_buffer_fraction": 0.0025,
+    "maintenance_margin_fraction": 0.005,
+    "max_leverage": 50.0,
+    "quantity_rules": {
+      "BTCUSDT": {
+        "minimum": 0.001,
+        "step": 0.001
+      },
+      "ETHUSDT": {
+        "minimum": 0.01,
+        "step": 0.01
+      },
+      "SOLUSDT": {
+        "minimum": 0.1,
+        "step": 0.1
+      },
+      "XRPUSDT": {
+        "minimum": 1.0,
+        "step": 1.0
+      }
+    },
+    "risk_fraction": 0.015
+  },
+  "schema_version": 1,
+  "system_id": "YTTRI-SESSION-AMD-PARTIAL-ML-V1"
+}
