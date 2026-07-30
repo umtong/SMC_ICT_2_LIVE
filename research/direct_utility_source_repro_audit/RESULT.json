@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-DIRECT-UTILITY-SOURCE-REPRO-AUDIT-001",
+  "status": "HARD_PROGRAMIZATION_REPRODUCIBILITY_FAILURE",
+  "source_result": "RES-20260730-EXEC-ALIGNED-DIRECT-UTILITY-CORE-001",
+  "source_commit": "9ae4886e2bfff95008d7dd85bffb00136a313532",
+  "source_manifest_sha256": "9262c1be47cf9c98a171c36a0826776aae4b017e08b0888ae0d462f9ddee5ab3",
+  "fixed_runtime_manifest_sha256": "498c63f66c6d775fc9faff9a38a66586167ee7d52ace4c29e05fa52c3f4a4b13",
+  "canonical_identity_check": "raw segment parquet rows exactly matched canonical pandas export for both symbols and pre-2024 years on timestamps, OHLC, turnover and completeness",
+  "published": {
+    "selected_q": 0.985,
+    "15bp": {"end_nav": 11537.848046667967, "multiple": 1.1537848046667967, "geo_daily": 0.00015686282025861864, "trades": 685, "profit_factor": 1.0762768182415152, "maximum_drawdown": -0.0897169984264834},
+    "24bp": {"multiple": 0.95, "geo_daily": -0.0000562}
+  },
+  "reproduction": {
+    "preselected_q": 0.97,
+    "q0970": {
+      "15bp": {"end_nav": 10040.264796609654, "multiple": 1.0040264796609655, "geo_daily": 0.000004406144669788503, "maximum_drawdown": -0.17019217604093517, "trades": 939, "profit_factor": 1.0014114111715409},
+      "18bp": {"end_nav": 9146.801162205455, "multiple": 0.9146801162205455, "geo_daily": -0.00009778126579973456, "maximum_drawdown": -0.2010731735831809, "trades": 939, "profit_factor": 0.9686030644487666},
+      "24bp": {"end_nav": 7679.682857240755, "multiple": 0.7679682857240755, "geo_daily": -0.0002894392900192333, "maximum_drawdown": -0.30016215909221633, "trades": 939, "profit_factor": 0.9066389110982747}
+    },
+    "q0985_diagnostic": {
+      "15bp": {"end_nav": 10655.74705009283, "multiple": 1.065574705009283, "geo_daily": 0.00006964527899122608, "maximum_drawdown": -0.10881902770187324, "trades": 542, "profit_factor": 1.0423198697002736},
+      "18bp": {"end_nav": 10140.279987406726, "multiple": 1.0140279987406726, "geo_daily": 0.00001527480630558742, "maximum_drawdown": -0.11817406718175583, "trades": 542, "profit_factor": 1.0092778131055065},
+      "24bp": {"end_nav": 9233.869082268397, "multiple": 0.9233869082268397, "geo_daily": -0.00008739414889324948, "maximum_drawdown": -0.1356059681062458, "trades": 542, "profit_factor": 0.9469572593620875}
+    }
+  },
+  "decision": [
+    "Do not use the published direct-utility Core as a validated base for a sensor extension.",
+    "Issue #553 first-minute sensor remains unopened because the frozen base parity gate failed.",
+    "Treat the published 15bp Core metrics as provisional historical evidence until exact fitted models, scored candidate tapes, training fingerprint and account ledgers are recovered.",
+    "The reproducible source path is economically too weak and fails 18/24bp; do not rescue it with risk or leverage."
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}

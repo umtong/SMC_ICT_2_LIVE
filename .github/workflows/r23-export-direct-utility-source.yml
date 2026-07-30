@@ -1,0 +1,65 @@
+name: R23 export direct-utility Core source
+
+on:
+  push:
+    branches: [agent/r23-direct-utility-first-minute-001]
+    paths:
+      - .github/workflows/r23-export-direct-utility-source.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/r23-export-direct-utility-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch immutable PR 551 carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin 9ae4886e2bfff95008d7dd85bffb00136a313532
+          root=payload/research/execution_aligned_direct_utility_core
+          mkdir -p "$root"
+          for f in \
+            SOURCE_MANIFEST.json materialize.py \
+            SOURCE_BUNDLE.part01.b64 SOURCE_BUNDLE.part02.b64 \
+            SOURCE_BUNDLE.part03.b64 SOURCE_BUNDLE.part04.b64 \
+            SOURCE_BUNDLE.part05.b64 SOURCE_BUNDLE.part06.b64; do
+            git show "9ae4886e2bfff95008d7dd85bffb00136a313532:research/execution_aligned_direct_utility_core/$f" > "$root/$f"
+          done
+
+      - name: Materialize and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python payload/research/execution_aligned_direct_utility_core/materialize.py
+          python -m py_compile payload/research/execution_aligned_direct_utility_core/materialized/*.py
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('payload/research/execution_aligned_direct_utility_core')
+          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          rows=[]
+          for item in m['files']:
+              p=root/'materialized'/item['path']
+              rows.append({'path':item['path'],'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+          (root/'EXPORTED_SOURCE_INDEX.json').write_text(json.dumps(rows,indent=2)+'\n')
+          print('verified',len(rows),'source files')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r23-direct-utility-materialized-source
+          path: payload/research/execution_aligned_direct_utility_core
+          if-no-files-found: error
+          retention-days: 30
