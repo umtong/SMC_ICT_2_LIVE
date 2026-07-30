@@ -30,6 +30,10 @@ jobs:
         run: |
           python research/persistent_order_wall_delivery/materialize.py
 
+      - name: Apply outcome-sealed completed-state correction
+        run: |
+          python research/persistent_order_wall_delivery/patch_completed_state.py
+
       - name: Semantic self-test
         run: |
           python research/persistent_order_wall_delivery/materialized/run.py --self-test
