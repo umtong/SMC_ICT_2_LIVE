@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: uniswap-signed-flow-sqd-source-${{ github.sha }}
@@ -121,6 +121,23 @@ jobs:
             find "$out" -type f ! -name OUTPUT_SHA256SUMS.txt -print0 \
               | sort -z | xargs -0 sha256sum
           } > "$out/OUTPUT_SHA256SUMS.txt"
+      - name: Publish compact source decision to branch
+        if: ${{ always() && github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          out=research_runs/uniswap_signed_flow_sqd/source_gate
+          dest=research_results/uniswap_signed_flow_sqd_source
+          test -f "$out/SOURCE_GATE.json"
+          mkdir -p "$dest"
+          cp "$out/SOURCE_GATE.json" "$dest/RESULT.json"
+          cp "$out/SOURCE_GATE_SHA256.txt" "$dest/SHA256SUMS.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest/RESULT.json" "$dest/SHA256SUMS.txt"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record signed Uniswap SQD source decision"
+            git push origin HEAD:agent/r34-uniswap-signed-flow-sqd-takeover-001
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
