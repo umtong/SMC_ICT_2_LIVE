@@ -1,0 +1,120 @@
+name: Ethereum validator-withdrawal source gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/eth_validator_withdrawal_core/**
+      - .github/workflows/eth-validator-withdrawal-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: eth-validator-withdrawal-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified portable quant runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import pyarrow
+          print("pyarrow", pyarrow.__version__)
+          PY
+
+      - name: Materialize UInt128-aware source probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf research/eth_validator_withdrawal_core/materialized
+          "$PY" research/eth_validator_withdrawal_core/materialize_source_probe.py \
+            --out research/eth_validator_withdrawal_core/materialized
+
+      - name: Compile and run focused source-only tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" -m py_compile \
+            research/eth_validator_withdrawal_core/materialized/source_probe.py \
+            research/eth_validator_withdrawal_core/materialized/test_source_probe.py
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          path = pathlib.Path("research/eth_validator_withdrawal_core/materialized/test_source_probe.py")
+          spec = importlib.util.spec_from_file_location("test_source_probe", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["test_source_probe"] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith("test_"))
+          for name in tests:
+              getattr(module, name)()
+              print("PASS", name)
+          assert len(tests) == 8
+          PY
+
+      - name: Run outcome-sealed source coverage and schema probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf artifact
+          "$PY" research/eth_validator_withdrawal_core/materialized/source_probe.py \
+            --output artifact \
+            --workers 16 \
+            | tee SOURCE_RUN.log
+          cp research/eth_validator_withdrawal_core/CONTRACT.json artifact/CONTRACT.json
+          cp SOURCE_RUN.log artifact/SOURCE_RUN.log
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("artifact/RESULT.json").read_text())
+          assert result["market_outcomes_opened"] is False
+          assert result["bybit_data_opened"] is False
+          assert result["orders_submitted"] is False
+          assert result["pre2024_coverage"]["expected_days"] == 264
+          print(json.dumps({
+              "status": result["status"],
+              "pre2024": result["pre2024_coverage"],
+              "official_source": result["official_source_coverage"],
+              "valid_probe_days": result["valid_probe_days"],
+              "probe_errors": result["probe_errors"],
+          }, indent=2))
+          PY
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-validator-withdrawal-source-gate
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
