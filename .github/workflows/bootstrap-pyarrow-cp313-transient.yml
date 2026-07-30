@@ -1,0 +1,33 @@
+name: Transient PyArrow CPython 3.13 wheel bootstrap
+
+on:
+  push:
+    branches: [agent/accepted-delivery-natural-destination-001]
+    paths:
+      - '.github/workflows/bootstrap-pyarrow-cp313-transient.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download Linux CPython 3.13 PyArrow wheel
+        run: |
+          set -euo pipefail
+          python -m pip download --only-binary=:all: --no-deps 'pyarrow==19.0.0' -d wheel
+          sha256sum wheel/* > wheel/SHA256SUMS
+          ls -lah wheel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pyarrow-cp313-manylinux-wheel
+          path: wheel
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
