@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-XSEC-RESIDUAL-CONTINUATION-CORE-001",
+  "result_id": "RES-20260730-XSEC-RESIDUAL-CONTINUATION-CORE-001",
+  "status": "RETIRED_PRE2024_RESIDUAL_CONTINUATION_FAILURE_WITH_PARTIAL_PARENT_PARITY",
+  "target_status": "NOT_OPENED",
+  "event_counts": {
+    "2022": {"raw_events": 725, "valid_continuation_outcomes": 725},
+    "2023": {"raw_events": 696, "valid_continuation_outcomes": 696}
+  },
+  "results": {
+    "2022": {
+      "12": {"ordinary": {"multiple": 0.8834174503027101, "completed_trades": 494, "profit_factor": 0.7851514496763154, "median_return_on_nav": -0.0003360013152003587, "half1_return": -0.062376378857056936, "half2_return": -0.057812292286489875}, "top5_deleted_full_reroute": {"multiple": 0.8219799685097474}},
+      "18": {"ordinary": {"multiple": 0.8405730464446789, "completed_trades": 494, "profit_factor": 0.708422146838056, "median_return_on_nav": -0.00040794871139532426, "half1_return": -0.0843975614549759, "half2_return": -0.0819453825609876}, "top5_deleted_full_reroute": {"multiple": 0.7822342059824883}},
+      "24": {"ordinary": {"multiple": 0.8020367673110873, "completed_trades": 494, "profit_factor": 0.6411046300703717, "median_return_on_nav": -0.0005185137428505269, "half1_return": -0.10494631786844966, "half2_return": -0.1039232804438559, "maximum_liquidation_drawdown_proxy": 0.21036898391530845}, "top5_deleted_full_reroute": {"multiple": 0.7479997419869739}}
+    },
+    "2023": {
+      "12": {"ordinary": {"multiple": 0.9087138202131164, "completed_trades": 489, "profit_factor": 0.8443262541434318, "median_return_on_nav": -0.0005407275004864694, "half1_return": -0.1217963433029603, "half2_return": 0.034741558274565376}, "top5_deleted_full_reroute": {"multiple": 0.7424242261456111}},
+      "18": {"ordinary": {"multiple": 0.8415461824546323, "completed_trades": 489, "profit_factor": 0.7321248604479356, "median_return_on_nav": -0.0006618244234756889, "half1_return": -0.14990973971143884, "half2_return": -0.010050788996251558}, "top5_deleted_full_reroute": {"multiple": 0.6957745165768013}},
+      "24": {"ordinary": {"multiple": 0.7840438622743543, "completed_trades": 489, "profit_factor": 0.6400755841321539, "median_return_on_nav": -0.0007969576879394896, "half1_return": -0.17530795669537125, "half2_return": -0.049288921070940406, "maximum_liquidation_drawdown_proxy": 0.22522962381467104}, "top5_deleted_full_reroute": {"multiple": 0.6550913757400839}}
+    }
+  },
+  "parent_parity_audit": {
+    "status": "PARTIAL_2023_ORDINARY_PARITY__2022_EVENT_COUNT_DRIFT",
+    "reference_source_transport": "UNAVAILABLE_LOCAL_IMPLEMENTATION_HASH_ONLY",
+    "economic_conclusion_robust": true,
+    "reference_2023": {"events": 696, "trades": 484, "multiple": 0.8294, "profit_factor": 0.667},
+    "reconstructed_fade_2023": {"events": 696, "trades": 484, "multiple": 0.8271942767211629, "profit_factor": 0.6658705669108188},
+    "reference_2022_event_count": 699,
+    "reconstructed_2022_event_count": 725,
+    "continuation_after_removing_26_initial_events": {"2022_multiple": 0.8002123186560215, "2022_rerouted_multiple": 0.7484551588063515, "2023_multiple": 0.7840438622743543, "2023_rerouted_multiple": 0.6550913757400839}
+  },
+  "official_opened": false,
+  "ml_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}
