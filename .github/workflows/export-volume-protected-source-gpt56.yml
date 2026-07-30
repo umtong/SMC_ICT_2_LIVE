@@ -1,0 +1,58 @@
+name: Export protected-boundary source for slot-router audit
+
+on:
+  push:
+    branches:
+      - agent/gpt56-expansion-core-slot-router-001
+    paths:
+      - ".github/workflows/export-volume-protected-source-gpt56.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/gpt56-expansion-core-slot-router-001
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Materialize immutable source and verify hashes
+        run: |
+          set -euo pipefail
+          root=research/volume_protected_boundary_20260730
+          python "$root/materialize.py" | tee SOURCE_EXPORT.log
+          python -m py_compile "$root"/materialized_source/*.py
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('research/volume_protected_boundary_20260730')
+          man=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          out={'source_archive_sha256':man['source']['archive_sha256'],'files':{}}
+          for p in sorted((root/'materialized_source').glob('*.py')):
+              out['files'][p.name]={'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+          Path('SOURCE_EXPORT_MANIFEST.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: protected-boundary-source-${{ github.sha }}
+          path: |
+            research/volume_protected_boundary_20260730/materialized_source
+            research/volume_protected_boundary_20260730/SOURCE_MANIFEST.json
+            research/volume_protected_boundary_20260730/CONTRACT.json
+            SOURCE_EXPORT_MANIFEST.json
+            SOURCE_EXPORT.log
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
