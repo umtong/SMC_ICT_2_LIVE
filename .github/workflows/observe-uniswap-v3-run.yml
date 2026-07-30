@@ -11,13 +11,47 @@ on:
       - "research/uniswap_signed_flow_sqd/AMENDMENT_003_FUNDING_MARK_VALUE.json"
 
 permissions:
-  actions: read
+  actions: write
   contents: read
 
 jobs:
   observe:
     runs-on: ubuntu-24.04
     steps:
+      - name: Cancel stale branch-only transport runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch='agent/r34-uniswap-signed-flow-sqd-takeover-001'
+          for workflow in \
+            uniswap-signed-flow-sqd-gate.yml \
+            uniswap-signed-flow-sqd-economic.yml \
+            rebuild-uniswap-economic-bundle.yml \
+            export-uniswap-economic-source.yml
+          do
+            curl -L --fail --retry 3 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs?branch=${branch}&per_page=100" \
+              -o "${workflow}.json"
+            python - "$workflow" <<'PY'
+          import json,os,subprocess,sys
+          workflow=sys.argv[1]
+          data=json.load(open(workflow+'.json'))
+          for run in data.get('workflow_runs',[]):
+              if run.get('status') not in {'queued','in_progress','pending','waiting','requested'}:
+                  continue
+              rid=str(run['id'])
+              url=f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{rid}/cancel"
+              subprocess.run([
+                  'curl','-L','--fail','--retry','2','-X','POST',
+                  '-H',f"Authorization: Bearer {os.environ['GH_TOKEN']}",
+                  '-H','Accept: application/vnd.github+json',url,
+              ],check=False)
+              print(json.dumps({'cancelled_run':int(rid),'workflow':workflow,'prior_status':run.get('status')}))
+          PY
+          done
       - name: List corrected workflow runs
         env:
           GH_TOKEN: ${{ github.token }}
