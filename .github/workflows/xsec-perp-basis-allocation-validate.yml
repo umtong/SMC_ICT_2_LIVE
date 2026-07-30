@@ -1,0 +1,49 @@
+name: Validate cross-sectional perpetual basis allocation
+
+on:
+  pull_request:
+    paths:
+      - "research/xsec_perp_basis_allocation/**"
+      - ".github/workflows/xsec-perp-basis-allocation-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Materialize and compile source
+        run: |
+          python research/xsec_perp_basis_allocation/materialize.py
+          python -m py_compile research/xsec_perp_basis_allocation/materialized/run.py
+      - name: Validate compact scientific decision
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research/xsec_perp_basis_allocation')
+          c=json.loads((root/'CONTRACT.json').read_text())
+          r=json.loads((root/'RESULT.json').read_text())
+          v=json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          assert c['result_id']==r['result_id']==v['result_id']==m['result_id']
+          assert c['elapsed_time_exit'] is False
+          assert c['risk']['planned_loss_fraction']==0.005 and c['risk']['notional_cap']==3.0
+          assert r['official_opened'] is False and r['ml_opened'] is False
+          assert r['routes']['LONG_HIGH_BASIS']['24']['2022']['multiple'] < 1.0
+          assert r['routes']['LONG_HIGH_BASIS']['24']['2023']['winner_removed_multiple'] < 1.0
+          assert r['routes']['SHORT_LOW_BASIS']['12']['2022']['multiple'] < 1.0
+          assert r['routes']['DOMINANT_BASIS_LEG']['12']['2022']['multiple'] < 1.0
+          assert v['checks']['funding_applied_only_before_actual_exit'] is True
+          assert v['checks']['fresh_process_runs']==2
+          assert v['checks']['orders_submitted'] is False
+          src=root/'materialized'/'run.py'
+          assert hashlib.sha256(src.read_bytes()).hexdigest()==m['source_files'][0]['sha256']
+          print('basis allocation decision contract valid')
+          PY
