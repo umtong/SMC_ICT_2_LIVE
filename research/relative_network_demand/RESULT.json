@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-RELATIVE-NETWORK-DEMAND-CORE-001",
+  "claim_id": "CLM-20260730-RELATIVE-NETWORK-DEMAND-CORE-001",
+  "status": "RETIRED_PRE_ACCOUNT_SUBCOST_OR_BASELINE_INFERIOR",
+  "source": {
+    "btc_git_blob_sha1": "5e50f336d268e1f3a38e9885b5aaef36de529700",
+    "eth_git_blob_sha1": "d8e4f389b37626f432a923805e5cc5fa2ad5490b",
+    "availability_delay_hours": 48,
+    "daily_decisions_2022": 365,
+    "daily_decisions_2023": 364
+  },
+  "frozen_rule": {
+    "network_demand": "0.40*z(log_fee)+0.30*z(log_transaction_count)+0.30*z(log_active_addresses)",
+    "common_direction": "sign of average prior completed BTC/ETH 24h return",
+    "allocation": "common up long stronger network demand; common down short weaker network demand"
+  },
+  "pre2024": {
+    "2022_24bp": {
+      "mean_bps": -23.714366803808563,
+      "median_bps": -57.88436182217768,
+      "profit_factor": 0.8446910113525234,
+      "winner_removed_mean_bps": -71.2294031353407
+    },
+    "2023_24bp": {
+      "mean_bps": -12.378586612509453,
+      "median_bps": -33.01947488508695,
+      "profit_factor": 0.8590660477783237,
+      "winner_removed_mean_bps": -39.82806668024429
+    },
+    "paired_onchain_minus_price_gross_mean_bps": {
+      "2022": 2.7492802958036417,
+      "2023": 7.6705639784600494
+    },
+    "half_year_24bp_mean_bps": {
+      "2022H1": -3.59597567656302,
+      "2022H2": -43.504740684414244,
+      "2023H1": -7.377567688852122,
+      "2023H2": -17.32494959164594
+    }
+  },
+  "ml_opened": false,
+  "structural_account_opened": false,
+  "risk_search_opened": false,
+  "official_2024_2026_opened": false,
+  "ranking_change": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
