@@ -1,0 +1,45 @@
+name: Export materialized direct-Core source
+
+on:
+  push:
+    branches:
+      - agent/r32-core-expansion-one-slot-001
+    paths:
+      - .github/workflows/export-direct-core-materialized-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r32-core-expansion-one-slot-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Materialize SHA-bound Core source
+        run: python research/execution_aligned_direct_utility_core/materialize.py
+      - name: Verify reconstructed files
+        run: |
+          python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
+          find research/execution_aligned_direct_utility_core/materialized -type f -print0 | sort -z | xargs -0 sha256sum > research/execution_aligned_direct_utility_core/materialized/SHA256SUMS.txt
+      - name: Commit audit-only materialized source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/execution_aligned_direct_utility_core/materialized
+          git commit -m "Materialize direct-Core source for one-slot audit"
+          git push origin HEAD:agent/r32-core-expansion-one-slot-001
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-materialized-source
+          path: research/execution_aligned_direct_utility_core/materialized
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
