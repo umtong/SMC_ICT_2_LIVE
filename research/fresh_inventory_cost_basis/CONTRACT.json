@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-FRESH-INVENTORY-COST-BASIS-001",
+  "result_id": "RES-20260730-FRESH-INVENTORY-COST-BASIS-001",
+  "logic": "true old-balance edge break + exact aggressive-side fresh-inventory cost basis + OI persistence -> protected continuation or trapped reversal",
+  "testbeds": ["BTCUSDT", "ETHUSDT"],
+  "source": ["canonical Bybit one/five-minute/OI/funding", "official MICROBAR-SPARSE500-V5 buy/sell volume and turnover"],
+  "fresh_inventory": "break-direction net aggressive turnover and completed OI increase over the same completed breakout interval",
+  "cost_basis": "break-direction aggressive turnover divided by break-direction aggressive volume",
+  "response": "next observed packet with total turnover equal to the breakout interval turnover",
+  "actions": ["PROTECTED_CONTINUATION", "TRAPPED_REVERSAL", "FLAT"],
+  "execution": {"activation_delay_ms": 500, "one_global_slot": true, "risk_fraction": 0.005, "notional_cap": 3.0, "costs_bp": [12,18,24], "funding": "actual signed", "elapsed_time_exit": false},
+  "chronology": {"selection": 2022, "confirmation_2023": "sealed unless deterministic 2022 survival", "official_2024_2026": "sealed unless unchanged 2023 survival"},
+  "prohibited_rescue": ["OI magnitude quantiles", "cost-basis buffer", "response-window grid", "extra SMC gates", "symbol-side exceptions", "lower costs", "ML", "risk", "leverage"],
+  "orders_submitted": false,
+  "live_permission": false
+}

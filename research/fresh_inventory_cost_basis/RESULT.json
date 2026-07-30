@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-FRESH-INVENTORY-COST-BASIS-001",
+  "result_id": "RES-20260730-FRESH-INVENTORY-COST-BASIS-001",
+  "status": "RETIRED_2022_FRESH_INVENTORY_COST_BASIS_FAILURE",
+  "target_status": "NOT_MET",
+  "classified_events": 50,
+  "states": {"PROTECTED": 36, "TRAPPED": 14},
+  "pre2024": {
+    "2022": {
+      "PROTECTED": {
+        "12bp": {"multiple": 0.911845, "trades": 35, "pf": 0.267, "median": -0.004646, "winner_removed_multiple": 0.890525},
+        "18bp": {"multiple": 0.902596, "trades": 35, "pf": 0.197, "median": -0.004708, "winner_removed_multiple": 0.885656},
+        "24bp": {"multiple": 0.895582, "trades": 35, "pf": 0.145, "median": -0.004752, "winner_removed_multiple": 0.881915}
+      },
+      "TRAPPED": {
+        "12bp": {"multiple": 0.988691, "trades": 14, "pf": 0.549, "median": -0.001197, "winner_removed_multiple": 0.981200},
+        "18bp": {"multiple": 0.982607, "trades": 14, "pf": 0.369, "median": -0.001782, "winner_removed_multiple": 0.976806},
+        "24bp": {"multiple": 0.977849, "trades": 14, "pf": 0.251, "median": -0.002132, "winner_removed_multiple": 0.973420}
+      }
+    }
+  },
+  "selection_2022": {"passed": false, "survivors": []},
+  "confirmation_2023_opened": false,
+  "official_opened": false,
+  "ml_opened": false,
+  "orders_submitted": false,
+  "ranking_changed": false,
+  "decision": "Exact aggressive-side trade VWAP plus net OI increase did not produce a cost-surviving protected/trapped policy. The observable cannot identify which passive/aggressive side opened versus closed; therefore it is not a valid causal ownership map. Retire without OI magnitude, cost-basis buffer, response-window, symbol-side, ML, cost, risk or leverage rescue."
+}
