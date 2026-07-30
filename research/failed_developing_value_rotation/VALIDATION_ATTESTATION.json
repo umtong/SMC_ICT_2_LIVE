@@ -1,12 +1,19 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "claim_id": "CLM-20260730-FAILED-DEVELOPING-VALUE-ROTATION-001",
   "result_id": "RES-20260730-FAILED-DEVELOPING-VALUE-ROTATION-001",
-  "status": "PASS_PROGRAMIZATION_CORRECTED_SIX_TESTS_TWO_FRESH_PROCESS_42_FILE_BYTE_IDENTITY",
-  "source_sha256": "e02d9bb5a34dc8b76404fa9e7636739fd2792db90aa3df98c3a3c071234983e7",
+  "status": "PASS_PROGRAMIZATION_CORRECTED_SIX_TESTS_THREE_PROCESS_42_FILE_IDENTITY_PORTABLE_IMPORT",
+  "source_sha256": "a759217e357337d1b2814a2d64ba4e6551a753197268f01369246081352b026f",
   "semantic_test_sha256": "5874b6b929c4596c19882acb29f34bce225caf6ce23e81477390841439fa7634",
   "semantic_tests": {"passed": 6, "failed": 0},
-  "two_fresh_processes": {"all_byte_identical": true, "scientific_file_count": 42},
+  "process_replays": {
+    "pre_portability_run_1": "result2",
+    "pre_portability_run_2": "result3",
+    "post_portability_run": "result4",
+    "all_scientific_outputs_byte_identical": true,
+    "scientific_file_count": 42
+  },
+  "portable_import_test": "PASS in isolated temporary root without the shared loader; scientific replay still requires the registered canonical data and loader",
   "programization_corrections": [
     "hard stop moved beyond full causal packet-1-start through failure-decision excursion",
     "old-value target must remain untouched at every completed minute from migrated-state availability through failure decision"
