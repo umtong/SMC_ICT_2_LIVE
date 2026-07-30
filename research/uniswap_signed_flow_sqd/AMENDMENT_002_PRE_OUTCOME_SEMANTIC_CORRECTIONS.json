@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001",
+  "recorded_before_accepting_any_market_model_or_pnl_result": true,
+  "source_gate_observed": true,
+  "source_gate_status": "PASS",
+  "market_outcome_from_superseded_engine_accepted": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "quarantined": [
+    "all economic workflow runs using decoded bundle f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf",
+    "all results produced before corrected bundle 57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8 is hash-verified"
+  ],
+  "programization_corrections": [
+    {
+      "defect": "transaction_notional_hhi aggregated squared swap notionals rather than transaction-aggregated gross notional",
+      "correction": "sum gross stablecoin notional by transaction hash first, then compute sum(tx_notional^2)/gross^2"
+    },
+    {
+      "defect": "confirmed pivots could be inserted before earlier one-minute observations were replayed",
+      "correction": "insert pivots and consume one-minute bars strictly in information-availability order"
+    },
+    {
+      "defect": "the future executable minute open entered structural-distance features and the action equation",
+      "correction": "freeze model and action geometry from the last fully available decision-time close; use the later executable open only for fill validation, realized stop distance and sizing"
+    },
+    {
+      "defect": "an unresolved position at the finite pre-2024 source end was only marked",
+      "correction": "apply the preregistered full adverse structural loss plus exit cost at finite source exhaustion; this is a terminal-data penalty, not an elapsed-time strategy exit"
+    },
+    {
+      "defect": "the preregistered 2023H2 development gates were not enforced",
+      "correction": "evaluate unchanged positive 24bp return, positive 18bp Q3 and Q4, positive median, at least 40 trades, exact winner-deletion reroute, MDD below 30 percent and benchmark growth before official authorization"
+    },
+    {
+      "defect": "the source producer could write a PASS decision but a pipe or producer exit code stopped artifact validation",
+      "correction": "accept a shard only after its authority JSON independently confirms PASS, positive decoded count, zero duplicates/errors and no outcome opening"
+    }
+  ],
+  "unchanged_scientific_contract": [
+    "four canonical Uniswap V3 WETH-USDC and WETH-USDT pools and exact Swap ABI",
+    "2021-05-05 through 2023-12-31 source history",
+    "120-second source delay and fixed 500ms project latency",
+    "five-minute signed-flow aggregation",
+    "fit-only max(5000000 stablecoin notional, q99.5) threshold",
+    "70 percent directional imbalance and two-transaction minimum",
+    "thirteen causal features",
+    "confirmed fifteen-minute two-right-bar pivots over the preceding fourteen UTC days",
+    "one fixed HGBT and optional isotonic calibration",
+    "fit, calibration, untouched confirmation and conditional development chronology",
+    "long-short-flat expected-value action equation",
+    "0.5 percent current-NAV planned structural loss, 3x cap, actual funding, 12/18/24bp and one global slot",
+    "no elapsed-time or stage-boundary strategy liquidation",
+    "all original confirmation and development gates"
+  ],
+  "corrected_bundle": {
+    "base64_text_sha256": "e3d47d750d5bdb0ec0590a1eab1975de6b7e66acaf17e127c4a7a520e52005d1",
+    "decoded_tar_sha256": "57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8"
+  }
+}
