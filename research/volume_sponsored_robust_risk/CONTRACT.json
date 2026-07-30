@@ -1,0 +1,102 @@
+{
+  "base_result_id": "RES-20260730-BYBIT-VOLUME-SPONSORED-CHANNEL-001",
+  "claim_id": "CLM-20260730-VOLUME-SPONSORED-ROBUST-RISK-001",
+  "official": {
+    "costs_bps": [
+      13,
+      18,
+      24
+    ],
+    "end": "2026-06-30T23:59:59Z",
+    "restart_nav_usdt": 10000,
+    "start": "2024-01-01T00:00:00Z",
+    "winner_removal": "top 10 percent positive event keys removed before full one-slot rerouting"
+  },
+  "registered_grid": [
+    {
+      "notional_cap": 3.0,
+      "risk_fraction": 0.005
+    },
+    {
+      "notional_cap": 5.0,
+      "risk_fraction": 0.01
+    },
+    {
+      "notional_cap": 8.0,
+      "risk_fraction": 0.02
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.05
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.075
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.1
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.125
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.15
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.2
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.3
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.4
+    },
+    {
+      "notional_cap": 12.0,
+      "risk_fraction": 0.6
+    }
+  ],
+  "schema_version": 1,
+  "selection": {
+    "bootstrap": {
+      "block_days": 30,
+      "resamples": 4000,
+      "sample_days": 730,
+      "seed": 202607301238,
+      "statistic": "q05_mean_daily_log_return",
+      "type": "circular_stationary_fixed_block"
+    },
+    "daily_marked_nav": true,
+    "eligibility": "no liquidation; all daily NAV positive",
+    "period_end": "2024-01-01T00:00:00Z",
+    "period_start": "2022-01-01T00:00:00Z",
+    "primary_cost_bps": 24,
+    "tie_breaks": [
+      "higher ordinary mean daily log return",
+      "lower risk fraction",
+      "lower notional cap"
+    ]
+  },
+  "signal": {
+    "activation_latency_ms": 500,
+    "actual_signed_funding": true,
+    "elapsed_time_exit": false,
+    "entry": "first later observable 1m open",
+    "event": "completed 1h close beyond prior 96 completed hours",
+    "exit": "completed opposite prior-48h channel close",
+    "global_slot_count": 1,
+    "selected_symbol_sides": [
+      "BTCUSDT:LONG",
+      "ETHUSDT:LONG",
+      "ETHUSDT:SHORT"
+    ],
+    "stop": "2ATR20",
+    "volume_z168_threshold": 2.2706072565238586
+  }
+}
