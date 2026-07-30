@@ -1,0 +1,133 @@
+name: Direct forced-liquidation action-value fatal screen Windows
+
+on:
+  push:
+    branches: [agent/r37-direct-liquidation-action-value-001]
+    paths:
+      - '.github/workflows/direct-liquidation-action-value-r37-windows.yml'
+      - 'research/direct_liquidation_action_value/**'
+      - '!research/direct_liquidation_action_value/evidence/**'
+  pull_request:
+    paths:
+      - '.github/workflows/direct-liquidation-action-value-r37-windows.yml'
+      - 'research/direct_liquidation_action_value/**'
+      - '!research/direct_liquidation_action_value/evidence/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: direct-liquidation-action-value-r37-windows-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  fatal-screen-windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r37-direct-liquidation-action-value-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify readable reconstructed authority and runtime
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install 'numpy==2.1.3' 'pandas==2.2.3' 'scipy==1.15.1' 'scikit-learn==1.6.1'
+          @'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          root=Path('research/direct_liquidation_action_value')
+          manifest=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          source=root/manifest['source_file']
+          raw=source.read_bytes()
+          blob=subprocess.check_output(['git','hash-object',str(source)],text=True).strip()
+          assert blob==manifest['source_git_blob_sha1'], (blob,manifest['source_git_blob_sha1'])
+          attestation={'authority':manifest['authority'],'source_file':manifest['source_file'],'git_blob_sha1':blob,
+                       'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw),'original_exact_source_recovered':False,
+                       'official_2024_2026_opened':False,'orders_submitted':False}
+          (root/'SOURCE_ATTESTATION.json').write_text(json.dumps(attestation,indent=2,sort_keys=True)+'\n')
+          '@ | python -
+          python -m py_compile research/direct_liquidation_action_value/run.py
+          python research/direct_liquidation_action_value/run.py --self-test | Tee-Object -FilePath $env:RUNNER_TEMP\SELF_TEST_SOURCE.log
+          python -m json.tool research/direct_liquidation_action_value/CONTRACT.json | Out-Null
+          python -m json.tool research/direct_liquidation_action_value/SOURCE_MANIFEST.json | Out-Null
+      - name: Download immutable event ledger and liquidation samples
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $events = Join-Path $env:RUNNER_TEMP 'events'
+          $liq = Join-Path $env:RUNNER_TEMP 'liquidations'
+          New-Item -ItemType Directory -Force -Path $events,$liq | Out-Null
+          $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+          $zip = Join-Path $env:RUNNER_TEMP 'events.zip'
+          Invoke-WebRequest -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/artifacts/8631380906/zip" -Headers $headers -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $events -Force
+          $eventFiles = Get-ChildItem -Path $events -Recurse -Filter 'events_2022-*.csv'
+          if ($eventFiles.Count -ne 6) { throw "Expected six event files, found $($eventFiles.Count)" }
+          foreach ($date in @('2022-01-01','2022-03-01','2022-05-01','2022-07-01','2022-09-01','2022-11-01')) {
+            $y=$date.Substring(0,4); $m=$date.Substring(5,2); $d=$date.Substring(8,2)
+            $out=Join-Path $liq "liquidations_${date}.csv.gz"
+            Invoke-WebRequest -Uri "https://datasets.tardis.dev/v1/bybit/liquidations/$y/$m/$d/PERPETUALS.csv.gz" -OutFile $out
+          }
+          @'
+          import gzip, hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP']); records=[]
+          for p in sorted((root/'liquidations').glob('*.csv.gz')):
+              with gzip.open(p,'rb') as stream:
+                  while stream.read(1<<20): pass
+              records.append({'file':p.name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'bytes':p.stat().st_size})
+          (root/'LIQUIDATION_SOURCE.json').write_text(json.dumps(records,indent=2,sort_keys=True)+'\n')
+          '@ | python -
+      - name: Run readable evaluator twice and validate
+        shell: pwsh
+        run: |
+          $root='research/direct_liquidation_action_value'
+          $events=Join-Path $env:RUNNER_TEMP 'events'
+          $liq=Join-Path $env:RUNNER_TEMP 'liquidations'
+          $out1=Join-Path $env:RUNNER_TEMP 'direct_liq_out_1'
+          $out2=Join-Path $env:RUNNER_TEMP 'direct_liq_out_2'
+          python "$root/run.py" --events-dir $events --liquidations-dir $liq --output $out1
+          python "$root/run.py" --events-dir $events --liquidations-dir $liq --output $out2
+          @'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          tmp=Path(os.environ['RUNNER_TEMP'])
+          def hashes(root):
+              return {str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
+          first=hashes(tmp/'direct_liq_out_1'); second=hashes(tmp/'direct_liq_out_2'); assert first==second, (first,second)
+          repo=Path('research/direct_liquidation_action_value'); evidence=tmp/'windows_evidence'
+          evidence.mkdir(parents=True,exist_ok=True)
+          for p in (tmp/'direct_liq_out_1').iterdir():
+              if p.is_file(): shutil.copy2(p,evidence/p.name)
+          shutil.copy2(tmp/'LIQUIDATION_SOURCE.json',evidence/'LIQUIDATION_SOURCE.json')
+          shutil.copy2(repo/'SOURCE_ATTESTATION.json',evidence/'SOURCE_ATTESTATION.json')
+          result=json.loads((evidence/'RESULT.json').read_text()); source=json.loads((evidence/'SOURCE_ATTESTATION.json').read_text())
+          assert result['source_authority']==source['authority']=='RECONSTRUCTED_READABLE_AUTHORITY_FROM_FROZEN_CONTRACT'
+          assert result['rank_eligible'] is False and result['official_2024_2026_opened'] is False and result['orders_submitted'] is False
+          assert result['hard_validity_status']=='PASS_RECONSTRUCTED_CAUSAL_SOURCE_EVENT_JOIN_FIXED_ACTION_ACCOUNT'
+          if not result['development_pass']:
+              assert result['confirmation_opened'] is False and result['confirmation'] is None
+          print(json.dumps({'status':result['status'],'development_pass':result['development_pass'],
+                            'confirmation_opened':result['confirmation_opened'],'source_sha256':source['sha256']},sort_keys=True))
+          '@ | python -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-liquidation-action-value-r37-windows-${{ github.run_id }}
+          path: ${{ runner.temp }}/windows_evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
