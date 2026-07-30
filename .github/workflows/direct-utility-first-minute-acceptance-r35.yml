@@ -1,0 +1,142 @@
+name: Direct-utility first-minute acceptance Core r35
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/direct_utility_first_minute_acceptance/**"
+      - "research/execution_aligned_direct_utility_core/**"
+      - ".github/workflows/direct-utility-first-minute-acceptance-r35.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: direct-utility-first-minute-r35-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: "0"
+  OMP_NUM_THREADS: "2"
+  OPENBLAS_NUM_THREADS: "2"
+  MKL_NUM_THREADS: "2"
+  NUMEXPR_NUM_THREADS: "2"
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pinned research runtime
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install \
+            numpy==2.1.3 \
+            pandas==2.2.3 \
+            pyarrow==18.1.0 \
+            scikit-learn==1.5.2 \
+            gdown==5.2.0
+
+      - name: Materialize and verify exact sources
+        run: |
+          set -euo pipefail
+          python research/execution_aligned_direct_utility_core/materialize.py
+          python research/direct_utility_first_minute_acceptance/materialize.py
+          python -m py_compile \
+            research/execution_aligned_direct_utility_core/materialized/*.py \
+            research/direct_utility_first_minute_acceptance/materialized/run.py
+
+      - name: Download registered canonical pre-2024 datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deps/zips deps/smc_data
+          download() {
+            local id="$1" out="$2" sha="$3" segment="$4" symbol="$5"
+            gdown --id "$id" -O "deps/zips/$out"
+            echo "$sha  deps/zips/$out" | sha256sum -c -
+            mkdir -p "deps/smc_data/$segment/$symbol"
+            unzip -q "deps/zips/$out" -d "deps/smc_data/$segment/$symbol"
+            test -s "deps/smc_data/$segment/$symbol/DATASET_MANIFEST.json"
+          }
+          download 1kzyUwgZfWNlZwIXGIgAKQhFHZmzlVHlM BTC2021.zip 7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca PRE_2024_2021 BTCUSDT
+          download 1lEZQCE-T4OXcGVaLN9HFAekCnXaUmeQ6 BTC2022.zip 273995bf7efd905c147237ff14978b92ef65f4703b290986ba6fab5fe5e3e42c PRE_2024_2022 BTCUSDT
+          download 1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt BTC2023.zip ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46 PRE_2024_2023 BTCUSDT
+          download 1TQi1khEWNYHL692Y2xeW3l6-P9Tcwv6A ETH2021.zip b2ff98c7ea8968ec942bdf79a69fcd75d37871ca9ca9d6c42778ecf098945295 PRE_2024_2021 ETHUSDT
+          download 1bP0MizmZhSwhEOkf6YodfuCxbMZZYYu7 ETH2022.zip 681cb5c21826f05a12e40b25818c40d1be46cf4b394676998d8a6856180271da PRE_2024_2022 ETHUSDT
+          download 1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR ETH2023.zip 87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322 PRE_2024_2023 ETHUSDT
+
+      - name: Run frozen parity and sensor sequence
+        id: economic
+        continue-on-error: true
+        shell: bash
+        env:
+          DIRECT_CORE_DATA_ROOT: ${{ github.workspace }}/deps/smc_data
+          DIRECT_CORE_OUTPUT_ROOT: ${{ github.workspace }}/artifact/work
+          FIRST_MINUTE_OUTPUT: ${{ github.workspace }}/artifact/result
+        run: |
+          set -o pipefail
+          mkdir -p artifact/result
+          python research/direct_utility_first_minute_acceptance/materialized/run.py --force \
+            2>&1 | tee artifact/RUN.log
+
+      - name: Seal decision evidence
+        if: always()
+        shell: bash
+        env:
+          ECONOMIC_OUTCOME: ${{ steps.economic.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          cp research/direct_utility_first_minute_acceptance/SOURCE_MANIFEST.json artifact/FIRST_MINUTE_SOURCE_MANIFEST.json
+          cp research/execution_aligned_direct_utility_core/SOURCE_MANIFEST.json artifact/BASE_CORE_SOURCE_MANIFEST.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('artifact')
+          result=root/'result'/'RESULT.json'
+          status=None
+          if result.exists():
+              status=json.loads(result.read_text()).get('status')
+          (root/'WORKFLOW_STATUS.json').write_text(json.dumps({
+              'schema_version':1,
+              'claim_id':'CLM-20260730-DIRECT-UTILITY-FIRST-MINUTE-ACCEPTANCE-001',
+              'result_id':'RES-20260730-DIRECT-UTILITY-FIRST-MINUTE-ACCEPTANCE-001',
+              'economic_outcome':os.environ.get('ECONOMIC_OUTCOME'),
+              'result_status':status,
+              'orders_submitted':False
+          },indent=2)+'\n')
+          PY
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: direct-utility-first-minute-acceptance-r35
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce scientific terminal state
+        if: always()
+        run: |
+          test -s artifact/result/RESULT.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifact/result/RESULT.json').read_text())
+          assert r['orders_submitted'] is False
+          assert r['base_parity']['pass'] is True
+          print(r['status'])
+          PY
