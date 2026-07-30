@@ -36,9 +36,15 @@ jobs:
           for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json RESULT_FULL.json.gz.b64 REPORT.md VALIDATION_ATTESTATION.json materialize.py; do
             git show "$commit:$src/$f" > "$out/carrier/$f"
           done
-          echo '0ea2750a9e089a2b4d9e994deb3f5903da4ae589a57522fcd13a7c023b5d8131  artifact/source.tar.gz' > /tmp/expected.sha
-          base64 -d "$out/carrier/SOURCE_BUNDLE.tar.gz.b64" > "$out/source.tar.gz"
-          sha256sum -c /tmp/expected.sha
+          python - <<'PY'
+          from pathlib import Path
+          import base64, hashlib
+          src=Path('artifact/carrier/SOURCE_BUNDLE.tar.gz.b64')
+          text=''.join(src.read_text(encoding='utf-8-sig').split())
+          raw=base64.b64decode(text, validate=True)
+          assert hashlib.sha256(raw).hexdigest()=='0ea2750a9e089a2b4d9e994deb3f5903da4ae589a57522fcd13a7c023b5d8131'
+          Path('artifact/source.tar.gz').write_bytes(raw)
+          PY
           tar -xzf "$out/source.tar.gz" -C "$out/materialized"
           python -m py_compile "$out/materialized"/*.py
           find "$out/materialized" -type f -printf '%P\t%s\n' | sort > "$out/MATERIALIZED_FILE_SIZES.tsv"
