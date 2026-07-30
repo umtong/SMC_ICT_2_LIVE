@@ -22,7 +22,7 @@ def compact_text(path: Path) -> str:
     return "".join(path.read_text(encoding="utf-8").split())
 
 
-def unique_candidates(base: str, parts: list[str]) -> Iterable[tuple[str, str]]:
+def unique_text_candidates(base: str, parts: list[str]) -> Iterable[tuple[str, str]]:
     seen: set[str] = set()
 
     def emit(name: str, value: str) -> Iterable[tuple[str, str]]:
@@ -68,6 +68,60 @@ def is_exact_source(raw: bytes, manifest: dict[str, object]) -> bool:
     )
 
 
+def inspect_gzip(name: str, gz: bytes, manifest: dict[str, object]) -> tuple[dict[str, object], bytes | None]:
+    attempt: dict[str, object] = {
+        "candidate": name,
+        "gzip_bytes": len(gz),
+        "gzip_sha256": hashlib.sha256(gz).hexdigest(),
+    }
+    attempt["gzip_hash_matches"] = attempt["gzip_sha256"] == manifest["gzip_sha256"]
+
+    raw: bytes | None = None
+    try:
+        raw = gzip.decompress(gz)
+        attempt["full_decompress_error"] = None
+        attempt["source_bytes"] = len(raw)
+        attempt["source_sha256"] = hashlib.sha256(raw).hexdigest()
+    except Exception as exc:
+        attempt["full_decompress_error"] = f"{type(exc).__name__}: {exc}"
+        partial, partial_error = partial_gzip_decompress(gz)
+        attempt["partial_decompress_error"] = partial_error
+        attempt["partial_source_bytes"] = len(partial)
+        attempt["partial_source_sha256"] = hashlib.sha256(partial).hexdigest()
+        raw = partial if partial else None
+
+    if raw is not None and is_exact_source(raw, manifest):
+        attempt["status"] = "selected_exact_source_match"
+    else:
+        attempt["status"] = "source_not_exact"
+    return attempt, raw
+
+
+def splice_candidates(named_gz: list[tuple[str, bytes]], expected_len: int) -> Iterable[tuple[str, bytes]]:
+    """Recover a stream when one carrier holds a valid prefix and another a valid suffix.
+
+    The search is hash-authoritative and bounded: at most O(n * expected_len)
+    candidates for the two small carriers in this claim.
+    """
+    seen_hashes: set[str] = set()
+    for left_name, left in named_gz:
+        for right_name, right in named_gz:
+            if left_name == right_name:
+                continue
+            min_prefix = max(1, expected_len - len(right))
+            max_prefix = min(len(left), expected_len - 1)
+            for prefix_len in range(min_prefix, max_prefix + 1):
+                suffix_len = expected_len - prefix_len
+                if suffix_len <= 0 or suffix_len > len(right):
+                    continue
+                candidate = left[:prefix_len] + right[-suffix_len:]
+                digest = hashlib.sha256(candidate).hexdigest()
+                if digest in seen_hashes:
+                    continue
+                seen_hashes.add(digest)
+                yield f"splice_{left_name}_prefix{prefix_len}_{right_name}_suffix{suffix_len}", candidate
+
+
 def main() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     base = compact_text(BASE_PATH) if BASE_PATH.exists() else ""
@@ -76,74 +130,59 @@ def main() -> None:
 
     attempts: list[dict[str, object]] = []
     selected: dict[str, object] | None = None
+    selected_raw: bytes | None = None
     largest_partial = b""
     largest_partial_name: str | None = None
+    named_gz: list[tuple[str, bytes]] = []
 
-    for name, candidate in unique_candidates(base, parts):
-        attempt: dict[str, object] = {
-            "candidate": name,
-            "base64_chars": len(candidate),
-        }
+    for name, text in unique_text_candidates(base, parts):
         try:
-            gz = decode_candidate(candidate)
-            attempt["gzip_bytes"] = len(gz)
-            attempt["gzip_sha256"] = hashlib.sha256(gz).hexdigest()
-            attempt["gzip_hash_matches"] = attempt["gzip_sha256"] == manifest["gzip_sha256"]
-
-            raw: bytes | None = None
-            full_error: str | None = None
-            try:
-                raw = gzip.decompress(gz)
-            except Exception as exc:
-                full_error = f"{type(exc).__name__}: {exc}"
-
-            if raw is not None:
-                attempt["source_bytes"] = len(raw)
-                attempt["source_sha256"] = hashlib.sha256(raw).hexdigest()
-                attempt["full_decompress_error"] = None
-                if len(raw) > len(largest_partial):
-                    largest_partial = raw
-                    largest_partial_name = name
-                if is_exact_source(raw, manifest):
-                    OUTPUT_PATH.write_bytes(raw)
-                    attempt["status"] = "selected_exact_source_match"
-                    attempts.append(attempt)
-                    selected = attempt
-                    break
-            else:
-                partial, partial_error = partial_gzip_decompress(gz)
-                attempt["full_decompress_error"] = full_error
-                attempt["partial_decompress_error"] = partial_error
-                attempt["partial_source_bytes"] = len(partial)
-                attempt["partial_source_sha256"] = hashlib.sha256(partial).hexdigest()
-                if len(partial) > len(largest_partial):
-                    largest_partial = partial
-                    largest_partial_name = name
-                if is_exact_source(partial, manifest):
-                    OUTPUT_PATH.write_bytes(partial)
-                    attempt["status"] = "selected_exact_source_match_from_truncated_gzip"
-                    attempts.append(attempt)
-                    selected = attempt
-                    break
-
-            attempt["status"] = (
-                "gzip_hash_mismatch_or_incomplete_source"
-                if not attempt["gzip_hash_matches"]
-                else "gzip_hash_match_but_source_mismatch"
-            )
-            attempts.append(attempt)
+            gz = decode_candidate(text)
         except Exception as exc:
-            attempt["status"] = "base64_decode_error"
-            attempt["error"] = f"{type(exc).__name__}: {exc}"
-            attempts.append(attempt)
+            attempts.append({
+                "candidate": name,
+                "base64_chars": len(text),
+                "status": "base64_decode_error",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            continue
+
+        named_gz.append((name, gz))
+        attempt, raw = inspect_gzip(name, gz, manifest)
+        attempt["base64_chars"] = len(text)
+        attempts.append(attempt)
+        if raw is not None and len(raw) > len(largest_partial):
+            largest_partial = raw
+            largest_partial_name = name
+        if attempt["status"] == "selected_exact_source_match":
+            selected = attempt
+            selected_raw = raw
+            break
+
+    splice_attempts = 0
+    if selected is None and len(named_gz) >= 2:
+        expected_gzip_bytes = int(manifest["gzip_bytes"])
+        for name, gz in splice_candidates(named_gz, expected_gzip_bytes):
+            splice_attempts += 1
+            attempt, raw = inspect_gzip(name, gz, manifest)
+            if attempt["gzip_hash_matches"] or attempt["status"] == "selected_exact_source_match":
+                attempts.append(attempt)
+            if raw is not None and len(raw) > len(largest_partial):
+                largest_partial = raw
+                largest_partial_name = name
+            if attempt["status"] == "selected_exact_source_match":
+                selected = attempt
+                selected_raw = raw
+                attempts.append(attempt)
+                break
+
+    if selected_raw is not None:
+        OUTPUT_PATH.write_bytes(selected_raw)
 
     partial_summary: dict[str, object] | None = None
     if largest_partial:
         PARTIAL_PATH.write_bytes(largest_partial)
-        try:
-            tail = largest_partial.decode("utf-8", errors="replace")[-4000:]
-        except Exception:
-            tail = ""
+        tail = largest_partial.decode("utf-8", errors="replace")[-4000:]
         partial_summary = {
             "candidate": largest_partial_name,
             "bytes": len(largest_partial),
@@ -157,6 +196,7 @@ def main() -> None:
         "primary_base64_chars": len(base),
         "part_files": [path.name for path in part_paths],
         "part_base64_chars": [len(part) for part in parts],
+        "splice_attempts": splice_attempts,
         "attempts": attempts,
         "largest_partial": partial_summary,
         "selected": selected,
@@ -167,8 +207,7 @@ def main() -> None:
     if selected is None:
         print(report_text)
         raise RuntimeError(
-            "No carrier produced the exact manifest source. The largest recoverable "
-            "partial source and its tail were recorded."
+            "No carrier or prefix/suffix splice produced the exact manifest source."
         )
 
     print(json.dumps(selected, sort_keys=True))
