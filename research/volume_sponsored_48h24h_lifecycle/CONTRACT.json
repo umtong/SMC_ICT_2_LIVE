@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1830-48H24H-SPONSORED-LIFECYCLE-001",
+  "result_id": "RES-20260730-48H24H-SPONSORED-LIFECYCLE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "parent_event": {
+    "decision": "completed one-hour close beyond prior 48 completed hours",
+    "sponsorship": "log turnover z-score versus prior 168 completed hours > 2.2706072565238586",
+    "symbol_sides": ["BTCUSDT:LONG", "ETHUSDT:LONG", "ETHUSDT:SHORT"]
+  },
+  "execution": {
+    "entry": "first complete one-minute open strictly after completed-hour decision plus 500ms",
+    "disaster_stop": "2 ATR20 from executable entry",
+    "parent_exit": "first later executable one-minute open after completed one-hour close through opposite prior-24h channel",
+    "same_minute_ambiguity": "adverse stop first",
+    "funding": "actual signed funding",
+    "one_global_slot": true,
+    "elapsed_time_liquidation": false
+  },
+  "lifecycle_variants": {
+    "reclaim1": "first completed 1h close back inside frozen 48h breakout boundary",
+    "reclaim2": "second consecutive completed 1h close back inside frozen 48h breakout boundary",
+    "reclaim_mid": "after first reclaim, first completed adverse close through breakout candle body midpoint",
+    "parent": "unchanged opposite prior-24h channel exit"
+  },
+  "risk": {"planned_nav_loss_fraction": 0.005, "notional_cap": 3.0},
+  "primary_cost_bp": 24,
+  "diagnostic_costs_bp": [15, 18, 24],
+  "selection": {
+    "year": 2022,
+    "minimum_completed_trades": 60,
+    "requires_base_positive": true,
+    "requires_top5_deleted_full_reroute_positive": true,
+    "requires_positive_median_trade": true,
+    "requires_both_halfyears_positive": true,
+    "confirmation_year": 2023,
+    "official_open_rule": "same gates unchanged"
+  },
+  "official_evaluation": ["2024-01-01T00:00:00Z", "2026-07-01T00:00:00Z"],
+  "official_opened": false,
+  "orders_submitted": false
+}
