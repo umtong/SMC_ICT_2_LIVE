@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-XSEC-OVERSHOOT-REVERSION-CORE-001",
+  "claim_id": "CLM-20260730-XSEC-OVERSHOOT-REVERSION-CORE-001",
+  "status": "RETIRED_PRE2024_RESIDUAL_REVERSION_FAILURE",
+  "economic_status": "FREQUENT_GROSS_REVERSION_SUBCOST_NOT_CORE",
+  "events": {"total": 1421, "2022": 725, "2023": 696},
+  "zero_cost": {
+    "2022": {"multiple": 1.0812393074411624, "trades": 409, "pf": 1.1095146404771488, "g_daily": 0.0002140171179669803},
+    "2023": {"multiple": 1.0220841629547641, "trades": 381, "pf": 1.0317304524851159, "g_daily": 0.00005984792675706174},
+    "continuous": {"multiple": 1.1051175724997893, "trades": 790, "pf": 1.07034348496046, "g_daily": 0.00013692955175126365, "mdd": -0.10828496242799857}
+  },
+  "costs": {
+    "12bp": {
+      "2022_multiple": 0.9855451122604681,
+      "2023_multiple": 0.9053487968148759,
+      "continuous_multiple": 0.8922620815917965,
+      "continuous_trades": 790,
+      "continuous_pf": 0.9225214023124773,
+      "continuous_g_daily": -0.0001561458574365071,
+      "winner_reroute_multiple": 0.7769940966618972
+    },
+    "18bp": {
+      "2022_multiple": 0.9445781833865471,
+      "2023_multiple": 0.8578733612533809,
+      "continuous_multiple": 0.8103284611484295,
+      "continuous_trades": 790,
+      "continuous_pf": 0.8593570036378919,
+      "continuous_g_daily": -0.00028806207190668065,
+      "winner_reroute_multiple": 0.7091299463885213
+    },
+    "24bp": {
+      "2022_multiple": 0.9073404592716097,
+      "2023_multiple": 0.8159485387744957,
+      "continuous_multiple": 0.7403431219136497,
+      "continuous_trades": 790,
+      "continuous_pf": 0.8020159305185279,
+      "continuous_g_daily": -0.0004117529078477844,
+      "continuous_mdd": -0.2912223234289203,
+      "median_holding_min": 240.0,
+      "top5_positive_share": 0.06949531274686004,
+      "winner_reroute_multiple": 0.6509725816672217
+    }
+  },
+  "zero_cost_exit_diagnostics": {
+    "hard_stop": {"trades": 190, "pnl": -10156.796392018254, "wins": 0},
+    "relative_extension_state_loss": {"trades": 233, "pnl": 496.09893034458946, "wins": 102},
+    "relative_half_reversion": {"trades": 367, "pnl": 10711.873186671546, "wins": 279}
+  },
+  "decision": [
+    "The same deterministic rule was mildly positive in both forward years before cost, but 12bp already made both years negative.",
+    "This is not a sparse-winner failure: 790 trades, 240-minute median hold and only 6.95% top-five positive-PnL share at 24bp.",
+    "Do not rescue with horizon, z threshold, target/state-loss fraction, hard stop, symbol/side filters, ML, risk, leverage or lower official-period costs.",
+    "Official 2024-2026 remains unopened; change the economic information source."
+  ],
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}
