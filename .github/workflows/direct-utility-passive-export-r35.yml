@@ -1,0 +1,29 @@
+name: Export direct-utility passive-audit source
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/direct-utility-passive-export-r35.yml'
+      - 'research/direct_utility_passive_entry_audit/vendor/**'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify vendored source hashes
+        run: |
+          set -euo pipefail
+          cd research/direct_utility_passive_entry_audit/vendor
+          sha256sum --check SOURCE_SHA256SUMS.txt
+          python -m py_compile *.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-utility-passive-source-r35-${{ github.run_id }}
+          path: research/direct_utility_passive_entry_audit/vendor
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
