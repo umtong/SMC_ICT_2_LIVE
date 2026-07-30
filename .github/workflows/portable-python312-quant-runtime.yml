@@ -1,0 +1,89 @@
+name: Portable Python 3.12 quant runtime
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/portable-python312-quant-runtime.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-python312-quant-runtime-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r23-swipalnam-liquidity-delivery-ml-001
+          fetch-depth: 1
+
+      - name: Build relocatable Python and quant environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact/runtime artifact/project
+          curl -L --fail --retry 5 \
+            -o artifact/python312.tar.gz \
+            'https://github.com/astral-sh/python-build-standalone/releases/download/20260203/cpython-3.12.12%2B20260203-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz'
+          tar -xzf artifact/python312.tar.gz -C artifact/runtime
+          PYTHON=artifact/runtime/python/bin/python3
+          "$PYTHON" -m pip install --upgrade pip
+          "$PYTHON" -m pip install \
+            'numpy==2.3.3' \
+            'pandas==2.3.3' \
+            'pyarrow==21.0.0' \
+            'scikit-learn==1.7.2' \
+            'requests==2.32.5'
+          "$PYTHON" - <<'PY'
+          import json
+          import numpy
+          import pandas
+          import pyarrow
+          import sklearn
+          from pathlib import Path
+
+          payload = {
+              'python': __import__('sys').version,
+              'numpy': numpy.__version__,
+              'pandas': pandas.__version__,
+              'pyarrow': pyarrow.__version__,
+              'scikit_learn': sklearn.__version__,
+          }
+          Path('artifact/runtime/ENVIRONMENT.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(payload, indent=2))
+          PY
+          cp -a research artifact/project/
+          cp -a scripts artifact/project/
+          mkdir -p artifact/project/data
+          cp -a data/contracts artifact/project/data/
+          cp pyproject.toml artifact/project/
+          git rev-parse HEAD > artifact/project/STRATEGY_SOURCE_SHA.txt
+          tar --zstd -cf artifact/python312-quant-runtime.tar.zst -C artifact/runtime python
+          tar --zstd -cf artifact/swipalnam-strategy-source.tar.zst -C artifact/project .
+          sha256sum \
+            artifact/python312-quant-runtime.tar.zst \
+            artifact/swipalnam-strategy-source.tar.zst \
+            > artifact/SHA256SUMS
+
+      - name: Upload portable runtime and strategy source
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-python312-quant-runtime
+          path: |
+            artifact/python312-quant-runtime.tar.zst
+            artifact/swipalnam-strategy-source.tar.zst
+            artifact/SHA256SUMS
+            artifact/runtime/ENVIRONMENT.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
