@@ -1,0 +1,92 @@
+{
+  "account": {
+    "costs_bp": [
+      12,
+      18,
+      24
+    ],
+    "elapsed_time_exit": false,
+    "external_delay_ms": 2000,
+    "funding": "actual signed Bybit",
+    "global_slots": 1,
+    "latency_ms": 500,
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005,
+    "stage_boundary": "mark and retain slot"
+  },
+  "actions": {
+    "CORE": "full +1.5R realization, inherited 2ATR stop, opposite prior-48h channel state exit",
+    "EXPANSION": "programization-corrected protected-boundary lifecycle, inherited 2ATR stop and opposite prior-48h channel exit",
+    "FLAT": "no entry"
+  },
+  "chronology": {
+    "2021": "normalization context only",
+    "2022": "fit fully resolved stacked action rows",
+    "2023": "first untouched forward screen",
+    "official": "closed unless frozen 2023 gate passes"
+  },
+  "claim_id": "CLM-20260730-XVENUE-SPONSORSHIP-CORE-EXPANSION-001",
+  "external_source": {
+    "availability": "same completed UTC hour plus fixed 2s cross-provider allowance; then project-fixed 500ms order latency",
+    "datasets": [
+      "DS-BINANCE-USDM-BTCETH-1M-202110-202212-AW1",
+      "DS-BINANCE-USDM-5M-2023-2025-R1"
+    ],
+    "features": [
+      "side-signed Binance 1h and prior 3h returns",
+      "side-signed Binance taker imbalance for 1h and prior 3h",
+      "prior-only 30d quote-volume z-score",
+      "Bybit-minus-Binance signed return gap",
+      "BTC/ETH peer Binance return/flow confirmation",
+      "inherited Bybit breakout/funding/inventory state"
+    ]
+  },
+  "gate": {
+    "better_than_best_constant_action": true,
+    "minimum_completed_trades": 25,
+    "pf_above_one": true,
+    "positive_18bp": true,
+    "positive_24bp": true,
+    "positive_exact_winner_deleted_reroute": true,
+    "positive_median": true
+  },
+  "inherited_event": {
+    "boundary": "prior 96 completed one-hour bars",
+    "bybit_sponsorship": "breakout-hour log-volume z-score above 2.2706072565238586, frozen from calendar-2021 upper quartile",
+    "decision": "completed 1h close outside boundary",
+    "products": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "selected_sides": [
+      "BTCUSDT:LONG",
+      "ETHUSDT:LONG",
+      "ETHUSDT:SHORT"
+    ]
+  },
+  "model": {
+    "alpha": 10.0,
+    "grid": false,
+    "selection": "highest positive CORE/EXPANSION prediction else flat",
+    "target": "direct fixed-risk 24bp account return",
+    "type": "StandardScaler + Ridge"
+  },
+  "objective": "At the inherited high-volume Bybit 96h external-boundary event, test whether completed Binance USD-M aggressive-flow sponsorship available at the original decision can route unchanged CORE, unchanged protected-boundary EXPANSION, or flat.",
+  "orders_submitted": false,
+  "prohibited_rescue": [
+    "flow horizon",
+    "flow threshold",
+    "model family/hyperparameters",
+    "action geometry",
+    "channel lengths",
+    "volume threshold",
+    "target/stop",
+    "cost",
+    "risk/leverage",
+    "session/side",
+    "official-period filter",
+    "additional SMC gate"
+  ],
+  "result_id": "RES-20260730-XVENUE-SPONSORSHIP-CORE-EXPANSION-001",
+  "schema_version": 1
+}
