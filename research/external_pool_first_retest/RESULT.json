@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-EXTERNAL-POOL-FIRST-RETEST-001",
+  "claim_id": "CLM-20260730-EXTERNAL-POOL-FIRST-RETEST-001",
+  "status": "RETIRED_PRE2024_FIRST_SOURCE_RETEST_FAILURE",
+  "validation_stage": "canonical BTCUSDT January-June 2023; March-April development and unchanged May-June confirmation",
+  "ranking_eligibility": "not eligible; 12/18/24bp paths are negative and official 2024-2026 remained sealed",
+  "funnel": {
+    "parent_candidates": 3831,
+    "no_first_retest": 459,
+    "first_retest_failed": 3148,
+    "target_consumed_before_entry": 6,
+    "invalid_geometry": 1,
+    "retest_candidates": 217
+  },
+  "period_counts": {
+    "context": {"candidates": 70, "accept": 37, "reject": 33},
+    "development": {"candidates": 80, "accept": 44, "reject": 36},
+    "confirmation": {"candidates": 67, "accept": 43, "reject": 24}
+  },
+  "account": {
+    "development": {
+      "selected_trades": 79,
+      "zero_cost_multiple": 1.1195881377,
+      "zero_cost_pf": 1.7687913815,
+      "12bp_multiple": 0.8795668947,
+      "18bp_multiple": 0.8177142756,
+      "24bp_multiple": 0.7907302025,
+      "24bp_pf": 0.3274471392
+    },
+    "confirmation": {
+      "selected_trades": 67,
+      "zero_cost_multiple": 1.0966445663,
+      "zero_cost_pf": 1.8979059201,
+      "12bp_multiple": 0.8723257382,
+      "18bp_multiple": 0.8212083246,
+      "24bp_multiple": 0.8006176230,
+      "24bp_pf": 0.2485560267
+    }
+  },
+  "action_diagnosis": {
+    "development_rejection_12bp_multiple": 0.9904546558,
+    "confirmation_rejection_12bp_multiple": 1.0358343507,
+    "development_rejection_24bp_multiple": 0.9299723137,
+    "confirmation_rejection_24bp_multiple": 0.9786073524,
+    "acceptance": "negative after cost in both stages",
+    "median_entry_chase_bp_development": 4.217166,
+    "median_entry_chase_bp_confirmation": 2.289153,
+    "interpretation": "first-retest confirmation improves gross selection, but crossing after confirmation still consumes more edge than remains"
+  },
+  "core_or_expansion": "non-sparse but sub-cost; rejection contains a weak rare-rotation component, acceptance is negative",
+  "decision": "Retire this exact confirmed-first-retest market-entry family without changing source pools, initial state, retest length, confirmation, target, stop, cost, risk, leverage or adding ML. A separately preregistered passive source-limit action may test whether execution at the high-resistance level itself preserves the gross edge.",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
