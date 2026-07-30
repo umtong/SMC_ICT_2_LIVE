@@ -1,0 +1,55 @@
+name: Validate GPT56 BTC 500ms replenishment result
+
+on:
+  push:
+    branches: [agent/gpt56-500ms-replenishment-core-001]
+    paths:
+      - "research/btc_500ms_replenishment_core_gpt56/**"
+      - ".github/workflows/gpt56-500ms-replenishment-validate.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/btc_500ms_replenishment_core_gpt56/**"
+      - ".github/workflows/gpt56-500ms-replenishment-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Materialize and compile deterministic source
+        run: |
+          set -euo pipefail
+          root=research/btc_500ms_replenishment_core_gpt56
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
+      - name: Validate compact scientific decision
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/btc_500ms_replenishment_core_gpt56')
+          c=json.loads((root/'CONTRACT.json').read_text())
+          r=json.loads((root/'RESULT.json').read_text())
+          assert c['result_id']==r['result_id']
+          assert c['execution']['elapsed_time_exit'] is False
+          assert c['account']['planned_loss_fraction']==0.005
+          assert r['status']=='RETIRED_BTC_500MS_REPLENISHMENT_PAYOFF_GEOMETRY_FAILURE'
+          assert r['event_counts']['development']['ACCEPT']==1174
+          assert r['event_counts']['confirmation']['ABSORB']==616
+          assert r['costs']['12']['ordinary']['development']['multiple'] < 1
+          assert r['costs']['24']['ordinary']['confirmation']['multiple'] < 1
+          assert r['payoff_geometry_24bp']['median_gross_target_bp'] < 24
+          assert r['programization']['optimized_scanner_parity'].startswith('16 deterministic events')
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False and r['live_permission'] is False
+          print('compact result valid')
+          PY
