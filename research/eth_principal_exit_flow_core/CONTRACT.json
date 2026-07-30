@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ETH-PRINCIPAL-EXIT-FLOW-CORE-001",
+  "parent_failure": "RES-20260730-ETH-VALIDATOR-WITHDRAWAL-ECONOMIC-001",
+  "comparison_confidence": "LOW_EXPOSED_SEMANTIC_DIAGNOSTIC",
+  "source": {
+    "provider": "ethPandaOps Xatu public data",
+    "table": "canonical_beacon_block_withdrawal",
+    "period": ["2023-04-12", "2023-12-31"],
+    "source_event_key": "withdrawal_index",
+    "principal_scale_threshold_eth": 16.0,
+    "principal_scale_definition": "withdrawal_amount >= 16 ETH; conservative protocol-scale proxy, not an exact full-exit label",
+    "partial_reward_definition": "withdrawal_amount < 16 ETH",
+    "availability": "completed UTC hour plus fixed 180 seconds",
+    "required_conservation": [
+      "principal rows plus partial rows equals all withdrawal rows",
+      "principal ETH plus partial ETH equals all withdrawn ETH",
+      "global withdrawal indices remain unique and contiguous"
+    ],
+    "market_outcomes_prohibited_until_source_pass": true
+  },
+  "economic_screen": {
+    "primary_stream": "principal_scale",
+    "negative_control_stream": "partial_reward",
+    "event": "completed stream hourly ETH amount at or above its prior-only rolling 720-hour 90th percentile",
+    "market": "Bybit ETHUSDT USDT-linear perpetual",
+    "chronology": {
+      "fit": ["2023-04-12", "2023-09-01"],
+      "forward_development": ["2023-09-01", "2023-11-01"],
+      "frozen_confirmation": ["2023-11-01", "2024-01-01"],
+      "official_2024_2026_opened": false
+    },
+    "actions": ["long_absorption", "short_acceptance", "flat"],
+    "entry": "first observable one-minute open after source availability plus fixed 500ms order latency",
+    "long_geometry": "completed event-hour low structural invalidation and prior-only 24-hour high objective",
+    "short_geometry": "completed event-hour high structural invalidation and prior-only 24-hour low objective",
+    "same_minute_ambiguity": "structural stop first",
+    "gap_stop": "observed one-minute open when beyond the structural stop",
+    "funding": "actual signed Bybit funding",
+    "costs_bp": [13, 18, 24],
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "global_slot": 1,
+    "elapsed_time_liquidation": false,
+    "stage_boundary": "mark and stop new entries; never strategy-close; training excludes unresolved labels",
+    "model": "eight fixed-seed event-bootstrap HGBT regressors of direct 24bp account action value; score is mean minus 0.5 standard deviation",
+    "model_refit_after_fit": false
+  },
+  "pass_rule": {
+    "primary_cost_bp": 24,
+    "minimum_trades_each_forward_stage": 15,
+    "requirements": [
+      "principal-scale ML policy ends above 10000 USDT in development and confirmation",
+      "principal-scale exact positive-winner deletion and full rerouting ends above 10000 USDT in both forward stages",
+      "principal-scale policy exceeds the identically evaluated partial-reward control in both forward stages",
+      "no forced liquidation or prohibited elapsed-time exit"
+    ]
+  },
+  "prohibitions": [
+    "no change to the 16 ETH source split after market outcomes",
+    "no threshold, rolling-window, quantile, source-delay, action-geometry, cost, risk or leverage rescue",
+    "no 2024-2026 opening unless the frozen pre-2024 pass rule is met",
+    "no credentials or orders"
+  ]
+}
