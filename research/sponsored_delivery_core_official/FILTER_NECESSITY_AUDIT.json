@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "audit_id": "AUD-20260730-SPONSORED-CORE-FILTER-NECESSITY-001",
+  "claim_id": "CLM-20260730-2030-SPONSORED-DELIVERY-CORE-OFFICIAL-001",
+  "question": "Did the funding-crowding admission state merely over-filter valid accepted-delivery trades, or was it necessary to establish a pre-official winner-resistant Core?",
+  "same_mechanism": {
+    "event": "completed one-hour close beyond the prior 96 completed-hour external range on exceptional completed business",
+    "action": "acceptance-direction entry after fixed 500ms, inherited 2ATR stop, full +1.5R realization, opposite prior-48h channel state loss",
+    "account": "actual signed funding, one global slot, fixed 0.5% current-NAV planned loss, 3x notional cap, 24bp principal cost"
+  },
+  "original_signal_pr597": {
+    "admission": "volume sponsorship and inherited BTC-long / ETH-long-or-short side set; no less-crowded funding-z admission",
+    "preofficial_2022": {
+      "trades": 74,
+      "multiple": 1.087189149841832,
+      "profit_factor": 1.4884107829580673,
+      "median_return": 0.0053947524485402736,
+      "top5_positive_pnl_share": 0.14195621217626206,
+      "exact_top10pct_all_trade_deletion_reroute_multiple": 1.0383069364101283
+    },
+    "preofficial_2023": {
+      "trades": 106,
+      "multiple": 1.0429540636420631,
+      "profit_factor": 1.164143689451726,
+      "median_return": 0.003813005844482231,
+      "top5_positive_pnl_share": 0.10663345686914363,
+      "exact_top10pct_all_trade_deletion_reroute_multiple": 0.9823417335838606
+    },
+    "preofficial_gate": "FAIL_2023_EXACT_WINNER_DELETION",
+    "research_exposed_official_diagnostic_24bp": {
+      "trades": 213,
+      "multiple": 1.197939298951365,
+      "geometric_daily_growth": 0.00019804902771025645,
+      "profit_factor": 1.3604054102372596,
+      "median_return": 0.005093210363408764,
+      "top5_positive_pnl_share": 0.05467218063253943,
+      "exact_top10pct_all_trade_deletion_reroute_multiple": 1.0481005141502762
+    },
+    "authority": "research-exposed diagnostic only; not eligible for Core ranking because the frozen 2023 pre-official robustness gate failed"
+  },
+  "less_crowded_signal_lifecycle_audit": {
+    "admission": "the same completed-volume sponsorship plus the pre-2024-frozen signed funding-crowding state; sizing uses a causal expanding adverse-funding q95 reserve",
+    "preofficial_2022": {
+      "trades": 52,
+      "multiple": 1.09154,
+      "profit_factor": 1.823,
+      "median_return": 0.005504,
+      "top5_positive_pnl_share": 0.1831,
+      "winner_removed_multiple": 1.06314
+    },
+    "preofficial_2023": {
+      "trades": 75,
+      "multiple": 1.09923,
+      "profit_factor": 1.637,
+      "median_return": 0.004675,
+      "top5_positive_pnl_share": 0.1274,
+      "winner_removed_multiple": 1.06609
+    },
+    "official_2024_2026_24bp": {
+      "trades": 121,
+      "multiple": 1.11896,
+      "geometric_daily_growth": 0.00012325,
+      "profit_factor": 1.4067,
+      "median_return": 0.005199,
+      "median_holding_hours": 8.4,
+      "top5_positive_pnl_share": 0.0924,
+      "winner_removed_multiple": 1.02437,
+      "trade_close_mdd": 0.0435
+    },
+    "authority": "pre-official survivor and current valid weak Core component"
+  },
+  "decision": {
+    "filter_is_merely_over_filtering": false,
+    "filter_was_necessary_for_preofficial_authority": true,
+    "reason": "The broader signal did add ordinary positive trades and produced a favorable exposed official diagnostic, but it failed the unchanged 2023 winner-deletion gate. The less-crowded state reduced frequency while preserving positive median, annual breadth and winner-resistant pre-official value. It therefore cannot be removed solely because the exposed official headline is larger.",
+    "remaining_uncertainty": "The exact transported lifecycle source for the 121-trade authority is not yet present on this audit branch. The published decision metrics and mechanism are authoritative, but a fresh byte-identical replay remains required before integration code is changed.",
+    "prohibited_inference": "Do not label the 213-trade path official Core rank one, do not tune the funding boundary from official outcomes, and do not compare risk/leverage until exact 121-trade source parity is restored."
+  },
+  "orders_submitted": false,
+  "live_permission": false
+}
