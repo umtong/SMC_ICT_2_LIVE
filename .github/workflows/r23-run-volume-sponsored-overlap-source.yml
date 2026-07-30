@@ -1,0 +1,174 @@
+name: R23 run volume-sponsored overlap source
+
+on:
+  push:
+    branches: [agent/r23-smc-action-value-001]
+    paths:
+      - .github/workflows/r23-run-volume-sponsored-overlap-source.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/r23-run-volume-sponsored-overlap-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download verified runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas,sklearn; print('runtime-ok')"
+
+      - name: Download and verify canonical pandas export
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path('deps/canonical')
+          manifest = json.loads((root / 'EXPORT_MANIFEST.json').read_text())
+          assert manifest['schema_version'] == 1 and len(manifest['tables']) == 18
+          for item in manifest['tables']:
+              path = root / item['symbol'] / (item['table'] + '.pkl.gz')
+              assert path.stat().st_size == item['bytes']
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']
+          print('canonical-ok')
+          PY
+
+      - name: Recover and verify eight economic source files from PR 472
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin 1a76e354476af06b822e81318fb8d9a2242fbf7d
+          mkdir -p deps/volume
+          for f in SOURCE_MANIFEST.json SOURCE_BUNDLE.tar.gz.b64; do
+            git show "1a76e354476af06b822e81318fb8d9a2242fbf7d:research/volume_sponsored_channel/$f" > "deps/volume/$f"
+          done
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import base64, hashlib, io, json, tarfile
+          from pathlib import Path
+          root=Path('deps/volume')
+          manifest=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          raw=base64.b64decode((root/'SOURCE_BUNDLE.tar.gz.b64').read_text().strip())
+          with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as arc:
+              arc.extractall(root,filter='data')
+          required={
+            'channel_independent_audit.py','channel_marginal_screen.py','channel_stable_bin_replay.py',
+            'channel_volume_core_official.py','channel_volume_diagnostics.py','channel_volume_group_select.py',
+            'channel_volume_group_path.py','channel_volume_risk_precision.py'
+          }
+          by={x['path']:x for x in manifest['files']}
+          for name in sorted(required):
+              item=by[name]; p=root/name
+              assert p.stat().st_size==item['bytes'], name
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==item['sha256'], name
+          print('verified economic source files',len(required))
+          PY
+
+      - name: Build exact candidate ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY="$GITHUB_WORKSPACE/deps/runtime/root/python/bin/python3"
+          sudo rm -rf /mnt/data
+          sudo mkdir -p /mnt/data
+          sudo chown "$USER":"$USER" /mnt/data
+          ln -s "$GITHUB_WORKSPACE/deps/canonical" /mnt/data/core_tables_py
+          cp deps/volume/channel_*.py /mnt/data/
+          mkdir -p /mnt/data/channel_independent_audit
+          "$PY" - <<'PY' | tee CANDIDATE_BUILD.log
+          import sys
+          sys.path.insert(0,'/mnt/data')
+          import channel_independent_audit as a
+          data={s:a.prepare_symbol(s) for s in a.SYMBOLS}
+          a.add_cross_features(data)
+          c=a.build_candidates(data)
+          expected={2021:538,2022:511,2023:369,2024:578,2025:598,2026:261}
+          got={int(k):int(v) for k,v in c.groupby('year').size().to_dict().items()}
+          assert got==expected,(got,expected)
+          c.to_pickle(a.OUT/'candidates_raw.pkl.gz',compression='gzip')
+          c.to_csv(a.OUT/'candidates_raw.csv',index=False)
+          print('candidate counts',got)
+          PY
+
+      - name: Reproduce group and selected risk paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY="$GITHUB_WORKSPACE/deps/runtime/root/python/bin/python3"
+          mkdir -p /mnt/data/channel_volume_group_path /mnt/data/channel_volume_risk_precision
+          "$PY" /mnt/data/channel_volume_group_path.py | tee GROUP_PATH.log
+          "$PY" /mnt/data/channel_volume_risk_precision.py | tee RISK_PATH.log
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          group=json.loads(Path('/mnt/data/channel_volume_group_path/RESULT.json').read_text())
+          risk=json.loads(Path('/mnt/data/channel_volume_risk_precision/RESULT.json').read_text())
+          assert group['selected']=='r0.05_c12'
+          assert abs(group['official']['24']['end_nav']-79932.50058696598)<1e-6
+          assert risk['selected']==0.1
+          assert abs(risk['official']['24']['end_nav']-122414.63081010323)<1e-6
+          print(json.dumps({'group_selected':group['selected'],'group_24':group['official']['24'],'risk_selected':risk['selected'],'risk_24':risk['official']['24']},indent=2))
+          PY
+
+      - name: Collect evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifact
+          mkdir -p artifact/source artifact/candidates artifact/group artifact/risk artifact/logs
+          cp deps/volume/SOURCE_MANIFEST.json artifact/source/
+          cp /mnt/data/channel_independent_audit/candidates_raw.csv artifact/candidates/ || true
+          cp /mnt/data/channel_independent_audit/candidates_raw.pkl.gz artifact/candidates/ || true
+          cp -r /mnt/data/channel_volume_group_path/. artifact/group/ || true
+          cp -r /mnt/data/channel_volume_risk_precision/. artifact/risk/ || true
+          cp *.log artifact/logs/ || true
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r23-volume-sponsored-reproduced-ledgers
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
