@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-INVENTORY-SPONSORED-EQUAL-POOL-001",
+  "result_id": "RES-20260730-INVENTORY-SPONSORED-EQUAL-POOL-001",
+  "parent_result": "RES-20260730-EQUAL-LIQUIDITY-CLUSTER-CONTROL-001",
+  "logic": "A repeated equal-high/equal-low pool is materially sponsored only when total OI and the account share aligned with the defending side both increase between its first and second causal pivot.",
+  "inventory_state": {
+    "SPONSORED_DEFENSE": "log(OI_second/OI_first)>0 and defending_share_second>defending_share_first",
+    "RAID_RELEASE": "OI_signal<OI_second or defending_share_signal<defending_share_second",
+    "defending_share_equal_high": "sell_ratio",
+    "defending_share_equal_low": "buy_ratio"
+  },
+  "policies": ["PARENT_ALL", "SPONSORED_FULL", "SPONSORED_ACCEPT", "SPONSORED_REJECT", "SPONSORED_RELEASE_REJECT", "UNSPONSORED_FULL"],
+  "checkpoint_rule": "latest observed completed five-minute OI/account state whose available_at_ms is no later than the causal checkpoint",
+  "parent_pool_entry_target_stop_state_exit": "unchanged from corrected #625 authority",
+  "cost_bp": [12, 18, 24],
+  "risk_fraction": 0.005,
+  "notional_cap": 3.0,
+  "global_slot": 1,
+  "elapsed_time_exit": false,
+  "screen": "untouched calendar 2022; calendar 2023 sealed without survivor",
+  "orders_submitted": false
+}
