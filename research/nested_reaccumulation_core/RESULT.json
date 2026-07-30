@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-NESTED-REACCUMULATION-CORE-001",
+  "result_id": "RES-20260730-NESTED-REACCUMULATION-CORE-001",
+  "status": "RETIRED_2022_NESTED_REACCUMULATION_FAILURE",
+  "target_status": "NOT_MET",
+  "programization_correction": "Overlapping promoted parent states were made causal and non-duplicative: the latest promotion supersedes the older state. Confirmed 15m liquidity was maintained as a live active-pool set rather than rescanning or reusing already consumed pivots.",
+  "coverage": {
+    "BTCUSDT": {"parent_states": 41, "raw_candidates": 182, "candidates": 173},
+    "ETHUSDT": {"parent_states": 101, "raw_candidates": 301, "candidates": 295},
+    "resolved_events": 468
+  },
+  "pre2024": {
+    "2021_24bp": {"multiple": 0.859323, "trades": 180, "pf": 0.4681, "median": -0.000827, "median_hold_min": 20.0, "winner_removed_multiple": 0.802388},
+    "2022_12bp": {"multiple": 0.976838, "trades": 246, "pf": 0.9308, "median": -0.000387, "winner_removed_multiple": 0.815682},
+    "2022_18bp": {"multiple": 0.920693, "trades": 246, "pf": 0.7703, "median": -0.000635, "winner_removed_multiple": 0.779346},
+    "2022_24bp": {"multiple": 0.873690, "trades": 246, "pf": 0.6453, "median": -0.000870, "median_hold_min": 18.0, "winner_removed_multiple": 0.747546}
+  },
+  "selection_2022": {"passed": false, "survivors": []},
+  "confirmation_2023_opened": false,
+  "official_opened": false,
+  "ml_opened": false,
+  "orders_submitted": false,
+  "ranking_changed": false,
+  "decision": "A proven higher-order accepted-delivery state does not make its nested local balances a repeatable day-trading Core. The broad short-hold surface is negative even at 12bp and remains negative after winner rerouting. Preserve the parent only as long-duration Expansion; retire this local reaccumulation unit without packet, balance, swing, target/stop, session, SMC-gate, asset-side, cost, ML, risk or leverage rescue."
+}
