@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260729-IPDA-MULTIDAY-DRAW-001",
+  "claim_id": "CLM-20260729-2158-IPDA-DRAW-001",
+  "status": "TESTED_BELOW_GATE",
+  "verdict": "ECONOMIC_FAILURE",
+  "ranking_action": "NO_CHANGE",
+  "official_2024_2026_evaluation_opened": false,
+  "data": {
+    "source": "canonical Bybit USDT-linear ALDS core tables",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "tables": ["bars_1m", "bars_5m", "bars_1d"],
+    "period": ["2021-01-01", "2023-12-31"],
+    "reacquired": false
+  },
+  "contract": {
+    "range_horizons_days": [20, 40, 60],
+    "signal": "first completed 5m internal-structure displacement toward frozen day-start IPDA draw",
+    "activation_latency_ms": 500,
+    "entry": "first fully observable 1m open after activation",
+    "exit": "frozen target or structural stop; stop-first within ambiguous minute; no elapsed-time exit",
+    "cost_bps_round_trip": 24,
+    "one_global_slot": true,
+    "risk_fraction": 0.005,
+    "notional_cap_x_nav": 3.0
+  },
+  "best_account": {
+    "policy": "accepted_boundary_retest_60",
+    "final_nav": 10517.39047554118,
+    "account_multiple": 1.051739047554118,
+    "geometric_daily_growth": 0.000046069581617569355,
+    "maximum_drawdown": -0.039306956424563166,
+    "completed_trades": 9,
+    "profit_factor": 2.2023354723815265,
+    "top5_positive_share": 1.0,
+    "target_fraction": 0.0046069581617569355,
+    "target_multiple_required": 217.06296538595748,
+    "weakness": "all positive PnL came from one 2021 winner; 2022 had zero winners and no 2023 signals"
+  },
+  "fatal_findings": [
+    "nested-position draw-to-20-day-pool lost in every year",
+    "opposite-side draw after 20/40-day reclaim lost in every year",
+    "20-to-40 accepted expansion was positive at event level in 2021-2022 but negative in 2023 and winner-concentrated",
+    "boundary-retest correction did not persist: 40-day target negative in 2022 and all losses in 2023; 60-day target positive only from one 2021 winner and zero winners in 2022",
+    "no non-sparse stable positive route existed before ML, so ML and official 2024 access were not opened"
+  ],
+  "decision": {
+    "retire_exact_family": true,
+    "no_risk_or_leverage_rescue": true,
+    "next": "move to a different economic information unit rather than adjacent lookbacks or thresholds"
+  }
+}
