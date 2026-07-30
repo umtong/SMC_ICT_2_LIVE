@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "compressed_ledgers_byte_identical": true,
+    "exact_top5_entry_deletion_full_reroute": true,
+    "fixed_500ms_first_later_minute": true,
+    "fresh_process_runs": 2,
+    "funding_applied_only_before_actual_exit": true,
+    "mark_index_complete_day_only": true,
+    "ml_opened": false,
+    "no_elapsed_time_exit": true,
+    "official_period_opened": false,
+    "one_global_slot_no_same_timestamp_reuse": true,
+    "orders_submitted": false,
+    "python_compile": true,
+    "scientific_json_byte_identical": true
+  },
+  "economic_decision": "No route survived 2022 at 18/24bp. LONG_HIGH_BASIS was positive in 2023 but negative in 2022, negative-median, and winner-rerouted below one even at 12bp. No-stop diagnostics preserve cross-year sign instability.",
+  "programization_correction": {
+    "all_preliminary_outputs_invalidated": true,
+    "defect": "preliminary chunk processor could apply later same-day funding before discovering an earlier hard stop",
+    "repair": "scan for the actual stop/state exit first, then apply only funding timestamps strictly before that observed exit"
+  },
+  "result_id": "RES-20260730-XSEC-PERP-BASIS-ALLOCATION-CORE-001",
+  "schema_version": 1,
+  "status": "PASS_AFTER_FUNDING_CHRONOLOGY_REPAIR"
+}
