@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1255-EXEC-ALIGNED-DIRECT-UTILITY-CORE-001",
+  "result_id": "RES-20260730-EXEC-ALIGNED-DIRECT-UTILITY-CORE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "decision_interval": "completed 5m",
+  "actions": [
+    "LONG",
+    "SHORT",
+    "FLAT"
+  ],
+  "features": "causal regular-grid price, volume, ATR, premium, OI, account ratio and BTC/ETH peer state",
+  "label": "direct cost-net R from the same executable entry/stop/target/funding contract used by the account simulator",
+  "execution": {
+    "activation_delay_ms": 500,
+    "one_minute_resolution_rule": "first fully observable minute after activation; decision+60s",
+    "entry": "taker",
+    "same_minute": "stop_first"
+  },
+  "geometry": {
+    "stop": "max(3*ATR24,0.3% of executable entry)",
+    "target_r": 1.5,
+    "elapsed_time_exit": false
+  },
+  "costs": {
+    "base_round_trip_bp": 15,
+    "stress_round_trip_bp": [
+      18,
+      24
+    ],
+    "funding": "actual signed Bybit events"
+  },
+  "portfolio": {
+    "global_pending_or_open_slots": 1,
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0
+  },
+  "model": {
+    "family": "HistGradientBoostingRegressor",
+    "objective": "net_r",
+    "annual_expanding": true,
+    "new_model_delay_hours": 6,
+    "selected_score_quantile": 0.985
+  },
+  "selection": {
+    "years": [
+      2022,
+      2023
+    ],
+    "requires_positive_each_year": true,
+    "minimum_trades_each_year": 60,
+    "winner_test": "delete each year top5 positive candidates and fully reroute global slot",
+    "objective": "maximize minimum annual base/rerouted geometric growth"
+  },
+  "official_interval": [
+    "2024-01-01",
+    "2026-06-30"
+  ]
+}
