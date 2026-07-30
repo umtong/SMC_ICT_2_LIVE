@@ -50,7 +50,8 @@ class DenseLiquidityEdgeTests(unittest.TestCase):
         p.prev_low = 90.0
         p.day_str = '2023-01-01'
         p.armed['HIGH'] = False
-        p.process_trade(1_000, 99.5, 1.0, 'SELL', True)
+        # 100 - 0.5*ATR = 99.0; the completed minute must close at or below it.
+        p.process_trade(1_000, 98.9, 1.0, 'SELL', True)
         p.process_trade(61_000, 99.4, 1.0, 'SELL', True)
         self.assertTrue(p.armed['HIGH'])
 
