@@ -1,0 +1,35 @@
+name: Export direct Core source for native-flow audit
+
+on:
+  push:
+    branches: [agent/r56-direct-core-native-flow-001]
+    paths:
+      - .github/workflows/export-direct-core-source-gpt56.yml
+      - research/execution_aligned_direct_utility_core/**
+      - research/direct_core_native_flow/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Materialize SHA-bound direct Core source
+        run: |
+          python research/execution_aligned_direct_utility_core/materialize.py
+          python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
+          find research/execution_aligned_direct_utility_core/materialized -type f -printf '%P\t%s\n' | sort > research/execution_aligned_direct_utility_core/materialized/FILE_SIZES.tsv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-materialized-gpt56-${{ github.sha }}
+          path: research/execution_aligned_direct_utility_core/materialized
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
