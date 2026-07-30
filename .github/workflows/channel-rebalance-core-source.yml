@@ -29,7 +29,7 @@ jobs:
           python-version: '3.12'
       - name: Install fixed scientific dependencies
         run: |
-          python -m pip install --disable-pip-version-check numpy==2.3.3 pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.1
+          python -m pip install --disable-pip-version-check numpy==2.3.3 pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.1 pytest==8.3.4
       - name: Recover exact upstream all-breakout source
         shell: bash
         run: |
@@ -42,10 +42,7 @@ jobs:
           cp "$root"/{CONTRACT.json,RESULT.json,REPORT.md,SOURCE_BUNDLE_MANIFEST.json} artifact/upstream/
           cp research/channel_rebalance_core/CONTRACT.json artifact/
           python -m py_compile artifact/materialized/*.py
-          (
-            cd artifact/materialized
-            python -m unittest -v test_semantics.py
-          )
+          pytest -q artifact/materialized/test_semantics.py
           find artifact -type f -print0 | sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
