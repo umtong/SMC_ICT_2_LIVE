@@ -1,0 +1,67 @@
+name: Commit split text bundle for local passive audit
+
+on:
+  push:
+    branches: [agent/r35-direct-utility-passive-entry-audit-001]
+    paths:
+      - '.github/workflows/direct-utility-passive-bundle-r35.yml'
+      - 'research/direct_utility_passive_entry_audit/EXPORT_BUNDLE_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: direct-utility-passive-bundle-r35
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r35-direct-utility-passive-entry-audit-001
+          fetch-depth: 1
+      - name: Build deterministic split base64 bundle
+        run: |
+          set -euo pipefail
+          vendor=research/direct_utility_passive_entry_audit/vendor
+          out=research/direct_utility_passive_entry_audit/local_bundle
+          rm -rf "$out"
+          mkdir -p "$out"
+          python - <<'PY'
+          import gzip, hashlib, io, json, tarfile
+          from pathlib import Path
+          root=Path('research/direct_utility_passive_entry_audit/vendor')
+          out=Path('research/direct_utility_passive_entry_audit/local_bundle')
+          names=sorted(p for p in root.iterdir() if p.is_file() and p.name != 'EXPORT_TRIGGER.txt')
+          rawbuf=io.BytesIO()
+          with tarfile.open(fileobj=rawbuf, mode='w') as tar:
+              for p in names:
+                  info=tar.gettarinfo(str(p), arcname=p.name)
+                  info.mtime=0; info.uid=0; info.gid=0; info.uname=''; info.gname=''
+                  with p.open('rb') as f: tar.addfile(info,f)
+          gzbuf=io.BytesIO()
+          with gzip.GzipFile(fileobj=gzbuf,mode='wb',mtime=0,filename='') as g: g.write(rawbuf.getvalue())
+          raw=gzbuf.getvalue()
+          import base64
+          text=base64.b64encode(raw).decode('ascii')
+          parts=[]
+          for i in range(0,len(text),7000):
+              part=text[i:i+7000]
+              name=f'PART_{i//7000+1:02d}.b64'
+              (out/name).write_text(part+'\n',encoding='ascii')
+              parts.append({'path':name,'chars':len(part),'sha256':hashlib.sha256(part.encode()).hexdigest()})
+          manifest={'archive_sha256':hashlib.sha256(raw).hexdigest(),'archive_bytes':len(raw),'base64_chars':len(text),'parts':parts,'files':[{'name':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in names]}
+          (out/'MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(manifest,sort_keys=True))
+          PY
+      - name: Commit split bundle
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/direct_utility_passive_entry_audit/local_bundle
+          git commit -m 'Commit split passive-audit source bundle'
+          git push origin HEAD:agent/r35-direct-utility-passive-entry-audit-001
