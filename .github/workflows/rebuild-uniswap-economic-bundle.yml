@@ -5,12 +5,12 @@ on:
     branches:
       - agent/r34-uniswap-signed-flow-sqd-takeover-001
     paths:
-      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.part*.b64"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.segment*.b64"
       - ".github/workflows/rebuild-uniswap-economic-bundle.yml"
   pull_request:
     branches: [main]
     paths:
-      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.part*.b64"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.segment*.b64"
       - ".github/workflows/rebuild-uniswap-economic-bundle.yml"
   workflow_dispatch:
 
@@ -28,17 +28,40 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: agent/r34-uniswap-signed-flow-sqd-takeover-001
-      - name: Audit carrier chunks
+      - name: Audit exact carrier segments
         run: |
           set -euo pipefail
           root=research/uniswap_signed_flow_sqd
-          wc -c "$root"/ECONOMIC_BUNDLE.part*.b64
-          sha256sum "$root"/ECONOMIC_BUNDLE.part*.b64
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment00.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment01.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment02.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment03.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment04.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment05.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment06.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment07.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment08.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment09.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment10.b64")" -eq 2000
+          test "$(wc -c < "$root/ECONOMIC_BUNDLE.segment11.b64")" -eq 280
+          echo "daffd0f01affc1e6db814fc9490f0d29f6852649697beaea88506bdb9b067fd5  $root/ECONOMIC_BUNDLE.segment00.b64" | sha256sum -c -
+          echo "76ad5f0bb3cd2ae875e6fe64299596950c3ecd94fcf86094a348d87c109b0134  $root/ECONOMIC_BUNDLE.segment01.b64" | sha256sum -c -
+          echo "8845d271de9d30d67d9ecbaebd3dcb5c2442af9bff1ae2e88209aac3b1703fd7  $root/ECONOMIC_BUNDLE.segment02.b64" | sha256sum -c -
+          echo "57b14504132718a3b77656b17d7f7acea4027de39612491edf1432807286afb5  $root/ECONOMIC_BUNDLE.segment03.b64" | sha256sum -c -
+          echo "bd324517c896d3943f9e9d165c745a0201218c7544a631629077f3ee079f976b  $root/ECONOMIC_BUNDLE.segment04.b64" | sha256sum -c -
+          echo "8d400d0315e9aaaa5fc8ec167b03e6662eb5bc9e45c64307dd9264de7f28154b  $root/ECONOMIC_BUNDLE.segment05.b64" | sha256sum -c -
+          echo "446252a0b84b9792dd50b806092576bc5ee097a0947d46a726dd2e788c7b9a7f  $root/ECONOMIC_BUNDLE.segment06.b64" | sha256sum -c -
+          echo "f09b94d1f5da82adbf9282ed7253ad9afb443af75e08e216df192774ceab7a79  $root/ECONOMIC_BUNDLE.segment07.b64" | sha256sum -c -
+          echo "af54d0d7a7e10421108666129fc74ae230e8655f8c25c2d75fc36568a61b899b  $root/ECONOMIC_BUNDLE.segment08.b64" | sha256sum -c -
+          echo "122912a73bf8751b3327f29bcb4781e63a71360883bb4ea530c5018c275f0919  $root/ECONOMIC_BUNDLE.segment09.b64" | sha256sum -c -
+          echo "9946ac85a3baacdf33b297fe07b69bad806e6eea04ca6adc11c3d26f3fef6ec9  $root/ECONOMIC_BUNDLE.segment10.b64" | sha256sum -c -
+          # GitHub stores the last segment without the local terminal newline.
+          echo "e67036718e09e4b02429f8fb9f7f5fc0ea003f16f30f015fac567ae971a98093  $root/ECONOMIC_BUNDLE.segment11.b64" | sha256sum -c -
       - name: Rebuild and verify carrier
         run: |
           set -euo pipefail
           root=research/uniswap_signed_flow_sqd
-          cat "$root"/ECONOMIC_BUNDLE.part*.b64 > "$root/ECONOMIC_BUNDLE.tar.gz.b64"
+          cat "$root"/ECONOMIC_BUNDLE.segment*.b64 > "$root/ECONOMIC_BUNDLE.tar.gz.b64"
           base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > /tmp/economic-bundle.tar.gz
           echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  /tmp/economic-bundle.tar.gz" | sha256sum -c -
           mkdir -p /tmp/economic-bundle
