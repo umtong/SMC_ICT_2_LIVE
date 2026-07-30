@@ -1,0 +1,78 @@
+name: Validate accepted-delivery natural-destination audit
+
+on:
+  push:
+    branches: [agent/accepted-delivery-natural-destination-001]
+    paths:
+      - 'research/accepted_delivery_natural_destination_20260731/**'
+      - '.github/workflows/accepted-delivery-natural-destination-r43.yml'
+  pull_request:
+    paths:
+      - 'research/accepted_delivery_natural_destination_20260731/**'
+      - '.github/workflows/accepted-delivery-natural-destination-r43.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Materialize and hash-verify source evidence
+        run: |
+          set -euo pipefail
+          root=research/accepted_delivery_natural_destination_20260731
+          python "$root/materialize.py"
+          python -m py_compile "$root/natural_destination_audit.py" "$root/build_trace_evidence.py" "$root/materialize.py"
+      - name: Validate frozen logic, chronology, and authority boundary
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path('research/accepted_delivery_natural_destination_20260731')
+          contract = json.loads((root / 'CONTRACT.json').read_text())
+          result = json.loads((root / 'RESULT.json').read_text())
+          validation = json.loads((root / 'VALIDATION.json').read_text())
+          manifest = json.loads((root / 'SOURCE_MANIFEST.json').read_text())
+
+          assert validation['status'] == 'PASS'
+          assert all(validation['checks'].values())
+          assert contract['risk']['fraction'] == 0.03
+          assert contract['fixed_r_target'] is False
+          assert contract['risk']['arbitrary_notional_cap'] is False
+          assert contract['risk']['model_score_multiplier'] is False
+          assert contract['elapsed_time_exit'] is False
+          assert result['status'] == 'RETIRED_PRE2024_WINNER_CONCENTRATED_NATURAL_DESTINATION_LIFECYCLE'
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          assert result['paper_or_live_started'] is False
+          assert result['live_permission'] is False
+          assert result['ranking_change'] is False
+          p24 = result['periods']['24']
+          assert p24['2022_FORWARD']['winner_removed_multiple'] > 1.0
+          assert p24['2023_CONFIRMATION']['winner_removed_multiple'] < 1.0
+          assert result['event_funnel']['parent_raw_events'] == 334
+          assert result['event_funnel']['eligible_natural_destination_events'] == 303
+
+          for name, spec in manifest['visible_files'].items():
+              data = (root / name).read_bytes()
+              assert len(data) == spec['bytes'], name
+              assert hashlib.sha256(data).hexdigest() == spec['sha256'], name
+
+          print(json.dumps({
+              'result_id': result['result_id'],
+              'decision': result['status'],
+              '2022_24bp_winner_removed': p24['2022_FORWARD']['winner_removed_multiple'],
+              '2023_24bp_winner_removed': p24['2023_CONFIRMATION']['winner_removed_multiple'],
+              'official_opened': False,
+              'orders_submitted': False,
+          }, sort_keys=True))
+          PY

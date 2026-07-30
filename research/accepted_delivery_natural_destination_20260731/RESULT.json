@@ -1,0 +1,354 @@
+{
+  "claim_id": "CLM-20260731-ACCEPTED-DELIVERY-NATURAL-DESTINATION-001",
+  "cost_paths_round_trip_bps": [
+    12,
+    18,
+    24
+  ],
+  "decision_basis": [
+    "At 24bp and fixed 3% planned loss, 2022 forward was 1.635551x and remained 1.114752x after exact top-10%-winner deletion with full one-slot rerouting.",
+    "Unchanged 2023 was 1.246033x but fell to 0.676578x after the same deletion/rerouting; top five winners supplied 43.63% of positive PnL.",
+    "The 2023 winner-deleted sign remained negative at 0.5%, 1%, and 3% risk, so the failure is not created by risk scaling.",
+    "Maximum observed required leverage at 3% risk was 6.200007x; no arbitrary nominal cap produced the failure.",
+    "Because unchanged 2023 failed the frozen robustness gate, 2024H1 and later canonical data remained sealed."
+  ],
+  "economic_status": "POSITIVE_AGGREGATE_BUT_2023_WINNER_REMOVAL_NEGATIVE_NO_OFFICIAL_OPEN",
+  "event_funnel": {
+    "decision_counts": {
+      "ACCEPTED_OUTSIDE_STATE_LOST_BEFORE_ENTRY": 10,
+      "DESTINATION_ALREADY_BEHIND_ENTRY": 3,
+      "DESTINATION_CONSUMED_BEFORE_ENTRY": 1,
+      "DESTINATION_MOVE_CANNOT_PAY_UNAVOIDABLE_COST": 5,
+      "ELIGIBLE": 303,
+      "NO_CAUSAL_LIVE_DIRECTIONAL_DESTINATION": 12
+    },
+    "eligible_natural_destination_events": 303,
+    "parent_raw_events": 334
+  },
+  "hard_validity_status": "PASS_CAUSAL_CANONICAL_BYBIT_PARENT_EVENT_PARITY_LOCAL_REPRODUCED",
+  "live_permission": false,
+  "logic": "Exact sponsored 96h accepted-delivery parent event; freeze nearest live causal prior-day/prior-week/right-confirmed-4h external pool as destination; protective invalidation at the completed breakout-hour opposite extreme; strategic invalidation on first later completed 1h close back inside the consumed boundary; no fixed-R, ATR, runner, or elapsed-time exit.",
+  "next_action": "Retire this exact lifecycle without target/stop/pool-type rescue; seek a materially different frequent Core payer while preserving the parent accepted-delivery Expansion separately.",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "paper_or_live_started": false,
+  "periods": {
+    "12": {
+      "2021_DIAGNOSTIC": {
+        "daily_mark_mdd": 0.11230895626126736,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 17,
+          "natural_destination": 38,
+          "stop": 7
+        },
+        "g_daily": 0.0017574936078319503,
+        "max_leverage": 2.1343408007519633,
+        "median_account_return": 0.008322008603287093,
+        "min_trade_return": -0.03011965899548951,
+        "multiple": 1.8982304752849322,
+        "pf": 2.581634371419127,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 40,
+          "RIGHT_CONFIRMED_4H_SWING": 22
+        },
+        "top5_positive_share": 0.4171458703530392,
+        "trades": 62,
+        "winner_removed_multiple": 1.305656981135821,
+        "winner_removed_trades": 61
+      },
+      "2022_2023": {
+        "daily_mark_mdd": 0.19305959788590188,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 37,
+          "natural_destination": 82,
+          "stop": 24
+        },
+        "g_daily": 0.0013742928989277647,
+        "max_leverage": 8.24164716762356,
+        "median_account_return": 0.005833857190626431,
+        "min_trade_return": -0.03225490183068358,
+        "multiple": 2.72520888059913,
+        "pf": 1.5850695545359859,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 89,
+          "RIGHT_CONFIRMED_4H_SWING": 54
+        },
+        "top5_positive_share": 0.30586747896082717,
+        "trades": 143,
+        "winner_removed_multiple": 0.894102415335435,
+        "winner_removed_trades": 142
+      },
+      "2022_FORWARD": {
+        "daily_mark_mdd": 0.0790807756868489,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 12,
+          "natural_destination": 36,
+          "stop": 8
+        },
+        "g_daily": 0.001618246954445235,
+        "max_leverage": 5.3208820432908235,
+        "median_account_return": 0.011198993295839968,
+        "min_trade_return": -0.029899671639072544,
+        "multiple": 1.8043180997858825,
+        "pf": 2.124709089107276,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 38,
+          "RIGHT_CONFIRMED_4H_SWING": 18
+        },
+        "top5_positive_share": 0.3933836140520567,
+        "trades": 56,
+        "winner_removed_multiple": 1.21498620306874,
+        "winner_removed_trades": 62
+      },
+      "2023_CONFIRMATION": {
+        "daily_mark_mdd": 0.193059597885902,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 25,
+          "natural_destination": 46,
+          "stop": 16
+        },
+        "g_daily": 0.0011303982608392715,
+        "max_leverage": 8.24164716762356,
+        "median_account_return": 0.003001244886894273,
+        "min_trade_return": -0.03225490183068359,
+        "multiple": 1.510381612268107,
+        "pf": 1.412291760004501,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 51,
+          "RIGHT_CONFIRMED_4H_SWING": 36
+        },
+        "top5_positive_share": 0.43347031637699085,
+        "trades": 87,
+        "winner_removed_multiple": 0.7789853859893136,
+        "winner_removed_trades": 84
+      }
+    },
+    "18": {
+      "2021_DIAGNOSTIC": {
+        "daily_mark_mdd": 0.1131051340055188,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 17,
+          "natural_destination": 38,
+          "stop": 7
+        },
+        "g_daily": 0.0016228601270316112,
+        "max_leverage": 2.0464326570900933,
+        "median_account_return": 0.00762796664210877,
+        "min_trade_return": -0.030117766827542677,
+        "multiple": 1.807353860516346,
+        "pf": 2.43330087949839,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 40,
+          "RIGHT_CONFIRMED_4H_SWING": 22
+        },
+        "top5_positive_share": 0.4136040121512075,
+        "trades": 62,
+        "winner_removed_multiple": 1.2556232390290247,
+        "winner_removed_trades": 61
+      },
+      "2022_2023": {
+        "daily_mark_mdd": 0.22754366314832997,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 37,
+          "natural_destination": 82,
+          "stop": 24
+        },
+        "g_daily": 0.0011681155148393074,
+        "max_leverage": 7.076512080986114,
+        "median_account_return": 0.004937187534453929,
+        "min_trade_return": -0.03220568898782585,
+        "multiple": 2.3448622849687295,
+        "pf": 1.4916351106405332,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 89,
+          "RIGHT_CONFIRMED_4H_SWING": 54
+        },
+        "top5_positive_share": 0.30049195581288696,
+        "trades": 143,
+        "winner_removed_multiple": 0.855053260937801,
+        "winner_removed_trades": 146
+      },
+      "2022_FORWARD": {
+        "daily_mark_mdd": 0.07918960843647471,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 12,
+          "natural_destination": 36,
+          "stop": 8
+        },
+        "g_daily": 0.0014798448928639019,
+        "max_leverage": 4.80812870941464,
+        "median_account_return": 0.010453152580012719,
+        "min_trade_return": -0.029900771121720352,
+        "multiple": 1.7155678188646037,
+        "pf": 2.022370270450974,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 38,
+          "RIGHT_CONFIRMED_4H_SWING": 18
+        },
+        "top5_positive_share": 0.4014122379124589,
+        "trades": 56,
+        "winner_removed_multiple": 1.167843165580782,
+        "winner_removed_trades": 64
+      },
+      "2023_CONFIRMATION": {
+        "daily_mark_mdd": 0.22754366314832974,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 25,
+          "natural_destination": 46,
+          "stop": 16
+        },
+        "g_daily": 0.0008564831684281238,
+        "max_leverage": 7.076512080986114,
+        "median_account_return": 0.0019931661884071456,
+        "min_trade_return": -0.03220568898782585,
+        "multiple": 1.3668141003720882,
+        "pf": 1.3091477934314772,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 51,
+          "RIGHT_CONFIRMED_4H_SWING": 36
+        },
+        "top5_positive_share": 0.4344212611212262,
+        "trades": 87,
+        "winner_removed_multiple": 0.7234250448186627,
+        "winner_removed_trades": 84
+      }
+    },
+    "24": {
+      "2021_DIAGNOSTIC": {
+        "daily_mark_mdd": 0.11497541463158212,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 17,
+          "natural_destination": 38,
+          "stop": 7
+        },
+        "g_daily": 0.0014944998792194575,
+        "max_leverage": 1.9654794873446255,
+        "median_account_return": 0.006905210482620544,
+        "min_trade_return": -0.0301159335697607,
+        "multiple": 1.7247553983658712,
+        "pf": 2.2967297947767906,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 40,
+          "RIGHT_CONFIRMED_4H_SWING": 22
+        },
+        "top5_positive_share": 0.4104924488520455,
+        "trades": 62,
+        "winner_removed_multiple": 1.1229676579704622,
+        "winner_removed_trades": 60
+      },
+      "2022_2023": {
+        "daily_mark_mdd": 0.2577863170266711,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 37,
+          "natural_destination": 82,
+          "stop": 24
+        },
+        "g_daily": 0.0009757429838757048,
+        "max_leverage": 6.200006992029058,
+        "median_account_return": 0.003981448647714232,
+        "min_trade_return": -0.03215857838747363,
+        "multiple": 2.037951419081378,
+        "pf": 1.4068017721142596,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 89,
+          "RIGHT_CONFIRMED_4H_SWING": 54
+        },
+        "top5_positive_share": 0.29916919795798175,
+        "trades": 143,
+        "winner_removed_multiple": 0.7542164998403393,
+        "winner_removed_trades": 148
+      },
+      "2022_FORWARD": {
+        "daily_mark_mdd": 0.07929545705752716,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 12,
+          "natural_destination": 36,
+          "stop": 8
+        },
+        "g_daily": 0.001348798965964626,
+        "max_leverage": 4.385513330485108,
+        "median_account_return": 0.00973504450645045,
+        "min_trade_return": -0.02990184676747979,
+        "multiple": 1.6355512543029294,
+        "pf": 1.927048775589954,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 38,
+          "RIGHT_CONFIRMED_4H_SWING": 18
+        },
+        "top5_positive_share": 0.41009758922222755,
+        "trades": 56,
+        "winner_removed_multiple": 1.114752484207036,
+        "winner_removed_trades": 64
+      },
+      "2023_CONFIRMATION": {
+        "daily_mark_mdd": 0.2577863170266709,
+        "exit_reasons": {
+          "accepted_boundary_state_loss": 25,
+          "natural_destination": 46,
+          "stop": 16
+        },
+        "g_daily": 0.0006028259850918705,
+        "max_leverage": 6.200006992029058,
+        "median_account_return": 0.001026167724498855,
+        "min_trade_return": -0.03215857838747363,
+        "multiple": 1.2460333564721893,
+        "pf": 1.2156568674400594,
+        "target_pool_types": {
+          "PRIOR_DAY_EXTREME": 51,
+          "RIGHT_CONFIRMED_4H_SWING": 36
+        },
+        "top5_positive_share": 0.4362834614174623,
+        "trades": 87,
+        "winner_removed_multiple": 0.676577545711271,
+        "winner_removed_trades": 84
+      }
+    }
+  },
+  "ranking_change": false,
+  "result_id": "RES-20260731-ACCEPTED-DELIVERY-NATURAL-DESTINATION-PRE2024-001",
+  "risk": {
+    "arbitrary_notional_cap": false,
+    "planned_normal_stop_fraction": 0.03,
+    "score_multiplier": false
+  },
+  "risk_invariance_24bp": {
+    "0.005": {
+      "2022": {
+        "daily_mark_mdd": 0.013517225976251712,
+        "multiple": 1.090521959619599,
+        "winner_removed_multiple": 1.0208912490064597
+      },
+      "2023": {
+        "daily_mark_mdd": 0.047078664070253406,
+        "multiple": 1.0453900743746198,
+        "winner_removed_multiple": 0.9394687280620386
+      }
+    },
+    "0.01": {
+      "2022": {
+        "daily_mark_mdd": 0.026913205253790817,
+        "multiple": 1.1869482018279391,
+        "winner_removed_multiple": 1.0411404730187506
+      },
+      "2023": {
+        "daily_mark_mdd": 0.09247098848677426,
+        "multiple": 1.089294468789063,
+        "winner_removed_multiple": 0.8816584694731813
+      }
+    },
+    "0.03": {
+      "2022": {
+        "daily_mark_mdd": 0.07929545705752716,
+        "multiple": 1.6355512543029294,
+        "winner_removed_multiple": 1.114752484207036
+      },
+      "2023": {
+        "daily_mark_mdd": 0.2577863170266709,
+        "multiple": 1.2460333564721893,
+        "winner_removed_multiple": 0.676577545711271
+      }
+    }
+  },
+  "schema_version": 1,
+  "status": "RETIRED_PRE2024_WINNER_CONCENTRATED_NATURAL_DESTINATION_LIFECYCLE"
+}
