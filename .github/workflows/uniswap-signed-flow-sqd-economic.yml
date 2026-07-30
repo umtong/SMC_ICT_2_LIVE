@@ -1,0 +1,272 @@
+name: Signed Uniswap WETH-stable flow full source and economic screen
+
+on:
+  push:
+    branches:
+      - agent/r34-uniswap-signed-flow-sqd-takeover-001
+    paths:
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_001_CANONICAL_BYBIT_BEFORE_MARKET_OUTCOME.json"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.tar.gz.b64"
+      - ".github/workflows/uniswap-signed-flow-sqd-economic.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_001_CANONICAL_BYBIT_BEFORE_MARKET_OUTCOME.json"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.tar.gz.b64"
+      - ".github/workflows/uniswap-signed-flow-sqd-economic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: uniswap-signed-flow-sqd-economic-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  full-source:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - year: "2021"
+            start: "2021-05-05T00:00:00+00:00"
+            end: "2022-01-01T00:00:00+00:00"
+          - year: "2022"
+            start: "2022-01-01T00:00:00+00:00"
+            end: "2023-01-01T00:00:00+00:00"
+          - year: "2023"
+            start: "2023-01-01T00:00:00+00:00"
+            end: "2024-01-01T00:00:00+00:00"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixed source environment
+        run: python -m pip install --disable-pip-version-check --no-cache-dir requests==2.32.4 pytest==8.3.5
+      - name: Materialize and verify frozen source and economic engines
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          src=research_runs/uniswap_signed_flow_sqd/source_runtime
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          mkdir -p "$src" "$econ"
+          base64 -d "$root/SOURCE_BUNDLE.tar.gz.b64" > "$src/bundle.tar.gz"
+          echo "842b281ea55e349ebfdf132c89f170fd88d427b1e228cdaa914666de76137a12  $src/bundle.tar.gz" | sha256sum -c -
+          tar -xzf "$src/bundle.tar.gz" -C "$src"
+          base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > "$econ/bundle.tar.gz"
+          echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  $econ/bundle.tar.gz" | sha256sum -c -
+          tar -xzf "$econ/bundle.tar.gz" -C "$econ"
+          echo "5bf93ac504fad6d676a64d1e1ee900794529a4f9a7d9f7d5dc4741793d1e233e  $econ/full_history_sqd.py" | sha256sum -c -
+          echo "b517d95fa3f8a07041653e00dcaffe0b5392087d23fbc5376563f4ce8890869a  $econ/test_full_history_sqd.py" | sha256sum -c -
+          python -m json.tool "$root/AMENDMENT_001_CANONICAL_BYBIT_BEFORE_MARKET_OUTCOME.json" >/dev/null
+          python -m json.tool "$root/ECONOMIC_MANIFEST.json" >/dev/null
+      - name: Run full-source semantic tests
+        run: |
+          set -euo pipefail
+          src=research_runs/uniswap_signed_flow_sqd/source_runtime
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          PYTHONPATH="$src:$econ" python -m pytest -q "$econ/test_full_history_sqd.py"
+      - name: Stream and aggregate finalized signed flow shard
+        run: |
+          set -euo pipefail
+          src=research_runs/uniswap_signed_flow_sqd/source_runtime
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          out=research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}
+          PYTHONPATH="$src:$econ" python "$econ/full_history_sqd.py" \
+            --start '${{ matrix.start }}' \
+            --end '${{ matrix.end }}' \
+            --source-gate research_results/uniswap_signed_flow_sqd_source/RESULT.json \
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+          python - <<PY
+          import json
+          from pathlib import Path
+          p=Path('research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}/SOURCE_SHARD_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='PASS'
+          assert r['total_decoded_swaps'] > 0
+          assert r['duplicate_identities']==0 and not r['decode_errors']
+          assert r['market_outcomes_opened'] is False and r['orders_submitted'] is False
+          print(json.dumps({'year':'${{ matrix.year }}','swaps':r['total_decoded_swaps'],'buckets':r['five_minute_nonzero_buckets']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uniswap-sqd-flow-${{ matrix.year }}
+          path: research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  economic-screen:
+    needs: full-source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      CANONICAL_ARTIFACT_ID: "8712672241"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixed economic environment
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0 pytest==8.3.5 requests==2.32.4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: uniswap-sqd-flow-*
+          path: deps/flow
+          merge-multiple: false
+      - name: Download and verify immutable canonical Bybit export
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('deps/canonical')
+          manifest=json.loads((root/'EXPORT_MANIFEST.json').read_text())
+          assert manifest['schema_version']==1 and len(manifest['tables'])==18
+          for item in manifest['tables']:
+              path=root/item['symbol']/(item['table']+'.pkl.gz')
+              assert path.stat().st_size==item['bytes']
+              assert hashlib.sha256(path.read_bytes()).hexdigest()==item['sha256']
+          print('canonical-ok')
+          PY
+      - name: Materialize and verify economic engine
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          mkdir -p "$econ"
+          base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > "$econ/bundle.tar.gz"
+          echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  $econ/bundle.tar.gz" | sha256sum -c -
+          tar -xzf "$econ/bundle.tar.gz" -C "$econ"
+          echo "67d662fb0255621df687157a0535dd35f06417e12beb4a195cf7d3d5bd32de0f  $econ/economic_screen.py" | sha256sum -c -
+          echo "69e1fbdea120c47362fd71f4205770f49bba92620965a769f967f579b5413d92  $econ/test_economic_screen.py" | sha256sum -c -
+      - name: Run focused economic semantics tests
+        run: |
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          PYTHONPATH="$econ" python -m pytest -q "$econ/test_economic_screen.py"
+      - name: Run frozen canonical-Bybit pre-2024 economic screen
+        run: |
+          set -euo pipefail
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          out=research_runs/uniswap_signed_flow_sqd/economic
+          rm -rf "$out"
+          mkdir -p "$out"
+          PYTHONPATH="$econ" python "$econ/economic_screen.py" \
+            --source-root deps/flow \
+            --canonical-root deps/canonical/ETHUSDT \
+            --source-gate research_results/uniswap_signed_flow_sqd_source/RESULT.json \
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+      - name: Enforce chronology and decision boundary
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research_runs/uniswap_signed_flow_sqd/economic/RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['claim_id']=='CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001'
+          assert r['source_gate_status']=='PASS'
+          assert r['status'] in {
+            'RETIRED_PRE2024_CONFIRMATION_GATE_FAILURE',
+            'PRE2024_CONFIRMATION_PASS_DEVELOPMENT_OPENED',
+          }
+          assert r['official_2024_2026_opened'] is False
+          assert r['ranking_change'] is False
+          assert r['live_permission'] is False and r['orders_submitted'] is False
+          if not r['confirmation_gate_pass']:
+              assert r['development_opened'] is False and r['development'] is None
+          print(json.dumps({
+            'status':r['status'],
+            'threshold':r['source_threshold_stable_notional'],
+            'events':r['structurally_eligible_events'],
+            'prediction':r['confirmation_prediction_metrics'],
+            'account18':r['confirmation_accounts']['18'],
+            'account24':r['confirmation_accounts']['24'],
+          },indent=2,sort_keys=True))
+          PY
+      - name: Write compact report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research_runs/uniswap_signed_flow_sqd/economic')
+          r=json.loads((root/'RESULT.json').read_text())
+          p=r['confirmation_prediction_metrics']; a18=r['confirmation_accounts']['18']; a24=r['confirmation_accounts']['24']
+          text="\n".join([
+            "# Signed Uniswap WETH–stablecoin flow — decision report",
+            "",
+            f"Result: `{r['result_id']}`  ",
+            f"Status: `{r['status']}`",
+            "",
+            (f"The six-window source gate passed and the full 2021-05-05 through 2023-12-31 signed-flow history was aggregated before canonical Bybit outcomes were opened. "
+             f"The frozen fit-only event threshold was `{r['source_threshold_stable_notional']:.2f}` stablecoin units. "
+             f"`{r['source_candidate_buckets']}` source buckets and `{r['structurally_eligible_events']}` causal structural actions remained."),
+            "",
+            "## Untouched 2023H1 prediction",
+            "",
+            f"- resolved rows: `{p.get('rows')}`",
+            f"- model AUC: `{p.get('model_auc')}`",
+            f"- distance baseline AUC: `{p.get('distance_baseline_auc')}`",
+            f"- Brier skill: `{p.get('brier_skill')}`",
+            "",
+            "## One-slot account",
+            "",
+            f"- 18bp: NAV `{a18['start_nav']:.2f} -> {a18['final_marked_nav']:.2f}`, trades `{a18['completed_trades']}`, PF `{a18['profit_factor']}`, median `{a18['median_trade_return']}`, MDD `{a18['maximum_drawdown']}`",
+            f"- 24bp: NAV `{a24['start_nav']:.2f} -> {a24['final_marked_nav']:.2f}`, trades `{a24['completed_trades']}`, PF `{a24['profit_factor']}`, median `{a24['median_trade_return']}`, MDD `{a24['maximum_drawdown']}`",
+            f"- 18bp winner-deleted/full-rerouted NAV: `{a18['winner_removed_rerouted']['final_marked_nav']:.2f}`",
+            "",
+            f"Development opened: `{r['development_opened']}`. Official 2024–2026, ranking and live authority remain closed.",
+            "",
+          ])
+          (root/'REPORT.md').write_text(text)
+          PY
+      - name: Publish compact decision to branch
+        if: ${{ always() && github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          src=research_runs/uniswap_signed_flow_sqd/economic
+          dest=research_results/uniswap_signed_flow_sqd_economic
+          test -f "$src/RESULT.json"
+          mkdir -p "$dest"
+          cp "$src/RESULT.json" "$dest/RESULT.json"
+          cp "$src/REPORT.md" "$dest/REPORT.md"
+          cp "$src/SHA256SUMS.txt" "$dest/SHA256SUMS.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record signed Uniswap flow economic decision"
+            git push origin HEAD:agent/r34-uniswap-signed-flow-sqd-takeover-001
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uniswap-signed-flow-sqd-economic-${{ github.sha }}
+          path: research_runs/uniswap_signed_flow_sqd/economic
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
