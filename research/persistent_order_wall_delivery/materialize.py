@@ -9,10 +9,16 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-B64 = ROOT / "SOURCE_BUNDLE.tar.gz.b64"
 OUT = ROOT / "materialized"
 
-raw = base64.b64decode(B64.read_text().strip(), validate=True)
+parts = sorted(ROOT.glob("SOURCE_BUNDLE.b64.part*"))
+if parts:
+    encoded = "".join(part.read_text().strip() for part in parts)
+else:
+    # Compatibility fallback for an intact single-file carrier.
+    encoded = (ROOT / "SOURCE_BUNDLE.tar.gz.b64").read_text().strip()
+
+raw = base64.b64decode(encoded, validate=True)
 tar_bytes = gzip.decompress(raw)
 OUT.mkdir(parents=True, exist_ok=True)
 with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:") as tar:
@@ -33,4 +39,14 @@ for name, meta in manifest.items():
             f"bundle mismatch {name}: {observed}/{len(data)} "
             f"!= {meta['sha256']}/{meta['size']}"
         )
-print(json.dumps({"materialized": sorted(manifest), "output": str(OUT)}, sort_keys=True))
+print(
+    json.dumps(
+        {
+            "carrier_parts": [part.name for part in parts],
+            "carrier_sha256": hashlib.sha256(encoded.encode()).hexdigest(),
+            "materialized": sorted(manifest),
+            "output": str(OUT),
+        },
+        sort_keys=True,
+    )
+)
