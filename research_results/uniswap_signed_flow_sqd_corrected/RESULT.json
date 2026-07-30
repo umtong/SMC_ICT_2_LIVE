@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001",
+  "result_id": "RES-20260730-UNISWAP-SIGNED-FLOW-SQD-CORRECTED-001",
+  "status": "RETIRED_PRE2024_CONFIRMATION_GATE_FAILURE_AFTER_PROGRAMIZATION_CORRECTION",
+  "source_gate_status": "PASS",
+  "full_source": {
+    "2021_05_05_to_2021_12_31_swaps": 2099482,
+    "2022_swaps": 4184012,
+    "2023_swaps": 3650145,
+    "duplicate_identities": 0,
+    "decode_errors": 0,
+    "nonzero_5m_buckets": 279400
+  },
+  "fit_only_stable_notional_threshold": 24313142.22861834,
+  "source_candidate_buckets": 26,
+  "structurally_eligible_events": 21,
+  "partition_rows": {
+    "fit": 16,
+    "calibration": 1,
+    "confirmation": 4,
+    "development": 0
+  },
+  "confirmation_prediction": {
+    "rows": 4,
+    "classes": 2,
+    "model_auc": 0.5,
+    "distance_baseline_auc": 1.0,
+    "model_brier": 0.22265625,
+    "distance_baseline_brier": 0.14790649536978345,
+    "brier_skill": -0.5053852059933774
+  },
+  "confirmation_account_18bp": {
+    "start_nav": 10000.0,
+    "final_nav": 9933.067866346511,
+    "multiple": 0.9933067866346511,
+    "completed_trades": 4,
+    "positive_trades": 1,
+    "profit_factor": 0.5558980716309807,
+    "median_trade_return": -0.005005316903678551,
+    "maximum_drawdown": 0.012651460974242634,
+    "winner_deleted_rerouted_nav": 9850.126320221096
+  },
+  "confirmation_account_24bp": {
+    "start_nav": 10000.0,
+    "final_nav": 9930.19814310116,
+    "multiple": 0.9930198143101161,
+    "completed_trades": 4,
+    "positive_trades": 1,
+    "profit_factor": 0.5365771914362568,
+    "median_trade_return": -0.005004016082852466,
+    "maximum_drawdown": 0.012090733294389144,
+    "winner_deleted_rerouted_nav": 9850.187329905015
+  },
+  "programization_corrections": [
+    "aggregate transaction concentration by transaction hash",
+    "activate confirmed pivots only after the confirming right-side bar has been consumed",
+    "invalidate an action when its frozen target is consumed during the latency minute before executable entry",
+    "freeze model and action geometry at the decision-time price; use the later fill only for execution and sizing",
+    "size structural risk from actual executable entry geometry",
+    "apply funding to quantity times the last causally observed funding-time price proxy",
+    "exclude pre-market funding and bridge later missing rows only to the last observed close",
+    "apply the preregistered adverse structural terminal penalty at finite source exhaustion",
+    "remove the undeclared minimum-100-fit-row gate",
+    "restore all preregistered development gates",
+    "exclude transport diagnostics from scientific result identity",
+    "make event gzip artifacts byte-deterministic by fixing time and suppressing filename headers"
+  ],
+  "programization_tests_passed": 19,
+  "fresh_full_runs": 2,
+  "byte_identical_final_outputs": true,
+  "confirmation_gate_pass": false,
+  "development_opened": false,
+  "official_2024_2026_opened": false,
+  "ranking_change": false,
+  "live_permission": false,
+  "orders_submitted": false,
+  "decision": "Retire the exact standalone large-five-minute-signed-Uniswap-flow to nearest-causal-15-minute-first-passage family. The source is valid and economically distinct, but the frozen event-to-action mapping is sparse, baseline-inferior and negative after realistic cost. Do not rescue with adjacent pools, fee tiers, threshold, bucket, delay, feature, model, label, cost, risk, leverage or SMC checklist changes."
+}
