@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-EXTERNAL-POOL-FLOW-STATE-001",
+  "claim_id": "CLM-20260730-EXTERNAL-POOL-FLOW-STATE-001",
+  "status": "RETIRED_PRE2024_EXTERNAL_POOL_FLOW_STATE_FAILURE",
+  "validation_stage": "canonical BTCUSDT January-June 2023; January-February context, March-April development, unchanged May-June confirmation",
+  "ranking_eligibility": "not eligible; fixed action is deeply negative after cost and official 2024-2026 remained sealed",
+  "source": {
+    "canonical_500ms_rows": 17769695,
+    "external_pool_events": 4430,
+    "executable_candidates": 3831,
+    "price_tick": 0.1
+  },
+  "candidate_funnel": {
+    "accept_states": 2815,
+    "reject_states": 1459,
+    "flat_states": 156,
+    "target_consumed_before_entry": 423,
+    "invalid_geometry": 20,
+    "candidates": 3831
+  },
+  "fixed_state_exit_account": {
+    "development": {
+      "selected_trades": 937,
+      "12bp_multiple": 0.0671704589,
+      "18bp_multiple": 0.0399096816,
+      "24bp_multiple": 0.0318096819,
+      "24bp_profit_factor": 0.2068397900,
+      "24bp_positive_trades": 63,
+      "24bp_event_mdd": 0.9681903181
+    },
+    "confirmation": {
+      "selected_trades": 979,
+      "12bp_multiple": 0.0523859652,
+      "18bp_multiple": 0.0286043067,
+      "24bp_multiple": 0.0230217479,
+      "24bp_profit_factor": 0.0879285395,
+      "24bp_positive_trades": 62,
+      "24bp_event_mdd": 0.9769782521
+    }
+  },
+  "programization_audit": {
+    "defect": "a single five-second micro-flow reversal was allowed to invalidate a 15-minute external-liquidity delivery thesis",
+    "correction_diagnostic": "remove the five-second dynamic exit while keeping the same entries, targets and hard stops",
+    "development_zero_cost_multiple": 1.0694701099,
+    "development_12bp_multiple": 0.1018258399,
+    "confirmation_zero_cost_multiple": 1.0910130966,
+    "confirmation_12bp_multiple": 0.0605225899,
+    "interpretation": "the state exit destroyed some gross edge, but the corrected gross edge remained far below realistic cost"
+  },
+  "payoff_geometry": {
+    "development": {
+      "hard_only_trades": 848,
+      "median_hold_seconds": 46.0,
+      "accept_mean_gross_bp": 0.091836,
+      "accept_median_gross_bp": -3.979633,
+      "reject_mean_gross_bp": 1.824100,
+      "reject_median_gross_bp": -10.068180,
+      "median_accept_stop_bp": 5.908384,
+      "median_reject_stop_bp": 11.583612
+    },
+    "confirmation": {
+      "hard_only_trades": 951,
+      "median_hold_seconds": 36.0,
+      "accept_mean_gross_bp": -0.576899,
+      "accept_median_gross_bp": -3.140942,
+      "reject_mean_gross_bp": 3.196970,
+      "reject_median_gross_bp": -5.656973,
+      "median_accept_stop_bp": 4.396943,
+      "median_reject_stop_bp": 7.652886
+    }
+  },
+  "core_or_expansion": "neither; broad high-turnover sub-cost action surface with rare large rejection rotations",
+  "decision": "Retire the exact market-chased five-second acceptance/rejection family without changing pool radius, state length, flow rule, target, stop, cost, risk, leverage or adding ML. A successor may be separately preregistered to test the first high-resistance source retest, because market-chasing after confirmation is not the intended SMC/ICT entry geometry.",
+  "implementation_sha256": "fd5b019e859be01dfb336dfc388024248ce98afbc660b2086f8dee718dc1f490",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
