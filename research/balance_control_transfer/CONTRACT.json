@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BALANCE-CONTROL-TRANSFER-001",
+  "result_id": "RES-20260730-BALANCE-CONTROL-TRANSFER-001",
+  "logic": "true old two-sided balance -> edge-liquidity consumption -> activity-normalized rebalance -> outside control transfer continuation or inside failed-auction rotation",
+  "testbeds": ["BTCUSDT", "ETHUSDT"],
+  "balance_identity": [
+    "completed prior UTC day",
+    "day open and close inside completed 70% value area",
+    "both UTC half-days trade on both sides of completed POC"
+  ],
+  "state_versions": {
+    "one_packet": "next equal-turnover packet establishes outside or inside value",
+    "two_packet": "expansion packet followed by equal-turnover rebalance/redelivery packet"
+  },
+  "actions": ["ACCEPT_CONTINUATION", "REJECT_ROTATION", "FLAT"],
+  "execution": {
+    "activation_delay_ms": 500,
+    "price_resolution": "first later observed one-minute open",
+    "same_minute": "stop_first",
+    "funding": "actual signed Bybit funding",
+    "one_global_slot": true,
+    "elapsed_time_exit": false
+  },
+  "discovery": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bp": [12, 18, 24],
+    "selection_year": 2022,
+    "confirmation_2023": "sealed unless one fixed action is positive, non-sparse and winner-resistant at 18/24bp",
+    "official_2024_2026": "sealed unless unchanged 2023 confirmation passes"
+  },
+  "prohibited_rescue": [
+    "profile-bin changes",
+    "sensor-fraction or packet-count grid",
+    "extra SMC checklist gates",
+    "asset-specific rules",
+    "lower costs",
+    "risk or leverage",
+    "official-period tuning"
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}
