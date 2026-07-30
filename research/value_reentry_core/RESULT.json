@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-BYBIT-VALUE-REENTRY-CORE-001",
+  "claim_id": "CLM-20260730-BYBIT-VALUE-REENTRY-CORE-001",
+  "status": "RETIRED_PRE2024_VALUE_REENTRY_CORE_FAILURE",
+  "coverage": {
+    "BTCUSDT_complete_profile_days": 1095,
+    "ETHUSDT_complete_profile_days": 1022,
+    "resolved_raw_events": 2083,
+    "continuous_global_slot_completed_trades": 1888
+  },
+  "continuous_pre2024": {
+    "zero_cost_diagnostic": {
+      "return": 0.12706728774011022,
+      "geometric_daily": 0.00010924700670678078,
+      "trades": 1888,
+      "profit_factor": 1.0513470930289044,
+      "maximum_daily_marked_drawdown": 0.11833953252887919,
+      "median_account_return": -0.000609669412812755,
+      "top5_positive_share": 0.08750854619314481
+    },
+    "12bp": {
+      "final_nav": 1862.1734701079388,
+      "return": -0.8137826529892062,
+      "geometric_daily": -0.0015338368562701765,
+      "trades": 1888,
+      "profit_factor": 0.5175294191043882,
+      "maximum_daily_marked_drawdown": 0.815071546205697
+    },
+    "18bp": {
+      "final_nav": 1051.0213039288085,
+      "return": -0.8948978696071191,
+      "geometric_daily": -0.0020552574173646754,
+      "trades": 1888,
+      "profit_factor": 0.4088589233758799,
+      "maximum_daily_marked_drawdown": 0.8951880739220074
+    },
+    "24bp": {
+      "final_nav": 662.1105807169091,
+      "return": -0.9337889419283091,
+      "geometric_daily": -0.0024762967506060107,
+      "trades": 1888,
+      "profit_factor": 0.3326669029890248,
+      "maximum_daily_marked_drawdown": 0.9338136763872761
+    },
+    "winner_deleted_24bp": {
+      "final_nav": 289.79064177263274,
+      "return": -0.9710209358227367,
+      "geometric_daily": -0.0032287322280396547,
+      "trades": 1736,
+      "profit_factor": 0.0438293701524483,
+      "removed_event_count": 189
+    }
+  },
+  "annual_24bp": {
+    "2021": {"return": -0.5000, "trades": 600, "profit_factor": 0.378, "winner_deleted_return": -0.6408},
+    "2022": {"return": -0.5556, "trades": 626, "profit_factor": 0.315, "winner_deleted_return": -0.6716},
+    "2023": {"return": -0.7021, "trades": 662, "profit_factor": 0.180, "winner_deleted_return": -0.7673}
+  },
+  "gross_event_diagnostic": {
+    "poc_target": {"count": 511, "mean_return": 0.007237654308600587},
+    "outside_reacceptance": {"count": 1288, "mean_return": -0.001924997869982705},
+    "stop": {"count": 284, "mean_return": -0.003279206532831794}
+  },
+  "programization_findings": [
+    "The first local batch materialized post-2023 events because the canonical export contained later periods. Those outputs were quarantined; all inputs were hard-cut before 2024-01-01 and the pipeline was rerun.",
+    "The corrected rerun preserved all pre-2024 economics, so the negative result is not caused by the stage-boundary defect.",
+    "Six focused semantic tests pass and two corrected full runs produced byte-identical RESULT.json plus semantically identical event frames."
+  ],
+  "decision": {
+    "official_2024_2026_opened": false,
+    "ml_opened": false,
+    "risk_leverage_search_opened": false,
+    "ranking_changed": false,
+    "orders_submitted": false,
+    "reason": "The profile narrative has a weak zero-cost rotation effect but every year and every symbol-side subgroup is negative at 12bp. It is a frequent sub-cost phenomenon, not tradable Core."
+  },
+  "reproducibility": {
+    "strict_result_sha256": "a2f328dde87c6d95f6ec2de2e46e506a897750dbbb16899aa3862757bdb2674a",
+    "run_source_sha256": "f1b2b139b7b7648aaba15396307ffe0ad4229cd324fe19247645c4e3ae14f936",
+    "source_archive_sha256": "a58d0051dcb139b176845c5a2105dce2bd0424a70c84a4ba6baa8a74a1718e7b",
+    "tests_passed": 6
+  }
+}
