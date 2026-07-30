@@ -1,6 +1,6 @@
 {
   "actions": {
-    "ACCEPT": "after first penetration, two consecutive completed 5m closes beyond frozen prior-day high/low; continuation; protected interaction origin stop; +1.5R target; close-back-inside state exit",
+    "ACCEPT": "after first penetration, two consecutive completed 5m closes beyond frozen prior-day high/low; continuation; protected interaction-origin stop; +1.5R target; close-back-inside state exit",
     "REJECT": "first completed 5m close back inside before two-close acceptance; reversal; stop beyond known excursion extreme; frozen prior-day midpoint target; renewed outside-close state exit"
   },
   "candidate_counts": {
@@ -12,316 +12,81 @@
       "REJECT_2022": 371,
       "REJECT_2023": 385
     },
-    "evaluable": 1873,
+    "evaluable_pre2024": 1873,
     "total_generated": 1919
   },
   "claim_id": "CLM-20260729-ML-LIQUIDITY-INTERACTION-AV-001",
-  "data": {
-    "canonical_zips": {
-      "BTCUSDT_2021": {
-        "bytes": 81699641,
-        "file": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1.zip",
-        "sha256": "91cbdbb681c5508a18f8c8003222df8181d5021300d88b176eb33d86fa1a8d78"
-      },
-      "BTCUSDT_2022": {
-        "bytes": 74973104,
-        "file": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1.zip",
-        "sha256": "45a7b2d9c4d46f221cf7145eb26cac0dfe99f4b9a7bd92f4ac13952a5c0ed633"
-      },
-      "BTCUSDT_2023": {
-        "bytes": 79252002,
-        "file": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2023-CANONICAL-V1.zip",
-        "sha256": "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46"
-      },
-      "ETHUSDT_2021": {
-        "bytes": 65636142,
-        "file": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1.zip",
-        "sha256": "cb8c4b5da3170dd6e6150da8a58da25e20e6b08f8c37dfa4c3b8c72ec5b54702"
-      },
-      "ETHUSDT_2022": {
-        "bytes": 70031189,
-        "file": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1.zip",
-        "sha256": "84ba43eebd42958ee1113463ec4ea0cd1dd39c507390d533557360f64bcfd638"
-      },
-      "ETHUSDT_2023": {
-        "bytes": 69842397,
-        "file": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2023-CANONICAL-V1.zip",
-        "sha256": "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322"
-      }
+  "continuous_24bp": {
+    "ACCEPT": {
+      "marked_count": 0,
+      "mdd": 0.4980011901241076,
+      "median_account_return": -0.003000117914807075,
+      "multiple": 0.5167584588978497,
+      "pf": 0.6191003139626712,
+      "trades": 651,
+      "winner_removed_multiple": 0.45744055857314525
     },
-    "symbols": [
-      "BTCUSDT",
-      "ETHUSDT"
-    ],
-    "years": [
-      2021,
-      2022,
-      2023
-    ]
-  },
-  "decision": [
-    "Both deterministic actions are negative in 2022 and unchanged 2023 from 12bp through 24bp at fixed 0.5% risk and 3x cap.",
-    "Exact top-10%-positive-event deletion followed by full global-slot rerouting worsens every path.",
-    "The broad prior-day interaction event has no raw cost headroom; ML, risk and leverage research remain closed.",
-    "This retires this exact prior-day two-close-acceptance/first-reclaim implementation, not every possible external-information source.",
-    "Official 2024-2026 remains unopened; no credentials or orders."
-  ],
-  "execution": {
-    "actual_funding": true,
-    "costs_bps": [
-      12,
-      18,
-      24
-    ],
-    "decision": "completed 5m state",
-    "elapsed_time_exit": false,
-    "entry": "first strictly later observable 1m open (decision availability + 60s at 1m resolution)",
-    "latency_ms": 500,
-    "notional_cap": 3.0,
-    "one_global_slot": true,
-    "risk_fraction": 0.005,
-    "same_minute": "stop first"
-  },
-  "grid": [
-    {
-      "action": "ACCEPT",
-      "cost": 12,
-      "mdd": 0.07294521964841749,
-      "median": -0.0025487895805963314,
-      "multiple": 0.9786318072162121,
-      "pf": 0.9602708632026754,
-      "removed": 9,
-      "trades": 238,
-      "wr_multiple": 0.9238760086183471,
-      "wr_trades": 234,
-      "year": 2021
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 18,
-      "mdd": 0.10468627398544339,
-      "median": -0.0026941095913381984,
-      "multiple": 0.9209012809260627,
-      "pf": 0.8521627631905502,
-      "removed": 9,
-      "trades": 238,
-      "wr_multiple": 0.8647728121238939,
-      "wr_trades": 233,
-      "year": 2021
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 24,
-      "mdd": 0.1429774519252871,
-      "median": -0.0027918143390988514,
-      "multiple": 0.8731921270938034,
-      "pf": 0.7616898558812064,
-      "removed": 9,
-      "trades": 238,
-      "wr_multiple": 0.823154777647783,
-      "wr_trades": 233,
-      "year": 2021
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 12,
-      "mdd": 0.18886237489756674,
-      "median": -0.002912788338089363,
-      "multiple": 0.839334007893813,
-      "pf": 0.6897084399586534,
-      "removed": 7,
-      "trades": 225,
-      "wr_multiple": 0.8306972871374351,
-      "wr_trades": 224,
-      "year": 2022
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 18,
-      "mdd": 0.22351766224150793,
-      "median": -0.003068927970168436,
-      "multiple": 0.7952888557171698,
-      "pf": 0.6037962544211273,
-      "removed": 7,
-      "trades": 225,
-      "wr_multiple": 0.7771987273848903,
-      "wr_trades": 224,
-      "year": 2022
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 24,
-      "mdd": 0.2524187113634968,
-      "median": -0.0032037977946316706,
-      "multiple": 0.7590061277725225,
-      "pf": 0.5328798312722682,
-      "removed": 7,
-      "trades": 225,
-      "wr_multiple": 0.7412013846965317,
-      "wr_trades": 224,
-      "year": 2022
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 12,
-      "mdd": 0.1783763523816033,
-      "median": -0.0027171599001386115,
-      "multiple": 0.8740946243517815,
-      "pf": 0.7083869924266671,
-      "removed": 7,
-      "trades": 191,
-      "wr_multiple": 0.8415292153421919,
-      "wr_trades": 187,
-      "year": 2023
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 18,
-      "mdd": 0.21274232959739092,
-      "median": -0.002894339199549317,
-      "multiple": 0.8228061208458922,
-      "pf": 0.5924522447775851,
-      "removed": 7,
-      "trades": 191,
-      "wr_multiple": 0.7930323037505315,
-      "wr_trades": 187,
-      "year": 2023
-    },
-    {
-      "action": "ACCEPT",
-      "cost": 24,
-      "mdd": 0.24059982327825702,
-      "median": -0.0030065664669744395,
-      "multiple": 0.7826558947109387,
-      "pf": 0.5032716702278263,
-      "removed": 6,
-      "trades": 191,
-      "wr_multiple": 0.7594879317358294,
-      "wr_trades": 188,
-      "year": 2023
-    },
-    {
-      "action": "REJECT",
-      "cost": 12,
-      "mdd": 0.24374449397457787,
-      "median": -0.005,
-      "multiple": 0.8031616540977591,
-      "pf": 0.7702295760030038,
-      "removed": 6,
-      "trades": 285,
-      "wr_multiple": 0.6475318065655053,
-      "wr_trades": 281,
-      "year": 2021
-    },
-    {
-      "action": "REJECT",
-      "cost": 18,
-      "mdd": 0.3027932910652641,
-      "median": -0.005,
-      "multiple": 0.7099441316540225,
-      "pf": 0.6484954191716782,
-      "removed": 6,
-      "trades": 285,
-      "wr_multiple": 0.594871292716539,
-      "wr_trades": 281,
-      "year": 2021
-    },
-    {
-      "action": "REJECT",
-      "cost": 24,
-      "mdd": 0.36153450520611674,
-      "median": -0.005,
-      "multiple": 0.6465655977405582,
-      "pf": 0.5595918838941592,
-      "removed": 6,
-      "trades": 285,
-      "wr_multiple": 0.556838082721641,
-      "wr_trades": 281,
-      "year": 2021
-    },
-    {
-      "action": "REJECT",
-      "cost": 12,
-      "mdd": 0.36687057261536443,
-      "median": -0.004917780209735439,
-      "multiple": 0.6845221840523602,
-      "pf": 0.6452592687103152,
-      "removed": 7,
-      "trades": 325,
-      "wr_multiple": 0.5730421433219807,
-      "wr_trades": 321,
-      "year": 2022
-    },
-    {
-      "action": "REJECT",
-      "cost": 18,
-      "mdd": 0.41996901730428385,
-      "median": -0.004937492927087646,
-      "multiple": 0.6096393586558151,
-      "pf": 0.5491006852037676,
-      "removed": 6,
-      "trades": 325,
-      "wr_multiple": 0.5407464374313657,
-      "wr_trades": 322,
-      "year": 2022
-    },
-    {
-      "action": "REJECT",
-      "cost": 24,
-      "mdd": 0.4609779251948174,
-      "median": -0.004941037387649167,
-      "multiple": 0.5569834618418564,
-      "pf": 0.47679798423334246,
-      "removed": 6,
-      "trades": 325,
-      "wr_multiple": 0.5002700897689322,
-      "wr_trades": 322,
-      "year": 2022
-    },
-    {
-      "action": "REJECT",
-      "cost": 12,
-      "mdd": 0.30271785322812117,
-      "median": -0.004136966608464457,
-      "multiple": 0.7393720848594089,
-      "pf": 0.7178430101322987,
-      "removed": 9,
-      "trades": 340,
-      "wr_multiple": 0.5684359655303436,
-      "wr_trades": 333,
-      "year": 2023
-    },
-    {
-      "action": "REJECT",
-      "cost": 18,
-      "mdd": 0.3768128444778934,
-      "median": -0.004639269975920016,
-      "multiple": 0.6374757556597552,
-      "pf": 0.5921661855062428,
-      "removed": 8,
-      "trades": 340,
-      "wr_multiple": 0.5187044085304602,
-      "wr_trades": 334,
-      "year": 2023
-    },
-    {
-      "action": "REJECT",
-      "cost": 24,
-      "mdd": 0.434331619652222,
-      "median": -0.004679902132345999,
-      "multiple": 0.5700312116600406,
-      "pf": 0.5008256750990692,
-      "removed": 8,
-      "trades": 340,
-      "wr_multiple": 0.4883664465721116,
-      "wr_trades": 333,
-      "year": 2023
+    "REJECT": {
+      "marked_count": 1,
+      "mdd": 0.7962882742895679,
+      "median_account_return": -0.004943003604861086,
+      "multiple": 0.20538753055443018,
+      "pf": 0.5213724671907273,
+      "trades": 951,
+      "winner_removed_multiple": 0.14152360867060412
     }
-  ],
+  },
+  "corrected_annual_24bp": {
+    "ACCEPT_2022": {
+      "marked_count": 1,
+      "median_account_return": -0.0031286582183283553,
+      "multiple": 0.7637725858895378,
+      "pf": 0.5390418214453686,
+      "trades": 225,
+      "winner_removed_multiple": 0.7458553107814835
+    },
+    "ACCEPT_2023": {
+      "marked_count": 0,
+      "median_account_return": -0.0030065387914216687,
+      "multiple": 0.7826562357811906,
+      "pf": 0.5032722112026918,
+      "trades": 191,
+      "winner_removed_multiple": 0.7594879001411419
+    },
+    "REJECT_2022": {
+      "marked_count": 0,
+      "median_account_return": -0.004941070861884596,
+      "multiple": 0.5569830353390766,
+      "pf": 0.4767982576551895,
+      "trades": 325,
+      "winner_removed_multiple": 0.5002700806341832
+    },
+    "REJECT_2023": {
+      "marked_count": 1,
+      "median_account_return": -0.004572266543380906,
+      "multiple": 0.5703212247790065,
+      "pf": 0.501163217243935,
+      "trades": 341,
+      "winner_removed_multiple": 0.48861518996851117
+    }
+  },
+  "evidence_files": {
+    "annual_cost_grid": "ACTION_YEAR_COST_GRID.csv",
+    "continuous_cost_grid": "CONTINUOUS_PRE2024_GRID.csv",
+    "corrected_runner": "run_boundary_corrected.py",
+    "focused_tests": "test_boundary_corrected.py"
+  },
   "official_2024_2026_opened": false,
   "orders_submitted": false,
+  "programization_correction": {
+    "corrected_rule": "search exits only before each UTC boundary; mark unresolved exposure at the last observed pre-boundary minute; apply funding through the boundary; retain slot occupation; never assert a boundary strategy close",
+    "defect": "preliminary annual diagnostics could omit unresolved positions or value an entry-year trade at a later-year structural exit",
+    "economic_verdict_changed": false,
+    "id": "CORRECTION-20260730-PRIOR-DAY-STAGE-BOUNDARY-MARK-001",
+    "official_period_opened": false
+  },
   "result_id": "RES-20260730-PRIOR-DAY-LIQUIDITY-INTERACTION-FATAL-001",
-  "schema_version": 1,
+  "schema_version": 2,
   "scope": "prior completed UTC-day high/low interaction; two-close acceptance continuation versus first-close rejection reversal",
   "status": "RETIRED_EXACT_PRIOR_DAY_INTERACTION_FATAL_SCREEN"
 }
