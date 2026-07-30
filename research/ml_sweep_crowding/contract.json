@@ -1,0 +1,178 @@
+{
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "project_revision_at_open": 22,
+  "execution_market": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "global_entry_slots": 1,
+  "data": {
+    "bybit_1m_start": "2021-01-01T00:00:00Z",
+    "bybit_1m_end": "2024-06-30T23:59:00Z",
+    "bybit_source_mode": "immutable_bybit_derived_one_minute_mirror",
+    "bybit_source_correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-1M-MIRROR-004",
+    "external_metric_source_correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-METRIC-START-005",
+    "bybit_symbol_first_expected": {
+      "BTCUSDT": "2021-01-01T00:00:00Z",
+      "ETHUSDT": "2021-03-15T00:00:00Z"
+    },
+    "superseded_sources": [
+      {
+        "mode": "blind_static_month_construction",
+        "failure": "requested a nonexistent pre-listing ETHUSDT January 2021 object before opening market rows"
+      },
+      {
+        "mode": "official_v5_paginated_kline_and_funding",
+        "failure": "all documented public REST hosts returned country-restriction HTTP 403 from the GitHub US runner before opening market rows"
+      },
+      {
+        "mode": "official_static_mt4_listing_aware",
+        "failure": "monthly objects existed but BTCUSDT contained only 90.631254% of the continuous one-minute grid; no model or PnL opened"
+      },
+      {
+        "mode": "unpinned Binance metric mirror with price-listing coverage denominator",
+        "failure": "ETHUSDT metrics actually begin 2021-12-01, so requiring them from the 2021-03-15 Bybit listing date falsely reported 73.807698% whole-window coverage; no model or PnL opened"
+      }
+    ],
+    "pinned_bybit_one_minute_mirror": {
+      "dataset_id": "rogerdehe/klines-bybit",
+      "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
+      "probe_id": "PROBE-20260727-HF-BYBIT-1M-PINNED-002",
+      "timestamp_column": "date",
+      "files": {
+        "BTCUSDT": "futures/1m/BTC_USDT_USDT.parquet",
+        "ETHUSDT": "futures/1m/ETH_USDT_USDT.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "f9e742f7f7fa1af32ca09b03a0ba8773ab251213cd420f79d4380701ca81f265",
+        "ETHUSDT": "d9fab6b1fd3d1599cc98a0397127d0ed30ca3a518e1a2bf7981705d123bb266c"
+      },
+      "coverage": {
+        "BTCUSDT": "100% of 1,838,880 UTC minutes from 2021-01-01 through 2024-06-30",
+        "ETHUSDT": "100% of 1,733,760 UTC minutes from observed 2021-03-15 listing start through 2024-06-30"
+      },
+      "validity": "minute-aligned, no duplicates, no internal gap, finite positive OHLC and zero impossible OHLC rows"
+    },
+    "pinned_bybit_funding_mirror": {
+      "dataset_id": "rogerdehe/klines-bybit",
+      "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
+      "probe_id": "PROBE-20260727-HF-BYBIT-FUNDING-PINNED-002",
+      "rate_column": "open",
+      "timestamp_column": "date",
+      "cadence": "actual settlement rows; observed median and maximum gap 8h",
+      "files": {
+        "BTCUSDT": "futures/1h/BTC_USDT_USDT-funding_rate.parquet",
+        "ETHUSDT": "futures/1h/ETH_USDT_USDT-funding_rate.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "b8c40e68d075b49337e2500b99af0ed2fec172a193fe45a11891b277c7830d04",
+        "ETHUSDT": "5ec784d1691e5310187eef5e3f8f5125bf3255dee6df07cec3291d7db8e8058a"
+      },
+      "semantics": "the mirror stores the actual funding rate in open; high, low, close and volume are zero placeholders"
+    },
+    "pinned_binance_metrics_mirror": {
+      "dataset_id": "linxy/USDT-M_Perpetual_Futures",
+      "revision": "69ae9208fb762758b279e449684638c9e7bbd0c9",
+      "probe_id": "PROBE-20260727-BINANCE-METRICS-PINNED-001",
+      "files": {
+        "BTCUSDT": "BTCUSDT/BTCUSDT_metrics.parquet",
+        "ETHUSDT": "ETHUSDT/ETHUSDT_metrics.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "4bcba71bcd859654a81c2fa0ebb507f42b7f82068f8f6af35a6f811db3ebb83c",
+        "ETHUSDT": "dcd6b4f54803c2ec30bfd69368b1d208ef95f834083bef8dbce709e8050505f1"
+      },
+      "first_expected": {
+        "BTCUSDT": "2021-01-01T00:00:00Z",
+        "ETHUSDT": "2021-12-01T00:00:00Z"
+      },
+      "whole_source_coverage": {
+        "BTCUSDT": 0.9983740102671191,
+        "ETHUSDT_from_2021_12_01": "greater than 99%; every full month 2022-01 through 2024-06 is at least 98.503352%"
+      },
+      "minimum_clock_coverage_from_first_expected": 0.97,
+      "semantics": "five-minute Binance USD-M aggregate open interest, top/global long-short ratios and taker long-short volume ratio; one full observation delayed before model use"
+    },
+    "minimum_one_minute_coverage": 0.995,
+    "metrics_delay_bars": 1
+  },
+  "signal": {
+    "bar_minutes": 5,
+    "external_liquidity_window_bars": 144,
+    "atr_bars": 36,
+    "rolling_state_bars": 288,
+    "one_sided_sweeps_only": true,
+    "stop_buffer_atr": 0.10,
+    "target_r": 3.0,
+    "time_exit": null
+  },
+  "features": [
+    "sweep_side",
+    "candidate_direction",
+    "is_continuation",
+    "sweep_depth_atr",
+    "close_location",
+    "reclaim_atr",
+    "body_atr",
+    "upper_wick_atr",
+    "lower_wick_atr",
+    "range_atr",
+    "volume_z_24h",
+    "return_5m_atr",
+    "return_1h_atr",
+    "realized_vol_1h",
+    "distance_opposing_liquidity_atr",
+    "open_interest_log",
+    "open_interest_change_15m",
+    "open_interest_change_1h",
+    "open_interest_change_6h",
+    "open_interest_z_24h",
+    "top_account_ls",
+    "top_position_ls",
+    "global_account_ls",
+    "taker_buy_sell_ratio",
+    "metric_zscores_and_changes",
+    "crowding_flow_interactions",
+    "asset_flag"
+  ],
+  "model": {
+    "class": "sklearn.ensemble.HistGradientBoostingClassifier",
+    "random_state": 20260727,
+    "learning_rate": 0.06,
+    "max_iter": 240,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 40,
+    "l2_regularization": 1.0,
+    "early_stopping": false,
+    "base_train_start": "2021-01-01T00:00:00Z",
+    "base_train_end_exclusive": "2023-01-01T00:00:00Z",
+    "selection_start": "2023-01-01T00:00:00Z",
+    "selection_end_exclusive": "2024-01-01T00:00:00Z",
+    "official_h1_start": "2024-01-01T00:00:00Z",
+    "official_h1_end_exclusive": "2024-07-01T00:00:00Z",
+    "semiannual_activation_delay_minutes": 30
+  },
+  "execution": {
+    "latency_ms": 500,
+    "base_round_trip_bps": 24,
+    "stress_round_trip_bps": [18, 30],
+    "same_bar_ambiguity": "stop_first",
+    "stop_gap_fill": "adverse_observed_open",
+    "target_gap_fill": "target_price",
+    "funding": "actual Bybit settlement rates from the pinned immutable mirror, applied to signed open notional",
+    "stage_boundary": "NAV mark; no forced strategy exit"
+  },
+  "sizing": {
+    "start_nav_usdt": 10000.0,
+    "risk_fractions": [0.005, 0.01, 0.02, 0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.48, 0.64],
+    "leverages": [2, 3, 5, 8, 12, 20, 30, 50, 75, 100],
+    "probability_thresholds": [0.50, 0.54, 0.58, 0.62, 0.66, 0.70, 0.74, 0.78],
+    "maintenance_margin_fraction_proxy": 0.005,
+    "liquidation_distance_buffer_fraction": 1.0,
+    "liquidation_rule": "planned effective stop loss plus maintenance margin must be strictly below full account equity; no discretionary defensive haircut"
+  },
+  "selection": {
+    "objective": "maximum 24bp after-cost UTC geometric daily NAV growth on calendar 2023",
+    "eligibility": ["final NAV > 0", "no forced liquidation proxy", "finite accounting"],
+    "official_open_condition": "selected 2023 final NAV > 10000 USDT",
+    "adjacent_rescue_after_failure": false
+  }
+}

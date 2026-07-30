@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-SWEEP-STATIC-MT4-PINNED-FUNDING-003",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "previous_result_id": "RES-20260727-ML-SWEEP-CROWDING-001",
+  "outcome_state_before_correction": {
+    "market_rows_opened": false,
+    "model_metrics_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "official_period_opened": false
+  },
+  "source_failures_closed": [
+    {
+      "source": "blind public.bybit.com monthly filename construction",
+      "failure": "requested a nonexistent pre-listing ETHUSDT January 2021 file"
+    },
+    {
+      "source": "official Bybit V5 public REST",
+      "failure": "all documented global and regional hosts returned country-restriction HTTP 403 from the GitHub US runner"
+    }
+  ],
+  "replacement": {
+    "price": {
+      "provider": "Bybit official public static MT4 archive",
+      "root": "https://public.bybit.com/kline_for_metatrader4",
+      "selection": "directory-listing-discovered monthly one-minute files only",
+      "coverage": "measured from each symbol's first observed minute through 2024-06-30; minimum 99.5%",
+      "hashing": "every downloaded gzip and every directory listing is SHA-256 recorded"
+    },
+    "funding": {
+      "dataset_id": "rogerdehe/klines-bybit",
+      "revision": "271697a938c8cf47c8378566848eb2ed7caab792",
+      "files": {
+        "BTCUSDT": "futures/1h/BTC_USDT_USDT-funding_rate.parquet",
+        "ETHUSDT": "futures/1h/ETH_USDT_USDT-funding_rate.parquet"
+      },
+      "sha256": {
+        "BTCUSDT": "b8c40e68d075b49337e2500b99af0ed2fec172a193fe45a11891b277c7830d04",
+        "ETHUSDT": "5ec784d1691e5310187eef5e3f8f5125bf3255dee6df07cec3291d7db8e8058a"
+      },
+      "verified_semantics": "actual rate is stored in open; high/low/close/volume are zero placeholders",
+      "verified_cadence": "8 hours",
+      "coverage_gate": "complete through the official 2024H1 boundary"
+    }
+  },
+  "unchanged": [
+    "BTCUSDT and ETHUSDT with one global entry/position slot",
+    "five-minute completed-bar decision clock and twelve-hour liquidity sweep",
+    "continuation/reversal candidates and all feature definitions",
+    "one-full-observation delay for Binance positioning metrics",
+    "HGBT class and hyperparameters",
+    "structural stop and 3R target",
+    "fixed 500ms latency and first observable one-minute entry",
+    "24bp base all-in round trip cost and 18/30bp diagnostics",
+    "risk, leverage and probability threshold grids",
+    "2021-2022 fit, calendar-2023 selection and immediate official 2024H1 opening rule"
+  ],
+  "decision": "Execute the exact sealed economic route once. A source-valid nonpositive 2023 account closes the route without adjacent rescue. Any superior hard-valid official 2024H1 account is inserted into the cumulative ranking immediately.",
+  "credentials_used": false,
+  "orders_submitted": false
+}

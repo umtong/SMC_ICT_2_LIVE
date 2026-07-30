@@ -1,0 +1,1 @@
+Outcome access is permitted only after the trigger commit. The contract, model class and hyperparameters, feature transformations, action construction, training/selection windows, account grid, latency, costs, funding, stop/target rules, global slot, causal update timing, and official-open gate were fixed first.

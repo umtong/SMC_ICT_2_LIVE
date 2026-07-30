@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "trigger_id": "EXEC-20260727-ML-SWEEP-CROWDING-PINNED-1M-004",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "source_correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-1M-MIRROR-004",
+  "purpose": "Execute the unchanged sealed sweep/crowding economic contract exactly once using immutable, SHA-pinned, complete Bybit-derived one-minute price files and immutable actual Bybit funding settlements.",
+  "source_evidence": {
+    "BTCUSDT": "1,838,880 of 1,838,880 minutes; zero internal gaps",
+    "ETHUSDT": "1,733,760 of 1,733,760 minutes from observed 2021-03-15 listing start; zero internal gaps",
+    "funding": "100% required 8-hour slots for BTCUSDT and ETHUSDT"
+  },
+  "prior_economic_outcome_opened": false,
+  "economic_contract_changed": false,
+  "model_changed": false,
+  "features_changed": false,
+  "labels_changed": false,
+  "execution_changed": false,
+  "costs_changed": false,
+  "sizing_changed": false,
+  "periods_changed": false,
+  "credentials_used": false,
+  "orders_submitted": false,
+  "decision_rule": "A source-valid nonpositive calendar-2023 account closes the exact route without adjacent rescue. A positive survivor opens official 2024H1 immediately. Any superior hard-valid official result is inserted into the cumulative ranking immediately."
+}

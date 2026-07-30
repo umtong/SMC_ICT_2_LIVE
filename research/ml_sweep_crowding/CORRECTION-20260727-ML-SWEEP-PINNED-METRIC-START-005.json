@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-SWEEP-PINNED-METRIC-START-005",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "prior_result_id": "RES-20260727-ML-SWEEP-CROWDING-001",
+  "prior_result_status": "SOURCE_GATE_FAIL",
+  "outcome_state_before_correction": {
+    "candidate_rows_opened": false,
+    "model_metrics_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "official_period_opened": false
+  },
+  "observed_source_error": "ETHUSDT Binance metric clock coverage was computed from the 2021-03-15 Bybit listing even though the immutable metric file begins 2021-12-01, yielding a false whole-window coverage failure.",
+  "probe": {
+    "probe_id": "PROBE-20260727-BINANCE-METRICS-PINNED-001",
+    "dataset_id": "linxy/USDT-M_Perpetual_Futures",
+    "revision": "69ae9208fb762758b279e449684638c9e7bbd0c9",
+    "BTCUSDT": {
+      "path": "BTCUSDT/BTCUSDT_metrics.parquet",
+      "sha256": "4bcba71bcd859654a81c2fa0ebb507f42b7f82068f8f6af35a6f811db3ebb83c",
+      "first_timestamp": "2021-01-01T00:00:00Z",
+      "coverage_to_2024H1_end": 0.9983740102671191
+    },
+    "ETHUSDT": {
+      "path": "ETHUSDT/ETHUSDT_metrics.parquet",
+      "sha256": "dcd6b4f54803c2ec30bfd69368b1d208ef95f834083bef8dbce709e8050505f1",
+      "first_timestamp": "2021-12-01T00:00:00Z",
+      "pre_source_months": "2021-01 through 2021-11 contain no rows",
+      "post_start_coverage": "near complete; all full months 2022-01 through 2024-06 are at least 98.503352%"
+    }
+  },
+  "source_change": "Pin the immutable metric revision and hashes; validate each symbol from its actual metric-source start; rows before ETH metric availability remain feature-missing and cannot enter model fit or decisions.",
+  "unchanged": [
+    "Bybit price and funding sources",
+    "BTCUSDT and ETHUSDT with one global slot",
+    "five-minute sweep and continuation/reversal event definitions",
+    "all metric transforms and one-full-observation delay",
+    "all model features and HGBT hyperparameters",
+    "2021-2022 resolved-event training boundary",
+    "calendar-2023 account selection and immediate official 2024H1 rule",
+    "structural stop, 3R target, 500ms latency, 24bp base cost and sizing grids"
+  ],
+  "decision": "Run the exact sealed economic route once. A source-valid nonpositive calendar-2023 account closes the route without adjacent rescue; a positive survivor opens official 2024H1 and any superior hard-valid result is ranked immediately.",
+  "credentials_used": false,
+  "orders_submitted": false
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "correction_id": "CORRECTION-20260727-ML-SWEEP-MISSING-AWARE-METRIC-GATE-006",
+  "claim_id": "CLM-20260727-0245-ML-SWEEP-CROWDING-001",
+  "prior_result_id": "RES-20260727-ML-SWEEP-CROWDING-001",
+  "prior_result_status": "SOURCE_GATE_FAIL",
+  "outcome_state_before_correction": {
+    "candidate_population_opened": false,
+    "model_metrics_opened": false,
+    "trades_opened": false,
+    "pnl_opened": false,
+    "official_period_opened": false
+  },
+  "observed_gate_error": "BTCUSDT event-level delayed metric availability 76.69% below 90%",
+  "root_cause": "The old gate required open interest, top-position ratio and taker ratio to be simultaneously non-null in at least 90% of sweep events. The immutable source probe showed a valid near-complete metric clock, while top-trader fields are structurally sparse and taker fields are less sparse. The selected HistGradientBoostingClassifier natively handles NaN values, so complete-case rejection contradicted the frozen model design and suppressed the economic observation.",
+  "source_evidence": {
+    "probe_id": "PROBE-20260727-BINANCE-METRICS-PINNED-001",
+    "dataset_revision": "69ae9208fb762758b279e449684638c9e7bbd0c9",
+    "BTCUSDT_clock_coverage": 0.9983740102671191,
+    "BTCUSDT_top_trader_nonnull_share_approx": 0.749,
+    "BTCUSDT_global_ratio_nonnull_share_approx": 0.984,
+    "BTCUSDT_taker_ratio_nonnull_share_approx": 0.8985,
+    "ETHUSDT_actual_metric_start": "2021-12-01T00:00:00Z",
+    "file_hashes": {
+      "BTCUSDT": "4bcba71bcd859654a81c2fa0ebb507f42b7f82068f8f6af35a6f811db3ebb83c",
+      "ETHUSDT": "dcd6b4f54803c2ec30bfd69368b1d208ef95f834083bef8dbce709e8050505f1"
+    }
+  },
+  "change": {
+    "removed": "the all-three-columns-complete event share >= 90% gate",
+    "retained": [
+      "immutable dataset revision and file SHA-256 verification",
+      "symbol-specific metric-source start boundaries",
+      "five-minute clock coverage gate from each actual source start",
+      "required-column schema, finite values and nondegeneracy checks",
+      "one full metric observation delay before model use",
+      "all structural missing values as NaN with no forward fill or imputation",
+      "minimum 500 resolved training rows and both target classes"
+    ],
+    "diagnostics": "per-event metric nonmissing shares and unique counts are reported by strategy_missing_aware.availability_diagnostics"
+  },
+  "unchanged": [
+    "symbols, sweep events and continuation/reversal candidates",
+    "all feature definitions and values",
+    "HGBT class and hyperparameters",
+    "training, selection and official periods",
+    "labels, stop, 3R target and no-time-exit rule",
+    "500ms latency, costs, funding and global slot",
+    "probability, risk and leverage grids"
+  ],
+  "decision": "Execute the exact sealed economic route once with partial metric NaNs preserved. A source-valid nonpositive calendar-2023 account closes the route without adjacent rescue. A positive survivor opens official 2024H1 immediately; any superior hard-valid result is inserted into the cumulative ranking immediately.",
+  "credentials_used": false,
+  "orders_submitted": false
+}
