@@ -1,0 +1,94 @@
+name: Collect SMC ICT YouTube caption corpus
+
+on:
+  workflow_dispatch:
+    inputs:
+      min_coverage:
+        description: Optional minimum caption coverage ratio (0 disables the gate)
+        required: false
+        default: "0"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - tools/youtube_corpus/**
+      - .github/workflows/collect-smc-ict-youtube-corpus.yml
+  push:
+    branches:
+      - agent/youtube-smc-ict-ml-core-20260727
+    paths:
+      - tools/youtube_corpus/**
+      - .github/workflows/collect-smc-ict-youtube-corpus.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: youtube-corpus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install collector dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "yt-dlp>=2025.1.0" \
+            "youtube-transcript-api>=1.0.0" \
+            "requests>=2.31" \
+            "urllib3>=2.0"
+
+      - name: Collect all public channel tabs and captions
+        env:
+          MIN_COVERAGE: ${{ inputs.min_coverage || '0' }}
+        run: |
+          rm -rf artifacts/youtube_corpus
+          python tools/youtube_corpus/collect_channels_resilient.py \
+            --output artifacts/youtube_corpus \
+            --sleep 0.55 \
+            --min-coverage "$MIN_COVERAGE"
+
+      - name: Show coverage summary
+        if: always()
+        run: |
+          if [[ -f artifacts/youtube_corpus/summary.md ]]; then
+            cat artifacts/youtube_corpus/summary.md
+          fi
+
+      - name: Package corpus
+        if: always()
+        run: |
+          if [[ -d artifacts/youtube_corpus ]]; then
+            tar -C artifacts -czf youtube-smc-ict-caption-corpus.tgz youtube_corpus
+          fi
+
+      - name: Upload raw caption corpus and audit manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-smc-ict-caption-corpus-${{ github.run_id }}
+          path: |
+            youtube-smc-ict-caption-corpus.tgz
+            artifacts/youtube_corpus/summary.md
+            artifacts/youtube_corpus/manifest.json
+            artifacts/youtube_corpus/failures.jsonl
+            artifacts/youtube_corpus/channel_errors.json
+            artifacts/youtube_corpus/SHA256SUMS
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
