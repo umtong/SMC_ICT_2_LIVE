@@ -1,0 +1,130 @@
+{
+  "account_contract": {
+    "base_alpha_screen_risk_fraction": 0.01,
+    "cost_selection_basis": "actual Bybit fee applicable to the order type plus causally observed spread, estimated size-dependent slippage and market impact, and actual funding when the position crosses a funding settlement",
+    "cost_stress_role": "adverse perturbations around the realistic baseline are sensitivity diagnostics; no universal fixed 24bp number is the primary objective or mandatory selector",
+    "daily_boundary": "00:00 UTC",
+    "funding": "actual Bybit settlements when available; an explicitly adverse proxy may be used only for an early possibility screen and cannot certify the official result",
+    "initial_nav_usdt": 10000,
+    "liquidation": "forced liquidation invalidates the selected account path",
+    "max_notional_leverage_screen": 20.0,
+    "performance_objective": "maximize sustainable realistic after-cost geometric daily growth on the continuous NAV path; 1% per UTC calendar day is a minimum completion threshold, not a cap, target-matching objective or reason to reduce risk, leverage, position size or opportunity",
+    "position_sizing": "NAV risk budget divided by structural stop loss per unit including realistic expected costs"
+  },
+  "actions_and_orders": {
+    "actions": [
+      "reject",
+      "continue",
+      "flat"
+    ],
+    "boundary": "NAV mark; never strategy-forced close",
+    "continuation_stop": "back inside accepted level plus volatility buffer",
+    "continuation_target": "measured dealing-range expansion",
+    "entry": "first causally observable marketable minute price after completed decision plus 500ms; with 1m OHLCV this is next-minute open",
+    "maximum_holding_time": null,
+    "model": "two HistGradientBoosting regressors for after-cost structural payoff, calibrated with monotone isotonic maps",
+    "rejection_stop": "beyond sweep extreme plus volatility buffer",
+    "rejection_target": "nearest internal/opposing mapped liquidity",
+    "same_minute_barrier_order": "stop before target",
+    "scheduled_close": null,
+    "structural_exit": "completed 5m acceptance/failure reversal"
+  },
+  "advance_or_kill": {
+    "advance": "when the fully specified pre-2024 system has credible positive expectancy after the realistic cost model and no fatal causal or calculation error, freeze the complete method using information through 2023-12-31 and open official 2024H1 immediately; no fixed 24bp gate or mandatory untouched 2023H2 gate is required",
+    "kill": "a structurally negative, sub-cost, sparse or winner-concentrated pre-2024 account with no credible path toward the objective closes the exact route without adjacent rescue",
+    "ranking": "insert any superior hard-valid account path immediately; among valid paths prefer the highest sustainable realistic after-cost geometric growth and account multiple, including values far above 1% per day",
+    "risk_search": "broad risk and leverage optimization only after positive base alpha, maximizing the full continuous account path rather than scaling performance down toward 1%",
+    "success_threshold": "the project is complete only at at least 1% geometric growth per UTC calendar day over the full official 2024-01-01 through 2026-06-30 continuous NAV path; performance above 1% is retained at full strength"
+  },
+  "claim_id": "CLM-20260727-ML-INTRADAY-LIQUIDITY-AUCTION-001",
+  "credentials_used": false,
+  "economic_thesis": {
+    "continuation": "Price obtains acceptance beyond external liquidity and continues after completed displacement/FVG structure.",
+    "flat": "No action when neither structural path has positive calibrated utility after realistic expected costs.",
+    "payoff_scale": "material intraday moves measured in fractions of a percent to several percent, not individual ticks",
+    "rejection": "A confirmed external-liquidity raid fails to obtain acceptance and rotates toward internal or opposing liquidity."
+  },
+  "engine_version": "ML-INTRADAY-LIQUIDITY-AUCTION-R23-V2",
+  "event_and_features": {
+    "availability": "all feature values end no later than the completed decision timestamp",
+    "confirmation": "completed 5m displacement, failure and FVG geometry available by the 15m decision close",
+    "event": "completed 15m crossing/sweep of a previously available external-liquidity level",
+    "features": [
+      "side",
+      "level_kind_code",
+      "sweep_atr",
+      "close_beyond_atr",
+      "wick_atr",
+      "body_atr",
+      "atr_pct",
+      "ret_1h",
+      "ret_4h",
+      "volume_z",
+      "last5_ret_atr",
+      "last5_body_atr",
+      "fvg_same_side_atr",
+      "range_position",
+      "reject_stop_atr",
+      "reject_target_atr",
+      "continue_stop_atr",
+      "continue_target_atr",
+      "hour_sin",
+      "hour_cos"
+    ]
+  },
+  "information_contract": {
+    "base_bars": "completed 1m OHLCV",
+    "confirmation_bars": "completed 5m",
+    "context_bars": "completed 1h",
+    "event_bars": "completed 15m",
+    "forbidden_inputs": [
+      "raw trades or quotes used as signal rows",
+      "100ms state",
+      "queue ahead",
+      "microprice",
+      "same-bar future high/low",
+      "unconfirmed pivot"
+    ],
+    "liquidity_levels": [
+      "confirmed 1h swing high/low after two right-side bars",
+      "prior UTC-day high/low",
+      "prior-only rolling 24h high/low",
+      "completed eight-hour session range high/low"
+    ]
+  },
+  "market_scope": {
+    "execution_exchange": "Bybit",
+    "global_pending_or_open_slots": 1,
+    "optional_symbol_admission": "pre-2024 combined-account opportunity, growth and stability improvement",
+    "optional_symbols": [
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "primary_symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "product": "USDT linear perpetual"
+  },
+  "objective": "Discover and causally validate a machine-learning SMC/ICT day-trading system on Bybit USDT linear perpetuals that maximizes sustainable realistic after-cost continuous-NAV geometric daily growth from minute-to-hour liquidity-auction moves; 1% per UTC day is a minimum completion threshold, never an optimization cap or de-risking target, and tick-by-tick, subsecond and queue-position alpha are prohibited.",
+  "orders_submitted": false,
+  "result_id": "RES-20260727-ML-INTRADAY-LIQUIDITY-AUCTION-001",
+  "schema_version": 2,
+  "training_and_updates": {
+    "preofficial_data_use": "all information available through 2023-12-31 may be used causally for feature, model, calibration, threshold and update-rule development; there is no mandatory 2023H1 calibration and 2023H2 untouched split",
+    "method_selection": "the exact causal time-series training, calibration and update method is a design variable that must be completed and frozen before official 2024H1 is opened; it must be chosen for expected objective impact rather than by an arbitrary holdout convention",
+    "final_preofficial_fit": "after the complete method is fixed, the deployable 2024H1 model may be fitted or calibrated with all data permitted by that method through 2023-12-31",
+    "official_first_interval": "2024H1",
+    "official_freeze_cutoff": "2023-12-31T23:59:59Z",
+    "retraining": "if periodic refitting is retained, its window, cadence and activation rule must be frozen before official evaluation; every update uses only information available when it starts and activates only after completion, while the prior model remains active"
+  },
+  "user_scope": {
+    "fixed_latency_ms": 500,
+    "intended_holding_scale": "minutes to hours; no forced minimum and no elapsed-time liquidation",
+    "latency_role": "causal activation assumption only; never optimized or used as alpha",
+    "minimum_market_information_clock": "1 minute completed bars",
+    "queue_position_alpha": false,
+    "subsecond_alpha": false,
+    "tick_by_tick_alpha": false
+  }
+}
