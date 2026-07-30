@@ -3,7 +3,13 @@ import base64,hashlib,io,json,tarfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 M=json.loads((ROOT/"SOURCE_MANIFEST.json").read_text())
-RAW=base64.b64decode((ROOT/"SOURCE_BUNDLE.tar.gz.b64").read_text().strip(),validate=True)
+chunks=[]
+for item in M["parts"]:
+    raw=(ROOT/item["path"]).read_bytes()
+    assert len(raw)==item["bytes"] and hashlib.sha256(raw).hexdigest()==item["sha256"]
+    chunks.append(raw)
+ENCODED=b"".join(chunks)
+RAW=base64.b64decode(ENCODED,validate=True)
 assert len(RAW)==M["archive_bytes"] and hashlib.sha256(RAW).hexdigest()==M["archive_sha256"]
 OUT=ROOT/"materialized";OUT.mkdir(exist_ok=True)
 expected={x["path"]:x for x in M["files"]}
