@@ -29,6 +29,7 @@ jobs:
           python-version: '3.13'
       - name: Materialize SHA-bound direct Core source
         run: |
+          # The manifest validates every transported source byte before upload.
           python research/execution_aligned_direct_utility_core/materialize.py
           python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
           find research/execution_aligned_direct_utility_core/materialized -type f -printf '%P\t%s\n' | sort > research/execution_aligned_direct_utility_core/materialized/FILE_SIZES.tsv
