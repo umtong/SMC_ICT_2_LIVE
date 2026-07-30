@@ -1,20 +1,34 @@
 {
-  "schema_version": 1,
-  "bundle": "ECONOMIC_BUNDLE.tar.gz.b64",
-  "decoded_bundle_sha256": "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf",
-  "carrier_repaired_commit": "9ea256bc3301e3f780379dcf45045b931323db8a",
-  "carrier_repaired_before_market_outcome": true,
+  "schema_version": 2,
+  "bundle_parts": [
+    "ECONOMIC_BUNDLE_V2.part00.b64",
+    "ECONOMIC_BUNDLE_V2.part01.b64",
+    "ECONOMIC_BUNDLE_V2.part02.b64",
+    "ECONOMIC_BUNDLE_V2.part03.b64",
+    "ECONOMIC_BUNDLE_V2.part04.b64",
+    "ECONOMIC_BUNDLE_V2.part05.b64",
+    "ECONOMIC_BUNDLE_V2.part06.b64"
+  ],
+  "base64_text_sha256": "e3d47d750d5bdb0ec0590a1eab1975de6b7e66acaf17e127c4a7a520e52005d1",
+  "decoded_bundle_sha256": "57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8",
   "members": {
-    "full_history_sqd.py": "5bf93ac504fad6d676a64d1e1ee900794529a4f9a7d9f7d5dc4741793d1e233e",
-    "test_full_history_sqd.py": "b517d95fa3f8a07041653e00dcaffe0b5392087d23fbc5376563f4ce8890869a",
-    "economic_screen.py": "67d662fb0255621df687157a0535dd35f06417e12beb4a195cf7d3d5bd32de0f",
-    "test_economic_screen.py": "69e1fbdea120c47362fd71f4205770f49bba92620965a769f967f579b5413d92"
+    "full_history_sqd.py": "304d74a50b1cfbc01d03258be8cd93a9d875b58cc06fe23a1bbd75faa6247bae",
+    "test_full_history_sqd.py": "4ec2563f07e6c832b20b8260d7e81ee07b886ea1d56d323b1622ea1102fd26a2",
+    "economic_screen.py": "39763af05cd091849a8c4a69a45a6d9d0f6845907c6fecc1a23312ee146b7b75",
+    "test_economic_screen.py": "dbfc1c42112fb4df11af3e52659855e7ab085f80b3751c6e0e9e9012a562c421"
   },
   "canonical_bybit_artifact": {
     "artifact_id": 8712672241,
     "zip_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
     "symbol": "ETHUSDT"
   },
+  "pre_outcome_semantic_corrections": [
+    "transaction-notional HHI aggregates by transaction",
+    "pivot insertion and consumption follow observation availability",
+    "model geometry uses decision-time price rather than future executable fill",
+    "finite source exhaustion receives full adverse structural loss",
+    "all preregistered development gates are enforced"
+  ],
   "market_outcome_observed_before_freeze": false,
   "orders_submitted": false
 }
