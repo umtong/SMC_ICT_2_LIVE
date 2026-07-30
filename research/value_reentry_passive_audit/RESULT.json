@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-VALUE-REENTRY-PASSIVE-AUDIT-001",
+  "claim_id": "CLM-20260730-VALUE-REENTRY-PASSIVE-AUDIT-001",
+  "status": "RETIRED_PASSIVE_UPPER_BOUND_FAILURE",
+  "parent_parity": {
+    "btc_complete_profiles": 1095,
+    "eth_complete_profiles": 1022,
+    "resolved_events": 2083,
+    "global_slot_trades": 1888,
+    "continuous_2021_2023": {
+      "0bp": {"ending_nav": 11270.672877401103, "profit_factor": 1.0513470930289044, "top5_positive_share": 0.08750854619314481},
+      "12bp": {"ending_nav": 1862.1734701079388, "profit_factor": 0.5175294191043882},
+      "18bp": {"ending_nav": 1051.0213039288085, "profit_factor": 0.4088589233758799},
+      "24bp": {"ending_nav": 662.1105807169091, "profit_factor": 0.3326669029890248}
+    }
+  },
+  "passive_event_counts": {
+    "perfect_touch": {"filled": 1723, "cancelled": 360},
+    "strict_1bp_penetration": {"filled": 1690, "cancelled": 393}
+  },
+  "perfect_touch_upper_bound": {
+    "2022": {
+      "zero_entry_fee_half_12bp_exit": {"trades": 510, "ending_nav": 6166.905064788986, "profit_factor": 0.3661392823400272, "median_trade": -0.0008187946375054662, "winner_deleted_nav": 4699.349010242247},
+      "12bp_total": {"trades": 510, "ending_nav": 5096.1683174549025, "profit_factor": 0.25184721176447655, "median_trade": -0.0011874964195520295, "winner_deleted_nav": 4088.186564324666},
+      "24bp_total": {"trades": 510, "ending_nav": 3973.2417160401874, "profit_factor": 0.14305689678097805, "median_trade": -0.0017451498428485038, "winner_deleted_nav": 3414.6216997971014, "gross_mean_bps_before_cost": -2.8477465744462522, "gross_median_bps_before_cost": -7.469805523053, "median_pending_minutes": 2.0, "median_holding_minutes": 5.0, "exit_counts": {"outside_reacceptance": 376, "stop": 90, "poc_target": 44}}
+    },
+    "2023": {
+      "zero_entry_fee_half_12bp_exit": {"trades": 547, "ending_nav": 5681.929842137336, "profit_factor": 0.3863013085587254, "median_trade": -0.0011419626208650534, "winner_deleted_nav": 4077.6417268932046},
+      "12bp_total": {"trades": 547, "ending_nav": 4230.067851411821, "profit_factor": 0.23490972605488372, "median_trade": -0.001641718296946571, "winner_deleted_nav": 3317.2732774414244},
+      "24bp_total": {"trades": 547, "ending_nav": 3011.004838230754, "profit_factor": 0.11218632201630657, "median_trade": -0.0022926146909533454, "winner_deleted_nav": 2634.2063187281165, "gross_mean_bps_before_cost": -1.7166351880267672, "gross_median_bps_before_cost": -4.316585015696, "median_pending_minutes": 2.0, "median_holding_minutes": 5.0, "exit_counts": {"outside_reacceptance": 396, "stop": 96, "poc_target": 55}}
+    }
+  },
+  "strict_1bp_result": {
+    "2022_24bp_ending_nav": 3917.179368872309,
+    "2023_24bp_ending_nav": 3042.818589859012
+  },
+  "gate": {
+    "passed": false,
+    "rule": "Perfect boundary-touch upper bound must be positive, PF above one, non-sparse, nonnegative-median and winner-deletion positive in 2022 and unchanged 2023 at 12/18/24bp."
+  },
+  "interpretation": "The parent broad zero-cost auction rotation was not hidden by marketable entry. Even perfect causal VAH/VAL fills with zero entry-side fee lost broadly; post-fill gross instrument return was already negative and most fills were reaccepted outside within a median five minutes.",
+  "decision_boundary": "Retire the exact passive-entry family without queue, partial-fill, limit-offset, profile, state-exit, target, stop, symbol/side, ML, risk or leverage rescue. Official 2024-2026 remains unopened.",
+  "reproducibility": {
+    "implementation_sha256": "ddf4f3f2030568e36c6975b371b8ac789438f285bbfaa348523a45884de8ea62",
+    "result_sha256": "59ea9e309b0de1e766ee8e02f428bdd23b18e82805d22379f7d2da49efae0a11",
+    "two_fresh_process_scientific_outputs_byte_identical": true,
+    "parent_source_artifact": 8750242345
+  },
+  "orders": "none"
+}
