@@ -17,9 +17,8 @@ jobs:
       - name: Verify vendored source hashes
         run: |
           set -euo pipefail
-          cd research/direct_utility_passive_entry_audit/vendor
-          sha256sum --check SOURCE_SHA256SUMS.txt
-          python -m py_compile *.py
+          sha256sum --check research/direct_utility_passive_entry_audit/vendor/SOURCE_SHA256SUMS.txt
+          python -m py_compile research/direct_utility_passive_entry_audit/vendor/*.py
       - uses: actions/upload-artifact@v4
         with:
           name: direct-utility-passive-source-r35-${{ github.run_id }}
