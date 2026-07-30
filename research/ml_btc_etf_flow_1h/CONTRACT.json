@@ -1,0 +1,42 @@
+{
+  "symbol": "BTCUSDT",
+  "actions": [
+    "continuation",
+    "fade",
+    "flat via policy abstention"
+  ],
+  "trigger": "first completed one-hour pullback then first later one-hour directional resumption beyond immediately preceding one-hour extreme",
+  "activation": "fixed 500ms; first strictly later observable one-minute price",
+  "stop": "protected pullback origin plus adverse 0.25 prior-only 20-hour ATR",
+  "exits": [
+    "hard stop",
+    "completed one-hour protected-origin loss",
+    "later ETF-flow sign reversal"
+  ],
+  "elapsed_time_exit": false,
+  "risk_fraction": 0.005,
+  "notional_cap": 3.0,
+  "costs_bps": [
+    12,
+    18,
+    24
+  ],
+  "actual_funding": true,
+  "global_slots": 1,
+  "claim_id": "CLM-20260730-ML-BTC-ETF-FLOW-1H-001",
+  "result_id": "RES-20260730-ML-BTC-ETF-FLOW-1H-001",
+  "evaluation_scope": {
+    "start": "2024-01-01T00:00:00Z",
+    "end": "2026-06-30T23:59:59Z",
+    "calendar_days": 912,
+    "fresh_oos": false,
+    "reason": "The parent five-minute ETF-flow route exposed the full interval before this one-hour scale audit."
+  },
+  "source": {
+    "provider": "Farside final BTC ETF flow table",
+    "rows": 634,
+    "nonzero_events": 618,
+    "availability_rule": "flow dated d usable at 00:00 UTC on d+1",
+    "source_parquet_sha256": "5a6314dba84ab3b99589b6a306a5556708d7c36cb4a1dfece418113a4f731529"
+  }
+}
