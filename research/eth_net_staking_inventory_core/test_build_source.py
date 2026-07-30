@@ -27,6 +27,20 @@ def test_uint128_decode_and_exact_net_inventory_gwei() -> None:
     release = 6_518_259_308_444_158
     assert MODULE.net_inventory_gwei(deposit, release) == deposit - release
 
+    # Conservation must use the common hourly chronology, not raw daily
+    # deposits that occurred before the withdrawal source became available.
+    totals = MODULE.inventory_totals_gwei(
+        [100, 200, 300],
+        [10, 20, 30],
+    )
+    assert totals == (600, 60, 540)
+    try:
+        MODULE.inventory_totals_gwei([100, 200], [10])
+    except ValueError as exc:
+        assert "chronology length mismatch" in str(exc)
+    else:
+        raise AssertionError("mismatched source chronologies must fail closed")
+
 
 def test_unix_slot_timestamp_decode() -> None:
     value = 1_681_338_503
