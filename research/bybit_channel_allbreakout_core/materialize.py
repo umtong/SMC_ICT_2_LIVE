@@ -25,19 +25,11 @@ def main() -> None:
     here = Path(__file__).resolve().parent
     manifest = json.loads((here / "SOURCE_BUNDLE_MANIFEST.json").read_text())
     encoded = (here / "source_bundle.tar.gz.b64").read_text().strip()
-
-    # The historical transport contains redundant terminal padding.  Python's
-    # non-strict decoder accepts that legacy representation; scientific
-    # integrity is established below by the exact archive member set and every
-    # extracted file's frozen byte length and SHA-256.
-    bundle = base64.b64decode(encoded)
+    bundle = base64.b64decode(encoded, validate=True)
     actual_bundle_sha256 = hashlib.sha256(bundle).hexdigest()
+    if actual_bundle_sha256 != manifest["bundle_sha256"]:
+        raise SystemExit("bundle sha256 mismatch")
 
-    # The gzip transport was regenerated after the source files were frozen, so
-    # gzip header metadata can change the archive digest without changing either
-    # executable source file.  Decision integrity is therefore bound to the
-    # exact regular-file member set plus the byte length and SHA-256 of every
-    # extracted file.  The declared archive digest remains a diagnostic only.
     expected = {item["path"]: item for item in manifest["files"]}
     args.out.mkdir(parents=True, exist_ok=True)
 
@@ -72,11 +64,8 @@ def main() -> None:
         json.dumps(
             {
                 "materialized": sorted(expected),
-                "actual_bundle_sha256": actual_bundle_sha256,
-                "declared_bundle_sha256": manifest.get("bundle_sha256"),
-                "bundle_digest_match": actual_bundle_sha256
-                == manifest.get("bundle_sha256"),
-                "integrity_authority": "exact_member_set_and_extracted_file_hashes",
+                "bundle_sha256": actual_bundle_sha256,
+                "integrity_authority": manifest["integrity_authority"],
             },
             sort_keys=True,
         )
