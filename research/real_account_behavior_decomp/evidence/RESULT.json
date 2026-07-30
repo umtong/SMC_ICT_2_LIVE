@@ -1,0 +1,110 @@
+{
+  "claim_id": "CLM-20260730-REAL-ACCOUNT-BEHAVIOR-DECOMP-001",
+  "core_expansion_diagnosis": {
+    "broad_repetition": true,
+    "concentration": [
+      {
+        "closed_episodes": 651,
+        "episodes_gt3d": 85,
+        "gross_realised_pnl_native": 0.0,
+        "median_episode_pnl_native": 0.0,
+        "pnl_from_gt3d_native": 0.0,
+        "positive_episodes": 0,
+        "settlement_currency": "XBt",
+        "top10_positive_share": null,
+        "top10pct_positive_share": null,
+        "top1_positive_share": null,
+        "top5_positive_share": null
+      }
+    ],
+    "hypotheses_generated": 0,
+    "positive_median_by_settlement": {
+      "XBt": false
+    }
+  },
+  "decision": "IDEA_EVIDENCE_ONLY_NO_BYBIT_PREREGISTRATION",
+  "hypotheses": [],
+  "limitations": [
+    "This is one public discretionary account and cannot establish population-level causality.",
+    "Position average price is a directional weighted reference, not an exchange margin-engine reproduction for every inverse/quanto contract.",
+    "Execution realisedPnl and commission are preserved separately; realised-minus-commission is only a labeled proxy, not asserted wallet NAV.",
+    "The ledger lacks the trader's private thesis, contemporaneous chart annotations, and full historical mark-to-market state.",
+    "No 2024-2026 external-account action or performance was used to form rules."
+  ],
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "rank_eligible": false,
+  "reconstruction": {
+    "cutoff_open_positions": {
+      "XBTUSD": -532500.0,
+      "XBT_USDT": 14380000.0
+    },
+    "episodes_closed": 651,
+    "episodes_open_at_cutoff": 2,
+    "episodes_total": 653,
+    "order_crosscheck": {
+      "btc_trade_execution_rows": 77125,
+      "execution_order_id_match_ratio": 0.9998444084278768,
+      "matched_final_order_states": 16385,
+      "orders_with_execution": 16386,
+      "unique_execution_order_ids": 16385
+    },
+    "position_effect_rows_used": 77125,
+    "symbols": [
+      "XBTM21",
+      "XBTUSD",
+      "XBT_USDT"
+    ]
+  },
+  "result_id": "RES-20260730-REAL-ACCOUNT-BEHAVIOR-DECOMP-001",
+  "row_filters": {
+    "api-v1-execution-tradeHistory.csv": {
+      "first_effective_time": "2020-05-01T09:03:47.360000+00:00",
+      "future_rows_transport_only_discarded": 27011,
+      "last_retained_effective_time": "2023-12-31T20:00:00+00:00",
+      "raw_rows": 173434,
+      "retained_rows": 146423
+    },
+    "api-v1-order.csv": {
+      "first_effective_time": "2020-05-01T09:03:38.162000+00:00",
+      "future_rows_transport_only_discarded": 5093,
+      "last_retained_effective_time": "2023-12-30T22:52:17.997000+00:00",
+      "raw_rows": 43251,
+      "retained_rows": 38158
+    },
+    "api-v1-user-walletHistory.csv": {
+      "first_effective_time": "2020-05-01T01:05:55.004000+00:00",
+      "future_rows_transport_only_discarded": 12707,
+      "last_retained_effective_time": "2023-12-31T12:00:00+00:00",
+      "raw_rows": 17484,
+      "retained_rows": 4777
+    }
+  },
+  "schema_version": 1,
+  "source_pin": {
+    "cutoff": "2023-12-31T23:59:59.999000+00:00",
+    "manifest_generated_at": "2026-07-19T12:35:13Z",
+    "manifest_sha256": "d9c55298583a7402749da64b4c03fd7a8c57675b9e3a45746c7b222e6d4eba3d",
+    "source_commit": "f02a691c7f7cfd0cd08ffb7f13a656ebaf2c6ca6",
+    "source_repository": "bwjoke/BTC-Trading-Since-2020",
+    "transport_note": "Full immutable bytes were hashed. Rows after the cutoff were discarded before behavior reconstruction and never entered summaries, hypotheses, or decisions.",
+    "verified_files": {
+      "api-v1-execution-tradeHistory.csv": {
+        "manifest_rows": 173434,
+        "sha256": "c778ddc90b7d60c0a47c1a155602595775879f5da7a7cb0843beeb0f6638f998",
+        "size_bytes": 68562804
+      },
+      "api-v1-order.csv": {
+        "manifest_rows": 43251,
+        "sha256": "32d05a5b4482d4c725593596c6f6e09018e42a2221fa73056cb82f6e186caf34",
+        "size_bytes": 7798385
+      },
+      "api-v1-user-walletHistory.csv": {
+        "manifest_rows": 17484,
+        "sha256": "08b875895b10cc62362340eecd761320888756d128515788406680e5d320105d",
+        "size_bytes": 2809134
+      }
+    }
+  },
+  "status": "COMPLETED_IDEA_EVIDENCE_ONLY"
+}
