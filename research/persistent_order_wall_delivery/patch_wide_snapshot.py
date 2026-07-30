@@ -13,7 +13,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent
 RUN = ROOT / "materialized" / "run.py"
 EXPECTED_INPUT_SHA256 = "5e5a5c72114ca3774d2a2dbbf1682880be72306a7d604a809ce62f6911ac4e26"
-OLD_READ_SHA256 = "fa52400a3bde756062b826fc41f48b833d4b8e94cf5e539ea17f677b7e0117ca"
+OLD_READ_SHA256 = "d944bb3ca6be7c1b8b4f50e85a18a67b2887ca43808ba89f7c3244ee5c80bcc6"
 
 OLD = '''def _read_csv(path: Path, kind: str) -> pd.DataFrame:
     # Tardis normalized schemas are stable, but select dynamically to fail clearly.
