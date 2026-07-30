@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-SMC-CORE-EXPANSION-SINGLE-POLICY-001",
+  "result_id": "RES-20260730-SMC-CORE-EXPANSION-SINGLE-POLICY-FULLY-PRIOR-ONLY-001",
+  "economic_mechanism": "A completed high-volume, less-crowded displacement beyond a frozen 96h external boundary represents accepted price delivery. Ordinary acceptance is monetized by +1.5R full realization; a small runner is retained only after a separately completed continuation promotion confirms persistent delivery.",
+  "payer": "Participants positioned against the accepted external-boundary repricing and late breakout participants who must unwind when the accepted delivery persists.",
+  "invalidation": "Original 2ATR disaster stop before Core realization; after causal promotion, protected-boundary reacceptance or opposite 48h channel state loss.",
+  "events": {
+    "timeframe": "completed 1h",
+    "external_boundary": "prior 96 completed hours",
+    "volume_normalization": "current completed hour vs prior 168 completed hours",
+    "crowding": "signed latest funding z vs prior 90 completed funding observations",
+    "threshold_freeze": "pooled all BTC/ETH sides in calendar 2021"
+  },
+  "actions": [
+    "FLAT_BY_INELIGIBILITY",
+    "CORE_FULL_REALIZE_1.5R",
+    "CORE_2_3_PLUS_CAUSAL_RUNNER_1_3"
+  ],
+  "execution": {
+    "activation_ms": 500,
+    "observable_proxy": "first strictly later observed 1m open",
+    "one_global_slot": true,
+    "actual_funding": true,
+    "costs_bps": [12, 18, 24],
+    "discovery_risk": 0.005,
+    "notional_cap": 3.0,
+    "elapsed_time_close": false
+  },
+  "chronology": {
+    "threshold_fit": "2021",
+    "first_forward": "2022",
+    "unchanged_confirmation": "2023",
+    "official": "2024-01-01 through 2026-06-30 continuous NAV",
+    "official_interpretation": "sequential development because project has prior exposure"
+  },
+  "prohibited": [
+    "symbol/side selection",
+    "new channel or R grid",
+    "risk/leverage rescue",
+    "using ML confidence as a risk multiplier",
+    "forced time exit",
+    "calling this target-complete or deployable"
+  ],
+  "orders_submitted": false,
+  "rank_eligible": false,
+  "live_permission": false
+}
