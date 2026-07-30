@@ -1,0 +1,131 @@
+name: Direct forced-liquidation action-value fatal screen
+
+on:
+  push:
+    branches: [agent/r37-direct-liquidation-action-value-001]
+    paths:
+      - '.github/workflows/direct-liquidation-action-value-r37.yml'
+      - 'research/direct_liquidation_action_value/**'
+  pull_request:
+    paths:
+      - '.github/workflows/direct-liquidation-action-value-r37.yml'
+      - 'research/direct_liquidation_action_value/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: direct-liquidation-action-value-r37-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  fatal-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      NUMEXPR_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r37-direct-liquidation-action-value-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen runtime and materialize source
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade 'pip==25.1.1'
+          python -m pip install 'numpy==2.1.3' 'pandas==2.2.3' 'scipy==1.15.1' 'scikit-learn==1.6.1'
+          python - <<'PY'
+          import base64, gzip, hashlib, json
+          from pathlib import Path
+          root=Path('research/direct_liquidation_action_value')
+          m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          b64=''.join((root/'run.py.gz.b64').read_text().split())
+          assert len(b64)==m['base64_chars']
+          gz=base64.b64decode(b64)
+          assert hashlib.sha256(gz).hexdigest()==m['gzip_sha256']
+          raw=gzip.decompress(gz)
+          assert len(raw)==m['source_bytes']
+          assert hashlib.sha256(raw).hexdigest()==m['source_sha256']
+          (root/'run.py').write_bytes(raw)
+          PY
+          python -m py_compile research/direct_liquidation_action_value/run.py
+          python -m json.tool research/direct_liquidation_action_value/CONTRACT.json >/dev/null
+      - name: Materialize immutable event ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/events"
+          gh api /repos/${GITHUB_REPOSITORY}/actions/artifacts/8631380906/zip > "$RUNNER_TEMP/events.zip"
+          unzip -q "$RUNNER_TEMP/events.zip" -d "$RUNNER_TEMP/events"
+          test "$(find "$RUNNER_TEMP/events" -name 'events_2022-*.csv' | wc -l)" -eq 6
+          find "$RUNNER_TEMP/events" -name 'events_2022-*.csv' -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/EVENT_SHA256SUMS.txt"
+      - name: Download outcome-sealed direct liquidation samples
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/liquidations"
+          for date in 2022-01-01 2022-03-01 2022-05-01 2022-07-01 2022-09-01 2022-11-01; do
+            y=${date:0:4}; m=${date:5:2}; d=${date:8:2}
+            out="$RUNNER_TEMP/liquidations/liquidations_${date}.csv.gz"
+            curl --fail --location --retry 5 --retry-delay 2 "https://datasets.tardis.dev/v1/bybit/liquidations/${y}/${m}/${d}/PERPETUALS.csv.gz" --output "$out"
+            gzip -t "$out"
+          done
+          sha256sum "$RUNNER_TEMP"/liquidations/*.csv.gz > "$RUNNER_TEMP/LIQUIDATION_SHA256SUMS.txt"
+      - name: Run fatal screen twice
+        run: |
+          set -euo pipefail
+          root=research/direct_liquidation_action_value
+          out1="$RUNNER_TEMP/direct_liq_out_1"
+          out2="$RUNNER_TEMP/direct_liq_out_2"
+          python "$root/run.py" --events-dir "$RUNNER_TEMP/events" --liquidations-dir "$RUNNER_TEMP/liquidations" --output "$out1"
+          python "$root/run.py" --events-dir "$RUNNER_TEMP/events" --liquidations-dir "$RUNNER_TEMP/liquidations" --output "$out2"
+          diff -qr "$out1" "$out2"
+          rm -rf "$root/evidence"
+          mkdir -p "$root/evidence"
+          cp "$out1"/* "$root/evidence"/
+          cp "$RUNNER_TEMP/EVENT_SHA256SUMS.txt" "$root/evidence"/
+          cp "$RUNNER_TEMP/LIQUIDATION_SHA256SUMS.txt" "$root/evidence"/
+      - name: Enforce scientific boundary
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/direct_liquidation_action_value')
+          c=json.loads((root/'CONTRACT.json').read_text())
+          r=json.loads((root/'evidence/RESULT.json').read_text())
+          assert r['claim_id']==c['claim_id']
+          assert r['rank_eligible'] is False
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False
+          assert r['hard_validity_status']=='PASS_CAUSAL_SOURCE_EVENT_JOIN_AND_FIXED_ACTION_ACCOUNT'
+          print(json.dumps({'status':r['status'],'development_pass':r['development_pass'], 'confirmation_opened':r['confirmation_opened']},sort_keys=True))
+          PY
+      - name: Commit compact evidence
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/direct_liquidation_action_value/evidence
+          if git diff --cached --quiet; then
+            echo 'Evidence unchanged'
+          else
+            git commit -m 'Record direct liquidation action-value fatal screen'
+            git push origin HEAD:agent/r37-direct-liquidation-action-value-001
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-liquidation-action-value-r37-${{ github.run_id }}
+          path: research/direct_liquidation_action_value/evidence
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
