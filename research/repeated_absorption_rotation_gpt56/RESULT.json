@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-BYBIT-REPEATED-ABSORPTION-ROTATION-001",
+  "claim_id": "CLM-20260730-BYBIT-REPEATED-ABSORPTION-ROTATION-001",
+  "status": "RETIRED_REPEATED_ABSORPTION_ROTATION_SPARSE_FAILURE",
+  "economic_status": "PROGRAMIZATION_VALID_BUT_NONVIABLE_EVENT_DENSITY",
+  "event_counts": {
+    "fit": 1,
+    "development": 0,
+    "confirmation": 1
+  },
+  "programization_audit": {
+    "synthetic_cluster_semantics": "PASS high-side, low-side, required completed-minute rearm and 30-minute expiry",
+    "real_event_funnel": {
+      "fit": {"starts":115,"second_attempts":4,"third_attempts":1,"expired_after_one":112,"expired_after_two":2,"blocked_not_rearmed":226},
+      "development": {"starts":213,"second_attempts":10,"third_attempts":0,"expired_after_one":203,"expired_after_two":10,"blocked_not_rearmed":338},
+      "confirmation": {"starts":253,"second_attempts":14,"third_attempts":1,"expired_after_one":240,"expired_after_two":12,"blocked_not_rearmed":594}
+    },
+    "third_attempt_clusters": [
+      {"stage":"fit","side":"high","cluster_seconds":630.0},
+      {"stage":"confirmation","side":"high","cluster_seconds":405.0}
+    ]
+  },
+  "costs": {
+    "12bp": {
+      "development": {"multiple":1.0,"trades":0},
+      "confirmation": {"multiple":0.995,"trades":1,"wins":0,"profit_factor":0.0,"median_return":-0.005},
+      "continuous": {"multiple":0.995,"trades":1}
+    },
+    "18bp": {
+      "development": {"multiple":1.0,"trades":0},
+      "confirmation": {"multiple":0.995,"trades":1,"wins":0,"profit_factor":0.0,"median_return":-0.005},
+      "continuous": {"multiple":0.995,"trades":1}
+    },
+    "24bp": {
+      "development": {"multiple":1.0,"trades":0},
+      "confirmation": {"multiple":0.995,"trades":1,"wins":0,"profit_factor":0.0,"median_return":-0.005},
+      "continuous": {"multiple":0.995,"trades":1}
+    }
+  },
+  "confirmation_trade": {
+    "exit_reason": "STOP",
+    "return_on_nav": -0.005,
+    "holding_minutes": 1.25,
+    "structural_risk_bp": 11.733031241495008,
+    "gross_midpoint_reward_bp": 98.7928586666269
+  },
+  "decision": [
+    "The third-failed-consumption state is genuinely rare: development produced zero events and unchanged confirmation one event.",
+    "Synthetic high/low/rearm/expiry tests passed; scarcity is not an event-generator omission.",
+    "The sole confirmation action stopped, but one trade cannot establish an economic sign.",
+    "Do not rescue with two attempts, a longer cluster window, another boundary scale, target, stop, threshold, ML, risk or leverage after observing scarcity.",
+    "Official 2024-2026 remains unopened; change the economic information source."
+  ],
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}

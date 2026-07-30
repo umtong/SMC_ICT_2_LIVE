@@ -1,0 +1,48 @@
+name: Validate repeated-absorption rotation decision
+
+on:
+  push:
+    branches: [agent/gpt56-repeated-absorption-rotation-001]
+    paths:
+      - "research/repeated_absorption_rotation_gpt56/**"
+      - ".github/workflows/gpt56-repeated-absorption-validate.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/repeated_absorption_rotation_gpt56/**"
+      - ".github/workflows/gpt56-repeated-absorption-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run semantic invariants
+        run: python research/repeated_absorption_rotation_gpt56/test_event_semantics.py
+      - name: Validate compact result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/repeated_absorption_rotation_gpt56')
+          c=json.loads((root/'CONTRACT.json').read_text())
+          r=json.loads((root/'RESULT.json').read_text())
+          assert c['result_id']==r['result_id']
+          assert c['action']['elapsed_time_exit'] is False
+          assert r['status']=='RETIRED_REPEATED_ABSORPTION_ROTATION_SPARSE_FAILURE'
+          assert r['event_counts']=={'fit':1,'development':0,'confirmation':1}
+          assert r['programization_audit']['real_event_funnel']['development']['third_attempts']==0
+          assert r['costs']['24bp']['confirmation']['trades']==1
+          assert r['confirmation_trade']['exit_reason']=='STOP'
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False and r['live_permission'] is False
+          print('compact result valid')
+          PY
