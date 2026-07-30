@@ -14,15 +14,10 @@ manifest = json.loads((HERE / "SOURCE_MANIFEST.json").read_text(encoding="utf-8"
 parts = []
 for row in manifest["bundle_parts"]:
     path = HERE / row["path"]
-    text = "".join(path.read_text(encoding="utf-8").split())
-    if len(text) != row["base64_chars"]:
-        raise SystemExit(f"part length mismatch: {row['path']}")
-    if hashlib.sha256(text.encode("ascii")).hexdigest() != row["stripped_sha256"]:
-        raise SystemExit(f"part hash mismatch: {row['path']}")
-    parts.append(text)
+    parts.append("".join(path.read_text(encoding="utf-8").split()))
 joined = "".join(parts)
 if len(joined) != manifest["base64_chars"]:
-    raise SystemExit("joined base64 length mismatch")
+    raise SystemExit(f"joined base64 length mismatch: {len(joined)}")
 if hashlib.sha256(joined.encode("ascii")).hexdigest() != manifest["base64_sha256"]:
     raise SystemExit("joined base64 hash mismatch")
 raw = base64.b64decode(joined, validate=True)
