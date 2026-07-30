@@ -1,0 +1,77 @@
+{
+  "schema_version": 2,
+  "claim_id": "CLM-20260730-FRESH-INVENTORY-COST-BASIS-CORE-001",
+  "result_id": "RES-20260730-FRESH-INVENTORY-COST-BASIS-CORE-CORROBORATION-001",
+  "status": "RETIRED_DUPLICATE_CORROBORATION_PROGRAMIZATION_CORRECTED_SUBCOST_OR_SIGN_UNSTABLE",
+  "testbed": "BTCUSDT 2023 May-August",
+  "source": "canonical Bybit MICROBAR-SPARSE500-V5 plus canonical 5m OI",
+  "frozen_fit_period": "2023-01-01 through 2023-04-30",
+  "untouched_development_period": "2023-05-01 through 2023-08-31",
+  "qualifying_packets": 1929,
+  "state_events": 309,
+  "state_counts": {
+    "PROTECTED_CONTINUE": 212,
+    "TRAPPED_REVERSE": 97
+  },
+  "programization_corrections": [
+    "require packet origin to remain intact before protected continuation",
+    "use the first native observed 500ms price after decision availability plus 500ms for entry"
+  ],
+  "protected_continue": {
+    "15m_gross_mean_bp": -0.8783758610805007,
+    "30m_gross_mean_bp": -1.9894621787249187,
+    "60m_gross_mean_bp": -1.6201697411051033,
+    "120m_gross_mean_bp": 2.0774664229642763,
+    "240m_gross_mean_bp": 4.9037802261083625,
+    "240m_gross_median_bp": 4.62231369482318,
+    "240m_after_24bp_mean_bp": -19.096219773891637,
+    "240m_top5_positive_contribution": 0.20216577968779637,
+    "240m_winner_deleted_gross_mean_bp": 0.32323713819847666
+  },
+  "trapped_reverse": {
+    "15m_gross_mean_bp": 1.2988883414641466,
+    "30m_gross_mean_bp": -0.7014425179508214,
+    "60m_gross_mean_bp": -0.2570209161375364,
+    "120m_gross_mean_bp": -2.7914668591325644,
+    "240m_gross_mean_bp": -15.057578365068085,
+    "240m_after_24bp_mean_bp": -39.05757836506808,
+    "240m_top5_positive_contribution": 0.4331098011981393,
+    "240m_winner_deleted_gross_mean_bp": -22.877278506278245
+  },
+  "all_states_240m": {
+    "gross_mean_bp": -1.3624067750052797,
+    "gross_median_bp": 1.8356607698889824,
+    "after_24bp_mean_bp": -25.36240677500528
+  },
+  "subperiod_diagnosis": {
+    "protected_240m_monthly_mean_bp": {
+      "2023-05": -0.10118500984018888,
+      "2023-06": 0.6202123487043975,
+      "2023-07": 10.533879646374768,
+      "2023-08": 7.158444164388244
+    },
+    "trapped_240m_monthly_mean_bp": {
+      "2023-05": -5.682965539740417,
+      "2023-06": -50.481071850282746,
+      "2023-07": -1.8574641092942088,
+      "2023-08": 15.849913195777612
+    }
+  },
+  "overlap_diagnosis": {
+    "median_gap_minutes": 364.4916666666667,
+    "events_within_15m": 9,
+    "events_within_60m": 40
+  },
+  "duplicate_parent": {
+    "issue": 617,
+    "result_id": "RES-20260730-FRESH-INVENTORY-COST-BASIS-001",
+    "relationship": "independent corroboration of the same observability failure"
+  },
+  "decision": "Retire this duplicate exact proxy. Public aggressive-side VWAP plus net OI increase does not identify ownership of newly opened leveraged inventory; after programization correction the gross effect is only a few basis points and far below realistic cost. Do not rescue with packet windows, OI or imbalance thresholds, cost-basis buffers, SMC gates, symbols, costs, ML, risk or leverage.",
+  "confirmation_opened": false,
+  "ml_opened": false,
+  "official_2024_2026_opened": false,
+  "ranking_change": false,
+  "live_permission": false,
+  "orders_submitted": false
+}
