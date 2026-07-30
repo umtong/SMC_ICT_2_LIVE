@@ -1,0 +1,89 @@
+name: Validate SMC Core Expansion single-policy package
+
+on:
+  push:
+    branches: [agent/r38-smc-core-expansion-single-policy-001]
+    paths:
+      - '.github/workflows/smc-core-expansion-single-policy-r38.yml'
+      - 'research/smc_core_expansion_single_policy_20260730/**'
+  pull_request:
+    paths:
+      - '.github/workflows/smc-core-expansion-single-policy-r38.yml'
+      - 'research/smc_core_expansion_single_policy_20260730/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smc-core-expansion-single-policy-r38-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r38-smc-core-expansion-single-policy-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Materialize and hash-verify source bundle
+        run: |
+          set -euo pipefail
+          root=research/smc_core_expansion_single_policy_20260730
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
+      - name: Validate scientific and authority boundary
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/smc_core_expansion_single_policy_20260730')
+          contract=json.loads((root/'CONTRACT.json').read_text())
+          result=json.loads((root/'RESULT.json').read_text())
+          validation=json.loads((root/'VALIDATION.json').read_text())
+          assert result['claim_id']==contract['claim_id']
+          assert result['result_id']==contract['result_id']
+          assert result['status']=='PROVISIONAL_POSITIVE_COMPONENT_NON_ML_TARGET_NOT_MET'
+          assert result['ranking_role']=='NONE_COMPONENT_ONLY_CURRENT_EXPANSION_RANK_ONE_UNCHANGED'
+          assert result['authority']['ranking_change'] is False
+          assert result['authority']['orders_submitted'] is False
+          assert result['authority']['paper_or_live_started'] is False
+          assert result['authority']['live_permission'] is False
+          assert contract['rank_eligible'] is False
+          assert contract['orders_submitted'] is False
+          assert contract['live_permission'] is False
+          assert validation['status']=='PASS'
+          assert all(validation['checks'].values())
+          official=result['official_2024_2026']['hybrid']['24']
+          assert official['trades']==100
+          assert abs(official['multiple']-1.1589687217237332)<1e-12
+          assert abs(official['g_daily']-0.00016177850531096083)<1e-15
+          assert official['winner_removed']['multiple']>1.0
+          assert result['target_status']['target_reached'] is False
+          print(json.dumps({
+              'result_id':result['result_id'],
+              'official_24bp_multiple':official['multiple'],
+              'official_24bp_daily_growth':official['g_daily'],
+              'orders_submitted':False,
+              'remote_scope':'source transport and compact result validation only'
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smc-core-expansion-single-policy-r38-${{ github.run_id }}
+          path: |
+            research/smc_core_expansion_single_policy_20260730/CONTRACT.json
+            research/smc_core_expansion_single_policy_20260730/RESULT.json
+            research/smc_core_expansion_single_policy_20260730/REPORT.md
+            research/smc_core_expansion_single_policy_20260730/VALIDATION.json
+            research/smc_core_expansion_single_policy_20260730/SOURCE_MANIFEST.json
+            research/smc_core_expansion_single_policy_20260730/materialized
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
