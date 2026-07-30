@@ -1,0 +1,38 @@
+name: Validate residual-continuation fatal screen
+on:
+  pull_request:
+    paths:
+      - "research/xsec_residual_continuation_core/**"
+      - ".github/workflows/xsec-residual-continuation-validate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile source
+        run: python -m py_compile research/xsec_residual_continuation_core/run.py
+      - name: Validate compact decision contract
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research/xsec_residual_continuation_core')
+          c=json.loads((root/'CONTRACT.json').read_text());r=json.loads((root/'RESULT.json').read_text());v=json.loads((root/'VALIDATION_ATTESTATION.json').read_text());m=json.loads((root/'SOURCE_MANIFEST.json').read_text())
+          assert c['result_id']==r['result_id']
+          assert c['action']['elapsed_time_exit'] is False
+          assert c['account']['risk_fraction']==0.005 and c['account']['notional_cap']==3.0
+          assert r['official_opened'] is False and r['ml_opened'] is False
+          assert r['results']['2022']['12']['ordinary']['multiple']<1.0
+          assert r['results']['2023']['12']['ordinary']['multiple']<1.0
+          assert r['parent_parity_audit']['economic_conclusion_robust'] is True
+          assert v['checks']['scientific_outputs_byte_identical'] is True
+          assert v['checks']['orders_submitted'] is False
+          assert hashlib.sha256((root/'run.py').read_bytes()).hexdigest()==m['source_files'][0]['sha256']
+          print('compact decision contract valid')
+          PY
