@@ -1,0 +1,108 @@
+{
+  "account": {
+    "actual_signed_funding": true,
+    "cost_bps": [
+      12,
+      18,
+      24
+    ],
+    "global_pending_or_open_slots": 1,
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005
+  },
+  "actions": {
+    "lower_BREAK": {
+      "direction": "short",
+      "stop": "level + scale",
+      "target": "level - scale"
+    },
+    "lower_REJECT": {
+      "direction": "long",
+      "stop": "level - scale",
+      "target": "level + scale"
+    },
+    "upper_BREAK": {
+      "direction": "long",
+      "stop": "level - scale",
+      "target": "level + scale"
+    },
+    "upper_REJECT": {
+      "direction": "short",
+      "stop": "level + scale",
+      "target": "level - scale"
+    }
+  },
+  "chronology": {
+    "2023_open_gate": {
+      "exact_winner_deleted_reroute_positive": true,
+      "minimum_completed_model_trades": 100,
+      "pf_above_one": true,
+      "positive_18bp": true,
+      "positive_24bp": true,
+      "positive_median": true
+    },
+    "first_forward": "2022",
+    "fit": "2021 fully resolved actions",
+    "official_2024_2026": "sealed unless unchanged 2023 confirmation passes"
+  },
+  "claim_id": "CLM-20260730-MINIMAL-REPEATED-LEVEL-CORE-001",
+  "data_cutoff": "2022-12-31T23:59:59Z",
+  "execution": {
+    "elapsed_time_exit": false,
+    "favorable_target_gap": "frozen target",
+    "fill": "first strictly later observed 1m open",
+    "gap_stop": "observed adverse open",
+    "latency_ms": 500,
+    "same_minute": "stop first"
+  },
+  "hypothesis": "The within-day touch history of the immediately previous UTC-day high/low, together with causal approach and leveraged-inventory state, separates break acceptance from rejection with cost-surviving direct account value.",
+  "interaction_tolerance_scale": 0.1,
+  "level": {
+    "active_life": "immediately_following_UTC_day_only",
+    "type": "previous_completed_UTC_day_high_low"
+  },
+  "model": {
+    "decision": "take highest positive action value or flat",
+    "parameters": {
+      "l2_regularization": 12.0,
+      "learning_rate": 0.035,
+      "max_depth": 3,
+      "max_iter": 240,
+      "min_samples_leaf": 80,
+      "random_state": 1729
+    },
+    "target": "direct 24bp account return for stacked BREAK/REJECT actions",
+    "type": "HistGradientBoostingRegressor"
+  },
+  "no_rescue": [
+    "scale",
+    "rearm",
+    "boundary",
+    "model",
+    "score threshold",
+    "cost",
+    "risk",
+    "leverage",
+    "SMC checklist gate"
+  ],
+  "products": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "rearm": {
+    "minimum_completed_15m_bars": 4,
+    "required_prior_completed_retreat_scale": 0.5,
+    "same_bar_self_rearm": false
+  },
+  "research_basis": [
+    "인과적 유동성 기반 자동매매 방향",
+    "유동성 침범 기반 ML 트레이딩",
+    "유동성 기반 단일 정책 시스템",
+    "SMC 알파 착각과 순서 오류"
+  ],
+  "result_id": "RES-20260730-MINIMAL-REPEATED-LEVEL-CORE-001",
+  "retire_after_completed_close_beyond_scale": 1.25,
+  "schema_version": 1,
+  "structural_scale": "previous_day_range / 4",
+  "venue": "Bybit USDT-linear perpetual"
+}
