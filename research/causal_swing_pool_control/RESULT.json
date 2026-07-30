@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-CAUSAL-SWING-POOL-CONTROL-001",
+  "result_id": "RES-20260730-CAUSAL-SWING-POOL-CONTROL-001",
+  "status": "RETIRED_2022_DETERMINISTIC_ECONOMIC_FAILURE",
+  "ranking_role": "NONE",
+  "logic": "Exceptional-turnover consumption of a causally confirmed one-use 4h swing pool, followed by next-hour outside acceptance continuation or inside rejection rotation toward the nearest still-unconsumed causal 4h pool.",
+  "thresholds": {
+    "calendar_2021_pooled_prior_only_log_turnover_z_q75": 0.6293676360076283,
+    "minimum_penetration_atr20": 0.1,
+    "pivot_left_bars_4h": 2,
+    "pivot_right_bars_4h": 2
+  },
+  "candidate_counts": {
+    "2021": 451,
+    "2022": 489,
+    "2023": 514,
+    "ACCEPT": 1084,
+    "REJECT": 370
+  },
+  "principal_24bp": {
+    "2022": {
+      "FULL_MAP": {"trades": 263, "end_multiple": 0.911420, "profit_factor": 0.8352, "median_trade_return": -0.00208309, "max_drawdown": 0.1001, "winner_deleted_rerouted_multiple": 0.820204},
+      "ACCEPT_ONLY": {"trades": 212, "end_multiple": 0.875607, "profit_factor": 0.6997, "median_trade_return": -0.00194379, "max_drawdown": 0.1385, "winner_deleted_rerouted_multiple": 0.804282},
+      "REJECT_ONLY": {"trades": 99, "end_multiple": 0.965013, "profit_factor": 0.8518, "median_trade_return": -0.00241547, "max_drawdown": 0.0734, "winner_deleted_rerouted_multiple": 0.874554}
+    },
+    "2023_unchanged_diagnostic": {
+      "FULL_MAP": {"trades": 280, "end_multiple": 0.834838, "profit_factor": 0.7064, "median_trade_return": -0.00195215, "max_drawdown": 0.2050, "winner_deleted_rerouted_multiple": 0.739066},
+      "ACCEPT_ONLY": {"trades": 231, "end_multiple": 0.823773, "profit_factor": 0.5989, "median_trade_return": -0.00187155, "max_drawdown": 0.2162, "winner_deleted_rerouted_multiple": 0.778458},
+      "REJECT_ONLY": {"trades": 114, "end_multiple": 0.963368, "profit_factor": 0.8777, "median_trade_return": -0.00267959, "max_drawdown": 0.0647, "winner_deleted_rerouted_multiple": 0.844770}
+    },
+    "continuous_2022_2023": {
+      "FULL_MAP": {"trades": 543, "end_multiple": 0.760889, "profit_factor": 0.7723, "median_trade_return": -0.00199344, "max_drawdown": 0.2515, "winner_deleted_rerouted_multiple": 0.654689},
+      "ACCEPT_ONLY": {"trades": 443, "end_multiple": 0.721302, "profit_factor": 0.6512, "median_trade_return": -0.00189579, "max_drawdown": 0.2903, "winner_deleted_rerouted_multiple": 0.652846},
+      "REJECT_ONLY": {"trades": 213, "end_multiple": 0.929662, "profit_factor": 0.8661, "median_trade_return": -0.00256173, "max_drawdown": 0.0903, "winner_deleted_rerouted_multiple": 0.798473}
+    }
+  },
+  "zero_cost_diagnostic": {
+    "2022_FULL_MAP": 1.076651,
+    "2023_FULL_MAP": 1.052825,
+    "2022_REJECT_ONLY": 1.043751,
+    "2023_REJECT_ONLY": 1.086704,
+    "interpretation": "A small gross rejection tendency exists, but the median remains negative and realistic 12bp removes the edge; no tradable cost headroom."
+  },
+  "programization_corrections": [
+    "a 4h pool is eligible only for 1h bars starting after pivot availability",
+    "intervening completed minute can cancel before entry when target, stop or premise is consumed",
+    "unresolved stage-boundary positions are marked without future-calendar exit prices",
+    "post-2023 candidate generation remains sealed without authorization"
+  ],
+  "decision": "RETIRE_CAUSAL_SWING_POOL_CONTROL_TRANSFER_PRE2024",
+  "official_2024_2026_opened": false,
+  "risk_or_leverage_search_opened": false,
+  "ml_opened": false,
+  "credentials_used": false,
+  "orders_submitted": false
+}
