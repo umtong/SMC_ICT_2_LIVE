@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-PERSISTENT-ORDER-WALL-DELIVERY-001",
+  "claim_id": "CLM-20260730-PERSISTENT-ORDER-WALL-DELIVERY-001",
+  "status": "RETIRED_PERSISTENT_ORDER_WALL_FATAL_SCREEN_FAILURE",
+  "validation_stage": "Tardis Bybit BTCUSDT/ETHUSDT first-day sparse fatal screen; March calibration, May development, unchanged July confirmation",
+  "ranking_eligibility": "not eligible; development has zero executable actions and confirmation has one losing action",
+  "source": {
+    "dataset_id": "DS-TARDIS-BYBIT-BTCETH-L2-FIRSTDAY-202303_202307-R1",
+    "source_manifest_sha256": "c9a853c83897cee951f47cd3b74f4a8476859a4fa57cdbbe62aef89266e38897",
+    "result_artifact_id": 8763245422,
+    "result_artifact_digest": "sha256:a47a25bf3d3ca3ed06181e07c3c2437e5328e04f57c2f91c246655389b6e221a"
+  },
+  "calibration": {
+    "BTCUSDT": {"ask_q95_notional": 902793.9822, "bid_q95_notional": 798565.5825, "median_spread": 0.1, "tick": 0.1},
+    "ETHUSDT": {"ask_q95_notional": 240184.36, "bid_q95_notional": 217020.3002, "median_spread": 0.01, "tick": 0.01}
+  },
+  "funnel_summary": {
+    "context_2023_03_01": {"wall_intervals": 6842, "consumed": 344, "unambiguous_absorb_or_accept": 262, "no_preexisting_target": 224, "invalid_geometry_or_entry": 34, "actions": 4},
+    "development_2023_05_01": {"wall_intervals": 6365, "consumed": 257, "unambiguous_absorb_or_accept": 188, "no_preexisting_target": 160, "invalid_geometry_or_entry": 28, "actions": 0},
+    "confirmation_2023_07_01": {"wall_intervals": 7457, "consumed": 297, "unambiguous_absorb_or_accept": 237, "no_preexisting_target": 202, "invalid_geometry_or_entry": 34, "actions": 1}
+  },
+  "account": {
+    "context": {
+      "actions": 4,
+      "12bp": {"multiple": 0.9854880407, "completed_trades": 4, "profit_factor": 0.0},
+      "18bp": {"multiple": 0.9803464349, "completed_trades": 4, "profit_factor": 0.0},
+      "24bp": {"multiple": 0.9802968859, "completed_trades": 4, "profit_factor": 0.0}
+    },
+    "development": {
+      "actions": 0,
+      "12bp": {"multiple": 1.0, "completed_trades": 0, "profit_factor": 0.0},
+      "18bp": {"multiple": 1.0, "completed_trades": 0, "profit_factor": 0.0},
+      "24bp": {"multiple": 1.0, "completed_trades": 0, "profit_factor": 0.0}
+    },
+    "confirmation": {
+      "actions": 1,
+      "12bp": {"multiple": 0.9963063821, "completed_trades": 1, "profit_factor": 0.0},
+      "18bp": {"multiple": 0.9949857585, "completed_trades": 1, "profit_factor": 0.0},
+      "24bp": {"multiple": 0.9949892807, "completed_trades": 1, "profit_factor": 0.0}
+    }
+  },
+  "programization_corrections_before_outcome": [
+    "event extreme includes every actual trade from first wall contact through completed adjudication",
+    "funding uses first observable midpoint at the actual funding timestamp",
+    "state loss requires a complete post-entry second and hard barriers have priority",
+    "pre-existing destination wall must remain live at actual entry",
+    "equal entry/previous-exit timestamps are blocked by the global slot",
+    "official wide book_snapshot_5 schema is expanded to exact long-form price levels",
+    "workflow uses pipefail so a runner failure cannot be hidden by tee"
+  ],
+  "economic_diagnosis": {
+    "core_or_expansion": "neither; sparse negative fatal screen",
+    "winner_concentration": "not applicable; every completed action lost",
+    "principal_failure": "using displayed persistent walls as both the SMC source and destination removes nearly all otherwise unambiguous consumption events and leaves no positive account economics",
+    "interpretation": "persistent displayed liquidity may remain useful as a high/low-resistance sensor, but it is not equivalent to external stop/liquidation liquidity"
+  },
+  "decision": "Retire this exact wall-as-source-and-destination family without changing percentile, persistence, consumption, replenishment, depletion, target, stop, cost, symbol, risk, leverage, or adding ML. A successor must separate external stop/liquidation pools from order-book resistance adjudication.",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}
