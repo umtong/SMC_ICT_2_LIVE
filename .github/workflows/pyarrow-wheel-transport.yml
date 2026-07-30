@@ -1,0 +1,32 @@
+name: One-time PyArrow CPython 3.13 wheel transport
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pyarrow-wheel-transport.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download pinned binary wheel
+        run: |
+          set -euo pipefail
+          python -m pip download pyarrow==19.0.1 --only-binary=:all: --no-deps -d wheelhouse
+          sha256sum wheelhouse/* | tee wheelhouse/SHA256SUMS.txt
+          test "$(find wheelhouse -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pyarrow-cp313-wheel
+          path: wheelhouse/
+          if-no-files-found: error
+          compression-level: 0
