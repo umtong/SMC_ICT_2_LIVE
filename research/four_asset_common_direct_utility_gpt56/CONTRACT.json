@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-FOUR-ASSET-COMMON-DIRECT-UTILITY-001",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "venue": "Bybit USDT linear perpetual",
+  "state": "completed five-minute normalized price, volatility, turnover, OI, premium and account-ratio state versus the median state of the other three symbols",
+  "model": "CatBoost 1.2.8 deterministic pooled regressor; no symbol identity feature; no bootstrap or random feature sampling",
+  "actions": "identical long and short direct 24-bp account-return counterfactuals",
+  "entry": "fixed 500 ms represented by first strictly later observable one-minute open",
+  "geometry": "3ATR-or-0.3% hard stop and +1.5R objective; adverse same-minute stop first",
+  "portfolio": "one global pending/open slot",
+  "risk_fraction": 0.005,
+  "notional_cap": 3.0,
+  "funding": "actual signed Bybit funding",
+  "costs_bp": [12, 18, 24],
+  "selection": "2021 fit context, 2022 forward selection, unchanged 2023 confirmation; q=0.97 selected only because both years were positive, PF>1, non-sparse and positive after exact winner-event deletion with full rerouting at 24 bp",
+  "official": "annual expanding refit with six-hour new-year release delay; continuous 2024-01-01 through 2026-06-30",
+  "elapsed_time_exit": false,
+  "orders_submitted": false
+}
