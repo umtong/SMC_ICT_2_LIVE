@@ -1,0 +1,58 @@
+name: Export sponsored-delivery source for official Core replay
+
+on:
+  push:
+    branches: [agent/r56-sponsored-delivery-core-official-001]
+    paths:
+      - .github/workflows/export-sponsored-delivery-source-gpt56.yml
+      - research/sponsored_delivery_core_official/**
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/export-sponsored-delivery-source-gpt56.yml
+      - research/sponsored_delivery_core_official/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Recover exact PR 597 source carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=56c7baf4fa7d809d0ee9e471267c6ed5cbf1b543
+          git fetch --depth=1 origin "$commit"
+          src=research/xvenue_sponsorship_core_expansion_20260730
+          out=artifact
+          mkdir -p "$out/carrier" "$out/materialized"
+          for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json RESULT_FULL.json.gz.b64 REPORT.md VALIDATION_ATTESTATION.json materialize.py; do
+            git show "$commit:$src/$f" > "$out/carrier/$f"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import base64, hashlib
+          src=Path('artifact/carrier/SOURCE_BUNDLE.tar.gz.b64')
+          text=''.join(src.read_text(encoding='utf-8-sig').split())
+          raw=base64.b64decode(text, validate=True)
+          assert hashlib.sha256(raw).hexdigest()=='0ea2750a9e089a2b4d9e994deb3f5903da4ae589a57522fcd13a7c023b5d8131'
+          Path('artifact/source.tar.gz').write_bytes(raw)
+          PY
+          tar -xzf "$out/source.tar.gz" -C "$out/materialized"
+          python -m py_compile "$out/materialized"/*.py
+          find "$out/materialized" -type f -printf '%P\t%s\n' | sort > "$out/MATERIALIZED_FILE_SIZES.tsv"
+          (cd "$out" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sponsored-delivery-source-gpt56-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
