@@ -1,0 +1,49 @@
+name: Validate prior-day value-reentry Core result
+
+on:
+  push:
+    branches: [agent/ml-value-reentry-core-001]
+    paths:
+      - 'research/value_reentry_core/**'
+      - '.github/workflows/value-reentry-core.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/value_reentry_core/**'
+      - '.github/workflows/value-reentry-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy==2.3.3 pandas==2.3.3 pytest==8.3.4
+      - name: Reconstruct and validate source evidence
+        run: |
+          set -euo pipefail
+          root=research/value_reentry_core
+          python "$root/materialize.py"
+          python -m py_compile "$root/materialized"/*.py
+          pytest -q "$root/materialized/test_semantics.py"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/value_reentry_core')
+          result=json.loads((root/'RESULT.json').read_text())
+          assert result['status']=='RETIRED_PRE2024_VALUE_REENTRY_CORE_FAILURE'
+          assert result['coverage']['continuous_global_slot_completed_trades']==1888
+          assert result['continuous_pre2024']['12bp']['profit_factor']<1
+          assert result['continuous_pre2024']['24bp']['final_nav']<1000
+          assert result['decision']['official_2024_2026_opened'] is False
+          assert result['decision']['ml_opened'] is False
+          assert result['decision']['orders_submitted'] is False
+          print('value-reentry decision evidence validated')
+          PY
