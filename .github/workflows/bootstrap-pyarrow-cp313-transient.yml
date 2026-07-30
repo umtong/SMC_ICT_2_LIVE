@@ -20,12 +20,12 @@ jobs:
       - name: Download Linux CPython 3.13 PyArrow wheel
         run: |
           set -euo pipefail
-          python -m pip download --only-binary=:all: --no-deps 'pyarrow==19.0.0' -d wheel
+          python -m pip download --only-binary=:all: --no-deps 'pyarrow==25.0.0' -d wheel
           sha256sum wheel/* > wheel/SHA256SUMS
           ls -lah wheel
       - uses: actions/upload-artifact@v4
         with:
-          name: pyarrow-cp313-manylinux-wheel
+          name: pyarrow25-cp313-manylinux-wheel
           path: wheel
           if-no-files-found: error
           retention-days: 1
