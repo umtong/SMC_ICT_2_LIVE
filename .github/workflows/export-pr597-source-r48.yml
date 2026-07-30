@@ -80,23 +80,27 @@ jobs:
           text=''.join((core/'AUDIT_SOURCE.py.gz.b64').read_text(encoding='utf-8-sig').split())
           gz=base64.b64decode(text,validate=True)
           observed_gz=hashlib.sha256(gz).hexdigest()
-          if observed_gz != manifest['gzip_sha256']:
-              raise SystemExit(f'PR550 gzip SHA mismatch: {observed_gz}')
           source=gzip.decompress(gz)
           observed_source=hashlib.sha256(source).hexdigest()
-          if observed_source != manifest['source_sha256']:
-              raise SystemExit(f'PR550 source SHA mismatch: {observed_source}')
-          (core/manifest['source_filename']).write_bytes(source)
-          (core/'RECOVERY_ATTESTATION.json').write_text(json.dumps({
-              'gzip_sha256':observed_gz,
-              'source_sha256':observed_source,
+          attestation={
+              'expected_gzip_sha256':manifest['gzip_sha256'],
+              'observed_gzip_sha256':observed_gz,
+              'gzip_sha_match':observed_gz==manifest['gzip_sha256'],
+              'expected_source_sha256':manifest['source_sha256'],
+              'observed_source_sha256':observed_source,
+              'source_sha_match':observed_source==manifest['source_sha256'],
               'source_bytes':len(source),
-              'status':'PASS_EXACT_PR550_CORE_SOURCE_RECOVERY',
-          },indent=2,sort_keys=True)+'\n')
+          }
+          (core/'RECOVERY_ATTESTATION.json').write_text(json.dumps(attestation,indent=2,sort_keys=True)+'\n')
+          (core/'OBSERVED_SOURCE.py').write_bytes(source)
+          if observed_source != manifest['source_sha256']:
+              raise SystemExit(f'PR550 decompressed source SHA mismatch: {observed_source}')
+          (core/manifest['source_filename']).write_bytes(source)
           PY
           python -m py_compile "$out/pr550_core/protected_boundary_core_realization.py"
           (cd "$out" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: published-core-authorities-r48-${{ github.sha }}
           path: artifact
