@@ -1,0 +1,56 @@
+name: Export verified LAST-D source
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/lastd/carrier/**
+      - .github/workflows/lastd-source-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Reconstruct and verify source
+        run: |
+          python - <<'PY'
+          import base64
+          import gzip
+          import hashlib
+          from pathlib import Path
+
+          parts = sorted(Path("research/lastd/carrier").glob("part-*.b64"))
+          expected_names = [f"part-{index:02d}.b64" for index in range(7)]
+          if [path.name for path in parts] != expected_names:
+              raise RuntimeError(f"unexpected carrier parts: {[path.name for path in parts]}")
+          encoded = "".join(path.read_text(encoding="utf-8").strip() for path in parts)
+          source = gzip.decompress(base64.b64decode(encoded, validate=True))
+          actual = hashlib.sha256(source).hexdigest()
+          expected = "244bae2622199fdc0a7b99fda8b371a88953b5fa760f359fc88a9ea88892e04f"
+          if actual != expected:
+              raise RuntimeError(f"source hash mismatch: {actual} != {expected}")
+          output = Path("artifact/lastd-source")
+          output.mkdir(parents=True, exist_ok=True)
+          (output / "lastd_system.py").write_bytes(source)
+          (output / "SOURCE_SHA256.txt").write_text(f"{actual}  lastd_system.py\n", encoding="utf-8")
+          PY
+
+      - name: Compile and execute contract self-tests
+        run: |
+          python -m py_compile artifact/lastd-source/lastd_system.py
+          python artifact/lastd-source/lastd_system.py --self-test
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-lastd-source-${{ github.sha }}
+          path: artifact/lastd-source
+          if-no-files-found: error
+          retention-days: 90
