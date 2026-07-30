@@ -1,0 +1,60 @@
+{
+  "account": {
+    "costs_bp": [
+      0,
+      12,
+      18,
+      24
+    ],
+    "no_elapsed_time_exit": true,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "risk_fraction": 0.005
+  },
+  "actions": {
+    "accept_continue": "second same-side outside close; stop 1bp inside boundary; +1.5R target; close-inside state exit",
+    "flat": "source gap or opposite-side jump",
+    "reject_rotate": "response close inside; stop 1bp beyond known excursion; midpoint target; renewed outside-acceptance state exit"
+  },
+  "branch": "agent/r33-leveraged-compression-release-core-001",
+  "chronology": {
+    "confirmation": 2023,
+    "development": 2022,
+    "fit": 2021,
+    "official_open_rule": "deterministic and conditional ML gates",
+    "official_opened": false
+  },
+  "claim_id": "CLM-20260730-1525-LEVERAGED-COMPRESSION-RELEASE-CORE-001",
+  "conditional_ml": {
+    "opened": false,
+    "reason": "deterministic 24bp gate failed"
+  },
+  "data": {
+    "canonical_export_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
+    "pre2024_only": true
+  },
+  "execution": {
+    "entry": "first strictly later observed 1m open",
+    "funding": "actual signed",
+    "gap_stop": "observed open",
+    "latency_ms": 500,
+    "same_minute": "stop first"
+  },
+  "issue": 539,
+  "schema_version": 1,
+  "state": {
+    "balance": "previous 72 completed 5m bars / six hours",
+    "compression_threshold": "q25",
+    "decision_clock": "completed UTC-aligned 1h boundaries",
+    "inventory_accumulation_threshold": "q75 positive six-hour OI-notional change",
+    "non_overlap": true,
+    "normalization": "prior 30 UTC calendar days, current excluded",
+    "release": "first completed 5m close outside frozen balance",
+    "response": "immediately following completed 5m bar",
+    "threshold_fit": "calendar 2021 only, per symbol"
+  },
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ]
+}
