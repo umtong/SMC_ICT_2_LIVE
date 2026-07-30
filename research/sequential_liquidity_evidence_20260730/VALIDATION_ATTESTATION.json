@@ -1,0 +1,60 @@
+{
+  "calendar_2023_opened": false,
+  "causal_invariants": [
+    "pool availability and right-confirmed pivots",
+    "same-timestamp touch/state allowed but order strictly after decision plus 500ms",
+    "frozen adjacent endpoints and first-touch pool retirement",
+    "no explicit symbol or raw price fields in model matrices",
+    "latest settled funding only; exact later funding in account labels",
+    "one global pending/open slot and adverse same-minute ordering",
+    "no elapsed-time strategy close; stage marks retain the slot",
+    "positive-only parent-event deletion with complete rerouting"
+  ],
+  "focused_test_count": 11,
+  "focused_tests": "...........                                                              [100%]\n11 passed in 7.04s",
+  "independent_full_2022_24bp_replay": {
+    "completed_trades": 601,
+    "exact_match": true,
+    "mdd": 0.3857936342410372,
+    "median": -0.002175029753997559,
+    "multiple": 0.6539768988760786,
+    "pf": 0.6801303551854576,
+    "winner_deleted_multiple": 0.6195361085972247
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "result_id": "RES-20260730-SEQUENTIAL-LIQUIDITY-EVIDENCE-001",
+  "schema_version": 1,
+  "status": "PASS_CAUSAL_PROGRAMIZATION_AUDIT_TWO_RUN_ACTION_MODEL_ACCOUNT_IDENTITY",
+  "two_run_action_fingerprints": {
+    "BTCUSDT": {
+      "columns": 68,
+      "events": 2020,
+      "rows": 119332,
+      "sha256": "f83cd5f85a622f0d8b2e3c23137ab8de53db3ed2badbb0de82bebf466d686280"
+    },
+    "ETHUSDT": {
+      "columns": 68,
+      "events": 1881,
+      "rows": 123328,
+      "sha256": "0e92eb5605c3f1b4f5ee4a8139a97ccd64d7c38018319f9c35ab8b38e2487d19"
+    }
+  },
+  "two_run_model_prediction_fingerprints": {
+    "FIRST_STATE_MODEL.pkl": {
+      "exact_two_run_match": true,
+      "rows": 242660,
+      "sha256": "fcad6931538c3a52e2bdfc778463798a4da964385d90026c2d3eb3f951a6c66e"
+    },
+    "FULL_MODEL.pkl": {
+      "exact_two_run_match": true,
+      "rows": 242660,
+      "sha256": "d386b6351697e8824c750c60d25455ae06bca6b26cbfa4fba768c8104132e540"
+    },
+    "STRUCTURAL_MODEL.pkl": {
+      "exact_two_run_match": true,
+      "rows": 242660,
+      "sha256": "b6f9630be268539ccdf01b30395ff982026fb4731dd7ca35e40126cbd89acf6d"
+    }
+  }
+}
