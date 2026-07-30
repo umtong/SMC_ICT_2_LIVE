@@ -1,0 +1,48 @@
+name: Extract pinned exchange-inventory source
+
+on:
+  push:
+    branches: [agent/r29-exchange-inventory-flow-core-001]
+    paths:
+      - '.github/workflows/exchange-inventory-source-r29.yml'
+      - 'research/exchange_inventory_flow/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/exchange-inventory-source-r29.yml'
+      - 'research/exchange_inventory_flow/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exchange-inventory-source-r29-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r29-exchange-inventory-flow-core-001
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify and extract pre-2024 source only
+        run: |
+          set -euo pipefail
+          out=research_runs/exchange_inventory_source_r29
+          python research/exchange_inventory_flow/source_extract.py --output-dir "$out"
+          python -m json.tool "$out/SOURCE_MANIFEST.json" >/dev/null
+          find "$out" -type f -print0 | sort -z | xargs -0 sha256sum > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exchange-inventory-source-r29-${{ github.run_id }}
+          path: research_runs/exchange_inventory_source_r29
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
