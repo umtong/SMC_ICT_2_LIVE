@@ -1,0 +1,42 @@
+name: Export frozen Uniswap economic source
+
+on:
+  push:
+    branches:
+      - agent/r34-uniswap-signed-flow-sqd-takeover-001
+    paths:
+      - ".github/workflows/export-uniswap-economic-source.yml"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.tar.gz.b64"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize and verify exact source
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          out=research_runs/uniswap_signed_flow_sqd/economic_source
+          rm -rf "$out"
+          mkdir -p "$out"
+          base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > "$out/ECONOMIC_BUNDLE.tar.gz"
+          echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  $out/ECONOMIC_BUNDLE.tar.gz" | sha256sum -c -
+          tar -xzf "$out/ECONOMIC_BUNDLE.tar.gz" -C "$out"
+          echo "5bf93ac504fad6d676a64d1e1ee900794529a4f9a7d9f7d5dc4741793d1e233e  $out/full_history_sqd.py" | sha256sum -c -
+          echo "b517d95fa3f8a07041653e00dcaffe0b5392087d23fbc5376563f4ce8890869a  $out/test_full_history_sqd.py" | sha256sum -c -
+          echo "67d662fb0255621df687157a0535dd35f06417e12beb4a195cf7d3d5bd32de0f  $out/economic_screen.py" | sha256sum -c -
+          echo "69e1fbdea120c47362fd71f4205770f49bba92620965a769f967f579b5413d92  $out/test_economic_screen.py" | sha256sum -c -
+          sha256sum "$out"/* > "$out/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uniswap-signed-flow-frozen-economic-source-${{ github.sha }}
+          path: research_runs/uniswap_signed_flow_sqd/economic_source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
