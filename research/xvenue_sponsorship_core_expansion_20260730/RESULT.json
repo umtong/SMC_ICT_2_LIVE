@@ -1,0 +1,173 @@
+{
+  "all_candidate_counts": {
+    "2021": 538,
+    "2022": 511,
+    "2023": 369,
+    "2024": 578,
+    "2025": 598,
+    "2026": 261
+  },
+  "base_event_counts": {
+    "2021": 79,
+    "2022": 101,
+    "2023": 146,
+    "2024": 110,
+    "2025": 113,
+    "2026": 50
+  },
+  "claim_id": "CLM-20260730-XVENUE-SPONSORSHIP-CORE-EXPANSION-001",
+  "dependency_parity": {
+    "2022_core_24bp": {
+      "mdd": 0.0233376336691411,
+      "median": 0.0053947524485402736,
+      "multiple": 1.087189149841832,
+      "pf": 1.4884107829580673,
+      "top5_positive_pnl_share": 0.14195621217626206,
+      "trades": 74
+    },
+    "2022_expansion_24bp": {
+      "mdd": 0.027362978587148312,
+      "median": -0.0025684643478564783,
+      "multiple": 1.2190345933954363,
+      "pf": 2.819424953288518,
+      "top5_positive_pnl_share": 0.642572070319472,
+      "trades": 41
+    },
+    "2023_core_24bp": {
+      "mdd": 0.04717079996103857,
+      "median": 0.003813005844482231,
+      "multiple": 1.0429540636420631,
+      "pf": 1.164143689451726,
+      "top5_positive_pnl_share": 0.10663345686914363,
+      "trades": 106
+    },
+    "2023_expansion_24bp": {
+      "mdd": 0.047908501535372294,
+      "median": -0.004299810692676634,
+      "multiple": 1.3131893628925566,
+      "pf": 2.670325110571239,
+      "top5_positive_pnl_share": 0.8779755380619998,
+      "trades": 50
+    }
+  },
+  "full_result": {
+    "bytes": 38737,
+    "compressed_carrier": "RESULT_FULL.json.gz.b64",
+    "sha256": "6c203bf9fe424fd15b8f6c6706491a7b889517e138c4493f57362882d616148b"
+  },
+  "gate": {
+    "better_than_best_constant": false,
+    "minimum_trades": true,
+    "passed": false,
+    "pf_above_one": true,
+    "positive_18bp": true,
+    "positive_24bp": true,
+    "positive_median": false,
+    "winner_deleted_positive": true
+  },
+  "interpretation": [
+    "The sign-only cross-venue acceptance state is nearly constant because a high-volume Bybit breakout already coincides with same-direction Binance return and taker imbalance on almost every event.",
+    "Continuous Binance flow features do not improve the 2023 one-slot account over the best constant Expansion action and are weaker than the Bybit-only Ridge control.",
+    "The policy remains negative-median and positive PnL is concentrated in long-duration Expansion trades; no frequent Core is created.",
+    "Official 2024-2026, risk/leverage work and adjacent sensor tuning remain closed."
+  ],
+  "model_diagnostics": {
+    "action_constant": {
+      "mae": 0.00899418999758401,
+      "means": {
+        "CORE": 0.0010280919994959713,
+        "EXPANSION": 0.003063684139645964
+      },
+      "mse": 0.0004021043128219595
+    },
+    "bybit_only": {
+      "mae": 0.008598661233925376,
+      "mse": 0.0004134251698086208,
+      "positive_realized_mean": 0.0022742783202051252,
+      "positive_realized_win_rate": 0.3699421965317919,
+      "positive_rows": 173,
+      "spearman": 0.10026922920032126
+    },
+    "score_rows": 292,
+    "train_rows": 202,
+    "xvenue": {
+      "mae": 0.008784811258490188,
+      "mse": 0.0004114985095225929,
+      "positive_realized_mean": 0.003023121145124142,
+      "positive_realized_win_rate": 0.35911602209944754,
+      "positive_rows": 181,
+      "spearman": 0.1105467643417474
+    }
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "result_id": "RES-20260730-XVENUE-SPONSORSHIP-CORE-EXPANSION-001",
+  "schema_version": 1,
+  "source_hashes": {
+    "binance_2021_2022_zip": "7b5ebe136c561a9839b5509bb3f6121631960639f1f18c1d9115993cbc6420fb",
+    "binance_2023_2025_zip": "fd3c20704cf4b8b1dc80023298920456d4ec7cf2dfe9986237d94ea8cbd51f4c",
+    "canonical_export_manifest": "8de81d791c9ad177c6fd2046675adda759dc7373aa1d31e01b32d9b7058e8c6d",
+    "channel_source": "e468b50035344b355ca610afdd4ee6deaff30a0f8722441c6a38d1ceca963f38"
+  },
+  "state_diagnostics": {
+    "2022": {
+      "events": 101,
+      "global_accept_false": 2,
+      "global_accept_fraction": 0.9801980198019802,
+      "global_accept_true": 99
+    },
+    "2023": {
+      "events": 146,
+      "global_accept_false": 1,
+      "global_accept_fraction": 0.9931506849315068,
+      "global_accept_true": 145
+    }
+  },
+  "status": "RETIRED_2023_XVENUE_SENSOR_BASELINE_INFERIOR_EXPANSION_ONLY",
+  "untouched_2023_24bp": {
+    "BYBIT_RIDGE": {
+      "mdd": 0.04921584208054686,
+      "median": -0.0025314856437089455,
+      "multiple": 1.2072317839706048,
+      "pf": 2.408409235006668,
+      "top5_positive_pnl_share": 0.8283452536537915,
+      "trades": 48,
+      "winner_deleted_multiple": 1.086752219276977
+    },
+    "CORE": {
+      "mdd": 0.04717079996103857,
+      "median": 0.003813005844482231,
+      "multiple": 1.0429540636420631,
+      "pf": 1.164143689451726,
+      "top5_positive_pnl_share": 0.10663345686914363,
+      "trades": 106,
+      "winner_deleted_multiple": 0.9823417335838606
+    },
+    "EXPANSION": {
+      "mdd": 0.047908501535372294,
+      "median": -0.004299810692676634,
+      "multiple": 1.3131893628925566,
+      "pf": 2.670325110571239,
+      "top5_positive_pnl_share": 0.8779755380619998,
+      "trades": 50,
+      "winner_deleted_multiple": 1.1028223607082719
+    },
+    "XVENUE_RIDGE": {
+      "mdd": 0.04809133732934057,
+      "median": -0.0027694969680361163,
+      "multiple": 1.1923574963766266,
+      "pf": 2.336029680928386,
+      "top5_positive_pnl_share": 0.8359098860142594,
+      "trades": 47,
+      "winner_deleted_multiple": 1.224247400266674
+    }
+  },
+  "xvenue_halfyears": {
+    "2023H1": 0.1548428052928581,
+    "2023H2": 0.03248467316229675
+  },
+  "xvenue_winner_deleted_halfyears": {
+    "2023H1": 0.2700254269941851,
+    "2023H2": -0.036044968671104294
+  }
+}
