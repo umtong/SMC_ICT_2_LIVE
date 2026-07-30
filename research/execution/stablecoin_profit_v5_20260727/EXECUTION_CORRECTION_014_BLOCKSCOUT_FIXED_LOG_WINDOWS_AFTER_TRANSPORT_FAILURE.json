@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "correction_id": "EXECUTION-CORRECTION-20260730-STABLECOIN-V5-BLOCKSCOUT-FIXED-LOG-WINDOWS-014",
+  "claim_id": "CLM-20260730-STABLECOIN-V5-EXEC-REPAIR-001",
+  "parent_claim_id": "CLM-20260726-2110-ML-STABLECOIN-ISSUANCE-001",
+  "recorded_at": "2026-07-30T12:38:00+09:00",
+  "timing": "AFTER_DURABLE_TRANSPORT_FAILURE_BEFORE_ANY_SOURCE_PASS_FAIL_MARKET_ROW_LABEL_MODEL_TRADE_PNL_OR_OFFICIAL_INTERVAL",
+  "observed_run": {
+    "workflow_run": 30485219744,
+    "job_id": 90689148850,
+    "status": "SOURCE_UNAVAILABLE_OR_TRANSPORT_FAILURE",
+    "failure": "Blockscout legacy getLogs monthly-range request exhausted four 60-second attempts with a read timeout",
+    "source_event_count": null,
+    "source_pass_fail_observed": false,
+    "market_archive_opened": false,
+    "label_computed": false,
+    "model_fitted": false,
+    "trade_or_pnl_opened": false,
+    "official_2024_2026_opened": false,
+    "credentials_used": false,
+    "orders_submitted": false
+  },
+  "transport_correction": {
+    "scope": "materialized source_gate_blockscout.py query transport only",
+    "maximum_contiguous_log_window_blocks": 20000,
+    "partition_rule": "partition each already-frozen monthly inclusive block interval into ordered, contiguous, non-overlapping windows of at most 20000 blocks",
+    "query_rule": "run the unchanged token-specific address/topic filter through the existing fail-closed ExactBatchClient.logs for every window",
+    "deduplication_rule": "retain the unchanged canonical contract/transaction-hash/log-index deduplication after all windows",
+    "failure_rule": "any unrecognized provider response or exhausted request on a fixed window remains a hard transport failure; no interval is treated as empty without an explicit no-records response"
+  },
+  "unchanged": [
+    "source commit 73aac90eacdc0ddcc34f4e45f0ff8d9369e5b539",
+    "strict economic commit 209a0fbe6e2f61d2c58b3eb7910b8c0c139cd46c",
+    "USDT Issue/Redeem and USDC zero-address Transfer event semantics",
+    "all 36 fixed source months and their exact block boundaries",
+    "12-block primary and 64-block stress information availability",
+    "fail-closed status=0 classification and 1000-log recursive split",
+    "event identity, amount, timestamp, ordering and hashes",
+    "features, model, calibration, labels, structural target and stop",
+    "one global executable-entry slot, costs, funding and risk/notional grid",
+    "profit-first V5 advancement and no elapsed-time liquidation",
+    "no credentials and no orders"
+  ]
+}
