@@ -49,3 +49,12 @@ def test_required_columns_are_source_only() -> None:
     assert "withdrawal_amount" in MODULE.REQUIRED_COLUMNS
     forbidden = {"price", "return", "pnl", "nav", "funding", "open_interest"}
     assert not (forbidden & MODULE.REQUIRED_COLUMNS)
+
+
+def test_xatu_uint128_little_endian_decode() -> None:
+    import pyarrow as pa
+
+    expected = 4_500_000_000
+    raw = expected.to_bytes(16, byteorder="little", signed=False)
+    array = pa.chunked_array([pa.array([raw], type=pa.binary(16))])
+    assert MODULE.integer_values(array) == [expected]
