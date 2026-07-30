@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-MATURE-AUCTION-AMD-RUNNER-001",
+  "claim_id": "CLM-20260730-MATURE-AUCTION-AMD-RUNNER-001",
+  "status": "RETIRED_PRE2024_MATURE_AUCTION_AMD_BASE_FAILURE",
+  "target_status": "NOT_MET",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "portfolio": {"planned_loss_fraction": 0.005, "notional_cap": 3.0, "global_slots": 1},
+  "funnels": {
+    "BTCUSDT": {"pivots": 28802, "candidates": 4866, "prematurity_breaches": 4487, "mature_ranges": 378, "raids": 378, "no_reclaim": 20, "no_shift": 259, "target_pre_entry": 1, "shift_actions": 98, "fvg_pending": 98, "fvg_fills": 17},
+    "ETHUSDT": {"pivots": 26761, "candidates": 4557, "prematurity_breaches": 4205, "mature_ranges": 351, "raids": 351, "no_reclaim": 17, "no_shift": 245, "target_pre_entry": 2, "shift_actions": 87, "fvg_pending": 87, "fvg_fills": 13}
+  },
+  "paths": {
+    "SHIFT_FULL": {
+      "2021": {"0bp_multiple": 1.0044365, "24bp_multiple": 0.9744501, "24bp_trades": 61, "24bp_pf": 0.6826520, "winner_reroute_24bp_multiple": 0.9566692},
+      "2022": {"0bp_multiple": 0.9974373, "24bp_multiple": 0.9465317, "24bp_trades": 73, "24bp_pf": 0.4137665, "winner_reroute_24bp_multiple": 0.9359482},
+      "2023": {"0bp_multiple": 0.9978442, "24bp_multiple": 0.9539591, "24bp_trades": 47, "24bp_pf": 0.3236473, "winner_reroute_24bp_multiple": 0.9475608}
+    },
+    "FVG_SPLIT_RUNNER": {
+      "2021": {"selected_shifts": 61, "fills": 7, "0bp_multiple": 0.9960972, "24bp_multiple": 0.9919878, "24bp_pf": 0.0, "partial_rate": 0.1428571},
+      "2022": {"selected_shifts": 73, "fills": 16, "0bp_multiple": 1.0017343, "24bp_multiple": 0.9918609, "24bp_pf": 0.4536269, "partial_rate": 0.5625, "winner_reroute_24bp_multiple": 0.9892839},
+      "2023": {"selected_shifts": 47, "fills": 6, "0bp_multiple": 1.0053450, "24bp_multiple": 0.9977430, "24bp_pf": 0.554, "partial_rate": 0.5, "winner_reroute_24bp_multiple": 0.9966220}
+    }
+  },
+  "programization_audit": {
+    "causal_pivots": true,
+    "maturity_before_raid": true,
+    "prematurity_reset": true,
+    "frozen_boundaries": true,
+    "one_time_manipulation": true,
+    "target_consumption_before_entry": true,
+    "genuine_fvg_timing": true,
+    "pending_slot_occupancy": true,
+    "partial_arithmetic": true,
+    "post_partial_protected_swing": true,
+    "actual_signed_funding": true,
+    "fixed_latency_ms": 500,
+    "adverse_same_minute_stop_first": true,
+    "material_bug_fixed": "For a high-side raid, the initial short target-consumption check used bar high versus the lower target and falsely discarded all mature ranges. It was corrected to bar low <= lower target and the entire event/account path was rebuilt before interpretation."
+  },
+  "decision": [
+    "SHIFT_FULL is approximately flat before cost in 2022 and 2023 and negative after any realistic cost.",
+    "FVG_SPLIT_RUNNER is sparse and negative at 12/18/24bp in 2022 and unchanged 2023.",
+    "Do not rescue with maturity counts, midpoint crossings, pivot radius, FVG, target, partial fraction, stop, symbol/side, cost, risk, leverage or ML.",
+    "The next Core must observe economically earlier inventory or executable-liquidity information."
+  ],
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}
