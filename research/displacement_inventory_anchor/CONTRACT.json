@@ -1,0 +1,55 @@
+{
+  "account": {
+    "actual_signed_funding": true,
+    "costs_bp": [0, 12, 18, 24],
+    "global_pending_open_slots": 1,
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005
+  },
+  "chronology": {
+    "data_years": [2021, 2022, 2023],
+    "elapsed_time_exit": false,
+    "execution": "first observed one-minute open strictly later than decision availability plus latency",
+    "fixed_latency_ms": 500,
+    "official_2024_2026_opened": false,
+    "stage_boundary": "mark unresolved exposure and retain the global slot; never strategy-close at a research boundary",
+    "threshold_fit_year": 2021,
+    "unchanged_diagnostic_year": 2023,
+    "untouched_forward_year": 2022
+  },
+  "claim_id": "CLM-20260730-DISPLACEMENT-INVENTORY-ANCHOR-001",
+  "decision_rule": {
+    "no_rescue": ["turnover threshold", "anchor width", "retest count", "target", "stop", "session", "cost", "risk", "leverage", "FVG/OB gate", "ML"],
+    "principal_cost_bp": 24,
+    "survival": ["positive marked NAV", "at least 60 completed trades", "PF > 1", "nonnegative median trade", "both half-years positive", "positive exact top-five-positive-event deletion with full one-slot rerouting"]
+  },
+  "event": {
+    "anchor": "exact completed breakout-hour turnover / volume VWAP",
+    "break": "first completed one-hour close >=0.10 prior-only ATR20 through the pool",
+    "continuation_state": "retest closes on the original break side of the anchor",
+    "participation": "pooled 2021 upper quartile of prior-only 168h log-turnover z-score",
+    "pool": "prior completed UTC-day high/low",
+    "retest": "first same-day completed five-minute bar that touches the frozen anchor",
+    "reversal_state": "retest closes through the anchor against the original break"
+  },
+  "integrity_note": "The logic and rule were fixed before the first local computation in the interactive session, but the durable GitHub Work Claim was created only after a preliminary negative screen. Therefore this result may be retained only as negative evidence and cannot authorize a positive route or official evaluation.",
+  "logic": {
+    "actions": ["DEFEND_CONTINUE", "FAIL_REVERSE", "FLAT"],
+    "not_gates": ["FVG", "OB", "MSS", "OTE", "session", "symbol-specific side"],
+    "symbol_identity_is_not_logic": true,
+    "testbeds": ["BTCUSDT", "ETHUSDT"],
+    "thesis": "A high-participation completed-hour break through pre-known prior-day external liquidity freezes the event-hour turnover/volume VWAP as the initiative inventory cost anchor. The first same-day causal five-minute retest decides whether that inventory is defended for continuation or lost for reversal."
+  },
+  "payoff": {
+    "continuation_target": "nearest still-unconsumed pre-known D1/H4 liquidity in break direction",
+    "favorable_gap": "frozen target only",
+    "hard_stop": "one tick plus 0.10 decision ATR20 beyond full signal/retest excursion",
+    "reversal_target": "frozen prior-day midpoint",
+    "same_minute_ambiguity": "adverse stop first",
+    "state_exit": "first later completed five-minute close through the anchor against the action, executed causally after latency",
+    "stop_gap": "adverse observed open"
+  },
+  "result_id": "RES-20260730-DISPLACEMENT-INVENTORY-ANCHOR-001",
+  "schema_version": 1,
+  "status": "RETROSPECTIVE_NEGATIVE_EVIDENCE_ONLY"
+}
