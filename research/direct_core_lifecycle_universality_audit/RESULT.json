@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-DIRECT-CORE-LIFECYCLE-UNIVERSALITY-AUDIT-001",
+  "claim_id": "CLM-20260730-DIRECT-CORE-LIFECYCLE-UNIVERSALITY-AUDIT-001",
+  "status": "REPORTED_TARGET_NOT_MET_BASE_CORE_POSITIVE_BUT_WEAK_NONUNIVERSAL_LIFECYCLE_MODELS_INFERIOR",
+  "target_status": "NOT_MET",
+  "ranking_changed": false,
+  "orders_submitted": false,
+  "live_permission": false,
+  "base_reproduction": {
+    "selected_q": 0.99,
+    "official": {
+      "15bp": {"end_nav": 12058.880666843565, "multiple": 1.2058880666843566, "geo_daily": 0.00020530208069224898, "trades": 473, "profit_factor": 1.1440798902986733, "maximum_drawdown": -0.056600481134522096, "median_holding_min": 156.0, "active_time_fraction": 0.11499984770955166, "top10_positive_share": 0.051901293491798256},
+      "18bp": {"end_nav": 11536.366856035147, "multiple": 1.1536366856035147, "geo_daily": 0.00015672202524608103, "trades": 473, "profit_factor": 1.1100947876133602, "maximum_drawdown": -0.060012554842738264, "median_holding_min": 156.0, "active_time_fraction": 0.11499984770955166, "top10_positive_share": 0.05177964328308381},
+      "24bp": {"end_nav": 10608.963159964705, "multiple": 1.0608963159964706, "geo_daily": 0.00006482022787879238, "trades": 473, "profit_factor": 1.0456197584096945, "maximum_drawdown": -0.0747094096778792, "median_holding_min": 156.0, "active_time_fraction": 0.11499984770955166, "top10_positive_share": 0.05199693325444684}
+    },
+    "top10pct_positive_reroute_15bp_multiple": 1.1625674444067144,
+    "decision": "winner-independent weak Core; higher costs and later regimes materially erode it"
+  },
+  "entry_score_exit": {
+    "selected_rule": "OPPOSITE_DOMINATES",
+    "official": {
+      "15bp": {"end_nav": 11623.827307703086, "multiple": 1.1623827307703087, "geo_daily": 0.00016500481424697178, "trades": 475, "profit_factor": 1.1137471045660796, "maximum_drawdown": -0.07048030859674492},
+      "18bp": {"end_nav": 11124.214598191676, "multiple": 1.1124214598191677, "geo_daily": 0.00011682605022222958, "trades": 475, "profit_factor": 1.0806202455026754, "maximum_drawdown": -0.07900995172163772},
+      "24bp": {"end_nav": 10237.096044294229, "multiple": 1.023709604429423, "geo_daily": 0.00002569429607279794, "trades": 475, "profit_factor": 1.0177669546059558, "maximum_drawdown": -0.1070232932354711}
+    },
+    "decision": "inferior to base; entry action value is not a valid hold/exit value"
+  },
+  "hold_value": {
+    "model_correlations": {"2022": 0.321958985788, "2023": 0.21699308121, "2024": 0.186239044843, "2025": 0.161459680749, "2026": 0.146325330543},
+    "official": {
+      "15bp": {"end_nav": 11397.930184902654, "multiple": 1.1397930184902654, "geo_daily": 0.00014348253297846725, "trades": 475, "profit_factor": 1.0991338167854516, "maximum_drawdown": -0.08153160138042126},
+      "18bp": {"end_nav": 10912.431635840592, "multiple": 1.0912431635840592, "geo_daily": 0.00009574752582097723, "trades": 475, "profit_factor": 1.0662408590786125, "maximum_drawdown": -0.09203197836874089},
+      "24bp": {"end_nav": 10049.855412169993, "multiple": 1.0049855412169992, "geo_daily": 0.00000545303521737317, "trades": 475, "profit_factor": 1.0037810622858223, "maximum_drawdown": -0.12096156903248445}
+    },
+    "decision": "inferior to base and correlation decays across operation years; dynamic exits add churn without durable value"
+  },
+  "readable_rules": {
+    "chosen_rule": null,
+    "least_negative": {"rule": "FULL", "end_nav": 3414.644617973716, "trades": 1265, "profit_factor": 0.7094045549171025, "geo_daily": -0.0029395386609202268, "maximum_drawdown": -0.6605006967600981, "reroute_nav": 3391.119058996381},
+    "decision": "no rule survived; the Core cannot be honestly reduced to Boolean SMC-like state gates"
+  },
+  "four_asset_universality": {
+    "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+    "chosen_q": null,
+    "least_negative": {"q": 0.995, "end_nav": 9291.282836275179, "trades": 161, "profit_factor": 0.8448892996763993, "geo_daily": -0.00020137276790654912, "maximum_drawdown": -0.09821000181569717, "reroute_nav": 9023.394223788655},
+    "decision": "all 2022 24bp routes negative; 2023 and official 2024-2026 remained sealed"
+  },
+  "decision": [
+    "The protected-boundary rank-one remains long-duration Expansion, not steady day-trading Core.",
+    "The reproduced direct-utility Core is winner-independent but weak.",
+    "Both entry-score exits and direct hold-value ML underperformed the unchanged lifecycle.",
+    "Readable state gates produced broad negative churn.",
+    "The common four-asset model failed before official evaluation, so this is not a universal BTC/ETH/SOL/XRP logic.",
+    "Do not rescue this family with adjacent lifecycle thresholds, risk, leverage, or asset-specific exceptions."
+  ]
+}
