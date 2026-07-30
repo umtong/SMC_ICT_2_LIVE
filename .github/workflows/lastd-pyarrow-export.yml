@@ -1,0 +1,36 @@
+name: Export LAST-D local parquet dependency
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/lastd-pyarrow-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Download pinned binary wheel
+        run: |
+          mkdir -p artifact/pyarrow-wheel
+          python -m pip download \
+            --only-binary=:all: \
+            --no-deps \
+            --dest artifact/pyarrow-wheel \
+            pyarrow==25.0.0
+          sha256sum artifact/pyarrow-wheel/*.whl > artifact/pyarrow-wheel/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lastd-pyarrow-cp313-linux-x86_64-${{ github.sha }}
+          path: artifact/pyarrow-wheel
+          if-no-files-found: error
+          retention-days: 30
