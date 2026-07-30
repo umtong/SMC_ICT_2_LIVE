@@ -1,0 +1,73 @@
+{
+  "account": {
+    "notional_cap_x": 3.0,
+    "planned_loss_fraction": 0.005,
+    "principal_cost_bps": 24,
+    "total_cost_bps": [
+      12,
+      18,
+      24
+    ]
+  },
+  "claim_id": "CLM-20260730-2210-LIQUIDITY-CONSUMING-ORIGIN-CORE-001",
+  "decision_rule": "At 24bp, at least 60 completed trades, NAV>1, PF>1, median>=0, both half-years positive, and exact positive-event deletion/full reroute NAV>1; unchanged 2023 must repeat before ML or official opens.",
+  "event": {
+    "displacement": "within next four completed 15m bars; reversal body/ATR above 2021 prior-only median; closes through latest causal width-two 15m internal swing; raid extreme intact",
+    "external_pools": [
+      "previous completed UTC day high/low",
+      "previous completed UTC week high/low",
+      "causally confirmed width-two 4h swing high/low"
+    ],
+    "first_return_only": true,
+    "one_use_at_first_later_observed_1m_touch": true,
+    "protected_origin": "body of last completed opposite-direction 15m candle from raid through displacement",
+    "raid": "first completed 15m trade-through and close back on pre-pool side"
+  },
+  "execution": {
+    "actual_signed_funding": true,
+    "fixed_activation_delay_ms": 500,
+    "market_resolution": "first fully later observed one-minute open for response; causal one-tick-through limit for midpoint",
+    "no_elapsed_time_exit": true,
+    "one_global_pending_or_open_slot": true,
+    "same_minute_ambiguity": "adverse stop first; no favorable target in intraminute limit-fill minute because pre-fill ordering is unknown",
+    "stage_boundary": "mark unresolved exposure and retain slot; never strategy-close"
+  },
+  "logic": {
+    "actions": [
+      "MIDPOINT_LIMIT",
+      "FIRST_RESPONSE",
+      "FLAT"
+    ],
+    "smc_terms_are_not_gates": "No FVG/OTE/session/asset-specific rescue; the origin is the last actual opposite 15m body in the raid-to-displacement sequence and is never substituted.",
+    "testbeds": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "thesis": "Pre-known external liquidity is raided and rejected; reversal displacement through causal internal structure forms a protected origin; the first return should redeliver toward a still-unconsumed scale-consistent external draw while the raid extreme remains intact."
+  },
+  "prohibited_rescue": [
+    "alternate origin body",
+    "FVG/OTE/session gates",
+    "pool-source or symbol-side exceptions",
+    "target/stop grid",
+    "lower cost assumption",
+    "ML",
+    "risk or leverage"
+  ],
+  "purpose": "Fatal deterministic screen of the transcript-grounded claim that an origin formed while consuming pre-known external liquidity is protected on its first return.",
+  "result_id": "RES-20260730-LIQUIDITY-CONSUMING-ORIGIN-CORE-001",
+  "schema_version": 1,
+  "source": {
+    "canonical_zip": "canonical-bybit-pandas-export-8712672241.zip",
+    "canonical_zip_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
+    "confirmation_and_official_open_only_after_full_2022_pass": true,
+    "confirmation_year": 2023,
+    "fatal_forward_year": 2022,
+    "fit_geometry_year": 2021,
+    "official_period": "2024-01-01/2026-06-30",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ]
+  }
+}
