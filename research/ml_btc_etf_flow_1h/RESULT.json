@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-ML-BTC-ETF-FLOW-1H-001",
+  "claim_id": "CLM-20260730-ML-BTC-ETF-FLOW-1H-001",
+  "status": "RETIRED_RESEARCH_EXPOSED_SLOW_CONTINUATION_NOT_CORE_ML_FAILURE",
+  "evaluation_scope": {
+    "start": "2024-01-01T00:00:00Z",
+    "end": "2026-06-30T23:59:59Z",
+    "calendar_days": 912,
+    "fresh_oos": false,
+    "reason": "The parent five-minute ETF-flow route exposed the full interval before this one-hour scale audit."
+  },
+  "source": {
+    "provider": "Farside final BTC ETF flow table",
+    "rows": 634,
+    "nonzero_events": 618,
+    "availability_rule": "flow dated d usable at 00:00 UTC on d+1",
+    "source_parquet_sha256": "5a6314dba84ab3b99589b6a306a5556708d7c36cb4a1dfece418113a4f731529"
+  },
+  "fixed_contract": {
+    "symbol": "BTCUSDT",
+    "actions": [
+      "continuation",
+      "fade",
+      "flat via policy abstention"
+    ],
+    "trigger": "first completed one-hour pullback then first later one-hour directional resumption beyond immediately preceding one-hour extreme",
+    "activation": "fixed 500ms; first strictly later observable one-minute price",
+    "stop": "protected pullback origin plus adverse 0.25 prior-only 20-hour ATR",
+    "exits": [
+      "hard stop",
+      "completed one-hour protected-origin loss",
+      "later ETF-flow sign reversal"
+    ],
+    "elapsed_time_exit": false,
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bps": [
+      12,
+      18,
+      24
+    ],
+    "actual_funding": true,
+    "global_slots": 1
+  },
+  "event_funnel": {
+    "action_candidates": 1230,
+    "resolved_action_labels": 1225,
+    "continuation_selected": 311,
+    "continuation_completed": 310,
+    "continuation_exit_counts": {
+      "stop": 196,
+      "source_reversal": 85,
+      "structural_exit": 29,
+      "boundary_mark": 1
+    },
+    "median_trigger_latency_hours": 6.0,
+    "median_holding_hours": 13.283333333333333,
+    "mean_holding_hours": 48.508788853161846,
+    "q90_holding_hours": 142.0,
+    "slot_occupancy_fraction": 0.6892467714424951
+  },
+  "programization_findings": [
+    "One-hour bars, not five-minute bars, are required to align the daily source with protected structure; this changed simple continuation from deeply negative in the parent route to positive before robustness tests.",
+    "The ending open position is NAV-marked rather than strategy-closed.",
+    "A final positive winner-deleted 24bp NAV is not completed-trade profitability: completed NAV is below 10,000 and the boundary-marked open position supplies the remaining gain.",
+    "The HGBT is baseline-inferior and ranks positive predictions negatively; model rescue is rejected."
+  ],
+  "decision": {
+    "ranking_changed": false,
+    "risk_leverage_search_opened": false,
+    "further_etf_timeframe_variants_allowed": false,
+    "orders_submitted": false,
+    "reason": "The scale correction reveals a slow continuation effect, but it is not a steady Core: median trade is near the full planned loss, two consecutive half-years lose, every completed non-source-reversal exit loses, exact large-winner deletion makes completed 24bp NAV negative, and ML is worse than the expanding constant."
+  },
+  "reproducibility": {
+    "raw_result_sha256": "c0a3377e9c7354585033d5ad17c171c1febeedcdeadab5b1c738e3ba5e45eb85",
+    "candidate_parquet_sha256": "78cfd1925c0eab5624581230167a2992f937471a7df24dd75487d8ff6f0895a0",
+    "second_run_byte_identical": true
+  },
+  "simple_continuation": {
+    "costs": {
+      "12": {
+        "total_return": 0.5796423932625951,
+        "geometric_daily": 0.0005014398105565032,
+        "completed_trades": 310,
+        "profit_factor": 1.3830521950599954,
+        "maximum_daily_marked_drawdown": 0.17981142830345087,
+        "median_account_return": -0.004958226462896844,
+        "positive_trades": 71,
+        "negative_trades": 239,
+        "top5_positive_share": 0.3668482098031983,
+        "ending_open_position_marked": true
+      },
+      "18": {
+        "total_return": 0.39653199073784906,
+        "geometric_daily": 0.0003662863800071303,
+        "completed_trades": 310,
+        "profit_factor": 1.2696816223201381,
+        "maximum_daily_marked_drawdown": 0.20660544842808937,
+        "median_account_return": -0.004959707134053937,
+        "positive_trades": 70,
+        "negative_trades": 240,
+        "top5_positive_share": 0.3613453148070615,
+        "ending_open_position_marked": true
+      },
+      "24": {
+        "total_return": 0.25532683311648063,
+        "geometric_daily": 0.0002493687664697486,
+        "completed_trades": 310,
+        "profit_factor": 1.1745634387591273,
+        "maximum_daily_marked_drawdown": 0.22939212417717647,
+        "median_account_return": -0.004961158186224859,
+        "positive_trades": 69,
+        "negative_trades": 241,
+        "top5_positive_share": 0.3580765012723128,
+        "ending_open_position_marked": true
+      }
+    },
+    "halfyears_24bp": [
+      {
+        "period": "2024H1",
+        "start_nav": 10000.0,
+        "end_nav": 11985.61875415049,
+        "return": 0.19856187541504888,
+        "geometric_daily": 0.0009956733811025131,
+        "entries": 48
+      },
+      {
+        "period": "2024H2",
+        "start_nav": 11985.61875415049,
+        "end_nav": 12004.666523831242,
+        "return": 0.0015892187188213391,
+        "geometric_daily": 8.630239670015527e-06,
+        "entries": 61
+      },
+      {
+        "period": "2025H1",
+        "start_nav": 12004.666523831242,
+        "end_nav": 10649.956314410458,
+        "return": -0.11284863321538008,
+        "geometric_daily": -0.0006613263155097471,
+        "entries": 70
+      },
+      {
+        "period": "2025H2",
+        "start_nav": 10649.956314410458,
+        "end_nav": 10023.341462788456,
+        "return": -0.05883731661641933,
+        "geometric_daily": -0.0003295069551585428,
+        "entries": 68
+      },
+      {
+        "period": "2026H1",
+        "start_nav": 10023.341462788456,
+        "end_nav": 12553.268331164807,
+        "return": 0.2524035400538509,
+        "geometric_daily": 0.0012442238861964938,
+        "entries": 64
+      }
+    ],
+    "completed_realized_nav_24bp": 12206.019687981092,
+    "ending_open_mark_contribution_24bp": 347.2486431837169,
+    "all_completed_winners_exit_reason": "source_reversal",
+    "stop_and_structural_positive_trade_count": 0
+  },
+  "winner_deleted_continuation": {
+    "removed_event_ids": [
+      "2024-01-26",
+      "2024-02-23",
+      "2024-05-14",
+      "2024-11-06",
+      "2025-07-07",
+      "2026-01-28",
+      "2026-05-15"
+    ],
+    "costs": {
+      "12": {
+        "total_return": 0.2119591766941562,
+        "geometric_daily": 0.00021080972216402927,
+        "completed_trades": 316,
+        "profit_factor": 1.1412493682859537,
+        "maximum_daily_marked_drawdown": 0.17611379040436226,
+        "median_account_return": -0.004963909179929463,
+        "positive_trades": 71,
+        "negative_trades": 245,
+        "top5_positive_share": 0.29127205466238476,
+        "ending_open_position_marked": true
+      },
+      "18": {
+        "total_return": 0.09847715564256254,
+        "geometric_daily": 0.00010299304099636863,
+        "completed_trades": 316,
+        "profit_factor": 1.0559891499578988,
+        "maximum_daily_marked_drawdown": 0.2038675634552668,
+        "median_account_return": -0.004965690292426296,
+        "positive_trades": 70,
+        "negative_trades": 246,
+        "top5_positive_share": 0.2900639093234497,
+        "ending_open_position_marked": true
+      },
+      "24": {
+        "total_return": 0.007116066146583666,
+        "geometric_daily": 7.775103061380406e-06,
+        "completed_trades": 316,
+        "profit_factor": 0.9818969477910573,
+        "maximum_daily_marked_drawdown": 0.22736253778978244,
+        "median_account_return": -0.004967301223855648,
+        "positive_trades": 69,
+        "negative_trades": 247,
+        "top5_positive_share": 0.2894206469123177,
+        "ending_open_position_marked": true
+      }
+    },
+    "completed_realized_nav_24bp": 9792.572107256645,
+    "ending_open_mark_contribution_24bp": 278.588554209191
+  },
+  "fade_24bp": {
+    "total_return": -0.5791999859079888,
+    "geometric_daily": -0.0009486698858997,
+    "completed_trades": 469,
+    "profit_factor": 0.5258421809639844,
+    "maximum_daily_marked_drawdown": 0.595886377334208,
+    "median_account_return": -0.004971464617948716
+  },
+  "online_ml": {
+    "costs": {
+      "12": {
+        "total_return": -0.31351882402429054,
+        "geometric_daily": -0.0004123891486323972,
+        "completed_trades": 216,
+        "profit_factor": 0.5610550042153667,
+        "maximum_daily_marked_drawdown": 0.3183218722295068,
+        "median_account_return": -0.005,
+        "positive_trades": 42,
+        "negative_trades": 174,
+        "top5_positive_share": 0.3602119451437401
+      },
+      "18": {
+        "total_return": -0.33599885830086706,
+        "geometric_daily": -0.00044888103204954177,
+        "completed_trades": 216,
+        "profit_factor": 0.5228562262819273,
+        "maximum_daily_marked_drawdown": 0.34030358773050207,
+        "median_account_return": -0.005,
+        "positive_trades": 41,
+        "negative_trades": 175,
+        "top5_positive_share": 0.36680955293758205
+      },
+      "24": {
+        "total_return": -0.3555111972309425,
+        "geometric_daily": -0.00048157022521955195,
+        "completed_trades": 216,
+        "profit_factor": 0.4888174315430102,
+        "maximum_daily_marked_drawdown": 0.359379231204078,
+        "median_account_return": -0.005,
+        "positive_trades": 41,
+        "negative_trades": 175,
+        "top5_positive_share": 0.37675793456441586
+      }
+    },
+    "diagnostics": {
+      "scored_resolved": 1159,
+      "predicted_positive": 381,
+      "mae": 1.470901116907324,
+      "constant_mae": 1.4343854596636059,
+      "mse": 7.590631326617161,
+      "constant_mse": 6.504362185731943,
+      "spearman": -0.11625779244576513,
+      "prediction_mean": -0.02873003633098641,
+      "actual_mean": -0.18635912568011673,
+      "positive_prediction_actual_mean": -0.38765660488005244,
+      "positive_prediction_actual_median": -1.0,
+      "positive_prediction_hit_rate": 0.1784776902887139,
+      "negative_prediction_actual_mean": -0.08778028303850302,
+      "selected_action_counts": {
+        "continuation": 120,
+        "fade": 96
+      },
+      "selected_exit_counts": {
+        "stop": 154,
+        "source_reversal": 47,
+        "structural_exit": 15
+      },
+      "selected_resolved": 216,
+      "selected_mean_r18": -0.3730805472914285,
+      "selected_median_r18": -1.0,
+      "paired_events": 609,
+      "oracle_best_positive_rate": 0.3579638752052545,
+      "oracle_best_mean_r18": 0.7849393826186241,
+      "oracle_best_median_r18": -0.8860605563888087,
+      "both_actions_negative_rate": 0.6420361247947455
+    }
+  }
+}
