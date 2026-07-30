@@ -57,7 +57,7 @@ def test_patch_is_exact_and_changes_only_transport_binding(tmp_path: Path) -> No
     assert "class EthereumRpcLogClient" in text
     assert authority._ASSIGN_NEW in text
     assert helper.read_bytes() == authority.HELPER_SOURCE.read_bytes()
-    with pytest.raises(RuntimeError, match="expected 1"):
+    with pytest.raises(RuntimeError, match="replacement already present"):
         authority.patch_pinned_source(pinned, helper)
 
 
