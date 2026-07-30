@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-DIRECT-CORE-LIFECYCLE-UNIVERSALITY-AUDIT-001",
+  "base_result_id": "RES-20260730-EXEC-ALIGNED-DIRECT-UTILITY-CORE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "base_symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "universality_symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "base_decision_interval": "completed 5m",
+  "execution": "fixed 500ms represented conservatively by first fully observable later minute; stop-first ambiguity; actual funding; one global slot",
+  "sizing": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0
+  },
+  "costs_bp": [
+    15,
+    18,
+    24
+  ],
+  "audits": [
+    "reuse same-side and opposite-side entry action values as lifecycle exits",
+    "fit direct conditional value of hold versus immediate exit at fixed checkpoints",
+    "extract readable trend/crowding/peer/range/volume/premium/OI rules",
+    "fit one common no-symbol-ID action-value policy across BTC/ETH/SOL/XRP"
+  ],
+  "chronology": "2021 fit; 2022 forward selection; unchanged 2023 confirmation where applicable; 2024-2026 only for pre-2024 survivors",
+  "prohibited_rescue": [
+    "official-period tuning",
+    "risk or leverage increase",
+    "asset-specific rules",
+    "adjacent exit thresholds",
+    "extra SMC checklist gates"
+  ],
+  "orders_submitted": false
+}
