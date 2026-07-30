@@ -1,0 +1,84 @@
+{
+  "claim_id": "CLM-20260730-SEQUENTIAL-DUAL-SWEEP-CISD-001",
+  "result_id": "RES-20260730-SEQUENTIAL-DUAL-SWEEP-CISD-001",
+  "status": "RETIRED_2022_DETERMINISTIC_ECONOMIC_OR_BREADTH_FAILURE",
+  "decision": "RETIRE_EXACT_SEQUENTIAL_DUAL_SWEEP_CISD_FAMILY",
+  "rank_eligible": false,
+  "official_2024_2026_opened": false,
+  "confirmation_2023_opened": false,
+  "orders_submitted": false,
+  "candidate_diagnostics": {
+    "2021": {
+      "events": 29,
+      "BTCUSDT": 21,
+      "ETHUSDT": 8,
+      "gross_mean": -0.0026818344923110558,
+      "gross_median": -0.00390676296782666,
+      "net24_mean": -0.005039555181966229,
+      "net24_median": -0.006206595270915091,
+      "target_rate": 0.20689655172413793
+    },
+    "2022": {
+      "events": 22,
+      "BTCUSDT": 10,
+      "ETHUSDT": 12,
+      "gross_mean": -0.0003222113649978113,
+      "gross_median": -0.002488821201596214,
+      "net24_mean": -0.0027277886377250833,
+      "net24_median": -0.0048888212015962135,
+      "target_rate": 0.22727272727272727
+    }
+  },
+  "principal_24bp": {
+    "2021": {
+      "selected_trades": 27,
+      "completed_trades": 27,
+      "multiple": 0.9546360515067461,
+      "pf": 0.30556287420589046,
+      "median_account_return": -0.0020902375110728125,
+      "mdd": 0.059333854410743125,
+      "H1": 0.007320077632373856,
+      "H2": -0.052301177446455016
+    },
+    "2022": {
+      "selected_trades": 21,
+      "completed_trades": 21,
+      "multiple": 0.9773646397190577,
+      "pf": 0.5655225758670375,
+      "median_account_return": -0.0021746384580049317,
+      "mdd": 0.026600296298501025,
+      "H1": -0.017150705593552584,
+      "H2": -0.005580361830245684
+    },
+    "2022_winner_deleted_full_reroute": {
+      "removed_events": 5,
+      "selected_trades": 16,
+      "completed_trades": 16,
+      "multiple": 0.9484876509839534,
+      "pf": 0.0,
+      "median_account_return": -0.0032131990345432328,
+      "H1": -0.030250883227922576,
+      "H2": -0.021924707556213452
+    }
+  },
+  "cost_diagnostics_2022": {
+    "12bp_multiple": 0.9883915379831467,
+    "18bp_multiple": 0.9823675798969574,
+    "24bp_multiple": 0.9773646397190577
+  },
+  "funnel": {
+    "candidate": 51,
+    "no_first_sweep": 227,
+    "no_first_rejection_before_opposite": 112,
+    "no_second_sweep": 909,
+    "no_second_rejection": 22,
+    "second_boundary_reaccepted_before_cisd": 46,
+    "midpoint_preconsumed": 9,
+    "no_cisd": 4,
+    "same_minute_dual_boundary": 3,
+    "subcost_target": 2
+  },
+  "hard_validity_status": "PASS_CAUSAL_PROGRAMIZATION_AND_TWO_RUN_BYTE_IDENTITY",
+  "development_pass": false,
+  "failure_interpretation": "The complete two-sided liquidity-consumption narrative was sparse and had negative median and cost-net action value. CISD after the second sweep did not establish repeatable rotation to equilibrium. The result is not rescued with sessions, sweep buffers, alternate CISD candles, FVG/OB/BPR gates, ML, risk or leverage."
+}
