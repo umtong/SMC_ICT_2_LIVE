@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-EXTERNAL-POOL-FLOW-STATE-001",
+  "issue": 709,
+  "status": "FROZEN_BEFORE_OUTCOME",
+  "mechanism": "External stop/liquidation pools define location and destination; direct post-raid aggressive-flow and price-progress state adjudicates acceptance, absorption/rejection or flat.",
+  "test_arena": ["BTCUSDT"],
+  "source": {
+    "venue": "Bybit USDT-linear perpetual",
+    "bars": ["canonical 15m", "canonical 1m"],
+    "microbars": "canonical January-June 2023 500ms_observed_v5 sparse microbars",
+    "funding": "canonical exact signed funding",
+    "reacquisition": false,
+    "missing_microbar_semantics": "covered no-trade; no price carry"
+  },
+  "external_pool": {
+    "definition": "nearest still-unconsumed causal 15m radius-2 confirmed swing high and low",
+    "availability": "after second completed right-side 15m bar",
+    "consumption": "first observed 500ms trade bucket strictly through the level",
+    "both_sides_same_bucket": "flat"
+  },
+  "state": {
+    "window": "single completed five-second calendar window beginning at raid bucket",
+    "signed_flow": "raid_direction * (buy_turnover - sell_turnover)",
+    "signed_progress": "raid_direction * (last_observed_trade_tick - source_tick)",
+    "outside_dwell": "fraction of observed bucket closes beyond source",
+    "accept": "signed_progress > 0 and outside_dwell > 0.5 and signed_flow > 0",
+    "absorb_reject": "signed_progress <= 0 after positive outward excursion",
+    "otherwise": "flat"
+  },
+  "actions": {
+    "entry": "first observed 500ms trade price after state completion plus fixed 500ms",
+    "accept_target": "next pre-existing active external pool in raid direction",
+    "reject_target": "pre-existing opposite active external pool",
+    "accept_stop": "opposite extreme of completed state window plus one tick",
+    "reject_stop": "raid/state outward extreme plus one tick",
+    "state_exit": "completed five-second reversal of the accepted/rejected state",
+    "elapsed_time_exit": null,
+    "same_bucket_ambiguity": "adverse stop first"
+  },
+  "account": {
+    "initial_nav": 10000,
+    "planned_loss_fraction": 0.005,
+    "notional_cap_multiple": 3.0,
+    "global_slots": 1,
+    "cost_bp": [12, 18, 24],
+    "funding": "actual signed"
+  },
+  "chronology": {
+    "context": "2023-01-01 through 2023-02-28",
+    "development": "2023-03-01 through 2023-04-30",
+    "confirmation": "2023-05-01 through 2023-06-30 unchanged",
+    "official_2024_2026": "sealed unless fixed-rule fatal screen passes"
+  },
+  "pass_gate": "positive non-sparse PF>1 24bp path in development and confirmation, also positive after exact top-10%-positive-event deletion with full rerouting",
+  "ml": "closed until base fixed-rule economics pass",
+  "risk_or_leverage_rescue": false,
+  "orders_submitted": false
+}
