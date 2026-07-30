@@ -1,0 +1,188 @@
+name: YT Trinity causal BTC ETH SMT divergence v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/system/smt.py
+      - .github/workflows/yt-trinity-smt-divergence-v1.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-smt-divergence-v1
+  cancel-in-progress: false
+
+jobs:
+  integrate-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Integrate optional SMT confirmation into unified narrative
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          core = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = core.read_text()
+          anchor = '    strong_counter_bias_floor: float = -3.0\n'
+          if 'smt_confirmation_mode' not in text:
+              if anchor not in text:
+                  raise SystemExit('configuration anchor missing')
+              text = text.replace(anchor, anchor + '    smt_confirmation_mode: str = "OFF"\n', 1)
+
+          helper_anchor = '\ndef _new_reversal_states(\n'
+          helper = r'''
+
+def _smt_raid_allowed(row: pd.Series, side: int, config: CorpusAlphaConfig) -> bool:
+    mode = str(config.smt_confirmation_mode).upper()
+    if mode in {'OFF', 'FEATURE_ONLY'}:
+        return True
+    if mode != 'REQUIRE_SELF_RAID_DIVERGENCE':
+        raise ValueError(f'unknown smt_confirmation_mode: {config.smt_confirmation_mode}')
+    return bool(
+        float(row.get('smt_self_took_low', 0.0)) >= 1.0
+        if side > 0
+        else float(row.get('smt_self_took_high', 0.0)) >= 1.0
+    )
+'''
+          if 'def _smt_raid_allowed(' not in text:
+              if helper_anchor not in text:
+                  raise SystemExit('reversal anchor missing')
+              text = text.replace(helper_anchor, helper + helper_anchor, 1)
+
+          reversal_high = '''    if swept_highs:\n        selected = max(swept_highs, key=lambda pool: (pool.quality, pool.price, pool.confluence))\n'''
+          reversal_high_new = '''    if swept_highs and not _smt_raid_allowed(row, -1, config):\n        _bump(diagnostics, \"smt_reversal_high_rejections\")\n        swept_highs = []\n    if swept_highs:\n        selected = max(swept_highs, key=lambda pool: (pool.quality, pool.price, pool.confluence))\n'''
+          if 'smt_reversal_high_rejections' not in text:
+              if reversal_high not in text:
+                  raise SystemExit('reversal high anchor missing')
+              text = text.replace(reversal_high, reversal_high_new, 1)
+
+          reversal_low = '''    if swept_lows:\n        selected = max(swept_lows, key=lambda pool: (pool.quality, -pool.price, pool.confluence))\n'''
+          reversal_low_new = '''    if swept_lows and not _smt_raid_allowed(row, 1, config):\n        _bump(diagnostics, \"smt_reversal_low_rejections\")\n        swept_lows = []\n    if swept_lows:\n        selected = max(swept_lows, key=lambda pool: (pool.quality, -pool.price, pool.confluence))\n'''
+          if 'smt_reversal_low_rejections' not in text:
+              if reversal_low not in text:
+                  raise SystemExit('reversal low anchor missing')
+              text = text.replace(reversal_low, reversal_low_new, 1)
+
+          # Apply to liquidity-first continuation before state construction.
+          long_anchor = '''    if internal_lows and bias >= config.continuation_minimum_htf_bias:\n'''
+          long_new = '''    if internal_lows and bias >= config.continuation_minimum_htf_bias and not _smt_raid_allowed(row, 1, config):\n        _bump(diagnostics, \"smt_continuation_low_rejections\")\n        internal_lows = []\n    if internal_lows and bias >= config.continuation_minimum_htf_bias:\n'''
+          if 'smt_continuation_low_rejections' not in text:
+              if long_anchor not in text:
+                  raise SystemExit('liquidity continuation long anchor missing')
+              text = text.replace(long_anchor, long_new, 1)
+
+          short_anchor = '''    if internal_highs and bias <= -config.continuation_minimum_htf_bias:\n'''
+          short_new = '''    if internal_highs and bias <= -config.continuation_minimum_htf_bias and not _smt_raid_allowed(row, -1, config):\n        _bump(diagnostics, \"smt_continuation_high_rejections\")\n        internal_highs = []\n    if internal_highs and bias <= -config.continuation_minimum_htf_bias:\n'''
+          if 'smt_continuation_high_rejections' not in text:
+              if short_anchor not in text:
+                  raise SystemExit('liquidity continuation short anchor missing')
+              text = text.replace(short_anchor, short_new, 1)
+          core.write_text(text)
+
+          pipeline = Path('research/yt_trinity_ml/system/research_pipeline.py')
+          p = pipeline.read_text()
+          import_anchor = 'from .policy import GlobalSlotPolicy\n'
+          if 'from .smt import add_pair_smt_features' not in p:
+              if import_anchor not in p:
+                  raise SystemExit('pipeline import anchor missing')
+              p = p.replace(import_anchor, import_anchor + 'from .smt import add_pair_smt_features\n', 1)
+          old = '''    features: dict[str, pd.DataFrame] = {}\n    candidates: list[EventCandidate] = []\n    for symbol, frame in sorted(decision_frames.items()):\n        calculated = build_corpus_features(frame, feature_config)\n        features[symbol] = calculated\n        candidates.extend(generate_corpus_candidates(calculated, symbol))\n    candidates.sort(key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))\n    return features, candidates\n'''
+          new = '''    features = {\n        symbol: build_corpus_features(frame, feature_config)\n        for symbol, frame in sorted(decision_frames.items())\n    }\n    features = add_pair_smt_features(features)\n    candidates: list[EventCandidate] = []\n    for symbol, calculated in sorted(features.items()):\n        candidates.extend(generate_corpus_candidates(calculated, symbol))\n    candidates.sort(key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))\n    return features, candidates\n'''
+          if 'features = add_pair_smt_features(features)' not in p:
+              if old not in p:
+                  raise SystemExit('pipeline generator anchor missing')
+              p = p.replace(old, new, 1)
+          pipeline.write_text(p)
+          PY
+      - name: Add SMT causal regressions
+        run: |
+          cat > research/yt_trinity_ml/tests/test_smt.py <<'PY'
+          from __future__ import annotations
+
+          import numpy as np
+          import pandas as pd
+
+          from system.smt import add_pair_smt_features
+
+
+          def frame(highs: list[float], lows: list[float], swing_high: float, swing_low: float) -> pd.DataFrame:
+              index = pd.date_range('2023-01-01', periods=len(highs), freq='5min', tz='UTC')
+              close = (np.asarray(highs) + np.asarray(lows)) / 2.0
+              return pd.DataFrame({
+                  'open': close, 'high': highs, 'low': lows, 'close': close,
+                  'last_swing_high': swing_high, 'last_swing_low': swing_low,
+              }, index=index)
+
+
+          def test_self_raid_smt_is_symmetric_and_causal() -> None:
+              btc = frame([100, 101, 106], [99, 99, 100], 105, 95)
+              eth = frame([100, 101, 104], [99, 99, 100], 105, 95)
+              result = add_pair_smt_features({'BTCUSDT': btc, 'ETHUSDT': eth})
+              assert result['BTCUSDT']['smt_self_took_high'].iloc[-1] == 1.0
+              assert result['ETHUSDT']['smt_peer_took_high'].iloc[-1] == 1.0
+              assert result['BTCUSDT']['smt_high_divergence'].iloc[-1] == 1.0
+
+
+          def test_smt_features_do_not_change_when_future_is_appended() -> None:
+              btc = frame([100, 101, 106, 102], [99, 99, 100, 98], 105, 95)
+              eth = frame([100, 101, 104, 103], [99, 99, 100, 97], 105, 95)
+              short = add_pair_smt_features({'BTCUSDT': btc.iloc[:3], 'ETHUSDT': eth.iloc[:3]})
+              long = add_pair_smt_features({'BTCUSDT': btc, 'ETHUSDT': eth})
+              for symbol in ('BTCUSDT', 'ETHUSDT'):
+                  pd.testing.assert_frame_equal(short[symbol], long[symbol].loc[short[symbol].index])
+          PY
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_required_smt_rejects_nondivergent_raid() -> None:
+    from system.corpus_alpha import CorpusAlphaConfig
+    frame = _features([
+        {'high': 104, 'low': 100, 'close': 103, 'smt_self_took_high': 0.0},
+        {'open': 104, 'high': 106, 'low': 102, 'close': 104, 'micro_last_swing_low': 100,
+         'smt_self_took_high': 0.0},
+        {'open': 104, 'high': 104.2, 'low': 98, 'close': 99, 'body_atr': -5.0,
+         'range_atr': 6.2, 'close_location': 0.16, 'bear_fvg_lower': 102,
+         'bear_fvg_upper': 103, 'smt_self_took_high': 0.0},
+        {'open': 102.2, 'high': 102.4, 'low': 100.8, 'close': 101.0,
+         'body_atr': -1.2, 'range_atr': 1.6, 'close_location': 0.12,
+         'smt_self_took_high': 0.0},
+    ])
+    assert generate_corpus_candidates(
+        frame, 'BTCUSDT', CorpusAlphaConfig(smt_confirmation_mode='REQUIRE_SELF_RAID_DIVERGENCE')
+    ) == []
+PY
+      - name: Install and test SMT integration
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_smt.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested SMT integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/smt.py \
+                  research/yt_trinity_ml/system/corpus_alpha.py \
+                  research/yt_trinity_ml/system/research_pipeline.py \
+                  research/yt_trinity_ml/tests/test_smt.py \
+                  research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Add causal BTC ETH SMT divergence confirmation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

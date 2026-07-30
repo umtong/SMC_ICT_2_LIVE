@@ -1,0 +1,55 @@
+name: YT Trinity pre-2024 SMC router v2
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/CORE_FIDELITY_READINESS.json
+      - research/yt_trinity_ml/EXIT_GEOMETRY_V1_POINTER.json
+      - research/yt_trinity_ml/CANDIDATE_CONTRACT_COMPARISON_POINTER.json
+      - research/yt_trinity_ml/REFERENCE_TIME_CONTRACT_V2_POINTER.json
+      - research/yt_trinity_ml/PD_ARRAY_CONTRACT_V3_POINTER.json
+      - research/yt_trinity_ml/SMT_CONTRACT_V1_POINTER.json
+      - research/yt_trinity_ml/OTE_CONTRACT_V1_POINTER.json
+      - research/yt_trinity_ml/MTF_ENTRY_CONTRACT_V1_POINTER.json
+      - research/yt_trinity_ml/MULTI_ACTION_EXIT_ML_V2_POINTER.json
+      - research/yt_trinity_ml/ENTRY_EXIT_ACTION_ML_V2_POINTER.json
+      - research/yt_trinity_ml/INTEGRATED_SELECTED_CONTRACT_ML_POINTER.json
+      - research/yt_trinity_ml/select_pre2024_smc_route_v2.py
+      - .github/workflows/yt-trinity-pre2024-router-v2.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pre2024-router-v2
+  cancel-in-progress: true
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Route current SMC evidence
+        run: python research/yt_trinity_ml/select_pre2024_smc_route_v2.py
+      - name: Persist changed route only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/PRE2024_SMC_ROUTE_V2.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Route complete SMC evidence v2 ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

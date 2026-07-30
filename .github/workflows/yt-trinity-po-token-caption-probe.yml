@@ -1,0 +1,93 @@
+name: YT Trinity PO-token caption probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - research/yt_trinity_ml/probe_caption_transports.py
+      - .github/workflows/yt-trinity-po-token-caption-probe.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-po-token-caption-probe-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Install current yt-dlp, EJS, and PO-token plugin
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade --pre "yt-dlp[default,curl-cffi]" requests youtube-transcript-api bgutil-ytdlp-pot-provider
+          python -m pip freeze | sort > dependency-freeze.txt
+          python -m yt_dlp --version | tee yt-dlp-version.txt
+      - name: Start isolated BgUtils token provider
+        run: |
+          docker pull brainicism/bgutil-ytdlp-pot-provider:latest
+          docker image inspect brainicism/bgutil-ytdlp-pot-provider:latest > provider-image.json
+          docker run --name bgutil-provider -d --init -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider:latest
+          sleep 10
+          docker ps --filter name=bgutil-provider
+          docker logs bgutil-provider > provider.log 2>&1 || true
+      - name: Probe failed videos with positive control and low request rate
+        run: |
+          mkdir -p artifact/po-token
+          python research/yt_trinity_ml/probe_caption_transports.py \
+            --profile default \
+            --between-video-seconds 8 \
+            --output artifact/po-token \
+            | tee artifact/po-token/stdout.json
+          cp dependency-freeze.txt yt-dlp-version.txt provider-image.json provider.log artifact/po-token/
+          docker logs bgutil-provider >> artifact/po-token/provider.log 2>&1 || true
+      - name: Hash evidence
+        if: always()
+        run: |
+          if [[ -d artifact/po-token ]]; then
+            (
+              cd artifact/po-token
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - name: Upload PO-token probe
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-po-token-caption-probe-${{ github.sha }}
+          path: artifact/po-token
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist machine-readable PO-token result
+        if: always()
+        run: |
+          if [[ ! -f artifact/po-token/probe.json ]]; then exit 0; fi
+          cp artifact/po-token/probe.json research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_PO_TOKEN.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/CAPTION_TRANSPORT_PROBE_PO_TOKEN.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record PO-token caption probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

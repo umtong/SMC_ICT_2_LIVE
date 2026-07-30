@@ -1,0 +1,114 @@
+name: YT Trinity public alt caption probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/yt_trinity_ml/probe_alt_caption_frontends.py
+      - .github/workflows/yt-trinity-alt-caption-probe.yml
+      - control/yt-trinity-alt-caption-probe-trigger.json
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - research/yt_trinity_ml/probe_alt_caption_frontends.py
+      - .github/workflows/yt-trinity-alt-caption-probe.yml
+      - control/yt-trinity-alt-caption-probe-trigger.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-alt-caption-probe-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+env:
+  TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  probe:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install bounded probe dependency
+        run: python -m pip install --disable-pip-version-check "requests==2.32.4"
+      - name: Compile and self-test caption parsers
+        run: |
+          python -m py_compile research/yt_trinity_ml/probe_alt_caption_frontends.py
+          python research/yt_trinity_ml/probe_alt_caption_frontends.py --self-test
+      - name: Probe public Piped and Invidious caption APIs
+        continue-on-error: true
+        run: |
+          mkdir -p artifact/probe
+          python research/yt_trinity_ml/probe_alt_caption_frontends.py \
+            --output artifact/probe \
+            --timeout-seconds 35 \
+            --pace-seconds 0.75 \
+            --max-piped-instances 10 \
+            --max-invidious-instances 10 \
+            2>&1 | tee artifact/probe/stdout.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-alt-caption-probe-${{ github.sha }}
+          path: artifact/probe
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
+      - name: Persist compact non-secret result pointer
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path("artifact/probe/probe.json")
+          payload = json.loads(source.read_text(encoding="utf-8")) if source.exists() else {}
+          attempts = list(payload.get("piped_attempts") or []) + list(payload.get("invidious_attempts") or [])
+          error_counts = {}
+          for row in attempts:
+              key = str(row.get("error") or row.get("http_status") or "no_caption")
+              error_counts[key] = error_counts.get(key, 0) + 1
+          pointer = {
+              "schema_version": 1,
+              "workflow": "YT Trinity public alt caption probe",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"yt-trinity-alt-caption-probe-{os.environ['GITHUB_SHA']}",
+              "decision": payload.get("decision", "NO_PROBE_RESULT"),
+              "positive_control_passed": bool(payload.get("positive_control_passed")),
+              "target_recovered_count": int(payload.get("target_recovered_count") or 0),
+              "recovered_video_count": int(payload.get("recovered_video_count") or 0),
+              "videos": payload.get("videos") or [],
+              "piped_attempt_count": len(payload.get("piped_attempts") or []),
+              "invidious_attempt_count": len(payload.get("invidious_attempts") or []),
+              "invidious_instance_index": payload.get("invidious_instance_index") or {},
+              "attempt_outcome_counts": dict(sorted(error_counts.items())),
+              "payload_sha256_before_field": payload.get("payload_sha256_before_field"),
+          }
+          destination = Path("research/yt_trinity_ml/ALT_CAPTION_FRONTEND_PROBE.json")
+          destination.write_text(json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(destination.read_text(encoding="utf-8"))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/ALT_CAPTION_FRONTEND_PROBE.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record public alternate caption probe ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${TARGET_BRANCH}"
+            if git push origin "HEAD:${TARGET_BRANCH}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

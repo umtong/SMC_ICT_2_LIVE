@@ -1,0 +1,42 @@
+name: YT Trinity materialize verified inventory
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/materialize_verified_inventory.py
+      - research/yt_trinity_ml/inventory_payload/**
+      - .github/workflows/yt-trinity-materialize-inventory.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-materialize-inventory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Decode and validate exact inventory
+        run: python research/yt_trinity_ml/materialize_verified_inventory.py
+      - name: Persist exact inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_30218664372.jsonl
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Materialize verified 186-video inventory"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

@@ -1,0 +1,151 @@
+name: YT Trinity complete 186-video corpus
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - research/yt_trinity_ml/merge_complete_corpus.py
+      - .github/workflows/yt-trinity-complete-corpus.yml
+      - control/yt-trinity-complete-corpus-trigger.json
+  pull_request:
+    branches: [main]
+    paths:
+      - research/yt_trinity_ml/merge_complete_corpus.py
+      - .github/workflows/yt-trinity-complete-corpus.yml
+      - control/yt-trinity-complete-corpus-trigger.json
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: yt-trinity-complete-corpus-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  merge:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download immutable 179-video base corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-youtube2text-corpus-d8a9a05938021006a174aa77ed8827ba387d7bfa
+          path: artifact/base-download
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: 30219818812
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download immutable seven-video retry corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-transcribeyoutube-retry-d52ef494a4b831b2369ade7a42032d5a40ecd669
+          path: artifact/retry-download
+          repository: umtong/SMC_ICT_2_LIVE
+          run-id: 30221005602
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge all 186 transcripts and bind source digests
+        run: |
+          python research/yt_trinity_ml/merge_complete_corpus.py \
+            --base artifact/base-download/yt-trinity-youtube2text-corpus \
+            --retry artifact/retry-download \
+            --output artifact/yt-trinity-complete-corpus \
+            | tee artifact/MERGE_STDOUT.json
+      - name: Rebuild concept and rule evidence over all videos
+        run: |
+          python research/yt_trinity_ml/build_concept_index.py \
+            --corpus artifact/yt-trinity-complete-corpus \
+            | tee artifact/CONCEPT_INDEX_STDOUT.json
+          python research/yt_trinity_ml/extract_rule_ontology.py \
+            --corpus artifact/yt-trinity-complete-corpus \
+            | tee artifact/RULE_ONTOLOGY_STDOUT.json
+      - name: Validate completeness and hash every file
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path("artifact/yt-trinity-complete-corpus")
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          videos = [json.loads(line) for line in (root / "videos.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+          assert manifest["decision"] == "PASS_COMPLETE", manifest
+          assert manifest["transcript_video_count"] == 186, manifest
+          assert len(videos) == 186 and all(row["caption_status"] == "ok" for row in videos)
+          assert manifest["channel_counts"] == {"chartbro": 62, "indicator_sensei": 98, "swipalnam": 26}
+          assert json.loads((root / "concept_index.json").read_text(encoding="utf-8"))["corpus_digest_sha256"] == manifest["corpus_digest_sha256"]
+          assert json.loads((root / "rule_ontology_candidates.json").read_text(encoding="utf-8"))["corpus_digest_sha256"] == manifest["corpus_digest_sha256"]
+          rows = []
+          for path in sorted(item for item in root.rglob("*") if item.is_file() and item.name != "SHA256SUMS"):
+              rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}")
+          (root / "SHA256SUMS").write_text("\n".join(rows) + "\n", encoding="utf-8")
+          print(json.dumps({
+              "decision": manifest["decision"],
+              "videos": len(videos),
+              "corpus_digest_sha256": manifest["corpus_digest_sha256"],
+              "concept_occurrence_count": json.loads((root / "concept_index.json").read_text(encoding="utf-8"))["occurrence_count"],
+              "rule_window_count": json.loads((root / "rule_ontology_candidates.json").read_text(encoding="utf-8"))["rule_window_count"],
+          }, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-complete-corpus-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact complete-corpus pointer
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("artifact/yt-trinity-complete-corpus")
+          manifest_path = root / "manifest.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          concept = json.loads((root / "concept_index.json").read_text(encoding="utf-8"))
+          ontology = json.loads((root / "rule_ontology_candidates.json").read_text(encoding="utf-8"))
+          pointer = {
+              "schema_version": 1,
+              "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+              "workflow": "YT Trinity complete 186-video corpus",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_sha": os.environ["GITHUB_SHA"],
+              "artifact_name": f"yt-trinity-complete-corpus-{os.environ['GITHUB_SHA']}",
+              "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+              "manifest": manifest,
+              "concept_occurrence_count": concept["occurrence_count"],
+              "concept_occurrence_sha256": concept["occurrence_sha256"],
+              "rule_window_count": ontology["rule_window_count"],
+              "rule_window_sha256": ontology["rule_window_sha256"],
+          }
+          Path("research/yt_trinity_ml/COMPLETE_CORPUS_POINTER.json").write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/COMPLETE_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record complete 186-video transcript corpus ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${TARGET_BRANCH}"
+            if git push origin "HEAD:${TARGET_BRANCH}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

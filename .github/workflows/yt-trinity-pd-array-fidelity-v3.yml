@@ -1,0 +1,191 @@
+name: YT Trinity PD-array and CISD fidelity v3
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-pd-array-fidelity-v3.yml
+      - research/yt_trinity_ml/system/corpus_alpha.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pd-array-fidelity-v3
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Apply selectable PD-array and CISD contracts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+
+          config_anchor = '    strong_counter_bias_floor: float = -3.0\n'
+          config_fields = '''    strong_counter_bias_floor: float = -3.0\n    order_block_range_mode: str = \"BODY\"\n    fvg_search_mode: str = \"CONFIRMATION_BAR\"\n    require_pd_array_discount_premium: bool = False\n    cisd_confirmation_mode: str = \"PREVIOUS_EXTREME\"\n'''
+          if 'order_block_range_mode' not in text:
+              if config_anchor not in text:
+                  raise SystemExit('configuration anchor missing')
+              text = text.replace(config_anchor, config_fields, 1)
+
+          old_ob = '''def _order_block_zone(features: pd.DataFrame, start_pos: int, end_pos: int, side: int) -> tuple[float, float] | None:\n    if end_pos <= start_pos:\n        return None\n    segment = features.iloc[start_pos:end_pos]\n    if side > 0:\n        opposite = segment[segment[\"close\"] < segment[\"open\"]]\n    else:\n        opposite = segment[segment[\"close\"] > segment[\"open\"]]\n    if opposite.empty:\n        return None\n    candle = opposite.iloc[-1]\n    lower = float(min(candle[\"open\"], candle[\"close\"]))\n    upper = float(max(candle[\"open\"], candle[\"close\"]))\n    return (lower, upper) if upper > lower else None\n'''
+          new_ob = '''def _order_block_zone(\n    features: pd.DataFrame,\n    start_pos: int,\n    end_pos: int,\n    side: int,\n    mode: str = \"BODY\",\n) -> tuple[float, float] | None:\n    if end_pos <= start_pos:\n        return None\n    segment = features.iloc[start_pos:end_pos]\n    if side > 0:\n        opposite = segment[segment[\"close\"] < segment[\"open\"]]\n    else:\n        opposite = segment[segment[\"close\"] > segment[\"open\"]]\n    if opposite.empty:\n        return None\n    candle = opposite.iloc[-1]\n    mode = str(mode).upper()\n    if mode == \"BODY\":\n        lower = float(min(candle[\"open\"], candle[\"close\"]))\n        upper = float(max(candle[\"open\"], candle[\"close\"]))\n    elif mode == \"OPEN_TO_EXTREME\":\n        if side > 0:\n            lower, upper = float(candle[\"low\"]), float(candle[\"open\"])\n        else:\n            lower, upper = float(candle[\"open\"]), float(candle[\"high\"])\n    else:\n        raise ValueError(f\"unknown order_block_range_mode: {mode}\")\n    lower, upper = sorted((lower, upper))\n    return (lower, upper) if upper > lower else None\n'''
+          if 'mode: str = "BODY"' not in text:
+              if old_ob not in text:
+                  raise SystemExit('order-block function anchor missing')
+              text = text.replace(old_ob, new_ob, 1)
+
+          fvg_anchor = '\ndef _choose_pd_array(\n'
+          fvg_helper = r'''
+
+def _impulse_fvg_zone(
+    features: pd.DataFrame,
+    state: _NarrativeState,
+    pos: int,
+    mode: str,
+) -> tuple[float, float] | None:
+    mode = str(mode).upper()
+    if mode == 'CONFIRMATION_BAR':
+        return _fvg_zone(features.iloc[pos], state.side)
+    candidates: list[tuple[int, float, float]] = []
+    for creation_pos in range(max(0, state.created_pos), pos + 1):
+        zone = _fvg_zone(features.iloc[creation_pos], state.side)
+        if zone is None:
+            continue
+        lower, upper = zone
+        later = features.iloc[creation_pos + 1 : pos + 1]
+        if state.side > 0:
+            invalidated = not later.empty and float(later['low'].min()) <= lower
+            directionally_valid = upper < float(features.iloc[pos]['close'])
+        else:
+            invalidated = not later.empty and float(later['high'].max()) >= upper
+            directionally_valid = lower > float(features.iloc[pos]['close'])
+        if not invalidated and directionally_valid:
+            candidates.append((creation_pos, lower, upper))
+    if not candidates:
+        return None
+    if mode == 'IMPULSE_FIRST':
+        _, lower, upper = min(candidates, key=lambda item: item[0])
+    elif mode == 'IMPULSE_NEAREST':
+        close = float(features.iloc[pos]['close'])
+        if state.side > 0:
+            _, lower, upper = max(candidates, key=lambda item: item[2])
+        else:
+            _, lower, upper = min(candidates, key=lambda item: item[1])
+    else:
+        raise ValueError(f'unknown fvg_search_mode: {mode}')
+    return lower, upper
+'''
+          if 'def _impulse_fvg_zone(' not in text:
+              if fvg_anchor not in text:
+                  raise SystemExit('PD-array anchor missing')
+              text = text.replace(fvg_anchor, fvg_helper + fvg_anchor, 1)
+
+          old_signature = '''def _choose_pd_array(\n    features: pd.DataFrame,\n    state: _NarrativeState,\n    pos: int,\n    atr: float,\n) -> tuple[float, float, int, float, float] | None:\n    row = features.iloc[pos]\n    fvg = _fvg_zone(row, state.side)\n'''
+          new_signature = '''def _choose_pd_array(\n    features: pd.DataFrame,\n    state: _NarrativeState,\n    pos: int,\n    atr: float,\n    config: CorpusAlphaConfig,\n) -> tuple[float, float, int, float, float] | None:\n    row = features.iloc[pos]\n    fvg = _impulse_fvg_zone(features, state, pos, config.fvg_search_mode)\n'''
+          if 'config: CorpusAlphaConfig,' not in text[text.find('def _choose_pd_array('):text.find('def _choose_pd_array(')+250]:
+              if old_signature not in text:
+                  raise SystemExit('PD-array signature anchor missing')
+              text = text.replace(old_signature, new_signature, 1)
+
+          old_ob_call = '    ob = _order_block_zone(features, ob_start, pos, state.side)\n'
+          new_ob_call = '    ob = _order_block_zone(features, ob_start, pos, state.side, config.order_block_range_mode)\n'
+          if new_ob_call not in text:
+              if old_ob_call not in text:
+                  raise SystemExit('PD-array OB call anchor missing')
+              text = text.replace(old_ob_call, new_ob_call, 1)
+
+          geometry_anchor = '''    lower, upper = zone\n    close = float(row[\"close\"])\n    if state.side > 0 and upper >= close:\n        return None\n    if state.side < 0 and lower <= close:\n        return None\n    return lower, upper, kind, fvg_width, ob_width\n'''
+          geometry_new = '''    lower, upper = zone\n    close = float(row[\"close\"])\n    if state.side > 0 and upper >= close:\n        return None\n    if state.side < 0 and lower <= close:\n        return None\n    if config.require_pd_array_discount_premium and _finite(row.get(\"dealing_range_equilibrium\")):\n        midpoint = (lower + upper) / 2.0\n        equilibrium = float(row[\"dealing_range_equilibrium\"])\n        if state.side > 0 and midpoint > equilibrium:\n            return None\n        if state.side < 0 and midpoint < equilibrium:\n            return None\n    return lower, upper, kind, fvg_width, ob_width\n'''
+          if 'config.require_pd_array_discount_premium' not in text:
+              if geometry_anchor not in text:
+                  raise SystemExit('PD-array geometry anchor missing')
+              text = text.replace(geometry_anchor, geometry_new, 1)
+
+          old_arm_call = '    zone = _choose_pd_array(features, state, pos, atr)\n'
+          new_arm_call = '    zone = _choose_pd_array(features, state, pos, atr, config)\n'
+          if new_arm_call not in text:
+              if old_arm_call not in text:
+                  raise SystemExit('arm PD-array call anchor missing')
+              text = text.replace(old_arm_call, new_arm_call, 1)
+
+          old_long = '''        later_cisd = (\n            state.first_retest_pos is not None\n            and close > max(float(state.retest_trigger or midpoint), float(previous[\"high\"]))\n            and body > 0\n        )\n'''
+          new_long = '''        delivery_level = float(state.retest_trigger or midpoint)\n        if str(config.cisd_confirmation_mode).upper() == \"PREVIOUS_EXTREME\":\n            delivery_level = max(delivery_level, float(previous[\"high\"]))\n        elif str(config.cisd_confirmation_mode).upper() != \"DELIVERY_OPEN\":\n            raise ValueError(f\"unknown cisd_confirmation_mode: {config.cisd_confirmation_mode}\")\n        later_cisd = (\n            state.first_retest_pos is not None\n            and close > delivery_level\n            and body > 0\n            and location >= 0.5\n        )\n'''
+          if 'delivery_level = float(state.retest_trigger or midpoint)' not in text:
+              if old_long not in text:
+                  raise SystemExit('long CISD anchor missing')
+              text = text.replace(old_long, new_long, 1)
+
+          old_short = '''        later_cisd = (\n            state.first_retest_pos is not None\n            and close < min(float(state.retest_trigger or midpoint), float(previous[\"low\"]))\n            and body < 0\n        )\n'''
+          new_short = '''        delivery_level = float(state.retest_trigger or midpoint)\n        if str(config.cisd_confirmation_mode).upper() == \"PREVIOUS_EXTREME\":\n            delivery_level = min(delivery_level, float(previous[\"low\"]))\n        elif str(config.cisd_confirmation_mode).upper() != \"DELIVERY_OPEN\":\n            raise ValueError(f\"unknown cisd_confirmation_mode: {config.cisd_confirmation_mode}\")\n        later_cisd = (\n            state.first_retest_pos is not None\n            and close < delivery_level\n            and body < 0\n            and location <= 0.5\n        )\n'''
+          if 'delivery_level = min(delivery_level, float(previous["low"]))' not in text:
+              if old_short not in text:
+                  raise SystemExit('short CISD anchor missing')
+              text = text.replace(old_short, new_short, 1)
+          path.write_text(text)
+          PY
+      - name: Add PD-array contract regressions
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_open_to_extreme_order_block_contains_wick() -> None:
+    from system.corpus_alpha import _order_block_zone
+    frame = _features([
+        {'open': 101.0, 'high': 101.2, 'low': 98.0, 'close': 99.0},
+        {'open': 99.0, 'high': 104.0, 'low': 99.0, 'close': 103.0},
+    ])
+    body = _order_block_zone(frame, 0, 1, 1, 'BODY')
+    full = _order_block_zone(frame, 0, 1, 1, 'OPEN_TO_EXTREME')
+    assert body == (99.0, 101.0)
+    assert full == (98.0, 101.0)
+
+
+def test_delivery_open_cisd_does_not_require_previous_extreme() -> None:
+    from system.corpus_alpha import CorpusAlphaConfig, _NarrativeState, _entry_confirmation
+    state = _NarrativeState(
+        family=EventFamily.LIQUIDITY_SWEEP_REVERSAL, side=1, created_pos=0,
+        created_at=pd.Timestamp('2023-01-01', tz='UTC'), structural_level=99.0,
+        origin_extreme=98.0, internal_break=101.0, draw_target=110.0,
+        draw_target_quality=6, swept_level_count=1, sweep_depth_atr=1.0,
+        liquidity_quality=6, zone_lower=99.0, zone_upper=100.0,
+        first_retest_pos=1, retest_trigger=100.2,
+    )
+    row = pd.Series({'close': 100.5, 'body_atr': 0.3, 'close_location': 0.7})
+    previous = pd.Series({'high': 101.5, 'low': 99.0})
+    assert _entry_confirmation(state, row, previous, CorpusAlphaConfig(cisd_confirmation_mode='DELIVERY_OPEN')) == 2
+    assert _entry_confirmation(state, row, previous, CorpusAlphaConfig(cisd_confirmation_mode='PREVIOUS_EXTREME')) == 0
+PY
+      - name: Install and test all causal regressions
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested PD-array fidelity options
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Add impulse FVG OB-range and delivery-open CISD contracts'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

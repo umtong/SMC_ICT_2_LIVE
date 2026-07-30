@@ -1,0 +1,125 @@
+name: YT Trinity liquidity freshness identity v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-liquidity-freshness-v1.yml
+      - research/yt_trinity_ml/system/corpus_alpha.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-liquidity-freshness-v1
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Add causal source-generation identity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+
+          old_pool = '''@dataclass(frozen=True)\nclass _LiquidityPool:\n    price: float\n    quality: int\n    kind: str\n    confluence: int = 1\n'''
+          new_pool = '''@dataclass(frozen=True)\nclass _LiquidityPool:\n    price: float\n    quality: int\n    kind: str\n    confluence: int = 1\n    source_identity: str = \"\"\n'''
+          if 'source_identity: str = ""' not in text:
+              if old_pool not in text:
+                  raise SystemExit('liquidity pool dataclass anchor missing')
+              text = text.replace(old_pool, new_pool, 1)
+
+          # Exclude generation counters from ML features.
+          suffix_anchor = '''        \"_trade_count\", \"_open_interest\",\n'''
+          if '"_generation"' not in text[text.find('raw_suffixes'):text.find('raw_suffixes')+800]:
+              if suffix_anchor not in text:
+                  raise SystemExit('numeric feature suffix anchor missing')
+              text = text.replace(suffix_anchor, suffix_anchor + '        "_generation",\n', 1)
+
+          generation_anchor = '''    out[\"distance_current_4h_open_atr\"] = (out[\"close\"] - out[\"current_4h_open\"]) / out[\"atr\"]\n'''
+          generation_block = '''    out[\"distance_current_4h_open_atr\"] = (out[\"close\"] - out[\"current_4h_open\"]) / out[\"atr\"]\n\n    # A liquidity source is fresh when its owning period or confirmed swing changes,\n    # even when the new level forms at the same price as an older consumed level.\n    utc_day = pd.Series(time_basis.floor(\"D\"), index=out.index)\n    utc_week = pd.Series(pd.PeriodIndex(time_basis.tz_localize(None), freq=\"W-SUN\"), index=out.index)\n    out[\"previous_day_high_generation\"] = pd.factorize(utc_day, sort=False)[0].astype(float)\n    out[\"previous_day_low_generation\"] = out[\"previous_day_high_generation\"]\n    out[\"previous_week_high_generation\"] = pd.factorize(utc_week, sort=False)[0].astype(float)\n    out[\"previous_week_low_generation\"] = out[\"previous_week_high_generation\"]\n    out[\"current_asia_high_generation\"] = out[\"previous_day_high_generation\"]\n    out[\"current_asia_low_generation\"] = out[\"previous_day_high_generation\"]\n    out[\"current_london_open_high_generation\"] = out[\"previous_day_high_generation\"]\n    out[\"current_london_open_low_generation\"] = out[\"previous_day_high_generation\"]\n    for prefix, rule in ((\"previous_1h\", \"1h\"), (\"previous_4h\", \"4h\")):\n        period = pd.Series(time_basis.floor(rule), index=out.index)\n        generation = pd.factorize(period, sort=False)[0].astype(float)\n        out[f\"{prefix}_high_generation\"] = generation\n        out[f\"{prefix}_low_generation\"] = generation\n    # Confirmed micro pivots carry occurrence identity, not only price-change identity.\n    out[\"micro_last_swing_high_generation\"] = micro_high.notna().cumsum().astype(float)\n    out[\"micro_last_swing_low_generation\"] = micro_low.notna().cumsum().astype(float)\n    for name in (\n        \"last_swing_high\", \"last_swing_low\",\n        \"htf_1h_last_swing_high\", \"htf_1h_last_swing_low\",\n        \"htf_4h_last_swing_high\", \"htf_4h_last_swing_low\",\n        \"equal_high_liquidity\", \"equal_low_liquidity\",\n    ):\n        if name in out.columns and f\"{name}_generation\" not in out.columns:\n            source = out[name]\n            changed = source.notna() & (source.ne(source.shift(1)) | source.shift(1).isna())\n            out[f\"{name}_generation\"] = changed.cumsum().astype(float)\n'''
+          if 'previous_day_high_generation' not in text:
+              if generation_anchor not in text:
+                  raise SystemExit('feature generation anchor missing')
+              text = text.replace(generation_anchor, generation_block, 1)
+
+          # New York mode overwrites active day/week levels, so overwrite their generation too.
+          ny_anchor = '''    out[\"reference_time_new_york\"] = 1.0\n'''
+          ny_generation = '''    out[\"reference_time_new_york\"] = 1.0\n    ny_day_generation = pd.factorize(pd.Series(local_day, index=out.index), sort=False)[0].astype(float)\n    ny_week_generation = pd.factorize(pd.Series(week_key, index=out.index), sort=False)[0].astype(float)\n    out[\"previous_day_high_generation\"] = ny_day_generation\n    out[\"previous_day_low_generation\"] = ny_day_generation\n    out[\"previous_week_high_generation\"] = ny_week_generation\n    out[\"previous_week_low_generation\"] = ny_week_generation\n    out[\"current_asia_high_generation\"] = ny_day_generation\n    out[\"current_asia_low_generation\"] = ny_day_generation\n    out[\"current_london_open_high_generation\"] = ny_day_generation\n    out[\"current_london_open_low_generation\"] = ny_day_generation\n'''
+          if '_new_york_reference_columns' in text and 'ny_day_generation' not in text:
+              if ny_anchor not in text:
+                  raise SystemExit('New York feature anchor missing')
+              text = text.replace(ny_anchor, ny_generation, 1)
+
+          raw_old = '''    raw = [\n        _LiquidityPool(float(row[name]), quality, kind)\n        for name, quality, kind in sources\n        if name in row.index and _finite(row.get(name))\n    ]\n'''
+          raw_new = '''    raw = [\n        _LiquidityPool(\n            float(row[name]),\n            quality,\n            kind,\n            source_identity=(\n                f\"{kind}:{int(float(row.get(f'{name}_generation')))}\"\n                if _finite(row.get(f\"{name}_generation\"))\n                else f\"{kind}:UNVERSIONED\"\n            ),\n        )\n        for name, quality, kind in sources\n        if name in row.index and _finite(row.get(name))\n    ]\n'''
+          if 'source_identity=(' not in text:
+              if raw_old not in text:
+                  raise SystemExit('liquidity raw construction anchor missing')
+              text = text.replace(raw_old, raw_new, 1)
+
+          group_old = '''                kind=\"+\".join(sorted({item.kind for item in group})),\n                confluence=len(group),\n'''
+          group_new = '''                kind=\"+\".join(sorted({item.kind for item in group})),\n                confluence=len(group),\n                source_identity=\"+\".join(sorted({item.source_identity for item in group})),\n'''
+          if 'source_identity="+".join' not in text:
+              if group_old not in text:
+                  raise SystemExit('liquidity group anchor missing')
+              text = text.replace(group_old, group_new, 1)
+
+          key_old = '''    provenance = \"+\".join(sorted(part for part in pool.kind.split(\"+\") if part)) or \"LEVEL\"\n    return provenance, round(float(np.log(pool.price)), 6)\n'''
+          key_new = '''    provenance = pool.source_identity or (\"+\".join(sorted(part for part in pool.kind.split(\"+\") if part)) or \"LEVEL\")\n    return provenance, round(float(np.log(pool.price)), 6)\n'''
+          if 'provenance = pool.source_identity' not in text:
+              if key_old not in text:
+                  raise SystemExit('pool key anchor missing')
+              text = text.replace(key_old, key_new, 1)
+          path.write_text(text)
+          PY
+      - name: Add freshness regressions
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_same_price_new_generation_is_fresh_liquidity() -> None:
+    from system.corpus_alpha import _LiquidityPool, _pool_key
+    old = _LiquidityPool(100.0, 6, 'PDH', source_identity='PDH:1')
+    new = _LiquidityPool(100.0, 6, 'PDH', source_identity='PDH:2')
+    assert _pool_key(old) != _pool_key(new)
+
+
+def test_same_generation_same_price_keeps_consumption_identity() -> None:
+    from system.corpus_alpha import _LiquidityPool, _pool_key
+    first = _LiquidityPool(100.0, 6, 'PDH', source_identity='PDH:7')
+    again = _LiquidityPool(100.0, 6, 'PDH', source_identity='PDH:7')
+    assert _pool_key(first) == _pool_key(again)
+PY
+      - name: Install and test causal liquidity identity
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py \
+            research/yt_trinity_ml/tests/test_yt_trinity_system.py
+      - name: Commit tested freshness identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          git commit -m 'Version liquidity pools by causal source formation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
