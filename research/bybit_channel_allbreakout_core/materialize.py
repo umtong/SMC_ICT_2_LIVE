@@ -25,7 +25,12 @@ def main() -> None:
     here = Path(__file__).resolve().parent
     manifest = json.loads((here / "SOURCE_BUNDLE_MANIFEST.json").read_text())
     encoded = (here / "source_bundle.tar.gz.b64").read_text().strip()
-    bundle = base64.b64decode(encoded, validate=True)
+
+    # The historical transport contains redundant terminal padding.  Python's
+    # non-strict decoder accepts that legacy representation; scientific
+    # integrity is established below by the exact archive member set and every
+    # extracted file's frozen byte length and SHA-256.
+    bundle = base64.b64decode(encoded)
     actual_bundle_sha256 = hashlib.sha256(bundle).hexdigest()
 
     # The gzip transport was regenerated after the source files were frozen, so
