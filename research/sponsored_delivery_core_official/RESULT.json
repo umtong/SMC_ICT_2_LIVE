@@ -1,19 +1,36 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "result_id": "RES-20260730-SPONSORED-DELIVERY-CORE-OFFICIAL-AUDIT-001",
   "claim_id": "CLM-20260730-2030-SPONSORED-DELIVERY-CORE-OFFICIAL-001",
-  "status": "OFFICIAL_FULL_PATH_POSITIVE_LOW_CONCENTRATION_CORE_TARGET_NOT_MET",
+  "status": "RESEARCH_EXPOSED_ORIGINAL_SIGNAL_POSITIVE_BUT_PREOFFICIAL_GATE_FAILED_NOT_CORE_AUTHORITY",
   "target_status": "NOT_MET",
   "ranking_changed": false,
-  "component_ranking_role": "PROVISIONAL_CORE_COMPONENT_RANK_1",
+  "component_ranking_role": "NONE_DIAGNOSTIC_ONLY",
   "live_permission": false,
   "orders_submitted": false,
-  "hard_validity_status": "PASS_INDEPENDENT_EXACT_PREOFFICIAL_PARITY_LOCAL_TWO_RUN_REMOTE_REPLAY_PENDING",
+  "hard_validity_status": "PASS_EXACT_PR597_BROAD_SIGNAL_PARITY_LOCAL_TWO_RUN; REMOTE_TRANSPORT_REPLAY_IN_PROGRESS; NOT_PARITY_WITH_121_TRADE_LESS_CROWDED_AUTHORITY",
+  "authority_correction": {
+    "previous_interpretation": "The 213-trade broad PR597 replay was incorrectly described as the first official full-period Core authority.",
+    "correct_interpretation": "It is a research-exposed official diagnostic of the original sponsored signal. The valid pre-official survivor is the later 121-trade less-crowded rule with frozen signed funding-crowding admission and causal adverse-funding reserve.",
+    "broad_signal_preofficial_gate": "FAIL_2023_EXACT_TOP10PCT_ALL_TRADE_DELETION_REROUTE",
+    "broad_signal_2023_winner_deleted_multiple": 0.9823417335838606,
+    "valid_core_authority": {
+      "official_24bp_trades": 121,
+      "official_24bp_multiple": 1.11896,
+      "official_24bp_geometric_daily_growth": 0.00012325,
+      "official_24bp_profit_factor": 1.4067,
+      "official_24bp_median_return": 0.005199,
+      "official_24bp_top5_positive_pnl_share": 0.0924,
+      "official_24bp_winner_removed_multiple": 1.02437,
+      "official_24bp_trade_close_mdd": 0.0435
+    }
+  },
   "source_authority": {
     "exact_channel_source_sha256": "e468b50035344b355ca610afdd4ee6deaff30a0f8722441c6a38d1ceca963f38",
     "canonical_pandas_zip_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
     "original_pr597_source_carrier_materializable": false,
-    "independent_reconstruction": true
+    "independent_reconstruction_of_broad_signal": true,
+    "exact_121_trade_lifecycle_source_on_this_branch": false
   },
   "preofficial_parity": {
     "2022_24bp": {
@@ -35,100 +52,58 @@
       "removed_events": 11
     }
   },
-  "official_2024_2026": {
+  "research_exposed_official_2024_2026": {
     "13bp": {
       "end_nav": 12830.249439953367,
       "multiple": 1.2830249439953367,
       "geometric_daily_growth": 0.0002733054632551024,
-      "selected_entries": 213,
       "completed_trades": 213,
       "profit_factor": 1.496528836022781,
       "median_return": 0.006020062438576935,
-      "win_rate": 0.5305164319248826,
       "daily_marked_mdd": 0.04122524456637322,
-      "median_holding_hours": 8.033333333333333,
       "top5_positive_pnl_share": 0.05355744916562036,
-      "exact_winner_deleted_reroute": {
-        "removed_events": 22,
-        "multiple": 1.1019737153415787,
-        "geometric_daily_growth": 0.00010647810114194911,
-        "trades": 194,
-        "profit_factor": 1.1812765759162231,
-        "daily_marked_mdd": 0.12026904501352509
-      }
+      "winner_deleted_multiple": 1.1019737153415787
     },
     "18bp": {
       "end_nav": 12423.385241170665,
       "multiple": 1.2423385241170664,
       "geometric_daily_growth": 0.00023796198178827055,
-      "selected_entries": 213,
       "completed_trades": 213,
       "profit_factor": 1.4326585262733913,
       "median_return": 0.00557863569217529,
-      "win_rate": 0.5305164319248826,
       "daily_marked_mdd": 0.04245674670060362,
-      "median_holding_hours": 8.033333333333333,
       "top5_positive_pnl_share": 0.05405529431933262,
-      "exact_winner_deleted_reroute": {
-        "removed_events": 22,
-        "multiple": 1.0830482533280592,
-        "geometric_daily_growth": 0.00008748137261993527,
-        "trades": 194,
-        "profit_factor": 1.1519917731632914,
-        "daily_marked_mdd": 0.10670948152335913
-      }
+      "winner_deleted_multiple": 1.0830482533280592
     },
     "24bp": {
       "end_nav": 11979.39298951365,
       "multiple": 1.197939298951365,
       "geometric_daily_growth": 0.00019804902771025645,
       "growth_fraction_of_one_percent_daily_target": 0.019804902771025645,
-      "selected_entries": 213,
       "completed_trades": 213,
       "profit_factor": 1.3604054102372596,
       "median_return": 0.005093210363408764,
       "mean_return": 0.000863091613542797,
       "win_rate": 0.5305164319248826,
       "daily_marked_mdd": 0.04410355414410527,
-      "realized_mdd": 0.04537010701550659,
       "median_holding_hours": 8.033333333333333,
-      "mean_holding_hours": 14.045539906103286,
-      "active_time_fraction": 0.13668220029239767,
-      "top1_positive_pnl_share": 0.011506656448024625,
       "top5_positive_pnl_share": 0.05467218063253943,
-      "top10_positive_pnl_share": 0.1070082361832554,
-      "exit_counts": {"target": 113, "stop": 97, "channel_exit": 3},
-      "halfyears": {
-        "2024H1": 0.041990301906074556,
-        "2024H2": 0.027556614569036242,
-        "2025H1": 0.06177181209031324,
-        "2025H2": 0.07897170665895417,
-        "2026H1": -0.02338389515756234
-      },
-      "exact_winner_deleted_reroute": {
+      "exact_top10pct_all_trade_deletion_reroute": {
         "removed_events": 22,
         "multiple": 1.0481005141502762,
         "geometric_daily_growth": 0.00005151392739821681,
-        "selected_entries": 196,
         "completed_trades": 196,
         "profit_factor": 1.0893549355579226,
         "median_return": -0.004835494190201522,
-        "daily_marked_mdd": 0.0986422762394108,
-        "halfyears": {
-          "2024H1": 0.041990301906074556,
-          "2024H2": 0.027556614569036242,
-          "2025H1": 0.03421620740458553,
-          "2025H2": 0.014091692634124131,
-          "2026H1": -0.06664913673643258
-        }
+        "daily_marked_mdd": 0.0986422762394108
       }
     }
   },
   "decision": [
-    "The unchanged +1.5R accepted-delivery action is the first official full-period candidate with positive median trade, low positive-PnL concentration and a positive exact winner-deletion/full-reroute account at 24bp.",
-    "It is a genuine day-trading Core component rather than an Expansion tail: median holding is about eight hours, top-five winners supply only 5.47% of positive PnL, and 213 completed trades span the 912-day path.",
-    "The Core is economically weak relative to the project target: 24bp geometric daily growth is 0.019805%, only 1.98% of the one-percent target, with 2026H1 negative.",
-    "Preserve it as a Core component, not as a completed system. It is deterministic and must later be combined with a causal ML action policy and independent Core families without blocking the protected-delivery Expansion.",
-    "Do not increase risk or leverage to close the target gap."
+    "The broad PR597 action contains real ordinary cost-net information and is not a sparse-jackpot artifact in the exposed official diagnostic.",
+    "It nevertheless failed the frozen unchanged-2023 exact winner-deletion gate and cannot be promoted retroactively after observing the official interval.",
+    "The funding-crowding admission is therefore not removable as an excessive filter on current evidence; it was necessary to establish the valid 121-trade pre-official survivor.",
+    "Recover and replay the exact 121-trade lifecycle source before any Core/Expansion integration or code replacement.",
+    "Do not increase risk or leverage, and do not tune the funding boundary from official outcomes."
   ]
 }
