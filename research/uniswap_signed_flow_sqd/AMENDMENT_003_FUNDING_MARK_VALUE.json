@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001",
+  "recorded_before_accepting_any_market_model_or_pnl_result": true,
+  "source_gate_status": "PASS",
+  "market_outcome_from_pre_patch_engine_accepted": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "defect": "Funding cashflow used entry notional times the sum of funding rates, although Bybit funding applies to position value at each funding timestamp.",
+  "correction": "For every canonical funding event, use the last fully observed one-minute close available at the funding timestamp as a causal mark-price proxy. Funding PnL is side-signed quantity times the sum of funding_rate multiplied by that funding-time mark proxy.",
+  "why_programization_only": [
+    "the exact signed canonical funding rates are unchanged",
+    "no event, direction, structural level, feature family, model, threshold, cost, risk, leverage, symbol or chronology is changed",
+    "the correction makes account replay and daily liquidation NAV conform to the existing realistic-funding contract"
+  ],
+  "quarantined": [
+    "all economic results produced before PATCH_003_FUNDING_MARK_VALUE.patch is applied and final source hashes are verified"
+  ],
+  "patch": {
+    "path": "research/uniswap_signed_flow_sqd/PATCH_003_FUNDING_MARK_VALUE.patch",
+    "sha256": "185a8573349429538aed55c12e3ded21ed9072aed3e932cd3ef1d9799f9e7919"
+  },
+  "final_member_sha256": {
+    "full_history_sqd.py": "304d74a50b1cfbc01d03258be8cd93a9d875b58cc06fe23a1bbd75faa6247bae",
+    "test_full_history_sqd.py": "4ec2563f07e6c832b20b8260d7e81ee07b886ea1d56d323b1622ea1102fd26a2",
+    "economic_screen.py": "ab40098962bcd7b3d73544b43ea0f93832e41bda8c84b230eaeed9d9ac33755d",
+    "test_economic_screen.py": "ea6b8fb5a2f41c588dac5ad6069a48b19116b8fe6cdc936de9d4847f9ad4fc58"
+  }
+}
