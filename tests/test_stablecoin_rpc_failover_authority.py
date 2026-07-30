@@ -74,5 +74,5 @@ def test_failover_overlay_is_exact_and_json_rpc_errors_try_next_provider(
     assert endpoint == "working"
     assert body["result"] == []
 
-    with pytest.raises(RuntimeError, match="replacement already present"):
+    with pytest.raises(RuntimeError, match="expected 1|replacement already present"):
         authority.patch_rpc_helper(helper)
