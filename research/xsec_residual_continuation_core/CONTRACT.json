@@ -1,0 +1,43 @@
+{
+  "account": {
+    "costs_bps": [12, 18, 24],
+    "funding": "actual signed",
+    "global_slots": 1,
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005
+  },
+  "action": {
+    "direction": "event residual direction",
+    "elapsed_time_exit": false,
+    "hard_stop": "max(2x prior-only hourly ATR20,0.5% entry)",
+    "state_loss": "completed 5m signed residual falls to 0.5x event",
+    "target": "completed 5m signed residual reaches 1.5x event"
+  },
+  "chronology": {
+    "development": 2022,
+    "history": 2021,
+    "official_opened": false,
+    "unchanged_confirmation": 2023
+  },
+  "claim_id": "CLM-20260730-XSEC-RESIDUAL-CONTINUATION-CORE-001",
+  "decision_state": "completed hourly six-hour idiosyncratic residual",
+  "event": {
+    "abs_z": 2.0,
+    "minimum_abs_residual": 0.01,
+    "prior_z_hours": 720,
+    "rearm_abs_z_below": 1.0,
+    "residual": "own completed 6h log return minus median of other three"
+  },
+  "execution": {
+    "activation_delay_ms": 500,
+    "entry": "first strictly later observed 1m open",
+    "gap_stop": "observed open",
+    "same_minute": "hard stop adverse priority",
+    "state_exit": "same latency"
+  },
+  "parent_parity_limit": "#570 source was not transported; 2023 ordinary parity close/exact trade count, 2022 +26 raw event drift",
+  "result_id": "RES-20260730-XSEC-RESIDUAL-CONTINUATION-CORE-001",
+  "schema_version": 1,
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"],
+  "venue": "Bybit USDT linear perpetual"
+}
