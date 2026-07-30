@@ -1,0 +1,192 @@
+name: Ethereum validator-withdrawal pre-2024 economics
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/eth_validator_withdrawal_core/**
+      - .github/workflows/eth-validator-withdrawal-economic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: eth-validator-withdrawal-economic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  SOURCE_ARTIFACT_ID: "8748379469"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+
+jobs:
+  economic-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify portable runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas,pyarrow,scipy,sklearn; print('runtime-ok')"
+
+      - name: Download and verify full pre-2024 withdrawal source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/source
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" \
+            -o deps/source.zip
+          echo "f6c90bb97d2dd9b0d5d140b4f09822589efc51a3f0c7d704768a432595dfa001  deps/source.zip" | sha256sum -c -
+          unzip -q deps/source.zip -d deps/source
+          test -f deps/source/HOURLY_SOURCE.parquet
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('deps/source/SOURCE_RESULT.json').read_text())
+          assert result['status'] == 'SOURCE_PASS_FULL_PRE2024_CHRONOLOGY'
+          assert result['daily_partitions'] == 264
+          assert result['withdrawal_rows'] == 29_982_950
+          assert result['hourly_rows'] == 6_314
+          print('source-ok')
+          PY
+
+      - name: Download and verify canonical Bybit export
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path('deps/canonical')
+          manifest = json.loads((root / 'EXPORT_MANIFEST.json').read_text())
+          assert manifest['schema_version'] == 1 and len(manifest['tables']) == 18
+          for item in manifest['tables']:
+              path = root / item['symbol'] / (item['table'] + '.pkl.gz')
+              assert path.stat().st_size == item['bytes']
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']
+          print('canonical-ok')
+          PY
+
+      - name: Compile and run focused economic tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" -m py_compile \
+            research/eth_validator_withdrawal_core/economic_screen.py \
+            research/eth_validator_withdrawal_core/test_economic_screen.py
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          path = pathlib.Path('research/eth_validator_withdrawal_core/test_economic_screen.py')
+          spec = importlib.util.spec_from_file_location('test_economic_screen', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules['test_economic_screen'] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith('test_'))
+          for name in tests:
+              getattr(module, name)()
+              print('PASS', name)
+          assert len(tests) == 5
+          PY
+
+      - name: Run frozen pre-2024 economic decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf artifact
+          "$PY" research/eth_validator_withdrawal_core/economic_screen.py \
+            --source deps/source/HOURLY_SOURCE.parquet \
+            --canonical-root deps/canonical/ETHUSDT \
+            --output artifact \
+            | tee ECONOMIC_RUN.log
+          cp research/eth_validator_withdrawal_core/CONTRACT.json artifact/CONTRACT.json
+          cp deps/source/SOURCE_RESULT.json artifact/SOURCE_RESULT.json
+          cp deps/canonical/EXPORT_MANIFEST.json artifact/CANONICAL_EXPORT_MANIFEST.json
+          cp ECONOMIC_RUN.log artifact/ECONOMIC_RUN.log
+
+      - name: Assert frozen economic failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('artifact/RESULT.json').read_text())
+          assert result['status'] == 'RETIRED_PRE2024_ECONOMIC_FAILURE'
+          assert result['source_status'] == 'SOURCE_PASS_FULL_PRE2024_CHRONOLOGY'
+          assert result['counts'] == {
+              'shock_events': 550,
+              'action_rows': 1007,
+              'fit_resolved_actions': 388,
+              'development_actions': 339,
+              'confirmation_actions': 279,
+          }
+          dev_response = result['development']['response_policy']['24']
+          conf_response = result['confirmation']['response_policy']['24']
+          dev_ml = result['development']['ml_policy']['24']
+          conf_ml = result['confirmation']['ml_policy']['24']
+          assert dev_response['trades'] == 74
+          assert abs(dev_response['end_nav'] - 10237.176969386099) < 1e-6
+          assert conf_response['trades'] == 72
+          assert abs(conf_response['end_nav'] - 8232.29197439194) < 1e-6
+          assert dev_ml['trades'] == 16
+          assert abs(dev_ml['end_nav'] - 9784.502704319877) < 1e-6
+          assert conf_ml['trades'] == 4 and conf_ml['stops'] == 4 and conf_ml['targets'] == 0
+          assert abs(conf_ml['end_nav'] - 9802.840973343093) < 1e-6
+          assert result['information_unit']['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          print(json.dumps({
+              'status': result['status'],
+              'counts': result['counts'],
+              'development_response_24': dev_response,
+              'confirmation_response_24': conf_response,
+              'confirmation_ml_24': conf_ml,
+          }, indent=2))
+          PY
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-validator-withdrawal-economic-result
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
