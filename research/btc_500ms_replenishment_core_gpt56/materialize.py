@@ -3,7 +3,12 @@ import base64, hashlib, json, tarfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 m=json.loads((ROOT/'SOURCE_MANIFEST.json').read_text())
-encoded=(ROOT/'SOURCE_BUNDLE.tar.gz.b64').read_text().strip()
+parts=[]
+for item in m['bundle_parts']:
+ text=(ROOT/item['path']).read_text().strip()
+ assert len(text)==item['base64_chars']
+ parts.append(text)
+encoded=''.join(parts)
 raw=base64.b64decode(encoded)
 assert len(encoded)==m['base64_chars']
 assert len(raw)==m['archive_bytes']
