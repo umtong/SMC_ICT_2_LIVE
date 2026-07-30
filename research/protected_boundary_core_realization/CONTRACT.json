@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-PROTECTED-BOUNDARY-CORE-REALIZATION-001",
+  "base_result_id": "RES-20260730-VOLUME-PROTECTED-BOUNDARY-BOOTSTRAP-RISK-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "source_bundle_sha256": "3855e2e76482f75b63a53543d275a940bdd5175a6b1fddb2ad7155f868ab5298",
+  "frozen_entry_and_state": {
+    "event": "completed 1h close outside the prior 96 completed hours with the existing completed-hour volume sponsorship and selected symbol-side rules",
+    "entry": "fixed 500ms after completed decision, first strictly later observable 1m open",
+    "initial_stop": "existing 2ATR20 disaster stop",
+    "promotion": "original broken boundary becomes protected only after a later completed 1h close extends beyond the original signal close",
+    "state_loss": "first later completed 1h reacceptance inside the promoted frozen boundary",
+    "other_exit": "completed opposite prior-48h channel",
+    "same_minute_order": "adverse stop first",
+    "funding": "actual signed Bybit funding with the inherited causal adverse-funding reserve",
+    "global_slot": 1,
+    "no_elapsed_time_close": true
+  },
+  "full_realization_targets_r": [1.0, 1.5, 2.0],
+  "cost_paths_round_trip_bps": [12, 18, 24],
+  "discovery_sizing": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "risk_grid_prohibited": true
+  },
+  "chronology": {
+    "selection": "calendar 2022 continuous account path",
+    "confirmation": "calendar 2023 unchanged",
+    "official": "2024-01-01 through 2026-06-30 continuous path only after unchanged pre-2024 survival"
+  },
+  "selection_rule": "among routes with positive 24bp total return, positive median trade and exact winner-deletion/rerouting above 1.0x in both 2022 half-years, maximize the minimum half-year log growth; deterministic tie break prefers the smaller R target",
+  "confirmation_rule": "selected route must remain positive, positive-median and exact winner-deletion-positive in unchanged 2023 without material trade-density collapse",
+  "decision": "if no route survives or official value remains structurally tiny, preserve protected-boundary only as Expansion and the prior +1.5R full-realization route only as weak Core",
+  "prohibited_rescue": [
+    "another R target",
+    "partial realization",
+    "runner",
+    "pyramiding",
+    "trailing stop",
+    "protected-origin change",
+    "channel or volume threshold change",
+    "symbol-side selection",
+    "session filter",
+    "ML filter",
+    "cost reduction",
+    "risk or leverage optimization",
+    "official-period tuning"
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}
