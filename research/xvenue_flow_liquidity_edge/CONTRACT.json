@@ -1,0 +1,41 @@
+{
+  "account": {
+    "actual_bybit_funding": true,
+    "costs_bps": [12, 18, 24],
+    "elapsed_time_exit": false,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "risk_fraction": 0.005
+  },
+  "binance_dataset": "DS-BINANCE-USDM-BTCETH-1M-202110-202212-AW1",
+  "claim_id": "CLM-20260730-XVENUE-FLOW-LIQUIDITY-EDGE-CORE-001",
+  "conditional_next_stage": "2022H2 only after all frozen H1 gates pass",
+  "event_and_payoff_authority": "RES-20260730-MINIMAL-REPEATED-LEVEL-CORE-001",
+  "first_forward": "2022H1",
+  "mechanism": "At an unchanged causal Bybit prior-day high/low interaction, use completed Binance USD-M aggressive-flow and price-impact state only as an external sensor to value inherited BREAK and REJECT actions versus flat.",
+  "model": {
+    "family": "HistGradientBoostingRegressor",
+    "params": {
+      "l2_regularization": 12.0,
+      "learning_rate": 0.035,
+      "max_depth": 3,
+      "max_iter": 240,
+      "min_samples_leaf": 80,
+      "random_state": 1729
+    }
+  },
+  "no_rescue": [
+    "flow threshold",
+    "flow lookback",
+    "model family",
+    "model hyperparameters",
+    "action geometry",
+    "cost",
+    "risk",
+    "leverage",
+    "SMC gate"
+  ],
+  "result_id": "RES-20260730-XVENUE-FLOW-LIQUIDITY-EDGE-CORE-001",
+  "schema_version": 1,
+  "training": "2021-11-01 through 2021-12-31 fully resolved actions only"
+}
