@@ -1,0 +1,128 @@
+name: Ethereum validator-withdrawal full pre-2024 source
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/eth_validator_withdrawal_core/aggregate_pre2024_source.py
+      - research/eth_validator_withdrawal_core/test_aggregate_pre2024_source.py
+      - research/eth_validator_withdrawal_core/source_probe.py
+      - research/eth_validator_withdrawal_core/materialize_source_probe.py
+      - .github/workflows/eth-validator-withdrawal-full-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: eth-validator-withdrawal-full-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+
+jobs:
+  full-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified portable quant runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import pyarrow; print('pyarrow', pyarrow.__version__)"
+
+      - name: Materialize corrected source reader and chronology runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          OUT=research/eth_validator_withdrawal_core/materialized_full
+          rm -rf "$OUT"
+          "$PY" research/eth_validator_withdrawal_core/materialize_source_probe.py --out "$OUT"
+          cp research/eth_validator_withdrawal_core/aggregate_pre2024_source.py "$OUT/aggregate_pre2024_source.py"
+          cp research/eth_validator_withdrawal_core/test_aggregate_pre2024_source.py "$OUT/test_aggregate_pre2024_source.py"
+
+      - name: Compile and run source chronology tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          ROOT=research/eth_validator_withdrawal_core/materialized_full
+          "$PY" -m py_compile "$ROOT/source_probe.py" "$ROOT/aggregate_pre2024_source.py" "$ROOT/test_aggregate_pre2024_source.py"
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          root = pathlib.Path("research/eth_validator_withdrawal_core/materialized_full")
+          sys.path.insert(0, str(root))
+          path = root / "test_aggregate_pre2024_source.py"
+          spec = importlib.util.spec_from_file_location("test_aggregate_pre2024_source", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["test_aggregate_pre2024_source"] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith("test_"))
+          for name in tests:
+              getattr(module, name)()
+              print("PASS", name)
+          assert len(tests) == 5
+          PY
+
+      - name: Aggregate and verify full pre-2024 source chronology
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          ROOT=research/eth_validator_withdrawal_core/materialized_full
+          rm -rf artifact
+          PYTHONPATH="$ROOT" "$PY" "$ROOT/aggregate_pre2024_source.py" \
+            --output artifact \
+            --download-workers 8 \
+            --batch-days 16 \
+            | tee FULL_SOURCE_RUN.log
+          cp research/eth_validator_withdrawal_core/CONTRACT.json artifact/CONTRACT.json
+          cp FULL_SOURCE_RUN.log artifact/FULL_SOURCE_RUN.log
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("artifact/SOURCE_RESULT.json").read_text())
+          assert result["status"] == "SOURCE_PASS_FULL_PRE2024_CHRONOLOGY"
+          assert result["daily_partitions"] == 264
+          assert result["withdrawal_rows"] == 29_982_950
+          assert result["min_withdrawal_index"] == 0
+          assert result["max_withdrawal_index"] == 29_982_949
+          assert result["hourly_rows"] == 6_314
+          assert result["global_index_contiguous"] is True
+          assert result["hourly_chronology_contiguous"] is True
+          assert result["market_outcomes_opened"] is False
+          assert result["bybit_data_opened"] is False
+          assert result["model_opened"] is False
+          assert result["orders_submitted"] is False
+          print(json.dumps(result, indent=2))
+          PY
+          rm -rf artifact/downloads
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eth-validator-withdrawal-pre2024-source
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
