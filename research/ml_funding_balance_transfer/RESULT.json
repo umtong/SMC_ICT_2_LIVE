@@ -1,0 +1,73 @@
+{
+  "base_one_slot": [
+    {"active_actions":504,"mean":-0.0003108326999761,"median":-0.0049999999999999,"pf":0.9269642703716602,"return":-0.1694789038366222,"template":"ALIGNED_RETRACE_CONT","top5_share":0.2250811416384547,"trades":456,"unfilled":48,"year":2021},
+    {"active_actions":383,"mean":-0.0002134939067012,"median":-0.0049999999999999,"pf":0.9408896956901012,"return":-0.0979986915502308,"template":"OPPOSITE_RECLAIM_CONT","top5_share":0.2233980695229103,"trades":383,"unfilled":0,"year":2021},
+    {"active_actions":371,"mean":-0.001097012382303,"median":-0.0049999999999999,"pf":0.7358371028463029,"return":-0.3503995967196152,"template":"SWEEP_RECLAIM_REV","top5_share":0.3073850304386973,"trades":371,"unfilled":0,"year":2021},
+    {"active_actions":721,"mean":-0.000844052552617,"median":-0.0049999999999999,"pf":0.793829418359549,"return":-0.4690879081374196,"template":"UNION_STRESS_TIE","top5_share":0.165081730487403,"trades":695,"unfilled":26,"year":2021},
+    {"active_actions":630,"mean":-0.0010306888889025,"median":-0.0049999999999999,"pf":0.7559137708317416,"return":-0.4560410798404601,"template":"ALIGNED_RETRACE_CONT","top5_share":0.1999921440334507,"trades":556,"unfilled":74,"year":2022},
+    {"active_actions":429,"mean":-0.0011531597111282,"median":-0.0049999999999999,"pf":0.6953899713608314,"return":-0.3988614087903159,"template":"OPPOSITE_RECLAIM_CONT","top5_share":0.2065857066149368,"trades":427,"unfilled":0,"year":2022},
+    {"active_actions":431,"mean":-0.0019491528597387,"median":-0.0049999999999999,"pf":0.5449014759660746,"return":-0.5754322481535781,"template":"SWEEP_RECLAIM_REV","top5_share":0.2146584575513991,"trades":431,"unfilled":0,"year":2022},
+    {"active_actions":732,"mean":-0.001260404187584,"median":-0.0049999999999999,"pf":0.6954086894320457,"return":-0.6004769989435308,"template":"UNION_STRESS_TIE","top5_share":0.1521005483246402,"trades":700,"unfilled":31,"year":2022},
+    {"active_actions":556,"mean":-0.001575843501382,"median":-0.0049999999999999,"pf":0.6414040675884434,"return":-0.555166849103936,"template":"ALIGNED_RETRACE_CONT","top5_share":0.274180358890328,"trades":492,"unfilled":64,"year":2023},
+    {"active_actions":399,"mean":-0.0008315552756841,"median":-0.0049999999999999,"pf":0.7806708060447111,"return":-0.2937993319935162,"template":"OPPOSITE_RECLAIM_CONT","top5_share":0.2064282571715813,"trades":397,"unfilled":0,"year":2023},
+    {"active_actions":358,"mean":-0.0017814972407901,"median":-0.0049999999999999,"pf":0.5797434334488555,"return":-0.480120809547755,"template":"SWEEP_RECLAIM_REV","top5_share":0.3051694522147507,"trades":358,"unfilled":0,"year":2023},
+    {"active_actions":666,"mean":-0.0011367181472473,"median":-0.0049999999999999,"pf":0.7250808389839036,"return":-0.5342998197269417,"template":"UNION_STRESS_TIE","top5_share":0.1970077638713898,"trades":637,"unfilled":29,"year":2023}
+  ],
+  "claim_id":"CLM-20260730-ML-FUNDING-BALANCE-TRANSFER-001",
+  "decision":"The exact continuous funding cash-transfer family is economically negative after correcting entry timing, target scale, pending-slot state and direct account-value ML. Official 2024, risk/leverage search and ranking changes are not opened.",
+  "event_count":6335,
+  "key_findings":{
+    "base_union_returns":{"2021":-0.469088,"2022":-0.600477,"2023":-0.5343},
+    "best_2022_readable_exception":{"2023_return":-0.014634,"return":0.03791,"route":"high-stress opposite-first reclaim with absolute OI response","top5_share":1.0,"trades":11},
+    "best_2023_readable_exception":{"2022_return":-0.009212,"return":0.075403,"route":"high-stress receiver re-leverage aligned retracement","top5_share":0.742634,"trades":91},
+    "hgbt_action_value":{"2022_return":-0.536177,"2022_trades":513,"2023_return":-0.314548,"2023_trades":326},
+    "ridge_action_value":{"2022_return":-0.006598,"2022_trades":356,"2023_return":-0.128802,"2023_trades":179}
+  },
+  "ml_forward":[
+    {"mean":0.00005507729496536018,"median":-0.0049999999999999,"model":"RIDGE_ACTION_VALUE","pf":1.0145615211504746,"selected_actions":374,"top5_share":0.2426599079408709,"total_return":-0.0065979660500808,"trades":356,"unfilled_selected":18,"year":2022},
+    {"mean":-0.0014493074030364,"median":-0.0049999999999999,"model":"HGBT_ACTION_VALUE","pf":0.6476328041092644,"selected_actions":533,"top5_share":0.2062635355966563,"total_return":-0.5361766552531224,"trades":513,"unfilled_selected":20,"year":2022},
+    {"mean":-0.0007386824043299,"median":-0.0049999999999999,"model":"RIDGE_ACTION_VALUE","pf":0.7877471863433763,"selected_actions":205,"top5_share":0.2926982947945934,"total_return":-0.1288016431931745,"trades":179,"unfilled_selected":26,"year":2023},
+    {"mean":-0.0011056710848798,"median":-0.0049999999999999,"model":"HGBT_ACTION_VALUE","pf":0.7260334777116993,"selected_actions":351,"top5_share":0.2871104036484076,"total_return":-0.3145482373730549,"trades":326,"unfilled_selected":25,"year":2023}
+  ],
+  "official_2024_opened":false,
+  "orders_submitted":false,
+  "programization_corrections":[
+    "marketable confirmation entry replaced by first causal rebalance/reclaim action templates",
+    "nearest one-hour pivot targets replaced by still-unconsumed prior-day/four-hour scale-matched external liquidity",
+    "future fill selection removed: resolved unfilled pending orders carry zero action return in model training",
+    "pending orders occupy the global slot from activation through fill/cancellation/expiry",
+    "all fills occur after fixed 500 ms at the first later observable one-minute price",
+    "ML predicts direct normalized account action return rather than direction or target-hit probability"
+  ],
+  "ranking_changed":false,
+  "resolved_action_rows":7258,
+  "result_id":"RES-20260730-ML-FUNDING-BALANCE-TRANSFER-001",
+  "scale_matched_action_rows":7581,
+  "schema_version":1,
+  "source_code_sha256":{
+    "baseline_slot.py":"e19072b3db691b946fc7d5c487ab400262dc127e3ad0cadf08d257a75ed60bd3",
+    "build_events.py":"b847c6835d2784d291d2525694418efd7742806136b8ccf82803fbfc936cb234",
+    "evaluate_actions.py":"6d4924dfda511b3105758afa8c52ddf50181175ff232155e5ef828b004822d19",
+    "ml_policy.py":"2b5b8ee56330f93f031afd48afcb14251b581064dbb0217bc272cead2f5fe57f",
+    "stress_forward.py":"660c08fdf42aea3189e63bf7fdc57e5484bb4dc7f53aa6201270003c6f513ab1"
+  },
+  "status":"RETIRED_ECONOMIC_FAILURE_PRE_2024",
+  "stress_forward":[
+    {"active_candidates":8,"mean":-0.005,"median":-0.005,"pf":0.0,"target_rate":0.0,"template":"ALIGNED_RETRACE_CONT","top5_share":1.0,"total_return":-0.0344793531905156,"trades":7,"variant":"PAYER_CLOSURE","year":2022},
+    {"active_candidates":55,"mean":-0.0016795571124442,"median":-0.0049999999999999,"pf":0.6082653194202161,"target_rate":0.14,"template":"ALIGNED_RETRACE_CONT","top5_share":0.8689149967819874,"total_return":-0.0823451097063107,"trades":50,"variant":"PAYER_CLOSURE","year":2023},
+    {"active_candidates":16,"mean":-0.0006100551192379,"median":-0.0049999999999999,"pf":0.8445479734443035,"target_rate":0.2142857142857142,"template":"ALIGNED_RETRACE_CONT","top5_share":1.0,"total_return":-0.0092115861160199,"trades":14,"variant":"RECEIVER_RELEVERAGE","year":2022},
+    {"active_candidates":98,"mean":0.000971401321051,"median":-0.0049999999999999,"pf":1.2299602877999318,"target_rate":0.1428571428571428,"template":"ALIGNED_RETRACE_CONT","top5_share":0.7426338564964181,"total_return":0.0754029429195777,"trades":91,"variant":"RECEIVER_RELEVERAGE","year":2023},
+    {"active_candidates":24,"mean":-0.0020733700794919,"median":-0.0049999999999999,"pf":0.5158991262278196,"target_rate":0.1428571428571428,"template":"ALIGNED_RETRACE_CONT","top5_share":1.0,"total_return":-0.0433733297753966,"trades":21,"variant":"STRESS_OI_RESPONSE","year":2022},
+    {"active_candidates":145,"mean":0.0001861272290357,"median":-0.0049999999999999,"pf":1.043792525139928,"target_rate":0.1407407407407407,"template":"ALIGNED_RETRACE_CONT","top5_share":0.5862666608293973,"total_return":0.0075694377655,"trades":135,"variant":"STRESS_OI_RESPONSE","year":2023},
+    {"active_candidates":71,"mean":-0.0040884470548198,"median":-0.0049999999999999,"pf":0.1089886507217719,"target_rate":0.0615384615384615,"template":"ALIGNED_RETRACE_CONT","top5_share":0.9999999999999998,"total_return":-0.2340433819571252,"trades":65,"variant":"STRESS_ONLY","year":2022},
+    {"active_candidates":377,"mean":-0.0018783685638495,"median":-0.0049999999999999,"pf":0.5817153476075442,"target_rate":0.0857988165680473,"template":"ALIGNED_RETRACE_CONT","top5_share":0.4260258346211126,"total_return":-0.4833484567551193,"trades":338,"variant":"STRESS_ONLY","year":2023},
+    {"active_candidates":11,"mean":0.0034587333628365,"median":-0.004723753055128,"pf":2.277990879639166,"target_rate":0.4545454545454545,"template":"OPPOSITE_RECLAIM_CONT","top5_share":1.0000000000000002,"total_return":0.0379095749813982,"trades":11,"variant":"STRESS_OI_RESPONSE","year":2022},
+    {"active_candidates":129,"mean":-0.00006538006967780262,"median":-0.0049999999999998,"pf":0.9818731929563924,"target_rate":0.2713178294573643,"template":"OPPOSITE_RECLAIM_CONT","top5_share":0.3838033876139401,"total_return":-0.0146344536608901,"trades":129,"variant":"STRESS_OI_RESPONSE","year":2023},
+    {"active_candidates":36,"mean":0.0001580261814128,"median":-0.0049999999999997,"pf":1.0464924996315013,"target_rate":0.3142857142857143,"template":"OPPOSITE_RECLAIM_CONT","top5_share":0.782054514026899,"total_return":0.0041397851156943,"trades":35,"variant":"STRESS_ONLY","year":2022},
+    {"active_candidates":291,"mean":-0.0011914458619842,"median":-0.0049999999999999,"pf":0.695770164493942,"target_rate":0.2110726643598615,"template":"OPPOSITE_RECLAIM_CONT","top5_share":0.2460316182451634,"total_return":-0.2993887494241379,"trades":289,"variant":"STRESS_ONLY","year":2023},
+    {"active_candidates":18,"mean":-0.0050369335333355,"median":-0.005,"pf":0.0,"target_rate":0.0,"template":"SWEEP_RECLAIM_REV","top5_share":1.0,"total_return":-0.0868854744390963,"trades":18,"variant":"STRESS_OI_STALL","year":2022},
+    {"active_candidates":192,"mean":-0.0013893983364059,"median":-0.0049999999999999,"pf":0.6656063315162248,"target_rate":0.171875,"template":"SWEEP_RECLAIM_REV","top5_share":0.4036460715151794,"total_return":-0.2412710109839634,"trades":192,"variant":"STRESS_OI_STALL","year":2023},
+    {"active_candidates":21,"mean":-0.0050367594797763,"median":-0.005,"pf":0.0,"target_rate":0.0,"template":"SWEEP_RECLAIM_REV","top5_share":1.0,"total_return":-0.1006106825707744,"trades":21,"variant":"STRESS_ONLY","year":2022},
+    {"active_candidates":234,"mean":-0.0016875248328326,"median":-0.0049999999999999,"pf":0.6026109614028664,"target_rate":0.1538461538461538,"template":"SWEEP_RECLAIM_REV","top5_share":0.3843590980085281,"total_return":-0.3336218322821735,"trades":234,"variant":"STRESS_ONLY","year":2023}
+  ]
+}
