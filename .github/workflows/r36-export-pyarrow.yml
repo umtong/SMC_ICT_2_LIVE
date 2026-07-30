@@ -1,0 +1,32 @@
+name: R36 export pyarrow wheel
+
+on:
+  push:
+    branches: [agent/r36-48h24h-sponsored-lifecycle-001]
+    paths:
+      - .github/workflows/r36-export-pyarrow.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download exact wheel
+        run: |
+          set -euo pipefail
+          python -m pip download --only-binary=:all: --no-deps pyarrow==18.1.0 -d wheelhouse
+          sha256sum wheelhouse/* > wheelhouse/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r36-pyarrow-wheel
+          path: wheelhouse
+          if-no-files-found: error
+          retention-days: 3
