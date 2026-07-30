@@ -108,6 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           PY="$GITHUB_WORKSPACE/deps/runtime/root/python/bin/python3"
+          sudo mkdir -p /mnt/data
           sudo rm -rf /mnt/data/core_tables_py /mnt/data/channel_independent_audit /mnt/data/channel_volume_group_path /mnt/data/channel_volume_risk_precision
           sudo ln -s "$GITHUB_WORKSPACE/deps/canonical" /mnt/data/core_tables_py
           sudo cp deps/volume/channel_*.py /mnt/data/
