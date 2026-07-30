@@ -19,10 +19,13 @@ def test_deposit_url_uses_public_daily_partition() -> None:
     )
 
 
-def test_uint128_deposit_amount_decode() -> None:
+def test_uint128_decode_and_exact_net_inventory_gwei() -> None:
     expected = 32_000_000_000
     raw = expected.to_bytes(16, byteorder="little", signed=False)
     assert MODULE.decode_integer(raw) == expected
+    deposit = 12_345_678_901_234_567
+    release = 6_518_259_308_444_158
+    assert MODULE.net_inventory_gwei(deposit, release) == deposit - release
 
 
 def test_unix_slot_timestamp_decode() -> None:
@@ -44,9 +47,3 @@ def test_period_is_exact_pre2024_overlap() -> None:
     assert len(values) == 264
     assert values[0] == date(2023, 4, 12)
     assert values[-1] == date(2023, 12, 31)
-
-
-def test_net_inventory_uses_exact_integer_gwei() -> None:
-    deposit = 12_345_678_901_234_567
-    release = 6_518_259_308_444_158
-    assert MODULE.net_inventory_gwei(deposit, release) == deposit - release
