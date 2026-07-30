@@ -1,0 +1,91 @@
+name: Dense liquidity-edge microflow source v4
+
+on:
+  push:
+    branches:
+      - agent/r37-dense-liquidity-edge-microflow-001
+    paths:
+      - research/dense_liquidity_edge_microflow/RUN_SOURCE_V4
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dense-liquidity-edge-microflow-source-v4
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        symbol: [BTCUSDT, ETHUSDT]
+        month: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy==2.1.3 pandas==2.2.3 requests==2.32.3
+      - name: Extract exact trade sensor and post-entry minute
+        run: |
+          mkdir -p out
+          python research/dense_liquidity_edge_microflow/extract_edge_microflow_v4.py \
+            --symbol '${{ matrix.symbol }}' --year 2023 --month '${{ matrix.month }}' --out out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dense-edge-v4-${{ matrix.symbol }}-${{ matrix.month }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30
+
+  combine:
+    needs: extract
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r37-dense-liquidity-edge-microflow-001
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dense-edge-v4-*
+          path: parts
+      - name: Combine and validate compact tape
+        run: |
+          rm -rf research/dense_liquidity_edge_microflow/generated_v4
+          python research/dense_liquidity_edge_microflow/combine_edge_microflow_v3.py \
+            --parts parts --out research/dense_liquidity_edge_microflow/generated_v4
+          python - <<'PY'
+          import pandas as pd
+          p='research/dense_liquidity_edge_microflow/generated_v4/dense_edge_microflow_2023_features.csv.gz'
+          d=pd.read_csv(p,nrows=2)
+          required={'post_entry_minute_high','post_entry_minute_low','post_entry_minute_close','post_entry_minute_trade_count'}
+          missing=required-set(d.columns)
+          assert not missing, missing
+          PY
+      - name: Commit compact V4 source authority
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/dense_liquidity_edge_microflow/generated_v4
+          if git diff --cached --quiet; then
+            echo 'No generated source change'
+          else
+            git commit -m 'Publish exact dense microflow source tape v4'
+            git push origin HEAD:agent/r37-dense-liquidity-edge-microflow-001
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dense-liquidity-edge-microflow-2023-v4
+          path: research/dense_liquidity_edge_microflow/generated_v4/*
+          if-no-files-found: error
+          retention-days: 90

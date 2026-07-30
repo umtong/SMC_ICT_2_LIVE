@@ -1,0 +1,75 @@
+name: dense-liquidity-edge-microflow-source
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - research/dense_liquidity_edge_microflow/**
+      - tests/test_dense_liquidity_edge_microflow.py
+      - .github/workflows/dense-liquidity-edge-microflow.yml
+  workflow_dispatch:
+
+concurrency:
+  group: dense-liquidity-edge-microflow-source
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        symbol: [BTCUSDT, ETHUSDT]
+        month: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run focused causal tests
+        run: python -m unittest tests/test_dense_liquidity_edge_microflow.py
+      - name: Stream official trades and extract exact causal windows
+        run: |
+          python research/dense_liquidity_edge_microflow/extract_edge_microflow.py \
+            --symbol '${{ matrix.symbol }}' \
+            --year 2023 \
+            --month '${{ matrix.month }}' \
+            --output-dir observed/parts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edge-${{ matrix.symbol }}-${{ matrix.month }}
+          path: observed/parts
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: extract
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: edge-*
+          path: observed/parts
+          merge-multiple: true
+      - name: Combine, validate and hash sensor tape
+        run: |
+          python research/dense_liquidity_edge_microflow/combine_edge_microflow.py \
+            --parts observed/parts \
+            --out observed/combined
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dense-liquidity-edge-microflow-combined
+          path: observed/combined
+          if-no-files-found: error
+          retention-days: 30
