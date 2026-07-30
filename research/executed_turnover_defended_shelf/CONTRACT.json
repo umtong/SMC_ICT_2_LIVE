@@ -1,0 +1,50 @@
+{
+  "account": {
+    "actual_signed_funding": true,
+    "costs_bp": [0, 12, 18, 24],
+    "global_pending_open_slots": 1,
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005
+  },
+  "chronology": {
+    "elapsed_time_exit": false,
+    "execution": "first observed one-minute open strictly later than decision availability plus 500ms",
+    "fit_year": 2021,
+    "official_2024_2026_opened": false,
+    "stage_boundary": "mark unresolved exposure and retain the global slot",
+    "unchanged_confirmation_year": 2023,
+    "untouched_forward_year": 2022
+  },
+  "claim_id": "CLM-20260730-EXECUTED-TURNOVER-DEFENDED-SHELF-001",
+  "decision_rule": {
+    "no_rescue": ["pivot width", "shelf tolerance", "defended band", "turnover quantile", "retest count", "target", "stop", "session", "symbol side", "cost", "risk", "leverage", "FVG/OB gate", "ML"],
+    "principal_cost_bp": 24,
+    "survival": ["positive marked NAV", "at least 60 completed trades", "PF > 1", "nonnegative median trade", "both half-years positive", "positive exact top-five-positive-event deletion with full one-slot rerouting"]
+  },
+  "event": {
+    "break": "first later completed 15-minute close at least 0.05 prior-only ATR20 through the shelf boundary",
+    "defended_band": "shelf boundary plus or minus 0.10 prior-only ATR20 frozen at second-pivot availability",
+    "defense_state": "completed one-minute turnover whose turnover/volume VWAP lies inside the band divided by all positive turnover between pivot availabilities; at least two distinct 15-minute visits",
+    "first_defense_survival": "the first pivot remains unconsumed by completed 15-minute closes through second-pivot availability",
+    "retest": "first later completed five-minute bar within twelve bars that touches the frozen defended band",
+    "shelf": "latest two causally confirmed same-side 15-minute pivots, 4 bars to 3 UTC days apart, dispersion <=0.10 prior-only ATR20",
+    "threshold": "one pooled calendar-2021 upper quartile of defended-turnover share"
+  },
+  "logic": {
+    "actions": ["DEFENSE_FLIP_CONTINUE", "FAILED_BREAK_REVERSE", "FLAT"],
+    "not_gates": ["FVG", "OB", "MSS", "OTE", "session", "symbol identity"],
+    "symbol_identity_is_not_logic": true,
+    "testbeds": ["BTCUSDT", "ETHUSDT"],
+    "thesis": "Repeated defense plus actual executed turnover at a narrow shelf identifies accumulated inventory. The first close through the shelf consumes that defense; the first causal retest reveals whether control transferred for continuation or the break failed for reversal."
+  },
+  "payoff": {
+    "continuation_target": "nearest still-unconsumed pre-known prior-day or confirmed 4h external pool in the break direction",
+    "hard_stop": "one tick plus 0.10 decision ATR20 beyond the full break/retest excursion",
+    "reversal_target": "frozen shelf range base",
+    "same_minute_ambiguity": "adverse stop first",
+    "state_exit": "first later completed five-minute close through the band against the action, executed after the same latency"
+  },
+  "result_id": "RES-20260730-EXECUTED-TURNOVER-DEFENDED-SHELF-001",
+  "schema_version": 1,
+  "status": "RETIRED_2022_DETERMINISTIC_ECONOMIC_FAILURE"
+}
