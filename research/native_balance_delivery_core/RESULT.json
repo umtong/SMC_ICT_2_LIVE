@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1852-NATIVE-BALANCE-DELIVERY-CORE-001",
+  "result_id": "RES-20260730-NATIVE-BALANCE-DELIVERY-CORE-001",
+  "status": "RETIRED_FATAL_SCREEN_NOT_CORE",
+  "hard_validity_status": "PASS_CAUSAL_HASH_VERIFIED_PRE2024_FATAL_SCREEN",
+  "economic_status": "BELOW_GATE_BROAD_NEGATIVE_MODEL_FLAT",
+  "official_2024_opened": false,
+  "orders_submitted": false,
+  "event_counts": {
+    "2023-01": {"BTCUSDT": 73, "ETHUSDT": 83},
+    "2023-04": {"BTCUSDT": 116, "ETHUSDT": 112},
+    "2023-07": {"BTCUSDT": 134, "ETHUSDT": 130},
+    "2023-10": {"BTCUSDT": 91, "ETHUSDT": 113},
+    "2023-12": {"BTCUSDT": 111, "ETHUSDT": 114}
+  },
+  "confirmation_resolved_action_rows": 855,
+  "unconditional_24bp": {
+    "ACCEPT": {"trades": 293, "multiple": 0.5687374967, "pf": 0.3623576554, "median": -0.005, "mdd": 0.4348377559},
+    "REJECT": {"trades": 259, "multiple": 0.4963931645, "pf": 0.2265204917, "median": -0.005, "mdd": 0.5050240862},
+    "future_oracle": {"trades": 179, "multiple": 1.6842950743, "median": 0.0027402676, "top5_positive_share": 0.0643386410}
+  },
+  "baseline_price_oi": {
+    "fit_spearman": 0.3358551916,
+    "confirmation_spearman": 0.0931005591,
+    "confirmation_positive_predictions": 0,
+    "confirmation_actions": 855,
+    "24bp_trades": 0
+  },
+  "native_500ms_microflow": {
+    "fit_spearman": 0.3625717408,
+    "confirmation_spearman": 0.0873765773,
+    "confirmation_positive_predictions": 0,
+    "confirmation_actions": 855,
+    "24bp_trades": 0
+  },
+  "microflow_material_vs_baseline": false,
+  "source_code_sha256": "e731187384a407e042c1a811bc35bf865f546d8be49c56fe78118ab3acb5b3ce",
+  "decision": "The frequent two-hour balance event population was broad and future action was separable ex post, but neither completed price/OI nor native 500ms flow identified positive causal action value. Retire this exact information unit; do not rescue it with balance length, compression criteria, geometry, feature windows, model complexity, SMC gates, risk or leverage."
+}
