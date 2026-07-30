@@ -30,19 +30,27 @@ jobs:
       - name: Install fixed scientific dependencies
         run: |
           python -m pip install --disable-pip-version-check numpy==2.3.3 pandas==2.3.3 pyarrow==21.0.0 scikit-learn==1.7.1 pytest==8.3.4
-      - name: Recover exact upstream all-breakout source
+      - name: Recover exact upstream sources
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p /tmp/upstream/all /tmp/upstream/audit artifact/upstream artifact/materialized/all artifact/materialized/audit
+
           git fetch --quiet origin agent/r24-bybit-channel-allbreakout-core-001
-          mkdir -p /tmp/upstream artifact/upstream artifact/materialized
-          git archive FETCH_HEAD research/bybit_channel_allbreakout_core | tar -x -C /tmp/upstream
-          root=/tmp/upstream/research/bybit_channel_allbreakout_core
-          python "$root/materialize.py" --out "$GITHUB_WORKSPACE/artifact/materialized"
-          cp "$root"/{CONTRACT.json,RESULT.json,REPORT.md,SOURCE_BUNDLE_MANIFEST.json} artifact/upstream/
+          git archive FETCH_HEAD research/bybit_channel_allbreakout_core | tar -x -C /tmp/upstream/all
+          all_root=/tmp/upstream/all/research/bybit_channel_allbreakout_core
+          python "$all_root/materialize.py" --out "$GITHUB_WORKSPACE/artifact/materialized/all"
+          cp "$all_root"/{CONTRACT.json,RESULT.json,REPORT.md,SOURCE_BUNDLE_MANIFEST.json} artifact/upstream/
+
+          git fetch --quiet origin agent/r24-channel-fullpath-audit-001
+          git archive FETCH_HEAD research/channel_fullpath_audit | tar -x -C /tmp/upstream/audit
+          audit_root=/tmp/upstream/audit/research/channel_fullpath_audit
+          python "$audit_root/materialize.py"
+          cp "$audit_root"/{independent_audit.py,robust_lcb_screen.py,SOURCE_MANIFEST.json} artifact/materialized/audit/
+
           cp research/channel_rebalance_core/CONTRACT.json artifact/
-          python -m py_compile artifact/materialized/*.py
-          pytest -q artifact/materialized/test_semantics.py
+          python -m py_compile artifact/materialized/all/*.py artifact/materialized/audit/*.py
+          pytest -q artifact/materialized/all/test_semantics.py
           find artifact -type f -print0 | sort -z | xargs -0 sha256sum > artifact/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
