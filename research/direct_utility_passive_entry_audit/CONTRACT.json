@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-DIRECT-UTILITY-PASSIVE-ENTRY-AUDIT-001",
+  "base_result_id": "RES-20260730-EXEC-ALIGNED-DIRECT-UTILITY-CORE-001",
+  "base_pr": 551,
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "base_model": {
+    "decision_interval": "completed 5m",
+    "family": "HistGradientBoostingRegressor",
+    "selected_score_quantile": 0.985,
+    "annual_expanding": true,
+    "direction_and_candidate_set_unchanged": true
+  },
+  "base_geometry": {
+    "activation_delay_ms": 500,
+    "reference_entry": "decision+60s canonical one-minute open",
+    "stop": "max(3*ATR24, 0.3% of reference entry)",
+    "target_r": 1.5,
+    "same_minute": "stop_first",
+    "elapsed_time_exit": false
+  },
+  "portfolio": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "global_pending_or_open_slots": 1,
+    "funding": "actual signed Bybit events"
+  },
+  "cost_paths_round_trip_bps": [15, 18, 24],
+  "stage_a": {
+    "name": "zero-entry-nonprice-cost upper bound",
+    "unchanged_candidate_and_fill_chronology": true,
+    "entry_side_nonprice_cost_bp": 0,
+    "exit_side_and_funding": "retained",
+    "strategy_eligible": false
+  },
+  "stage_b": {
+    "name": "one causal passive full-fill touch upper bound",
+    "limit_offset_bp": 1,
+    "required_strict_trade_through_bp": 1,
+    "fill_price": "frozen limit, no improvement",
+    "pending_slot_occupancy": true,
+    "cancel_on": [
+      "frozen hard stop crossed before fill",
+      "later completed 5m state no longer clears the same q=0.985 threshold in the original direction"
+    ],
+    "ttl_or_clock_cancel": false,
+    "post_fill_stop": "original frozen hard stop",
+    "post_fill_target": "+1.5R recomputed from actual limit fill",
+    "principal_cost_treatment": "retain the full 15/18/24bp total stress; maker rebate is not assumed"
+  },
+  "chronology": {
+    "selection": 2022,
+    "confirmation": 2023,
+    "official": "2024-01-01 through 2026-06-30 only after unchanged pre-2024 survival"
+  },
+  "gate": {
+    "minimum_completed_trades_per_year": 60,
+    "positive_cost_paths_bp": [18, 24],
+    "profit_factor_gt": 1.0,
+    "positive_median": true,
+    "both_halfyears_positive": true,
+    "winner_test": "delete each year top5 positive candidate keys before complete slot rerouting",
+    "must_improve_base_24bp_ordinary_and_winner_rerouted_in_2022_and_2023": true
+  },
+  "prohibited_rescue": [
+    "another limit offset",
+    "another penetration amount",
+    "another sensor or holding window",
+    "model or q threshold change",
+    "stop or target change",
+    "cost reduction after outcomes",
+    "risk or leverage optimization",
+    "symbol-side or session filter",
+    "SMC checklist gate"
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}
