@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BYBIT-VALUE-REENTRY-CORE-001",
+  "result_id": "RES-20260730-BYBIT-VALUE-REENTRY-CORE-001",
+  "data": {
+    "exchange": "Bybit USDT linear perpetual",
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "period": "2021-01-01 through 2023-12-31",
+    "one_minute_complete_prior_day_required": true
+  },
+  "profile": {
+    "price": "one-minute turnover divided by volume",
+    "bins": 64,
+    "poc": "maximum-turnover bin midpoint",
+    "value_fraction": 0.70,
+    "value_area": "contiguous from POC by higher-turnover adjacent bin"
+  },
+  "event": {
+    "upper": "completed five-minute close above VAH, then first later completed close below VAH while above POC",
+    "lower": "completed five-minute close below VAL, then first later completed close above VAL while below POC",
+    "maximum_per_symbol_day": "one first event per side"
+  },
+  "execution": {
+    "activation_delay_ms": 500,
+    "entry": "first strictly later observable one-minute open",
+    "stop": "one basis point beyond known excursion extreme",
+    "target": "frozen prior-day POC",
+    "state_exit": "completed five-minute reacceptance outside corresponding value boundary, then fixed delay and first later one-minute open",
+    "same_minute_ambiguity": "stop first",
+    "elapsed_time_exit": false
+  },
+  "account": {
+    "global_slots": 1,
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_bps": [12, 18, 24],
+    "actual_funding": true
+  },
+  "gate": "2022 and 2023 positive at 18/24 bp, PF above one, at least 20 completed trades, and exact top-10%-positive-event deletion with full rerouting positive",
+  "prohibited_rescue": ["bin count", "value-area percentage", "confirmation", "stop", "target", "cost", "symbol-side filter", "risk", "leverage", "ML after failure", "official 2024-2026 access"]
+}
