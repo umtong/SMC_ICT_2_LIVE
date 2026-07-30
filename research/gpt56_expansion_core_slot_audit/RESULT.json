@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-GPT56-EXPANSION-DIRECT-CORE-SLOT-DIAGNOSTIC-001",
+  "claim_id": "CLM-20260730-EXPANSION-CORE-SLOT-ROUTER-001",
+  "status": "DIAGNOSTIC_ONLY_DIRECT_CORE_REPRODUCIBILITY_FAILURE_TARGET_NOT_MET",
+  "target_status": "NOT_MET",
+  "protected_boundary_expansion": {
+    "source_result": "RES-20260730-VOLUME-PROTECTED-BOUNDARY-BOOTSTRAP-RISK-001",
+    "13bp_multiple": 35.369142953091675,
+    "13bp_geometric_daily_growth": 0.003917565708590809,
+    "24bp_multiple": 19.486533728059616,
+    "24bp_geometric_daily_growth": 0.003261583356599651
+  },
+  "direct_utility_core_dependency": {
+    "source_result": "RES-20260730-EXEC-ALIGNED-DIRECT-UTILITY-CORE-001",
+    "published_15bp_multiple": 1.1537848046667967,
+    "published_15bp_trades": 685,
+    "published_15bp_geometric_daily_growth": 0.00015686282025861864,
+    "reproduction_warning": "The published source reproduced under scikit-learn 1.7.2 and 1.8.0, but independent scikit-learn 1.6.1 replay selected a different quantile and produced a materially different trade tape. Exact fitted models, score tape and account ledgers were not transported with the source result.",
+    "linear_control": "No Ridge score quantile was positive and winner-reroute-positive in both 2022 and 2023 at 24 bp."
+  },
+  "nominal_one_slot_no_preemption": {
+    "15bp_expansion_priority": {"multiple": 32.17485946588883, "geometric_daily_growth": 0.0038133768159576142, "trades": 479, "profit_factor": 1.5748517112889682},
+    "15bp_core_priority": {"multiple": 34.94520697374178, "geometric_daily_growth": 0.003904292011201571, "trades": 510, "profit_factor": 1.586197493273774},
+    "18bp_expansion_priority": {"multiple": 26.9048, "geometric_daily_growth": 0.003616507, "trades": 479},
+    "18bp_core_priority": {"multiple": 29.2257, "geometric_daily_growth": 0.003707566, "trades": 510},
+    "24bp_expansion_priority": {"multiple": 19.1531, "geometric_daily_growth": 0.003242595, "trades": 479},
+    "24bp_core_priority": {"multiple": 20.8158, "geometric_daily_growth": 0.003334176, "trades": 510}
+  },
+  "concentration_stress": {
+    "15bp_expansion_priority_top10pct_positive_event_reroute_multiple": 0.4984369002126295,
+    "15bp_core_priority_top10pct_positive_event_reroute_multiple": 0.3033650118106814,
+    "interpretation": "The nominal hybrid remains dominated by protected-boundary Expansion tails. The provisional Core adds little account growth and does not make the system steady-compounding."
+  },
+  "decision": [
+    "Do not rank or deploy the nominal hybrid because one dependency is not reproducibly frozen across supported runtimes.",
+    "Do not tune slot priority, risk, leverage or winner definition to rescue this route.",
+    "Close the slot-integration scope and move to a common four-asset direct-action Core whose economics must survive 24-bp costs and exact winner rerouting before official evaluation."
+  ],
+  "orders_submitted": false,
+  "live_permission": false
+}
