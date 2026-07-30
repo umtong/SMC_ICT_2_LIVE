@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BYBIT-FAILED-ACCEPTANCE-RECLAIM-CORE-001",
+  "result_id": "RES-20260730-BYBIT-FAILED-ACCEPTANCE-RECLAIM-CORE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "mechanism": "A completed one-hour close consumes a frozen prior-96-hour external boundary, then the first later completed close back inside that same boundary identifies failed acceptance and trapped initiative inventory.",
+  "event": {
+    "signal": "completed 1h close outside prior 96 completed-hour high/low",
+    "episode": "one non-overlapping excursion per symbol until first reclaim of the original frozen boundary",
+    "reclaim": "first later completed 1h close back inside the original frozen boundary",
+    "invalid_before_entry": "frozen opposite 96h boundary consumed before reclaim or target already crossed at executable entry",
+    "diagnostic_features_not_gates": [
+      "hours outside",
+      "maximum excursion in ATR",
+      "same-direction extension closes",
+      "signal and reclaim volume state",
+      "OI/account/funding state",
+      "peer return state"
+    ]
+  },
+  "actions": {
+    "direction": "opposite the original breakout",
+    "midpoint": "deliver to frozen original 96h midpoint",
+    "opposite": "deliver to frozen opposite 96h boundary",
+    "flat": "no position",
+    "entry": "fixed 500ms after reclaim availability; conservatively first strictly later observable 1m open",
+    "stop": "one basis point beyond maximum causal excursion from signal through reclaim",
+    "state_loss": "later completed 1h close again outside the original failed boundary, executed at first later 1m open",
+    "same_minute_ambiguity": "stop first",
+    "gap_stop": "adverse observed 1m open",
+    "elapsed_time_liquidation": false
+  },
+  "account": {
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "costs_round_trip_bps": [13, 18, 24],
+    "actual_signed_funding": true,
+    "one_global_pending_or_open_slot": true,
+    "daily_boundary": "00:00 UTC realistic marked NAV"
+  },
+  "chronology": {
+    "descriptive": ["2021-01-01", "2022-01-01"],
+    "forward_development": ["2022-01-01", "2023-01-01"],
+    "unchanged_confirmation": ["2023-01-01", "2024-01-01"],
+    "official_2024_2026_opened": false,
+    "stage_boundary": "mark only; never strategy-close; unresolved outcomes do not become later-stage labels"
+  },
+  "ml_authorization": "Only if one unchanged structural action is positive at 18/24bp with usable breadth and remains positive after exact positive-winner deletion and full slot rerouting in both 2022 and 2023.",
+  "prohibitions": [
+    "no change to 96h scale, reclaim definition, target, stop, latency, cost, risk, leverage, symbol or side after outcomes",
+    "no ML rescue of a negative or concentrated base mechanism",
+    "no official 2024-2026 opening after base failure",
+    "no credentials or orders"
+  ]
+}
