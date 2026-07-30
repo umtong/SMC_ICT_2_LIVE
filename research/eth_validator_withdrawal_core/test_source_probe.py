@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).with_name("source_probe.py")
@@ -58,3 +58,13 @@ def test_xatu_uint128_little_endian_decode() -> None:
     raw = expected.to_bytes(16, byteorder="little", signed=False)
     array = pa.chunked_array([pa.array([raw], type=pa.binary(16))])
     assert MODULE.integer_values(array) == [expected]
+
+
+def test_xatu_unix_seconds_decode_is_utc() -> None:
+    import pyarrow as pa
+
+    value = 1_681_338_503
+    array = pa.chunked_array([pa.array([value], type=pa.int64())])
+    assert MODULE.datetime_values(array) == [
+        datetime.fromtimestamp(value, tz=timezone.utc)
+    ]
