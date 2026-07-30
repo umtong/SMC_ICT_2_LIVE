@@ -13,6 +13,10 @@ on:
       - .github/workflows/dense-liquidity-edge-microflow.yml
   workflow_dispatch:
 
+concurrency:
+  group: dense-liquidity-edge-microflow-source
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
