@@ -6,21 +6,19 @@ on:
       - agent/r32-core-expansion-one-slot-001
     paths:
       - .github/workflows/export-direct-core-materialized-source.yml
-  pull_request:
-    branches: [main]
-    paths:
-      - .github/workflows/export-direct-core-materialized-source.yml
-      - research/execution_aligned_direct_utility_core/**
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/r32-core-expansion-one-slot-001
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -30,6 +28,14 @@ jobs:
         run: |
           python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
           find research/execution_aligned_direct_utility_core/materialized -type f -print0 | sort -z | xargs -0 sha256sum > research/execution_aligned_direct_utility_core/materialized/SHA256SUMS.txt
+      - name: Commit audit-only materialized source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/execution_aligned_direct_utility_core/materialized
+          git commit -m "Materialize direct-Core source for one-slot audit"
+          git push origin HEAD:agent/r32-core-expansion-one-slot-001
       - uses: actions/upload-artifact@v4
         with:
           name: direct-core-materialized-source
