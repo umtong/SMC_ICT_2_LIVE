@@ -1,0 +1,66 @@
+name: Expiry SMT verified source export r24
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/expiry-smt-source-export-r24.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r11-expiry-smt-reversal-001
+          fetch-depth: 1
+
+      - name: Decode and verify archived implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/expiry-smt-source
+          python - <<'PY'
+          import base64, hashlib, json, zlib
+          from pathlib import Path
+          root=Path('research/bybit_expiry_smt_20260726')
+          raw=zlib.decompress(base64.b64decode((root/'expiry_smt.py.zlib.b64').read_text().strip()))
+          digest=hashlib.sha256(raw).hexdigest()
+          expected='51e2ed49aec3b94576eea32e9d3394384968711974c0bebcaccdc890322ef521'
+          assert digest==expected,(digest,expected)
+          out=Path('/tmp/expiry-smt-source')
+          (out/'expiry_smt.py').write_bytes(raw)
+          for rel in [
+              'preregistration.json',
+              'observed/result/result.json',
+              'observed/result/fit_selected_trades.csv',
+              'observed/result/fit_grid.csv',
+              'observed/result/source_manifest.json',
+          ]:
+              target=out/rel
+              target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_bytes((root/rel).read_bytes())
+          manifest={
+              'source_sha256':digest,
+              'files':{},
+              'scientific_content_changed':False,
+          }
+          for p in sorted(out.rglob('*')):
+              if p.is_file():
+                  b=p.read_bytes(); manifest['files'][str(p.relative_to(out))]={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
+          (out/'EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          PY
+          python -m py_compile /tmp/expiry-smt-source/expiry_smt.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: expiry-smt-verified-source-r24-${{ github.sha }}
+          path: /tmp/expiry-smt-source
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
