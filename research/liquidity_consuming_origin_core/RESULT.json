@@ -1,0 +1,147 @@
+{
+  "canonical_dependency_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
+  "claim_id": "CLM-20260730-2210-LIQUIDITY-CONSUMING-ORIGIN-CORE-001",
+  "concentration_diagnosis": {
+    "FIRST_RESPONSE_completed_trades": 12,
+    "FIRST_RESPONSE_open_marks": 1,
+    "FIRST_RESPONSE_selected_entries": 13,
+    "MIDPOINT_LIMIT_completed_negative_trades": 18,
+    "MIDPOINT_LIMIT_completed_positive_trades": 2,
+    "MIDPOINT_LIMIT_exact_positive_event_deleted_nav": 0.9457971256252111,
+    "MIDPOINT_LIMIT_positive_pnl_share_from_all_positive_trades": 1.0
+  },
+  "confirmation_2023_opened": false,
+  "decision": [
+    "The origin definition is materially more faithful than an arbitrary order-block candle because it follows one-use external-liquidity consumption, rejection and causal displacement.",
+    "The 2022 path is nevertheless sparse and tail-dependent: the only ordinary-positive principal path has two profitable trades and eighteen losses; deleting those two positive events makes PF zero and NAV 0.945797x.",
+    "FIRST_RESPONSE is also sparse and ordinary-negative at every tested cost.",
+    "Price geometry still does not directly identify ownership, resting replenishment, forced participation or a defending inventory cohort.",
+    "Retire this exact family without adjacent chart filters, ML, risk or leverage rescue."
+  ],
+  "hard_validity_status": "PASS_LOCAL_CAUSAL_PROGRAMIZATION_AUDIT_FIVE_SEMANTIC_TESTS_TWO_FRESH_RUN_BYTE_IDENTITY",
+  "live_permission": false,
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "principal_24bp": {
+    "FIRST_RESPONSE": {
+      "cost": 0.0024,
+      "end_nav": 9935.94689451179,
+      "h1_return": -0.014814158878605821,
+      "h2_return": 0.008535291494052855,
+      "median_return": -0.0014290135444428823,
+      "multiple": 0.993594689451179,
+      "open_marks": 1,
+      "pf": 0.7268645468193011,
+      "realized_mdd": -0.01599933938341569,
+      "route": "FIRST_RESPONSE",
+      "selected_entries": 13,
+      "top5_positive_share": 0.9999999999999998,
+      "trades": 12,
+      "year": 2022
+    },
+    "FIRST_RESPONSE_exact_positive_event_deleted_reroute": {
+      "cost": 0.0024,
+      "end_nav": 9824.11804672044,
+      "forbidden_count": 4,
+      "h1_return": -0.014814158878605821,
+      "h2_return": -0.0028157494084493084,
+      "median_return": -0.0020269803568926715,
+      "multiple": 0.9824118046720439,
+      "open_marks": 1,
+      "pf": 0.20709835200221205,
+      "realized_mdd": -0.01758819532795608,
+      "route": "FIRST_RESPONSE",
+      "selected_entries": 10,
+      "top5_positive_share": 1.0,
+      "trades": 9,
+      "year": 2022
+    },
+    "MIDPOINT_LIMIT": {
+      "cost": 0.0024,
+      "end_nav": 10057.188450982847,
+      "h1_return": -0.022348610073490982,
+      "h2_return": 0.02870906282236807,
+      "median_return": -0.001793713818354429,
+      "multiple": 1.0057188450982848,
+      "open_marks": 0,
+      "pf": 1.1032806447060113,
+      "realized_mdd": -0.032548064987077074,
+      "route": "MIDPOINT_LIMIT",
+      "selected_entries": 20,
+      "top5_positive_share": 1.0,
+      "trades": 20,
+      "year": 2022
+    },
+    "MIDPOINT_LIMIT_exact_positive_event_deleted_reroute": {
+      "cost": 0.0024,
+      "end_nav": 9457.97125625211,
+      "forbidden_count": 2,
+      "h1_return": -0.022348610073490982,
+      "h2_return": -0.03258243646919223,
+      "median_return": -0.003233722069156209,
+      "multiple": 0.9457971256252111,
+      "open_marks": 0,
+      "pf": 0.0,
+      "realized_mdd": -0.05420287437478888,
+      "route": "MIDPOINT_LIMIT",
+      "selected_entries": 18,
+      "top5_positive_share": null,
+      "trades": 18,
+      "year": 2022
+    }
+  },
+  "programization_corrections": [
+    "An intraminute passive fill cannot receive a favorable target from a high formed before the exact fill; the entire fill minute is adverse-only for target ordering.",
+    "A FIRST_RESPONSE entry cannot claim a target already consumed in its exact entry minute.",
+    "Year-end unresolved exposure is marked with funding and remains open for slot accounting; it is not counted as a completed trade or winner."
+  ],
+  "rank_eligible": false,
+  "ranking_changed": false,
+  "raw_action_surface": [
+    {
+      "candidates": 14,
+      "filled": 14,
+      "marks": 1,
+      "mean_gross_bp": 21.24769319142405,
+      "median_gross_bp": -25.33194303618755,
+      "route": "FIRST_RESPONSE",
+      "state_exits": 6,
+      "stops": 2,
+      "targets": 5
+    },
+    {
+      "candidates": 33,
+      "filled": 23,
+      "marks": 0,
+      "mean_gross_bp": -18.36883653605773,
+      "median_gross_bp": -47.10976970015091,
+      "route": "MIDPOINT_LIMIT",
+      "state_exits": 13,
+      "stops": 8,
+      "targets": 2
+    }
+  ],
+  "result_id": "RES-20260730-LIQUIDITY-CONSUMING-ORIGIN-CORE-001",
+  "schema_version": 1,
+  "source_event_summary": [
+    {
+      "body_threshold": 0.4035874439461884,
+      "consumed": 7740,
+      "pools": 8039,
+      "raids_origin_candidates": 17,
+      "symbol": "BTCUSDT",
+      "tick": 0.5
+    },
+    {
+      "body_threshold": 0.41556042941244536,
+      "consumed": 7509,
+      "pools": 7708,
+      "raids_origin_candidates": 16,
+      "symbol": "ETHUSDT",
+      "tick": 0.05
+    }
+  ],
+  "source_sha256": "fb121708ee8ea8ee51d058c8c2199d90b1f110cb768c486c8425481b38a6457f",
+  "status": "RETIRED_2022_SPARSE_TAIL_DEPENDENT_PROTECTED_ORIGIN_FAILURE",
+  "target_status": "NOT_MET"
+}
