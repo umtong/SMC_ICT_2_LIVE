@@ -1,0 +1,48 @@
+{
+  "account": {
+    "actual_signed_funding": true,
+    "cost_bp": [
+      0,
+      12,
+      18,
+      24
+    ],
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005,
+    "starting_nav": 10000.0
+  },
+  "actions": [
+    "DEFEND_CONTINUE",
+    "FAIL_UNWIND",
+    "FLAT"
+  ],
+  "advancement_gate": {
+    "both_half_years_positive": true,
+    "median_nonnegative": true,
+    "minimum_trades": 60,
+    "pf_gt": 1.0,
+    "positive_nav": true,
+    "principal_cost_bp": 24,
+    "top5_positive_event_deletion_reroute_positive": true
+  },
+  "claim_id": "CLM-20260730-INITIATIVE-AVWAP-DEFENSE-CORE-001",
+  "credentials_used": false,
+  "execution": {
+    "elapsed_time_exit": false,
+    "entry": "first one-minute open strictly later than decision+500ms",
+    "latency_ms": 500,
+    "one_global_slot": true,
+    "same_minute": "stop_first"
+  },
+  "fatal_screen": "calendar 2022 deterministic actions",
+  "fit": "calendar 2021 pooled q75 prior-only 672x15m log-turnover z-score only",
+  "mechanism": "A sponsored displacement through a causal external pool establishes event AVWAP as observable initiative-inventory cost basis. First AVWAP defense continues to the next causal pool; AVWAP failure with inventory contraction unwinds to displacement origin.",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "products_as_testbeds": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "result_id": "RES-20260730-INITIATIVE-AVWAP-DEFENSE-CORE-001",
+  "schema_version": 1
+}
