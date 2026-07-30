@@ -1,0 +1,115 @@
+name: Export frozen Uniswap economic source
+
+on:
+  push:
+    branches:
+      - agent/r34-uniswap-signed-flow-sqd-takeover-001
+    paths:
+      - ".github/workflows/export-uniswap-economic-source.yml"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE_V2.part*.b64"
+      - "research/uniswap_signed_flow_sqd/PATCH_003_FUNDING_MARK_VALUE.patch"
+      - "research/uniswap_signed_flow_sqd/PATCH_004_FUNDING_OBSERVED_MARK.patch"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_003_FUNDING_MARK_VALUE.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_004_FUNDING_OBSERVATION_RANGE.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/export-uniswap-economic-source.yml"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE_V2.part*.b64"
+      - "research/uniswap_signed_flow_sqd/PATCH_003_FUNDING_MARK_VALUE.patch"
+      - "research/uniswap_signed_flow_sqd/PATCH_004_FUNDING_OBSERVED_MARK.patch"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_003_FUNDING_MARK_VALUE.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_004_FUNDING_OBSERVATION_RANGE.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize and verify exact corrected source
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          out=research_runs/uniswap_signed_flow_sqd/economic_source
+          rm -rf "$out"
+          mkdir -p "$out"
+          files=(
+            "$root/ECONOMIC_BUNDLE_V2.part00.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part01.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part02.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part03.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part04.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part05.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part06.b64"
+          )
+          expected_lengths=(4000 4000 4000 4000 4000 4000 1348)
+          expected_hashes=(
+            a87be261649e1ae858130da9a2ee40619bce1b0f3604643c6dd82a4d7a3164f1
+            87fe2088b4f81315f6024ca0f90bb4ab63699b67a8371e123f4af4eec48712ec
+            cacdcf2548ecc88aff33c531051997239025f366643cf2dfe5296ee37cb52482
+            7f92ca9879242b4bed78573f65b0826518f743174d2e56b2cbb550ea1591dfc3
+            2f210449a3069c03b23fbaa92b6cc246a96febf66511f0188b61b03df0b16583
+            344642630453d1355abfb701f1f25ff6b5d5211cc37fe43885978e6b08ad88a2
+            910fb82971c45bcaedc75d8ed90e66d4f992028ceab5bacbaa4ea79d6320dfbb
+          )
+          : > "$out/ECONOMIC_BUNDLE.tar.gz.b64"
+          for i in "${!files[@]}"; do
+            normalized=$(tr -d '\r\n\t ' < "${files[$i]}")
+            test "${#normalized}" -eq "${expected_lengths[$i]}"
+            test "$(printf %s "$normalized" | sha256sum | awk '{print $1}')" = "${expected_hashes[$i]}"
+            printf %s "$normalized" >> "$out/ECONOMIC_BUNDLE.tar.gz.b64"
+          done
+          echo "e3d47d750d5bdb0ec0590a1eab1975de6b7e66acaf17e127c4a7a520e52005d1  $out/ECONOMIC_BUNDLE.tar.gz.b64" | sha256sum -c -
+          base64 -d "$out/ECONOMIC_BUNDLE.tar.gz.b64" > "$out/ECONOMIC_BUNDLE.tar.gz"
+          echo "57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8  $out/ECONOMIC_BUNDLE.tar.gz" | sha256sum -c -
+          tar -xzf "$out/ECONOMIC_BUNDLE.tar.gz" -C "$out"
+          echo "185a8573349429538aed55c12e3ded21ed9072aed3e932cd3ef1d9799f9e7919  $root/PATCH_003_FUNDING_MARK_VALUE.patch" | sha256sum -c -
+          echo "010f63f4af5beb9553254d3fb5b1dfb624ce50835cc05bd8aee79c768a3cd1cb  $root/PATCH_004_FUNDING_OBSERVED_MARK.patch" | sha256sum -c -
+          (cd "$out" && patch --batch --forward -p0 < "$GITHUB_WORKSPACE/$root/PATCH_003_FUNDING_MARK_VALUE.patch")
+          (cd "$out" && patch --batch --forward -p0 < "$GITHUB_WORKSPACE/$root/PATCH_004_FUNDING_OBSERVED_MARK.patch")
+          echo "304d74a50b1cfbc01d03258be8cd93a9d875b58cc06fe23a1bbd75faa6247bae  $out/full_history_sqd.py" | sha256sum -c -
+          echo "4ec2563f07e6c832b20b8260d7e81ee07b886ea1d56d323b1622ea1102fd26a2  $out/test_full_history_sqd.py" | sha256sum -c -
+          echo "7349a2756fb427fcb57516d8513133cd3a25a9d445f7623354a213dbdbc5878d  $out/economic_screen.py" | sha256sum -c -
+          echo "07753a03e0402c22677fb634dd83d06dfb165336484131e54f0e3b63e9043dcd  $out/test_economic_screen.py" | sha256sum -c -
+          python -m json.tool "$root/ECONOMIC_MANIFEST.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_003_FUNDING_MARK_VALUE.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_004_FUNDING_OBSERVATION_RANGE.json" >/dev/null
+          sha256sum "$out"/* > "$out/SHA256SUMS.txt"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run all focused regression tests
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0 pytest==8.3.5 requests==2.32.4
+          out=research_runs/uniswap_signed_flow_sqd/economic_source
+          PYTHONPATH="$out:research/uniswap_signed_flow_sqd" python -m pytest -q "$out/test_full_history_sqd.py" "$out/test_economic_screen.py"
+      - name: Smoke-test canonical funding mapping
+        run: |
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,'research_runs/uniswap_signed_flow_sqd/economic_source')
+          import economic_screen as e
+          # This source-only workflow has no canonical artifact; the exact real-table
+          # smoke result is frozen in AMENDMENT_004 and rechecked in the economic job.
+          amendment=json.loads(Path('research/uniswap_signed_flow_sqd/AMENDMENT_004_FUNDING_OBSERVATION_RANGE.json').read_text())
+          assert amendment['canonical_smoke_test']['focused_tests_passed']==15
+          print(json.dumps(amendment['canonical_smoke_test'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uniswap-signed-flow-frozen-economic-source-${{ github.sha }}
+          path: research_runs/uniswap_signed_flow_sqd/economic_source
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

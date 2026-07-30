@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001",
+  "recorded_before_any_market_outcome": true,
+  "source_gate_observed": true,
+  "market_price_opened": false,
+  "label_opened": false,
+  "model_metric_opened": false,
+  "trade_or_pnl_opened": false,
+  "reason": "The original 2026-07-26 preregistration used Binance ETHUSDT as a temporary pre-2024 execution proxy because canonical Bybit history was not then available in the research path. The project now has hash-verified canonical Bybit ETHUSDT one-minute, fifteen-minute and exact funding tables. The economic screen therefore opens directly on canonical Bybit rather than spending a gate on a non-execution-venue proxy.",
+  "unchanged": [
+    "four canonical Uniswap V3 pools and Swap ABI",
+    "2021-05-05 through 2023-12-31 source history",
+    "120-second source delay and fixed 500ms order latency",
+    "five-minute signed-flow aggregation",
+    "max(5,000,000 stablecoin notional, fit q99.5) event threshold",
+    "70 percent directional imbalance and two-transaction minimum",
+    "thirteen features",
+    "confirmed 15-minute two-right-bar structural pivots over the preceding fourteen UTC days",
+    "one fixed HGBT and optional isotonic calibration",
+    "fit, calibration, untouched-confirmation and conditional-development chronology",
+    "long-short-flat structural expected-value action equation",
+    "0.5 percent current-NAV planned loss, 3x cap, 12/18/24bp, actual funding and one global slot",
+    "no elapsed-time or stage-boundary strategy exit",
+    "all confirmation and development gates"
+  ],
+  "frozen_implementation_details": {
+    "pivot_high": "strictly greater than the two completed fifteen-minute highs on each side",
+    "pivot_low": "strictly lower than the two completed fifteen-minute lows on each side",
+    "pivot_known_at": "completion of the second right-hand fifteen-minute bar",
+    "pivot_consumed": "first later observed one-minute high/low that touches the level",
+    "pool_age": "pivot center must be within the preceding fourteen UTC calendar days",
+    "execution": "first observed one-minute open strictly after source availability plus 500ms",
+    "same_minute_dual_touch": "excluded from model labels and adverse stop-first in account replay",
+    "stop_gap": "adverse observed open",
+    "target_gap": "frozen target only",
+    "source_consensus": "absolute pool-net-notional fraction whose sign agrees with aggregate net flow",
+    "tick_feature": "gross-notional-weighted first-to-last tick change normalized to stablecoin-per-WETH direction"
+  },
+  "official_2024_2026_opened": false,
+  "orders_submitted": false
+}

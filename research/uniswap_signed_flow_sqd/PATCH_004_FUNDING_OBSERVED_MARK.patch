@@ -1,0 +1,92 @@
+--- economic_screen.py
++++ economic_screen.py
+@@ -105,6 +105,40 @@
+     return flow, results
+ 
+ 
++def attach_funding_mark_proxy(
++    bars1m: pd.DataFrame, funding: pd.DataFrame
++) -> pd.DataFrame:
++    """Attach a causal funding-time value proxy and drop pre-market events.
++
++    The canonical calendar includes rows before ETHUSDT observations begin and
++    can include isolated missing minutes.  Funding before the first observed
++    market price cannot affect any eligible position and is discarded.  Every
++    later event uses the last *observed* one-minute close available at the
++    funding timestamp rather than the last calendar row.
++    """
++    available = bars1m.available_at_ms.to_numpy(np.int64)
++    observed = bars1m.observed.to_numpy(bool)
++    closes = bars1m.close.to_numpy(float)
++    valid_bar = observed & np.isfinite(closes) & (closes > 0)
++    if not valid_bar.any():
++        raise EconomicError("canonical one-minute market has no observed price")
++    observed_available = available[valid_bar]
++    observed_closes = closes[valid_bar]
++
++    output = funding[
++        funding.timestamp_ms >= int(observed_available[0])
++    ].copy()
++    ftime = output.timestamp_ms.to_numpy(np.int64)
++    fidx = np.searchsorted(observed_available, ftime, side="right") - 1
++    if (fidx < 0).any():
++        raise EconomicError("funding event lacks a prior observed price")
++    prices = observed_closes[fidx]
++    if not np.isfinite(prices).all() or (prices <= 0).any():
++        raise EconomicError("funding mark proxy is invalid")
++    output["mark_price_proxy"] = prices
++    return output
++
++
+ def load_canonical(root: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+     bars1m = pd.read_pickle(root / "bars_1m.pkl.gz")
+     bars15 = pd.read_pickle(root / "bars_15m.pkl.gz")
+@@ -116,23 +150,7 @@
+     bars1m = bars1m[bars1m.start_time_ms < cutoff].copy()
+     bars15 = bars15[bars15.start_time_ms < cutoff].copy()
+     funding = funding[funding.timestamp_ms < cutoff].copy()
+-
+-    # Funding is charged on position value at the funding timestamp, not the
+-    # entry notional.  The canonical export contains the exact signed rate but
+-    # no mark-price column, so use the last fully observed one-minute close at
+-    # each funding timestamp as a causal mark proxy.
+-    available = bars1m.available_at_ms.to_numpy(np.int64)
+-    observed = bars1m.observed.to_numpy(bool)
+-    closes = bars1m.close.to_numpy(float)
+-    ftime = funding.timestamp_ms.to_numpy(np.int64)
+-    fidx = np.searchsorted(available, ftime, side="right") - 1
+-    valid = (fidx >= 0) & (fidx < len(bars1m))
+-    if not valid.all():
+-        raise EconomicError("funding event lacks a prior observable price")
+-    prices = closes[fidx]
+-    if not observed[fidx].all() or not np.isfinite(prices).all() or (prices <= 0).any():
+-        raise EconomicError("funding mark proxy is not fully observable")
+-    funding["mark_price_proxy"] = prices
++    funding = attach_funding_mark_proxy(bars1m, funding)
+     return bars1m, bars15, funding
+ 
+ 
+--- test_economic_screen.py
++++ test_economic_screen.py
+@@ -54,6 +54,21 @@
+     assert abs(short_pnl + long_pnl) < 1e-12
+ 
+ 
++
++def test_funding_mark_proxy_skips_pre_market_and_bridges_missing_minutes() -> None:
++    bars = pd.DataFrame({
++        "available_at_ms": np.array([60, 120, 180, 240], dtype=np.int64),
++        "observed": [False, True, False, True],
++        "close": [np.nan, 100.0, np.nan, 120.0],
++    })
++    funding = pd.DataFrame({
++        "timestamp_ms": np.array([50, 120, 180, 240], dtype=np.int64),
++        "funding_rate": [0.1, 0.2, 0.3, 0.4],
++    })
++    out = e.attach_funding_mark_proxy(bars, funding)
++    assert out.timestamp_ms.tolist() == [120, 180, 240]
++    assert out.mark_price_proxy.tolist() == [100.0, 100.0, 120.0]
++
+ def test_partition_labels_cannot_cross_boundaries() -> None:
+     events = pd.DataFrame({
+         "decision_time_ms": [int(pd.Timestamp("2022-06-30", tz="UTC").timestamp()*1000)],
