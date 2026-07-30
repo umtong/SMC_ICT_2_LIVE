@@ -71,19 +71,28 @@ jobs:
           print('principal-dependency-ok')
           PY
 
+      - name: Materialize deposit-proof-aware source reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf research/eth_net_staking_inventory_core/materialized
+          "$PY" research/eth_net_staking_inventory_core/materialize_build_source.py \
+            --out research/eth_net_staking_inventory_core/materialized
+
       - name: Compile and test source semantics
         shell: bash
         run: |
           set -euo pipefail
           PY=deps/runtime/root/python/bin/python3
           "$PY" -m py_compile \
-            research/eth_net_staking_inventory_core/build_source.py \
-            research/eth_net_staking_inventory_core/test_build_source.py
+            research/eth_net_staking_inventory_core/materialized/build_source.py \
+            research/eth_net_staking_inventory_core/materialized/test_build_source.py
           "$PY" - <<'PY'
           import importlib.util
           import pathlib
           import sys
-          path = pathlib.Path('research/eth_net_staking_inventory_core/test_build_source.py')
+          path = pathlib.Path('research/eth_net_staking_inventory_core/materialized/test_build_source.py')
           spec = importlib.util.spec_from_file_location('test_build_source', path)
           module = importlib.util.module_from_spec(spec)
           sys.modules['test_build_source'] = module
@@ -101,7 +110,7 @@ jobs:
           set -euo pipefail
           PY=deps/runtime/root/python/bin/python3
           rm -rf source_artifact
-          "$PY" research/eth_net_staking_inventory_core/build_source.py \
+          "$PY" research/eth_net_staking_inventory_core/materialized/build_source.py \
             --principal-source deps/principal/HOURLY_SPLIT_SOURCE.parquet \
             --output source_artifact \
             --workers 8 \
