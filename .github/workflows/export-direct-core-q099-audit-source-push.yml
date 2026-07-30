@@ -1,0 +1,35 @@
+name: Export direct-Core q099 audit source push
+
+on:
+  push:
+    branches:
+      - agent/r36-direct-core-q099-authority-001
+    paths:
+      - ".github/workflows/export-direct-core-q099-audit-source-push.yml"
+      - "research/direct_core_q099_authority_audit/**"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify inherited materialized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd research/execution_aligned_direct_utility_core/materialized
+          sha256sum -c SHA256SUMS.txt
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > ../../../SOURCE_EXPORT_SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-q099-audit-source-push
+          path: |
+            research/execution_aligned_direct_utility_core/materialized
+            SOURCE_EXPORT_SHA256SUMS.txt
+            research/direct_core_q099_authority_audit/WORK_CLAIM.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
