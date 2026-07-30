@@ -27,31 +27,59 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --depth=1 origin agent/r24-volume-sponsored-channel-001:volume-source
+          git fetch --depth=1 origin 1a76e354476af06b822e81318fb8d9a2242fbf7d
           mkdir -p payload/research/volume_sponsored_channel
           for f in SOURCE_MANIFEST.json SOURCE_BUNDLE.tar.gz.b64 materialize.py; do
-            git show "volume-source:research/volume_sponsored_channel/$f" > "payload/research/volume_sponsored_channel/$f"
+            git show "1a76e354476af06b822e81318fb8d9a2242fbf7d:research/volume_sponsored_channel/$f" > "payload/research/volume_sponsored_channel/$f"
           done
 
-      - name: Materialize and verify source bundle
+      - name: Independently decode and verify every source file
         shell: bash
         run: |
           set -euo pipefail
-          python payload/research/volume_sponsored_channel/materialize.py
           python - <<'PY'
-          import hashlib, json
+          import base64, hashlib, io, json, tarfile
           from pathlib import Path
+
           root = Path('payload/research/volume_sponsored_channel')
           manifest = json.loads((root / 'SOURCE_MANIFEST.json').read_text())
+          raw = base64.b64decode((root / 'SOURCE_BUNDLE.tar.gz.b64').read_text().strip())
+          diagnostics = {
+              'pinned_commit': '1a76e354476af06b822e81318fb8d9a2242fbf7d',
+              'declared_archive_bytes': manifest['archive_bytes'],
+              'actual_archive_bytes': len(raw),
+              'declared_archive_sha256': manifest['archive_sha256'],
+              'actual_archive_sha256': hashlib.sha256(raw).hexdigest(),
+          }
+          with tarfile.open(fileobj=io.BytesIO(raw), mode='r:gz') as archive:
+              for member in archive.getmembers():
+                  target = (root / member.name).resolve()
+                  if root.resolve() not in target.parents:
+                      raise RuntimeError(f'unsafe archive path: {member.name}')
+              archive.extractall(root, filter='data')
           rows = []
+          all_files_match = True
           for item in manifest['files']:
               p = root / item['path']
-              rows.append({
+              row = {
                   'path': item['path'],
-                  'bytes': p.stat().st_size,
-                  'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
-              })
-          (root / 'EXPORTED_SOURCE_INDEX.json').write_text(json.dumps(rows, indent=2) + '\n')
+                  'declared_bytes': item['bytes'],
+                  'actual_bytes': p.stat().st_size,
+                  'declared_sha256': item['sha256'],
+                  'actual_sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+              }
+              row['match'] = (
+                  row['declared_bytes'] == row['actual_bytes']
+                  and row['declared_sha256'] == row['actual_sha256']
+              )
+              all_files_match &= row['match']
+              rows.append(row)
+          diagnostics['all_individual_files_match'] = all_files_match
+          diagnostics['files'] = rows
+          (root / 'EXPORTED_SOURCE_INDEX.json').write_text(json.dumps(diagnostics, indent=2) + '\n')
+          if not all_files_match:
+              raise SystemExit('individual source-file verification failed')
+          print(json.dumps(diagnostics, indent=2))
           PY
 
       - uses: actions/upload-artifact@v4
