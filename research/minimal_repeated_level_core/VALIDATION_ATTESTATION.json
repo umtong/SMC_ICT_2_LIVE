@@ -1,0 +1,57 @@
+{
+  "byte_identical": [
+    "full RESULT.json",
+    "PREDICTIONS_2022.csv",
+    "MODEL_TRADES_2022_24BP.csv",
+    "MODEL_TRADES_2022_24BP_WINNER_REMOVED.csv"
+  ],
+  "canonical_export_artifact": {
+    "sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02"
+  },
+  "full_local_result": {
+    "bytes": 12874,
+    "sha256": "972cea4c50d214080173330bff51bf64c914331fec908441bc289dac45afd1c5"
+  },
+  "git_files": {
+    "CONTRACT.json": {
+      "bytes": 3067,
+      "sha256": "151aed39c6e3ab1c74c8c04279071126565a2a2d840bae83987543ea5db16781"
+    },
+    "REPORT.md": {
+      "bytes": 6379,
+      "sha256": "b960af139d0e9e737bdab8bba080bf99b22c88efdae281db909c82d7c366d6ea"
+    },
+    "RESULT.json": {
+      "bytes": 4489,
+      "sha256": "616b603afb651682e8dca4c743b70ab23cbc4d89e38fc1aea2572bb93794bc20"
+    },
+    "run.py": {
+      "bytes": 43335,
+      "sha256": "3eab9b756bf59a43f195a1b7037cafd353c0ceb850a966d28dc8f2ad2c8ac49d"
+    }
+  },
+  "independent_full_runs": 2,
+  "outcome_boundaries": {
+    "2023_opened": false,
+    "official_2024_2026_opened": false,
+    "orders": "none"
+  },
+  "programization_corrections": [
+    "rearm retreat requires a prior completed bar; current interaction cannot self-rearm",
+    "prior penetration/rejection history excludes current interaction",
+    "OI/account-ratio changes align from completed 5m states into 15m decisions",
+    "strict JSON excludes Infinity/NaN"
+  ],
+  "result_id": "RES-20260730-MINIMAL-REPEATED-LEVEL-CORE-001",
+  "schema_version": 1,
+  "semantic_checks": [
+    "symmetric action geometry",
+    "strictly later 500ms execution",
+    "no same-bar self-rearm",
+    "event-key winner deletion before rerouting"
+  ],
+  "semantic_frame_identical": [
+    "EVENTS_2021_2022.csv.gz",
+    "ACTION_OUTCOMES_2021_2022.csv.gz"
+  ]
+}
