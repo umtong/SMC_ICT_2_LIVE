@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BYBIT-500MS-REPLENISHMENT-CORE-001",
+  "result_id": "RES-20260730-BYBIT-500MS-REPLENISHMENT-CORE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbol": "BTCUSDT",
+  "source": "registered sparse observed 500ms public-trade bars, January-June 2023",
+  "information_unit": {
+    "boundary": "prior completed 30-minute observed-trade high or low",
+    "event": "first rearmed boundary consumption with breach-direction five-second turnover z>=2 against a prior-only 30-day baseline",
+    "acceptance": "five-second close remains outside and signed price progress per normalized aggressive turnover is at or above the January-February median",
+    "absorption": "close returns inside or efficiency is at or below the January-February lower quartile"
+  },
+  "execution": {
+    "activation_delay_ms": 500,
+    "entry": "first observed 500ms bucket open at or after activation",
+    "acceptance_action": "continue in breach direction",
+    "absorption_action": "fade breach",
+    "target": "+1.5R",
+    "acceptance_stop": "one tick inside the frozen boundary",
+    "absorption_stop": "one tick beyond the observed event extreme",
+    "state_exit": "first later completed five-second loss of the selected state, then fixed 500ms and first observed bucket",
+    "elapsed_time_exit": false,
+    "same_bucket": "adverse stop first unless observed high/low offsets prove target first"
+  },
+  "account": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "global_slots": 1,
+    "costs_bp": [12, 18, 24],
+    "funding": "actual signed Bybit funding at contemporaneous mark"
+  },
+  "chronology": {
+    "fit": "2023-01-01 through 2023-02-28",
+    "development": "2023-03-01 through 2023-04-30",
+    "confirmation": "2023-05-01 through 2023-06-30 unchanged",
+    "official_2024_2026": "sealed"
+  },
+  "orders_submitted": false
+}
