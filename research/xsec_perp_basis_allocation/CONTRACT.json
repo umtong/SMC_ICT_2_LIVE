@@ -1,0 +1,50 @@
+{
+  "basis": "arithmetic mean of 1440 completed one-minute log(mark/index) observations",
+  "claim_id": "CLM-20260730-XSEC-PERP-BASIS-ALLOCATION-CORE-001",
+  "decision": "00:00 UTC using the immediately preceding completed UTC day",
+  "elapsed_time_exit": false,
+  "execution": {
+    "activation_delay_ms": 500,
+    "entry": "first strictly later observed one-minute open",
+    "gap_stop": "observed open",
+    "same_timestamp_slot_reuse": false,
+    "state_exit": "same latency on basis-rank loss"
+  },
+  "hard_stop": "one basis point beyond immediately preceding completed UTC-day adverse extreme",
+  "official_opened": false,
+  "official_period": [
+    "2024-01-01",
+    "2026-06-30"
+  ],
+  "result_id": "RES-20260730-XSEC-PERP-BASIS-ALLOCATION-CORE-001",
+  "risk": {
+    "costs_bps": [
+      12,
+      18,
+      24
+    ],
+    "funding": "actual signed",
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005
+  },
+  "routes": [
+    "LONG_HIGH_BASIS",
+    "SHORT_LOW_BASIS",
+    "DOMINANT_BASIS_LEG"
+  ],
+  "schema_version": 1,
+  "selection": {
+    "development": 2022,
+    "minimum_entries": 60,
+    "requires_18_24bp_positive": true,
+    "requires_positive_median_pf_halves_and_winner_reroute": true,
+    "unchanged_confirmation": 2023
+  },
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "venue": "Bybit USDT linear perpetual"
+}
