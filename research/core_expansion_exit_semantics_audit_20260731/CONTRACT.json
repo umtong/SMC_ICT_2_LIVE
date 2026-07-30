@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-20260731-CORE-EXPANSION-EXIT-SEMANTICS-AUDIT-001",
+  "frozen_corrections": {
+    "daily_nav": "used_exit_ms <= boundary is closed cash; only used_exit_ms > boundary is marked at last pre-boundary close",
+    "hybrid_same_open": "if promoted Core target and structural exit meet at same open, 2/3 target and 1/3 structural open",
+    "structural_open": "adverse stop gap first; live fixed Core target favorable gap capped at target; otherwise structural open; no later high/low"
+  },
+  "parent": "PR #701 exact SHA-bound source and canonical dependencies",
+  "prohibited": [
+    "event/filter/target/stop/runner fraction change",
+    "model",
+    "risk/leverage",
+    "symbol/side selection",
+    "official outcome selection"
+  ],
+  "required": [
+    "parent reproduction",
+    "2022/2023/pre2024",
+    "official 12/18/24",
+    "winner reroute",
+    "diagnostic counts",
+    "two-run parity"
+  ],
+  "schema_version": 1
+}
