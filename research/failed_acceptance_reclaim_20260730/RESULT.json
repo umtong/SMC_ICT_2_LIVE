@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BYBIT-FAILED-ACCEPTANCE-RECLAIM-CORE-001",
+  "result_id": "RES-20260730-BYBIT-FAILED-ACCEPTANCE-RECLAIM-CORE-001",
+  "status": "RETIRED_FAILED_ACCEPTANCE_RECLAIM_BASE_FAILURE",
+  "hard_validity_status": "PASS_CAUSAL_PRE2024_EVENT_EXECUTION_ACCOUNT_REPRODUCED",
+  "economic_status": "MIDPOINT_WEAK_AND_WINNER_DEPENDENT_OPPOSITE_NEGATIVE_NOT_CORE",
+  "ranking_change": false,
+  "live_permission": false,
+  "orders_submitted": false,
+  "official_2024_2026_opened": false,
+  "counts": {
+    "unique_failed_acceptance_events": 134,
+    "event_action_rows": 267,
+    "2021_midpoint": 47,
+    "2022_midpoint": 49,
+    "2023_midpoint": 37,
+    "2021_opposite": 47,
+    "2022_opposite": 49,
+    "2023_opposite": 38
+  },
+  "midpoint_24bp": {
+    "2021": {
+      "end_nav": 9496.885858173724,
+      "completed_trades": 45,
+      "profit_factor": 0.3989197468676954,
+      "median_account_return": -0.0014197600793582226,
+      "winner_deleted_end_nav": 9173.222109993043
+    },
+    "2022": {
+      "end_nav": 10081.880024343342,
+      "completed_trades": 46,
+      "profit_factor": 1.1332560199880561,
+      "median_account_return": -0.0010191667037382057,
+      "top5_positive_pnl_share": 0.7527943764165281,
+      "winner_deleted_end_nav": 9574.651212655688,
+      "exit_counts": {"target": 14, "state_loss": 30, "stop": 2}
+    },
+    "2023": {
+      "end_nav": 9983.600479766346,
+      "completed_trades": 37,
+      "profit_factor": 0.9672727500345738,
+      "median_account_return": -0.0008169817781545481,
+      "top5_positive_pnl_share": 0.8466189571597887,
+      "winner_deleted_end_nav": 9617.55575544577,
+      "exit_counts": {"target": 11, "state_loss": 22, "stop": 4}
+    },
+    "continuous_2022_2023": {
+      "end_nav": 10065.3462247981,
+      "completed_trades": 83,
+      "profit_factor": 1.0583627558741986,
+      "median_account_return": -0.0010157840151260185,
+      "max_drawdown": 0.041439608808855666,
+      "winner_deleted_end_nav": 9208.474187666257
+    }
+  },
+  "opposite_24bp": {
+    "2021": {
+      "end_nav": 9724.339888341321,
+      "completed_trades": 42,
+      "profit_factor": 0.6437163979434813,
+      "winner_deleted_end_nav": 9122.294888117345
+    },
+    "2022": {
+      "end_nav": 9543.196405496541,
+      "completed_trades": 40,
+      "profit_factor": 0.3862984212847942,
+      "median_account_return": -0.0016400899847672822,
+      "top5_positive_pnl_share": 1.0,
+      "winner_deleted_end_nav": 9220.749548124628
+    },
+    "2023": {
+      "end_nav": 9661.35151737402,
+      "completed_trades": 34,
+      "profit_factor": 0.43268247035892665,
+      "median_account_return": -0.001374775342100866,
+      "top5_positive_pnl_share": 1.0,
+      "winner_deleted_end_nav": 9427.158765968328
+    },
+    "continuous_2022_2023": {
+      "end_nav": 9220.017507284236,
+      "completed_trades": 74,
+      "profit_factor": 0.40640735787558646,
+      "median_account_return": -0.0015711503574219582,
+      "max_drawdown": 0.08526292076279118,
+      "winner_deleted_end_nav": 8734.604077754075
+    }
+  },
+  "event_economics_24bp": {
+    "midpoint_2021_mean_net_bp": -58.80334655166006,
+    "midpoint_2022_mean_net_bp": 10.09033001193117,
+    "midpoint_2023_mean_net_bp": -20.849622256348127,
+    "opposite_2021_mean_net_bp": -57.49306286527222,
+    "opposite_2022_mean_net_bp": -40.815951718166055,
+    "opposite_2023_mean_net_bp": -28.90674577494692
+  },
+  "base_survivors": [],
+  "ml_opened": false,
+  "decision": [
+    "Waiting for a completed reclaim corrected immediate breakout fading and produced a weak positive midpoint path in 2022.",
+    "The same fixed midpoint action was slightly negative in 2023 and strongly negative in 2021.",
+    "Exact positive-winner deletion made the midpoint account negative in every year; the opposite-boundary action was negative before and after deletion.",
+    "The base action surface therefore does not supply a frequent, winner-resistant Core and is not eligible for ML rescue.",
+    "Retire this exact failed-acceptance reclaim family; official 2024-2026 remains unopened."
+  ],
+  "reproduction": {
+    "local_result_sha256": "6f4d8aa4e5c075ad98d938fa6b40610b7d22918b715d30e9e8a99564b6df31b9",
+    "local_event_ledger_sha256": "b7df8e615612ffd9f1f982377210abe15347bc94e9fa6efe93882ca97bb6e7b7",
+    "independent_full_runs_byte_identical": true,
+    "semantic_tests": 6
+  }
+}
