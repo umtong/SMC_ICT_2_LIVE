@@ -7,13 +7,14 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 RUN = ROOT / "materialized" / "run.py"
 EXPECTED_RUN_SHA256 = "657aff8de4c4cd14e7d9cec599bf4b12e3a22a819bc0d31e170014031b8af398"
 OLD_FUNCTION_SHA256 = "791dc4a57c1d425d3e14598781bcceb0b2da4a0556704292121356a6f4332d05"
 
-OLD = '''def _first_state_loss_index(
+OLD_STATE = '''def _first_state_loss_index(
     quote_tape: dict[str, np.ndarray],
     *,
     start_idx: int,
@@ -56,7 +57,7 @@ OLD = '''def _first_state_loss_index(
     return None
 '''
 
-NEW = '''def _first_state_loss_index(
+NEW_STATE = '''def _first_state_loss_index(
     quote_tape: dict[str, np.ndarray],
     *,
     start_idx: int,
@@ -84,7 +85,6 @@ NEW = '''def _first_state_loss_index(
     if stop_before_idx < len(qts):
         barrier_us = int(qts[stop_before_idx])
     else:
-        # The final source quote cannot complete a later calendar second.
         barrier_us = int(qts[-1]) + 1
 
     window_start_us = first_window_start_us
@@ -114,16 +114,37 @@ NEW = '''def _first_state_loss_index(
     return None
 '''
 
+OLD_TARGET = '''    entry_us = int(qts[entry_idx])
+    entry_price = float(ask[entry_idx] if direction > 0 else bid[entry_idx])
+    target = float(target_wall.price)
+'''
+NEW_TARGET = '''    entry_us = int(qts[entry_idx])
+    if not (target_wall.activation_us <= entry_us < target_wall.expiry_us):
+        return None
+    entry_price = float(ask[entry_idx] if direction > 0 else bid[entry_idx])
+    target = float(target_wall.price)
+'''
+OLD_SLOT = '''        if a.entry_us < slot_until:
+            continue
+'''
+NEW_SLOT = '''        if a.entry_us <= slot_until:
+            continue
+'''
+
 source = RUN.read_text()
 observed = hashlib.sha256(source.encode()).hexdigest()
 if observed != EXPECTED_RUN_SHA256:
     raise RuntimeError(f"unexpected frozen run.py SHA-256: {observed}")
-if source.count(OLD) != 1:
-    raise RuntimeError(f"expected exactly one old state-loss function, got {source.count(OLD)}")
-if hashlib.sha256(OLD.encode()).hexdigest() != OLD_FUNCTION_SHA256:
+if source.count(OLD_STATE) != 1:
+    raise RuntimeError(f"expected exactly one old state-loss function, got {source.count(OLD_STATE)}")
+if hashlib.sha256(OLD_STATE.encode()).hexdigest() != OLD_FUNCTION_SHA256:
     raise RuntimeError("embedded old-function identity mismatch")
+if source.count(OLD_TARGET) != 1:
+    raise RuntimeError(f"expected exactly one target-liveness insertion point, got {source.count(OLD_TARGET)}")
+if source.count(OLD_SLOT) != 1:
+    raise RuntimeError(f"expected exactly one slot-overlap condition, got {source.count(OLD_SLOT)}")
 
-patched = source.replace(OLD, NEW)
+patched = source.replace(OLD_STATE, NEW_STATE).replace(OLD_TARGET, NEW_TARGET).replace(OLD_SLOT, NEW_SLOT)
 compile(patched, str(RUN), "exec")
 RUN.write_text(patched)
 patched_sha = hashlib.sha256(patched.encode()).hexdigest()
@@ -137,8 +158,6 @@ spec.loader.exec_module(mod)
 
 wall = mod.WallInterval("w", "d", "BTCUSDT", "ask", 100.0, 0, 10_000_000, 1000.0, 10.0, 0.1)
 
-# A losing partial entry-second must not trigger. The next complete second is
-# healthy; the first full losing second is [3s,4s), executable after 4.5s.
 qts = np.arange(1_200_000, 4_800_001, 200_000, dtype=np.int64)
 mids = np.where(qts < 2_000_000, 99.0, np.where(qts < 3_000_000, 101.0, 99.0))
 idx = mod._first_state_loss_index(
@@ -148,7 +167,6 @@ idx = mod._first_state_loss_index(
 if idx is None or int(qts[idx]) < 4_500_000:
     raise AssertionError(f"partial-second causality failed: {idx}")
 
-# Entry exactly on a second boundary permits that full second.
 qts2 = np.arange(1_000_000, 2_800_001, 200_000, dtype=np.int64)
 mids2 = np.full(qts2.size, 99.0)
 idx2 = mod._first_state_loss_index(
@@ -158,7 +176,6 @@ idx2 = mod._first_state_loss_index(
 if idx2 is None or int(qts2[idx2]) < 2_500_000:
     raise AssertionError(f"boundary-second completion failed: {idx2}")
 
-# A hard barrier inside the candidate full second prevents state completion.
 barrier_idx = int(np.searchsorted(qts, 3_600_000))
 idx3 = mod._first_state_loss_index(
     {"ts": qts, "mid": mids}, start_idx=0, stop_before_idx=barrier_idx,
@@ -167,9 +184,52 @@ idx3 = mod._first_state_loss_index(
 if idx3 is not None:
     raise AssertionError(f"hard-barrier priority failed: {idx3}")
 
+quotes = pd.DataFrame({
+    "local_timestamp": [1_000_000, 2_000_000, 3_000_000],
+    "ask_price": [100.1, 101.1, 101.1],
+    "bid_price": [100.0, 100.9, 100.9],
+    "ask_amount": [1.0, 1.0, 1.0],
+    "bid_amount": [1.0, 1.0, 1.0],
+})
+expired_target = mod.WallInterval(
+    "expired", "d", "BTCUSDT", "ask", 101.0, 0, 500_000, 1000.0, 10.0, 0.1
+)
+expired = mod.resolve_action(
+    date="d", wall=wall, action="ACCEPT", consumption_us=0,
+    adjudication_end_us=0, event_extreme=100.2, consumed_qty=5.0,
+    replenish_notional=0.0, beyond_fraction=1.0, target_wall=expired_target,
+    quote_tape=mod.prepare_quote_tape(quotes),
+    funding=pd.DataFrame(columns=["timestamp_us", "funding_rate"]),
+)
+if expired is not None:
+    raise AssertionError("expired target wall remained tradeable")
+
+def make_action(key: str, entry_us: int, exit_us: int) -> object:
+    return mod.Action(
+        event_key=key, date="d", symbol="BTCUSDT", wall_id=key,
+        wall_side="ask", action="ACCEPT", direction=1,
+        consumption_us=entry_us - 2, adjudication_end_us=entry_us - 1,
+        entry_us=entry_us, entry_price=100.0, target_price=101.0,
+        stop_price=99.0, event_extreme=100.0, exit_us=exit_us,
+        exit_price=101.0, exit_reason="TARGET", target_wall_id="t",
+        activation_notional=1000.0, consumed_qty=10.0,
+        replenish_notional=0.0, beyond_fraction=1.0,
+        holding_seconds=(exit_us-entry_us)/mod.US,
+        boundary_mark=False, funding_unit_pnl=0.0,
+    )
+
+sim, ledger = mod.simulate(
+    [make_action("a", 1_000_000, 2_000_000), make_action("b", 2_000_000, 3_000_000)],
+    funding=pd.DataFrame(), cost_bp=0.0,
+)
+if sim["selected_rows"] != 1 or len(ledger) != 1:
+    raise AssertionError(f"equal-timestamp global-slot adversity failed: {sim}")
+
 print(json.dumps({
     "patched_run_sha256": patched_sha,
     "partial_second_test_execution_us": int(qts[idx]),
     "boundary_second_test_execution_us": int(qts2[idx2]),
     "hard_barrier_test": "PASS",
+    "expired_target_test": "PASS",
+    "equal_timestamp_slot_test": "PASS",
 }, sort_keys=True))
