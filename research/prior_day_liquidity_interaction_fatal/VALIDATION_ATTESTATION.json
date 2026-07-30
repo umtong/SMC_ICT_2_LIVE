@@ -2,20 +2,23 @@
   "official_2024_2026_opened": false,
   "orders_submitted": false,
   "result_id": "RES-20260730-PRIOR-DAY-LIQUIDITY-INTERACTION-FATAL-001",
-  "schema_version": 1,
+  "schema_version": 2,
   "validation": {
+    "correction_id": "CORRECTION-20260730-PRIOR-DAY-STAGE-BOUNDARY-MARK-001",
+    "corrected_local_replay_completed": true,
+    "economic_verdict_changed": false,
     "evaluable_candidates": 1873,
-    "fresh_process_returncode": 0,
+    "focused_boundary_tests_added": 2,
     "generated_candidates": 1919,
-    "grid_sha256": "547c2055bac7fae3ad21c49f5656db4b28bb762f451f0c8df48db7222f96787a",
-    "local_replay_completed": true,
-    "result_sha256": "acb4f9006be80e9ac186ece3db9bac848e0a79ae1445011e84db1a827798cf40",
-    "runner_sha256": "e37c7dd9903d91a45e9005c94c130a2b2a54dfac4e73aa2726d5a7df94081197",
-    "runtime": {
-      "numpy": "2.3.5",
-      "pandas": "2.2.3",
-      "pyarrow": "19.0.1",
-      "python": "3.13.5"
-    }
+    "original_attestation_superseded": true,
+    "remote_focused_test_status": "PENDING_DEDICATED_WORKFLOW_OBSERVATION",
+    "source_result_hashes": {
+      "local_corrected_annual_grid_sha256": "0225370def7a18ee43947b2f2aa77cfc4b61f60a0ec95b78fd5614b82f6a7574",
+      "local_corrected_continuous_grid_sha256": "e59502abed46f8a3246d26061a67657e6b378fb2cfdb3cec100631687415e4f1",
+      "local_corrected_report_sha256": "ae5db39ee4c3e6de5ad13eed909470a3f59ff7fd7649e0c437eef1c5cc52e7c1",
+      "local_corrected_result_sha256": "f71c399cf489b15194f737921f6e4a77556a549de2b77ad5d6bf5830fc5250c4"
+    },
+    "stage_boundary_rule": "unresolved positions are marked at the last observed pre-boundary minute, funded only through the boundary, retain the slot and are never strategy-closed",
+    "validity_statement": "The original economic conclusion remains negative after correcting later-year exit contamination. Remote focused CI is not yet claimed as passed."
   }
 }
