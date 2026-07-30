@@ -1,0 +1,59 @@
+{
+  "chronology": {
+    "2022": "first deterministic forward screen",
+    "2023": "unchanged confirmation only after 2022 survivor",
+    "official": "open 2024-2026 only if both periods satisfy the frozen gate"
+  },
+  "claim_id": "CLM-20260730-CORE-THEN-PROTECTED-REACTIVATION-001",
+  "discovery_account": {
+    "costs_bp": [
+      12,
+      18,
+      24
+    ],
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005,
+    "start_nav": 10000.0
+  },
+  "execution": {
+    "elapsed_time_close": false,
+    "execution_proxy": "first strictly later observed one-minute open",
+    "funding": "actual signed Bybit funding",
+    "latency_ms": 500,
+    "one_global_slot": true,
+    "same_minute_barrier": "adverse stop first",
+    "stage_boundary_close": false
+  },
+  "gate": {
+    "both_halfyears_positive": true,
+    "exact_top5_parent_event_deletion_and_rerouting_positive": true,
+    "nonnegative_median": true,
+    "pf_above_one": true,
+    "positive_18bp": true,
+    "positive_24bp": true
+  },
+  "logic": {
+    "core": "full realization at +1.5R, with inherited disaster stop, promoted-boundary loss, and opposite 48h channel state loss",
+    "event": "completed high-volume 96h accepted-delivery event",
+    "flat": "no active/pending order while awaiting promotion",
+    "reactivation": "new separately sized Expansion only after Core target and later completed-hour boundary promotion",
+    "symbol_sides": [
+      "BTCUSDT:LONG",
+      "ETHUSDT:LONG",
+      "ETHUSDT:SHORT"
+    ],
+    "volume_threshold": 2.2706072565238586
+  },
+  "orders_submitted": false,
+  "prohibited_rescue": [
+    "another R target",
+    "partial runner",
+    "promotion-rule tuning",
+    "risk/leverage tuning",
+    "symbol-side tuning",
+    "cost tuning",
+    "ML rescue",
+    "official-period filters"
+  ],
+  "schema_version": 1
+}
