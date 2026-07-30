@@ -6,12 +6,16 @@ on:
       - agent/r34-uniswap-signed-flow-sqd-takeover-001
     paths:
       - ".github/workflows/export-uniswap-economic-source.yml"
-      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.tar.gz.b64"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE_V2.part*.b64"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json"
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/export-uniswap-economic-source.yml"
-      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE.tar.gz.b64"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE_V2.part*.b64"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json"
   workflow_dispatch:
 
 permissions:
@@ -23,20 +27,50 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Materialize and verify exact source
+      - name: Materialize and verify exact corrected source
         run: |
           set -euo pipefail
           root=research/uniswap_signed_flow_sqd
           out=research_runs/uniswap_signed_flow_sqd/economic_source
           rm -rf "$out"
           mkdir -p "$out"
-          base64 -d "$root/ECONOMIC_BUNDLE.tar.gz.b64" > "$out/ECONOMIC_BUNDLE.tar.gz"
-          echo "f466c08b520afc93261d38ce665122c762c9ca901cfe5781c4dac26eb04b5fcf  $out/ECONOMIC_BUNDLE.tar.gz" | sha256sum -c -
+          files=(
+            "$root/ECONOMIC_BUNDLE_V2.part00.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part01.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part02.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part03.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part04.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part05.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part06.b64"
+          )
+          expected_lengths=(4000 4000 4000 4000 4000 4000 1348)
+          expected_hashes=(
+            a87be261649e1ae858130da9a2ee40619bce1b0f3604643c6dd82a4d7a3164f1
+            87fe2088b4f81315f6024ca0f90bb4ab63699b67a8371e123f4af4eec48712ec
+            cacdcf2548ecc88aff33c531051997239025f366643cf2dfe5296ee37cb52482
+            7f92ca9879242b4bed78573f65b0826518f743174d2e56b2cbb550ea1591dfc3
+            2f210449a3069c03b23fbaa92b6cc246a96febf66511f0188b61b03df0b16583
+            344642630453d1355abfb701f1f25ff6b5d5211cc37fe43885978e6b08ad88a2
+            910fb82971c45bcaedc75d8ed90e66d4f992028ceab5bacbaa4ea79d6320dfbb
+          )
+          : > "$out/ECONOMIC_BUNDLE.tar.gz.b64"
+          for i in "${!files[@]}"; do
+            normalized=$(tr -d '\r\n\t ' < "${files[$i]}")
+            test "${#normalized}" -eq "${expected_lengths[$i]}"
+            test "$(printf %s "$normalized" | sha256sum | awk '{print $1}')" = "${expected_hashes[$i]}"
+            printf %s "$normalized" >> "$out/ECONOMIC_BUNDLE.tar.gz.b64"
+          done
+          test "$(wc -c < "$out/ECONOMIC_BUNDLE.tar.gz.b64")" -eq 25348
+          echo "e3d47d750d5bdb0ec0590a1eab1975de6b7e66acaf17e127c4a7a520e52005d1  $out/ECONOMIC_BUNDLE.tar.gz.b64" | sha256sum -c -
+          base64 -d "$out/ECONOMIC_BUNDLE.tar.gz.b64" > "$out/ECONOMIC_BUNDLE.tar.gz"
+          echo "57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8  $out/ECONOMIC_BUNDLE.tar.gz" | sha256sum -c -
           tar -xzf "$out/ECONOMIC_BUNDLE.tar.gz" -C "$out"
-          echo "5bf93ac504fad6d676a64d1e1ee900794529a4f9a7d9f7d5dc4741793d1e233e  $out/full_history_sqd.py" | sha256sum -c -
-          echo "b517d95fa3f8a07041653e00dcaffe0b5392087d23fbc5376563f4ce8890869a  $out/test_full_history_sqd.py" | sha256sum -c -
-          echo "67d662fb0255621df687157a0535dd35f06417e12beb4a195cf7d3d5bd32de0f  $out/economic_screen.py" | sha256sum -c -
-          echo "69e1fbdea120c47362fd71f4205770f49bba92620965a769f967f579b5413d92  $out/test_economic_screen.py" | sha256sum -c -
+          echo "304d74a50b1cfbc01d03258be8cd93a9d875b58cc06fe23a1bbd75faa6247bae  $out/full_history_sqd.py" | sha256sum -c -
+          echo "4ec2563f07e6c832b20b8260d7e81ee07b886ea1d56d323b1622ea1102fd26a2  $out/test_full_history_sqd.py" | sha256sum -c -
+          echo "39763af05cd091849a8c4a69a45a6d9d0f6845907c6fecc1a23312ee146b7b75  $out/economic_screen.py" | sha256sum -c -
+          echo "dbfc1c42112fb4df11af3e52659855e7ab085f80b3751c6e0e9e9012a562c421  $out/test_economic_screen.py" | sha256sum -c -
+          python -m json.tool "$root/ECONOMIC_MANIFEST.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json" >/dev/null
           sha256sum "$out"/* > "$out/SHA256SUMS.txt"
       - uses: actions/upload-artifact@v4
         with:
