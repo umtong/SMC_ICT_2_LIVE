@@ -1,0 +1,588 @@
+{
+  "account_contract": {
+    "activation_latency_ms": 500,
+    "cost_round_trip_bps": [
+      13,
+      18,
+      24
+    ],
+    "elapsed_time_exit": false,
+    "execution": "first strictly later observable canonical Bybit one-minute open",
+    "funding": "actual signed Bybit funding",
+    "global_pending_plus_open_slots": 1,
+    "notional_cap": 3.0,
+    "planned_risk_fraction": 0.005,
+    "same_minute_ambiguity": "stop_first",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ]
+  },
+  "claim_id": "CLM-20260730-BYBIT-CHANNEL-REBALANCE-CORE-001",
+  "decision": {
+    "deterministic_route_survived": false,
+    "ml_opened": false,
+    "next_inference": "Waiting for the first causal retest materially reduced paired chase loss but did not create a positive Core; one five-minute close outside the boundary is not sufficient evidence of protected acceptance.",
+    "official_2024_2026_opened": false,
+    "orders_submitted": false,
+    "ranking_changed": false,
+    "risk_leverage_search_opened": false
+  },
+  "economic_status": "BELOW_GATE",
+  "economics": {
+    "continuous_2021_2023": {
+      "13": {
+        "cap_binding_share": 0.015228426395939087,
+        "completed_trades": 394,
+        "end_nav": 7742.573684427174,
+        "exit_counts": {
+          "channel_exit": 16,
+          "stop": 378
+        },
+        "g_daily": -0.0002336265345641575,
+        "marked_open": 0,
+        "max_leverage": 3.0000000000000004,
+        "mean_account_return": -0.00021342365207130165,
+        "median_account_return": -0.0047576178190995785,
+        "multiple": 0.7742573684427174,
+        "negative_trades": 378,
+        "pending_setups": 385,
+        "pf": 0.8561765478353283,
+        "positive_trades": 16,
+        "realized_trade_mdd": 0.3596877850965493,
+        "total_return": -0.22574263155728258
+      },
+      "18": {
+        "cap_binding_share": 0.0,
+        "completed_trades": 394,
+        "end_nav": 6500.448622590346,
+        "exit_counts": {
+          "channel_exit": 16,
+          "stop": 378
+        },
+        "g_daily": -0.00039326867663846965,
+        "marked_open": 0,
+        "max_leverage": 2.4934531361238443,
+        "mean_account_return": -0.0007525644042654147,
+        "median_account_return": -0.004783701002008017,
+        "multiple": 0.6500448622590346,
+        "negative_trades": 378,
+        "pending_setups": 385,
+        "pf": 0.7600231568864644,
+        "positive_trades": 16,
+        "realized_trade_mdd": 0.38619785246778826,
+        "total_return": -0.3499551377409654
+      },
+      "24": {
+        "cap_binding_share": 0.0,
+        "completed_trades": 394,
+        "end_nav": 5514.652724203568,
+        "exit_counts": {
+          "channel_exit": 16,
+          "stop": 378
+        },
+        "g_daily": -0.0005433924107479671,
+        "marked_open": 0,
+        "max_leverage": 1.9191995371427262,
+        "mean_account_return": -0.0012467697275772853,
+        "median_account_return": -0.004808691498333308,
+        "multiple": 0.5514652724203568,
+        "negative_trades": 378,
+        "pending_setups": 385,
+        "pf": 0.6707067321460948,
+        "positive_trades": 16,
+        "realized_trade_mdd": 0.4499079170515362,
+        "total_return": -0.4485347275796432
+      }
+    },
+    "gate": {
+      "passed": false,
+      "requirements": "2022 and 2023 positive at 18/24bp, PF>1, >=20 completed trades, and exact winner-deletion reroute positive"
+    },
+    "pre2024_years": {
+      "2021": {
+        "13": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 163,
+            "end_nav": 9067.895556422996,
+            "exit_counts": {
+              "channel_exit": 4,
+              "stop": 159
+            },
+            "g_daily": -0.00026803223248506036,
+            "marked_open": 0,
+            "max_leverage": 2.590752964249717,
+            "mean_account_return": 0.0001287989308126245,
+            "median_account_return": -0.004804725233167021,
+            "multiple": 0.9067895556422997,
+            "negative_trades": 159,
+            "pending_setups": 154,
+            "pf": 0.8544965026643672,
+            "positive_trades": 4,
+            "realized_trade_mdd": 0.3596877850965493,
+            "total_return": -0.09321044435770032
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 174,
+            "end_nav": 4279.951913104521,
+            "exit_counts": {
+              "stop": 174
+            },
+            "g_daily": -0.0023223493526816075,
+            "marked_open": 0,
+            "max_leverage": 2.746093684065339,
+            "mean_account_return": -0.004865192238984631,
+            "median_account_return": -0.004808229097187955,
+            "multiple": 0.4279951913104521,
+            "negative_trades": 174,
+            "pending_setups": 173,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.5698906263952671,
+            "removed_count": 4,
+            "total_return": -0.572004808689548
+          }
+        },
+        "18": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 163,
+            "end_nav": 8437.122709626334,
+            "exit_counts": {
+              "channel_exit": 4,
+              "stop": 159
+            },
+            "g_daily": -0.00046549095063630475,
+            "marked_open": 0,
+            "max_leverage": 2.0577543295025715,
+            "mean_account_return": -0.00047936029726523783,
+            "median_account_return": -0.0048221240031373356,
+            "multiple": 0.8437122709626333,
+            "negative_trades": 159,
+            "pending_setups": 154,
+            "pf": 0.7525142510784578,
+            "positive_trades": 4,
+            "realized_trade_mdd": 0.3690681119821695,
+            "total_return": -0.15628772903736665
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 174,
+            "end_nav": 4265.700470013792,
+            "exit_counts": {
+              "stop": 174
+            },
+            "g_daily": -0.002331466089404044,
+            "marked_open": 0,
+            "max_leverage": 2.1545335425257495,
+            "mean_account_return": -0.004884308746371633,
+            "median_account_return": -0.004825008521319674,
+            "multiple": 0.42657004700137924,
+            "negative_trades": 174,
+            "pending_setups": 173,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.5713213405949751,
+            "removed_count": 4,
+            "total_return": -0.5734299529986208
+          }
+        },
+        "24": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 163,
+            "end_nav": 7880.0876871401215,
+            "exit_counts": {
+              "channel_exit": 4,
+              "stop": 159
+            },
+            "g_daily": -0.0006525159540887726,
+            "marked_open": 0,
+            "max_leverage": 1.650326107267848,
+            "mean_account_return": -0.00103030583124608,
+            "median_account_return": -0.0048393052741209286,
+            "multiple": 0.7880087687140122,
+            "negative_trades": 159,
+            "pending_setups": 154,
+            "pf": 0.6596414429909857,
+            "positive_trades": 4,
+            "realized_trade_mdd": 0.37854220006914485,
+            "total_return": -0.21199123128598785
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 174,
+            "end_nav": 4253.4612278275,
+            "exit_counts": {
+              "stop": 174
+            },
+            "g_daily": -0.002339319886240032,
+            "marked_open": 0,
+            "max_leverage": 1.7119818896758363,
+            "mean_account_return": -0.004900774910415181,
+            "median_account_return": -0.0048416361725704725,
+            "multiple": 0.42534612278274997,
+            "negative_trades": 174,
+            "pending_setups": 173,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.5725497049610782,
+            "removed_count": 4,
+            "total_return": -0.57465387721725
+          }
+        }
+      },
+      "2022": {
+        "13": {
+          "ordinary": {
+            "cap_binding_share": 0.031496062992125984,
+            "completed_trades": 127,
+            "end_nav": 8640.716470479621,
+            "exit_counts": {
+              "channel_exit": 7,
+              "stop": 120
+            },
+            "g_daily": -0.0004001927475176803,
+            "marked_open": 0,
+            "max_leverage": 3.0000000000000004,
+            "mean_account_return": -0.0002539800231415405,
+            "median_account_return": -0.004749805747745705,
+            "multiple": 0.8640716470479621,
+            "negative_trades": 120,
+            "pending_setups": 125,
+            "pf": 0.7727206972023849,
+            "positive_trades": 7,
+            "realized_trade_mdd": 0.3324763432124168,
+            "total_return": -0.13592835295203787
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.013422818791946308,
+            "completed_trades": 149,
+            "end_nav": 5169.057784893156,
+            "exit_counts": {
+              "stop": 149
+            },
+            "g_daily": -0.0018040215879912,
+            "marked_open": 0,
+            "max_leverage": 3.0,
+            "mean_account_return": -0.004412512244454785,
+            "median_account_return": -0.004754414454635278,
+            "multiple": 0.5169057784893156,
+            "negative_trades": 149,
+            "pending_setups": 147,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.4850533243530474,
+            "removed_count": 7,
+            "total_return": -0.4830942215106844
+          }
+        },
+        "18": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 127,
+            "end_nav": 8237.28698039653,
+            "exit_counts": {
+              "channel_exit": 7,
+              "stop": 120
+            },
+            "g_daily": -0.0005311302790871331,
+            "marked_open": 0,
+            "max_leverage": 2.4934531361238443,
+            "mean_account_return": -0.0006260643509923175,
+            "median_account_return": -0.00477687956748114,
+            "multiple": 0.823728698039653,
+            "negative_trades": 120,
+            "pending_setups": 125,
+            "pf": 0.6973009961786317,
+            "positive_trades": 7,
+            "realized_trade_mdd": 0.3347240786512179,
+            "total_return": -0.1762713019603469
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 149,
+            "end_nav": 5115.719507513135,
+            "exit_counts": {
+              "stop": 149
+            },
+            "g_daily": -0.00183246730502451,
+            "marked_open": 0,
+            "max_leverage": 2.4934531361238443,
+            "mean_account_return": -0.004481519788130802,
+            "median_account_return": -0.004783701002008,
+            "multiple": 0.5115719507513135,
+            "negative_trades": 149,
+            "pending_setups": 147,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.49037542720627003,
+            "removed_count": 7,
+            "total_return": -0.48842804924868655
+          }
+        },
+        "24": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 127,
+            "end_nav": 7872.738849106693,
+            "exit_counts": {
+              "channel_exit": 7,
+              "stop": 120
+            },
+            "g_daily": -0.0006550704976687749,
+            "marked_open": 0,
+            "max_leverage": 1.9191995371427262,
+            "mean_account_return": -0.0009620994310694124,
+            "median_account_return": -0.004803193741554226,
+            "multiple": 0.7872738849106693,
+            "negative_trades": 120,
+            "pending_setups": 125,
+            "pf": 0.6245168945453554,
+            "positive_trades": 7,
+            "realized_trade_mdd": 0.3363969413019039,
+            "total_return": -0.2127261150893307
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 149,
+            "end_nav": 5071.683273507183,
+            "exit_counts": {
+              "stop": 149
+            },
+            "g_daily": -0.0018560761894741438,
+            "marked_open": 0,
+            "max_leverage": 1.919199537142726,
+            "mean_account_return": -0.004539209003208922,
+            "median_account_return": -0.0048086914983333065,
+            "multiple": 0.5071683273507183,
+            "negative_trades": 149,
+            "pending_setups": 147,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.4947674391033623,
+            "removed_count": 7,
+            "total_return": -0.49283167264928174
+          }
+        }
+      },
+      "2023": {
+        "13": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 104,
+            "end_nav": 9881.641253347309,
+            "exit_counts": {
+              "channel_exit": 5,
+              "stop": 99
+            },
+            "g_daily": -3.261995089098857e-05,
+            "marked_open": 0,
+            "max_leverage": 2.2815168289236374,
+            "mean_account_return": 0.00014839383978682943,
+            "median_account_return": -0.004684944735045805,
+            "multiple": 0.9881641253347309,
+            "negative_trades": 99,
+            "pending_setups": 106,
+            "pf": 0.9760153086797061,
+            "positive_trades": 5,
+            "realized_trade_mdd": 0.1650936530105076,
+            "total_return": -0.011835874665269142
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 111,
+            "end_nav": 6241.240449033462,
+            "exit_counts": {
+              "stop": 111
+            },
+            "g_daily": -0.0012891937077947888,
+            "marked_open": 0,
+            "max_leverage": 2.2815168289236374,
+            "mean_account_return": -0.004235519229210842,
+            "median_account_return": -0.004684944735045805,
+            "multiple": 0.6241240449033462,
+            "negative_trades": 111,
+            "pending_setups": 114,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.3782637756166062,
+            "removed_count": 5,
+            "total_return": -0.37587595509665384
+          }
+        },
+        "18": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 104,
+            "end_nav": 9353.29792452636,
+            "exit_counts": {
+              "channel_exit": 5,
+              "stop": 99
+            },
+            "g_daily": -0.00018315060309537223,
+            "marked_open": 0,
+            "max_leverage": 1.8057696429626642,
+            "mean_account_return": -0.00036767533472947725,
+            "median_account_return": -0.004727820587223649,
+            "multiple": 0.935329792452636,
+            "negative_trades": 99,
+            "pending_setups": 106,
+            "pf": 0.8660211750780705,
+            "positive_trades": 5,
+            "realized_trade_mdd": 0.19199463810458617,
+            "total_return": -0.06467020754736386
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 111,
+            "end_nav": 6175.06103720987,
+            "exit_counts": {
+              "stop": 111
+            },
+            "g_daily": -0.0013183897743881403,
+            "marked_open": 0,
+            "max_leverage": 1.8057696429626642,
+            "mean_account_return": -0.004330165307694468,
+            "median_account_return": -0.004727820587223649,
+            "multiple": 0.617506103720987,
+            "negative_trades": 111,
+            "pending_setups": 114,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.3848494891308579,
+            "removed_count": 5,
+            "total_return": -0.382493896279013
+          }
+        },
+        "24": {
+          "ordinary": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 104,
+            "end_nav": 8889.171250943101,
+            "exit_counts": {
+              "channel_exit": 5,
+              "stop": 99
+            },
+            "g_daily": -0.00032255418856430573,
+            "marked_open": 0,
+            "max_leverage": 1.444269036461993,
+            "mean_account_return": -0.0008345610045693077,
+            "median_account_return": -0.004766029775302442,
+            "multiple": 0.8889171250943101,
+            "negative_trades": 99,
+            "pending_setups": 106,
+            "pf": 0.764662490715826,
+            "positive_trades": 5,
+            "realized_trade_mdd": 0.2154389998773022,
+            "total_return": -0.1110828749056898
+          },
+          "winner_deleted": {
+            "cap_binding_share": 0.0,
+            "completed_trades": 111,
+            "end_nav": 6118.766805366478,
+            "exit_counts": {
+              "stop": 111
+            },
+            "g_daily": -0.001343482898616077,
+            "marked_open": 0,
+            "max_leverage": 1.444269036461993,
+            "mean_account_return": -0.004411604166625845,
+            "median_account_return": -0.004766029775302442,
+            "multiple": 0.6118766805366478,
+            "negative_trades": 111,
+            "pending_setups": 114,
+            "pf": 0.0,
+            "positive_trades": 0,
+            "realized_trade_mdd": 0.39129703052241194,
+            "removed_count": 5,
+            "total_return": -0.3881233194633522
+          }
+        }
+      }
+    }
+  },
+  "event_funnel": {
+    "exit_counts": {
+      "channel_exit": 29,
+      "stop": 734
+    },
+    "filled_by_year": {
+      "2021": 289,
+      "2022": 284,
+      "2023": 190
+    },
+    "filled_latency_hours": {
+      "25%": 0.18333333333333332,
+      "50%": 0.43333333333333335,
+      "75%": 1.35,
+      "count": 763.0,
+      "max": 58.43333333333333,
+      "mean": 1.8647444298820446,
+      "min": 0.1,
+      "std": 4.263523329258342
+    },
+    "rows": 1418,
+    "status_counts": {
+      "filled": 763,
+      "inside_cancel": 190,
+      "invalid_stop_after_retest": 50,
+      "replaced": 415
+    }
+  },
+  "hard_validity_status": "PASS_WITH_DISCLOSED_STAGE_REPAIR",
+  "information_cutoff": "2023-12-31T23:59:59Z",
+  "known_limitations": [
+    "Maximum drawdown is measured on the realized trade-NAV sequence rather than a full minute-by-minute liquidation-value NAV path.",
+    "One-minute execution cannot reconstruct intra-minute ordering beyond the disclosed adverse stop-first convention.",
+    "The paired immediate-versus-retest diagnostic is an event-level instrument-return comparison on the retest-filled subset, not a substitute for the global-slot account replay."
+  ],
+  "mechanism": "first later completed five-minute retest of a consumed frozen 96-hour external boundary, closing back in breakout direction, followed by structural continuation management",
+  "paired_event_diagnostic_24bp": {
+    "channel_exit_count": 29,
+    "entry_latency_h_max": 58.43333333333333,
+    "entry_latency_h_mean": 1.8647444298820446,
+    "entry_latency_h_median": 0.43333333333333335,
+    "immediate_net24_mean_same_event_subset": -0.0060864418488660145,
+    "immediate_net24_median_same_event_subset": -0.021229691456684848,
+    "paired_delta_mean_bp": 27.953726519191413,
+    "paired_delta_median_bp": 155.57209377319543,
+    "paired_filled_event_count": 763,
+    "protected_origin_loss_count": 0,
+    "retest_better_share": 0.8269986893840104,
+    "retest_net24_mean": -0.0032910691969468726,
+    "retest_net24_median": -0.0050291199029260485,
+    "scope": "2021-01-01 through 2023-12-31 only",
+    "stop_count": 734,
+    "stop_latency_h_median": 0.3333333333333333,
+    "stop_share": 0.9619921363040629,
+    "stop_within_15m_share": 0.4427792915531335,
+    "stop_within_1h_share": 0.7043596730245232
+  },
+  "programization_findings": [
+    "The first local batch mechanically materialized 2024-2026 action labels before the pre-2024 gate; those outputs were quarantined, the evaluator was restricted to signals before 2024-01-01, and the full result was rerun byte-deterministically.",
+    "A completed breakout could not fill on its own decision minute; a retest had to be a strictly later completed five-minute bar and execution began at the next observable one-minute price after fixed 500 ms activation.",
+    "Pending setups occupied the sole global slot until fill, causal cancellation, replacement, source failure, or the evaluation boundary.",
+    "The retest extreme defined initial structural invalidation while the original 2ATR stop remained only an outer disaster cap; adverse stop priority was retained through a planned exit minute.",
+    "Seven focused semantic tests and the inherited six upstream channel tests passed; an isolated rerun produced an identical PRE2024_RESULT.json SHA-256."
+  ],
+  "result_id": "RES-20260730-BYBIT-CHANNEL-REBALANCE-CORE-001",
+  "schema_version": 1,
+  "source_evidence": {
+    "canonical_core_artifact_id": 8712672241,
+    "canonical_core_artifact_zip_sha256": "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02",
+    "source_recovery_artifact_digest": "sha256:16bb1d33aa8bec3af7c2ae862823446e3bc0e149a4966c989303fbff72a4892a",
+    "source_recovery_artifact_id": 8748017682,
+    "source_recovery_workflow_run": 30513583973,
+    "upstream_all_breakout_pr": 479,
+    "upstream_all_breakout_result_id": "RES-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001",
+    "upstream_event_count": 2855,
+    "upstream_result_artifact_id": 8747482602,
+    "upstream_result_artifact_zip_sha256": "65eed083cf749a3f48a46f1928a2cce19d8425051a98a481a42d55b0a9a14a22",
+    "upstream_result_workflow_run": 30512063911,
+    "upstream_source_bundle_sha256": "dd10b6b9acc64fccd28bba3a4acd8ef26e64818ec6deebf9ca235f85b0674c87"
+  },
+  "status": "RETIRED_PRE2024_REBALANCE_CORE_FAILURE"
+}
