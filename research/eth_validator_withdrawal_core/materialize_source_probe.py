@@ -29,6 +29,21 @@ NEW_TIME = """        if isinstance(value, datetime):
             dt = datetime.fromisoformat(str(value).replace(\"Z\", \"+00:00\"))
 """
 
+OLD_ORDER = """    if indices != sorted(indices):
+        raise ValueError(\"withdrawal indices are not monotonic within file\")
+    if len(indices) != len(set(indices)):
+        raise ValueError(\"duplicate withdrawal indices within file\")
+"""
+NEW_ORDER = """    # Public Parquet row order is a physical storage property, not event
+    # chronology. Canonicalize by the protocol-level withdrawal index and
+    # require a unique contiguous event-key set for the daily partition.
+    sorted_indices = sorted(indices)
+    if len(indices) != len(set(indices)):
+        raise ValueError(\"duplicate withdrawal indices within file\")
+    if sorted_indices[-1] - sorted_indices[0] + 1 != len(sorted_indices):
+        raise ValueError(\"non-contiguous withdrawal index set within file\")
+"""
+
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
     count = text.count(old)
@@ -46,11 +61,12 @@ def main() -> None:
     text = (root / "source_probe.py").read_text()
     text = replace_once(text, OLD_INT, NEW_INT, "UInt128 decode")
     text = replace_once(text, OLD_TIME, NEW_TIME, "Unix timestamp decode")
+    text = replace_once(text, OLD_ORDER, NEW_ORDER, "event-order canonicalization")
 
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "source_probe.py").write_text(text)
     shutil.copy2(root / "test_source_probe.py", args.out / "test_source_probe.py")
-    print("materialized UInt128- and Unix-time-aware source probe")
+    print("materialized UInt128-, Unix-time-, and event-key-aware source probe")
 
 
 if __name__ == "__main__":
