@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-BTC-ETF-FLOW-001",
+  "result_id": "RES-20260730-ML-BTC-ETF-FLOW-001",
+  "status": "FROZEN_BEFORE_MARKET_OUTCOMES",
+  "source": {
+    "source_result_id": "RES-20260730-BTC-ETF-FLOW-SOURCE-001",
+    "event": "every nonzero provider-reported daily Total flow",
+    "availability": "flow dated d is usable at 00:00 UTC on d+1",
+    "next_event_boundary": "next available Farside row"
+  },
+  "actions": {
+    "continuation": "direction equals sign of reported ETF Total flow",
+    "fade": "direction is opposite sign of reported ETF Total flow",
+    "flat": "no position",
+    "trigger_for_each_direction": [
+      "after source availability, observe completed five-minute bars only",
+      "require at least one completed five-minute candle whose close-open sign is against the candidate action direction",
+      "from that first pullback candle track the causal pullback extreme",
+      "trigger on the first later completed five-minute candle that closes in the candidate direction and beyond the immediately preceding completed five-minute high for a long or low for a short",
+      "trigger must occur before the next ETF-flow publication"
+    ],
+    "activation_latency_ms": 500,
+    "execution": "first strictly later observable one-minute Bybit trade open",
+    "pending_cancellation": [
+      "next ETF-flow publication",
+      "source gap",
+      "trigger never occurs"
+    ]
+  },
+  "risk_and_exit": {
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "atr": "twenty completed five-minute true ranges available before trigger completion",
+    "protected_origin": "minimum low from first pullback candle through trigger for long; maximum high for short",
+    "hard_stop": "protected origin plus an adverse 0.25 ATR20 buffer",
+    "structural_exit": "first completed five-minute close across the protected origin, executed after 500 ms at the first strictly later one-minute open",
+    "source_state_exit": "first later ETF publication whose Total sign differs from the entry event sign, executed after 500 ms at the first strictly later one-minute open",
+    "elapsed_time_exit": false,
+    "scheduled_close": false,
+    "same_minute_ambiguity": "stop_first",
+    "gap_stop": "observed adverse open",
+    "unresolved_evaluation_boundary": "mark NAV; do not strategy-close"
+  },
+  "features": {
+    "source_prior_only": [
+      "reported Total and sign",
+      "log absolute Total",
+      "prior-only 20-row and 60-row Total z-scores",
+      "positive and negative fund breadth",
+      "nonmissing fund count",
+      "component concentration and IBIT/GBTC signed shares"
+    ],
+    "market_causal": [
+      "one-hour, four-hour and twenty-four-hour trade returns",
+      "one-hour and twenty-four-hour realized volatility",
+      "five-minute ATR20",
+      "mark-index basis and premium index levels plus prior-only normalization",
+      "one-hour, four-hour and twenty-four-hour open-interest change",
+      "account buy/sell-ratio level and change",
+      "source-to-trigger signed price progress and trigger latency"
+    ],
+    "action": [
+      "action direction",
+      "continuation-versus-fade flag",
+      "direction times each directional market-state feature"
+    ]
+  },
+  "online_ml": {
+    "model": "HistGradientBoostingRegressor",
+    "training_target": "resolved after-cost action R at 18 bp",
+    "minimum_resolved_labels": 40,
+    "refit_schedule": "first UTC day of every month",
+    "training_set": "all action labels fully resolved before refit timestamp",
+    "parameters": {
+      "learning_rate": 0.05,
+      "max_iter": 100,
+      "max_leaf_nodes": 7,
+      "max_depth": 3,
+      "min_samples_leaf": 20,
+      "l2_regularization": 1.0,
+      "random_state": 20260730
+    },
+    "decision": "among causally triggered continuation and fade candidates while the slot is free, choose the highest predicted 18-bp R only when it is strictly above zero; same-time ties choose the higher prediction and then continuation",
+    "before_model_ready": "no ML-authorized trade"
+  },
+  "baselines": [
+    "always take continuation trigger when slot is free",
+    "always take fade trigger when slot is free"
+  ],
+  "account": {
+    "symbol": "BTCUSDT",
+    "global_pending_plus_open_slots": 1,
+    "nav_start": 10000.0,
+    "evaluation_start": "2024-01-01T00:00:00Z",
+    "evaluation_end": "2026-06-30T23:59:59Z",
+    "calendar_day_boundary": "00:00 UTC",
+    "cost_round_trip_bps": [12, 18, 24],
+    "funding": "actual signed Bybit funding at recorded timestamp using causally observed market-price proxy",
+    "daily_nav": "cash plus adverse-cost liquidation value of any open position"
+  },
+  "winner_dependence": {
+    "diagnostic": "remove the top ten percent of positive completed trades by PnL event identity and rebuild source-event candidates, online refits and global-slot account path from scratch",
+    "not_a_standalone_objective": true
+  },
+  "promotion_gate": "continuous 18-bp and 24-bp account paths positive, at least 40 completed trades, PF above one, no forced liquidation, and exact winner-deletion reroute positive before risk/leverage search",
+  "prohibited_rescue": [
+    "flow threshold search",
+    "availability-delay search",
+    "trigger-pattern search",
+    "ATR or stop search",
+    "model or zero-threshold search after outcomes",
+    "session filtering",
+    "cost reduction",
+    "risk or leverage search before base-alpha promotion"
+  ],
+  "orders_submitted": false
+}
