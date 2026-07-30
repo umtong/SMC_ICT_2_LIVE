@@ -28,6 +28,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: agent/r34-uniswap-signed-flow-sqd-takeover-001
+      - name: Audit carrier chunks
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          wc -c "$root"/ECONOMIC_BUNDLE.part*.b64
+          sha256sum "$root"/ECONOMIC_BUNDLE.part*.b64
       - name: Rebuild and verify carrier
         run: |
           set -euo pipefail
