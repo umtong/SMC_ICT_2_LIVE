@@ -48,19 +48,28 @@ jobs:
           print("pyarrow", pyarrow.__version__)
           PY
 
+      - name: Materialize UInt128-aware source probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf research/eth_validator_withdrawal_core/materialized
+          "$PY" research/eth_validator_withdrawal_core/materialize_source_probe.py \
+            --out research/eth_validator_withdrawal_core/materialized
+
       - name: Compile and run focused source-only tests
         shell: bash
         run: |
           set -euo pipefail
           PY=deps/runtime/root/python/bin/python3
           "$PY" -m py_compile \
-            research/eth_validator_withdrawal_core/source_probe.py \
-            research/eth_validator_withdrawal_core/test_source_probe.py
+            research/eth_validator_withdrawal_core/materialized/source_probe.py \
+            research/eth_validator_withdrawal_core/materialized/test_source_probe.py
           "$PY" - <<'PY'
           import importlib.util
           import pathlib
           import sys
-          path = pathlib.Path("research/eth_validator_withdrawal_core/test_source_probe.py")
+          path = pathlib.Path("research/eth_validator_withdrawal_core/materialized/test_source_probe.py")
           spec = importlib.util.spec_from_file_location("test_source_probe", path)
           module = importlib.util.module_from_spec(spec)
           sys.modules["test_source_probe"] = module
@@ -69,7 +78,7 @@ jobs:
           for name in tests:
               getattr(module, name)()
               print("PASS", name)
-          assert len(tests) == 5
+          assert len(tests) == 6
           PY
 
       - name: Run outcome-sealed source coverage and schema probe
@@ -78,7 +87,7 @@ jobs:
           set -euo pipefail
           PY=deps/runtime/root/python/bin/python3
           rm -rf artifact
-          "$PY" research/eth_validator_withdrawal_core/source_probe.py \
+          "$PY" research/eth_validator_withdrawal_core/materialized/source_probe.py \
             --output artifact \
             --workers 16 \
             | tee SOURCE_RUN.log
