@@ -1,0 +1,45 @@
+name: Validate execution-aligned direct-utility Core bundle
+
+on:
+  pull_request:
+    paths:
+      - "research/execution_aligned_direct_utility_core/**"
+      - ".github/workflows/execution-aligned-direct-utility-core-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Materialize and verify source bundle
+        run: python research/execution_aligned_direct_utility_core/materialize.py
+      - name: Compile reconstructed source
+        run: |
+          python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
+      - name: Validate compact scientific contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('research/execution_aligned_direct_utility_core')
+          contract = json.loads((root/'CONTRACT.json').read_text())
+          result = json.loads((root/'RESULT.json').read_text())
+          att = json.loads((root/'VALIDATION_ATTESTATION.json').read_text())
+          assert contract['result_id'] == result['result_id']
+          assert contract['portfolio']['planned_loss_fraction'] == 0.005
+          assert contract['portfolio']['notional_cap'] == 3.0
+          assert contract['geometry']['elapsed_time_exit'] is False
+          assert result['official']['15bp']['trades'] == 685
+          assert result['official']['15bp']['exact_reroutes']['top10pct_positive']['multiple'] > 1.0
+          assert result['official']['24bp']['multiple'] < 1.0
+          assert result['orders_submitted'] is False and result['live_permission'] is False
+          assert att['status'] == 'PASS' and att['check_count'] == 613
+          print('compact contract valid')
+          PY

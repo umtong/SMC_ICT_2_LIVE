@@ -1,0 +1,31 @@
+name: Export verified direct Core source r35
+
+on:
+  push:
+    branches:
+      - agent/r35-direct-utility-first-minute-acceptance-001
+    paths:
+      - research/triggers/direct-core-source-artifact-r35/**
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Verify readable source exists
+        run: |
+          test -f research/execution_aligned_direct_utility_core/materialized/direct_core_common.py
+          python -m py_compile research/execution_aligned_direct_utility_core/materialized/*.py
+          find research/execution_aligned_direct_utility_core/materialized -type d -name __pycache__ -prune -exec rm -rf {} +
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-verified-source-r35
+          path: research/execution_aligned_direct_utility_core/materialized
+          compression-level: 0
+          retention-days: 30
