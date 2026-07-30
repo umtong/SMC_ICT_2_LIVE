@@ -53,6 +53,23 @@ jobs:
           PY=deps/runtime/root/python/bin/python3
           rm -rf materialized
           "$PY" research/failed_acceptance_reclaim_20260730/materialize.py --out materialized
+          "$PY" - <<'PY'
+          from pathlib import Path
+          path = Path('materialized/channel_dependency.py')
+          text = path.read_text()
+          old = 'OUT.mkdir(parents=True, exist_ok=True)'
+          new = (
+              'try:\n'
+              '    OUT.mkdir(parents=True, exist_ok=True)\n'
+              'except PermissionError:\n'
+              '    # Inert notebook-default output side effect; the evaluator\n'
+              '    # replaces ROOT/OUT after import before economic execution.\n'
+              '    pass'
+          )
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new))
+          print('suppressed inert notebook output side effect')
+          PY
           "$PY" -m py_compile materialized/run.py materialized/test_semantics.py materialized/channel_dependency.py
           "$PY" - <<'PY'
           import importlib.util
