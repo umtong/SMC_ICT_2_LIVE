@@ -1,0 +1,43 @@
+{
+  "account": {
+    "costs_bps": [12, 18, 24],
+    "global_slots": 1,
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005
+  },
+  "actions": ["BREAK", "REJECT", "FLAT"],
+  "chronology": {
+    "confirmation_months": ["2023-10", "2023-12"],
+    "fit_months": ["2023-01", "2023-04", "2023-07"],
+    "official_2024": "sealed unless broad positive confirmation"
+  },
+  "claim_id": "CLM-20260730-1832-NATIVE-FLOW-LEVEL-STATE-CORE-001",
+  "event": "causally rearmed repeated interaction with previous completed UTC-day high/low",
+  "execution": {
+    "elapsed_time_exit": false,
+    "entry": "first 1m open strictly after activation",
+    "funding": "actual signed",
+    "latency_ms": 500,
+    "same_minute": "stop-first"
+  },
+  "model": {
+    "decision": "highest positive action value or flat",
+    "parameters": {
+      "l2_regularization": 12.0,
+      "learning_rate": 0.035,
+      "max_depth": 3,
+      "max_iter": 240,
+      "min_samples_leaf": 50,
+      "random_state": 1729
+    },
+    "target": "direct 24bp account return for stacked BREAK/REJECT actions",
+    "type": "HistGradientBoostingRegressor"
+  },
+  "no_rescue": ["level geometry", "feature window", "score threshold", "risk", "leverage", "SMC checklist gate", "2024 selection"],
+  "products": ["BTCUSDT", "ETHUSDT"],
+  "research_basis": ["인과적 유동성 기반 자동매매 방향", "유동성 침범 기반 ML 트레이딩", "유동성 기반 단일 정책 시스템", "SMC 알파 착각과 순서 오류"],
+  "result_id": "RES-20260730-NATIVE-FLOW-LEVEL-STATE-CORE-001",
+  "schema_version": 1,
+  "state_sensor": "native Bybit sparse 500ms aggressive turnover and price-impact efficiency over completed 900s/120s/30s/5s windows",
+  "venue": "Bybit USDT-linear perpetual"
+}
