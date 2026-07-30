@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001",
+  "prior_claim_id": "CLM-20260726-2110-ML-UNISWAP-HEDGE-TRANSFER-001",
+  "issue": 556,
+  "venue": "Bybit USDT linear perpetual",
+  "traded_symbol": "ETHUSDT",
+  "source": {
+    "chain": "Ethereum mainnet",
+    "protocol": "Uniswap V3",
+    "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    "tokens": ["WETH", "USDC", "USDT"],
+    "fee_tiers": [500, 3000],
+    "event": "Swap(address,address,int256,int256,uint160,uint128,int24)",
+    "topic0": "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+    "identity": ["blockHash", "transactionHash", "logIndex"],
+    "historical_transport": "SQD Portal Ethereum mainnet finalized-stream",
+    "semantic_transport": "bounded keyless Ethereum JSON-RPC",
+    "information_delay_seconds": 120
+  },
+  "source_gate": {
+    "outcome_sealed": true,
+    "frozen_windows": [
+      ["2021-05-19T12:00:00Z", "2021-05-19T13:00:00Z"],
+      ["2021-12-04T12:00:00Z", "2021-12-04T13:00:00Z"],
+      ["2022-05-12T12:00:00Z", "2022-05-12T13:00:00Z"],
+      ["2022-11-09T12:00:00Z", "2022-11-09T13:00:00Z"],
+      ["2023-03-11T12:00:00Z", "2023-03-11T13:00:00Z"],
+      ["2023-08-17T12:00:00Z", "2023-08-17T13:00:00Z"]
+    ],
+    "minimum_correct_pools": 2,
+    "minimum_windows_with_ten_swaps": 4,
+    "minimum_total_swaps": 100,
+    "duplicates_allowed": 0,
+    "decode_errors_allowed": 0,
+    "source_unavailable_is_negative_alpha": false
+  },
+  "conditional_full_history": {
+    "start": "2021-05-05T00:00:00Z",
+    "end": "2023-12-31T23:59:59Z",
+    "bucket": "completed UTC five-minute",
+    "threshold": "max(5,000,000 stablecoin notional, fit 99.5th percentile)",
+    "minimum_directional_imbalance": 0.70,
+    "minimum_transactions": 2
+  },
+  "model": {
+    "type": "HistGradientBoostingClassifier",
+    "learning_rate": 0.05,
+    "max_iter": 120,
+    "max_leaf_nodes": 7,
+    "min_samples_leaf": 20,
+    "l2_regularization": 1.0,
+    "random_state": 20260726,
+    "action": "long, short, or flat by direct structural expected value",
+    "feature_count": 13
+  },
+  "chronology": {
+    "fit": ["2021-05-05", "2022-06-30"],
+    "calibration": ["2022-07-01", "2022-12-31"],
+    "untouched_confirmation": ["2023-01-01", "2023-06-30"],
+    "conditional_development": ["2023-07-01", "2023-12-31"],
+    "official_2024_2026_prohibited_until_pre2024_pass": true
+  },
+  "execution": {
+    "fixed_order_latency_ms": 500,
+    "one_global_pending_or_position_slot": true,
+    "planned_loss_fraction": 0.005,
+    "notional_cap": 3.0,
+    "round_trip_cost_bps": [12, 18, 24],
+    "actual_signed_funding": true,
+    "elapsed_time_exit": false,
+    "stage_boundary_strategy_exit": false
+  },
+  "orders_submitted": false,
+  "live_permission": false
+}
