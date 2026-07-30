@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - research/lastd/lastd_system.py
-      - research/lastd/lastd_system.py.gz.b64
+      - research/lastd/carrier/**
       - scripts/market_data/load_canonical_bybit.py
       - .github/workflows/lastd-system-eval.yml
 
@@ -42,9 +42,20 @@ jobs:
           python - <<'PY'
           import base64
           import gzip
+          import hashlib
           from pathlib import Path
-          carrier = Path("research/lastd/lastd_system.py.gz.b64")
-          source = gzip.decompress(base64.b64decode(carrier.read_text(encoding="utf-8").strip()))
+
+          parts = sorted(Path("research/lastd/carrier").glob("part-*.b64"))
+          if [path.name for path in parts] != [f"part-{index:02d}.b64" for index in range(7)]:
+              raise RuntimeError(f"unexpected LAST-D carrier parts: {[path.name for path in parts]}")
+          encoded = "".join(path.read_text(encoding="utf-8").strip() for path in parts)
+          source = gzip.decompress(base64.b64decode(encoded, validate=True))
+          source_sha256 = hashlib.sha256(source).hexdigest()
+          expected_sha256 = "244bae2622199fdc0a7b99fda8b371a88953b5fa760f359fc88a9ea88892e04f"
+          if source_sha256 != expected_sha256:
+              raise RuntimeError(
+                  f"LAST-D source hash mismatch: {source_sha256} != {expected_sha256}"
+              )
           Path("research/lastd/lastd_system.py").write_bytes(source)
           PY
 
