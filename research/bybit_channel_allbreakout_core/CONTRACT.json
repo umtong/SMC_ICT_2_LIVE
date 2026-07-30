@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001",
+  "result_id": "RES-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001",
+  "dependency_result": "RES-20260730-BYBIT-CHANNEL-FULLPATH-AUDIT-001",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "event": "completed 60m close outside prior 96 completed hours",
+  "activation_latency_ms": 500,
+  "entry": "first later observable 1m open",
+  "stop": "2 completed-state hourly ATR20 from actual entry",
+  "state_exit": "completed opposite prior 48h channel close, first later observable 1m open",
+  "elapsed_time_liquidation": false,
+  "risk_fraction": 0.005,
+  "notional_cap": 3.0,
+  "costs_bps": [13, 18, 24],
+  "funding": "exact signed Bybit funding",
+  "global_slot": 1,
+  "simultaneous_arbitration": "highest normalized breakout distance then symbol",
+  "evaluation": "continuous 2024-01-01 through 2026-06-30, no NAV reset",
+  "selection": "none; enter every eligible event while slot is free",
+  "winner_deletion": "delete top 10 percent positive event keys before full reroute",
+  "orders_submitted": false
+}

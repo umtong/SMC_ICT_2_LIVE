@@ -1,0 +1,165 @@
+name: Exact Bybit channel all-breakout Core audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/bybit_channel_allbreakout_core/**
+      - .github/workflows/bybit-channel-allbreakout-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: bybit-channel-allbreakout-core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+
+jobs:
+  full-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download verified runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas,sklearn; print('runtime-ok')"
+
+      - name: Download and verify canonical pandas export
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path("deps/canonical")
+          manifest = json.loads((root / "EXPORT_MANIFEST.json").read_text())
+          assert manifest["schema_version"] == 1 and len(manifest["tables"]) == 18
+          for item in manifest["tables"]:
+              path = root / item["symbol"] / (item["table"] + ".pkl.gz")
+              assert path.stat().st_size == item["bytes"]
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"]
+          print("canonical-ok")
+          PY
+
+      - name: Materialize pinned event generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin agent/r24-channel-fullpath-audit-001:audit-source
+          mkdir -p deps/audit
+          for f in SOURCE_MANIFEST.json SOURCE_BUNDLE.tar.gz.b64 materialize.py; do
+            git show "audit-source:research/channel_fullpath_audit/$f" > "deps/audit/$f"
+          done
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m = json.loads(Path("deps/audit/SOURCE_MANIFEST.json").read_text())
+          assert m["archive_sha256"] == "49de5f4c33d1b0810d81c657d7fe0f245fa1f76aae5c70048768f7b9b2c55dbe"
+          PY
+          deps/runtime/root/python/bin/python3 deps/audit/materialize.py
+
+      - name: Materialize and test all-breakout runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" research/bybit_channel_allbreakout_core/materialize.py \
+            --out research/bybit_channel_allbreakout_core/materialized
+          "$PY" -m py_compile \
+            research/bybit_channel_allbreakout_core/materialized/run.py \
+            research/bybit_channel_allbreakout_core/materialized/test_semantics.py
+          "$PY" - <<'PY'
+          import importlib.util, pathlib, sys
+          path = pathlib.Path("research/bybit_channel_allbreakout_core/materialized/test_semantics.py")
+          spec = importlib.util.spec_from_file_location("test_semantics", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["test_semantics"] = module
+          spec.loader.exec_module(module)
+          tests = sorted(x for x in dir(module) if x.startswith("test_"))
+          for name in tests:
+              getattr(module, name)()
+              print("PASS", name)
+          assert len(tests) == 6
+          PY
+
+      - name: Run exact all-breakout account audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf artifact
+          "$PY" research/bybit_channel_allbreakout_core/materialized/run.py \
+            --audit-source deps/audit/independent_audit.py \
+            --canonical-root deps/canonical \
+            --output artifact \
+            | tee RUN.log
+
+      - name: Assert frozen decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path("artifact/RESULT.json").read_text())
+          assert r["candidate_counts"] == {"2021":538,"2022":511,"2023":369,"2024":578,"2025":598,"2026":261}
+          assert r["status"] == "RETIRED_ALL_BREAKOUT_CORE_FAILURE"
+          assert r["economic_verdict"] == "PRE2024_POSITIVE_BUT_OFFICIAL_COST_AND_REGIME_FAILURE"
+          assert r["orders_submitted"] is False
+          expected = {"13":10286.818497271666,"18":9878.25029046961,"24":9442.762345305262}
+          for cost, nav in expected.items():
+              assert abs(r["official"][cost]["end_nav"] - nav) < 1e-6
+              assert r["official"][cost]["trades"] == 247
+          assert abs(r["winner_deleted"]["24"]["end_nav"] - 7390.381745807581) < 1e-6
+          assert all(r["pre2024"][str(y)]["24"]["end_nav"] > 10000 for y in (2021,2022,2023))
+          print(json.dumps({"status":r["status"],"official":{k:{x:v[x] for x in ("end_nav","g_daily","trades","pf","mdd")} for k,v in r["official"].items()},"winner_deleted_24":r["winner_deleted"]["24"]}, indent=2))
+          PY
+          cp research/bybit_channel_allbreakout_core/CONTRACT.json artifact/CONTRACT.json
+          cp research/bybit_channel_allbreakout_core/SOURCE_BUNDLE_MANIFEST.json artifact/SOURCE_BUNDLE_MANIFEST.json
+          cp deps/canonical/EXPORT_MANIFEST.json artifact/CANONICAL_EXPORT_MANIFEST.json
+          cp deps/audit/SOURCE_MANIFEST.json artifact/DEPENDENCY_SOURCE_MANIFEST.json
+          cp RUN.log artifact/RUN.log
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bybit-channel-allbreakout-core-result
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

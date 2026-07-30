@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001",
+  "claim_id": "CLM-20260730-BYBIT-CHANNEL-ALLBREAKOUT-CORE-001",
+  "status": "RETIRED_ALL_BREAKOUT_CORE_FAILURE",
+  "economic_verdict": "PRE2024_POSITIVE_BUT_OFFICIAL_COST_AND_REGIME_FAILURE",
+  "target_status": "NOT_MET",
+  "candidate_counts": {
+    "2021": 538,
+    "2022": 511,
+    "2023": 369,
+    "2024": 578,
+    "2025": 598,
+    "2026H1": 261,
+    "total": 2855
+  },
+  "official_2024_2026": {
+    "13bp": {
+      "end_nav": 10286.818497271666,
+      "geometric_daily_growth": 0.00003100730649086003,
+      "trades": 247,
+      "profit_factor": 1.0302532224480059,
+      "maximum_drawdown": 0.18870809831025825,
+      "median_trade_return": -0.004922755694405974,
+      "top5_positive_pnl_share": 0.43234120837661594
+    },
+    "18bp": {
+      "end_nav": 9878.25029046961,
+      "geometric_daily_growth": -0.000013431590742740696,
+      "trades": 247,
+      "profit_factor": 0.9869283764337428,
+      "maximum_drawdown": 0.20217216108090286,
+      "median_trade_return": -0.004925837286333015,
+      "top5_positive_pnl_share": 0.4368355486501805,
+      "halfyear_returns": {
+        "2024H1": 0.0010745242424701207,
+        "2024H2": 0.019714418323066862,
+        "2025H1": -0.10104577476430654,
+        "2025H2": 0.11516008331738203,
+        "2026H1": -0.0347045418861297
+      }
+    },
+    "24bp": {
+      "end_nav": 9442.762345305262,
+      "geometric_daily_growth": -0.00006286703071212152,
+      "trades": 247,
+      "profit_factor": 0.9390045684246703,
+      "maximum_drawdown": 0.21692008866854107,
+      "median_trade_return": -0.004929014110792795,
+      "top5_positive_pnl_share": 0.44196518161476317
+    }
+  },
+  "winner_deleted_and_rerouted": {
+    "removed_positive_event_keys": 25,
+    "13bp_end_nav": 7924.056707846325,
+    "18bp_end_nav": 7667.049655557996,
+    "24bp_end_nav": 7390.381745807581,
+    "24bp_geometric_daily_growth": -0.00033153023158272177,
+    "24bp_profit_factor": 0.7012258341954455,
+    "rerouted_trades": 258
+  },
+  "pre2024_24bp": {
+    "2021": {"end_nav": 10150.505660899857, "trades": 92, "profit_factor": 1.0412528035871764},
+    "2022": {"end_nav": 10068.500601789092, "trades": 87, "profit_factor": 1.0216311680379457},
+    "2023": {"end_nav": 10242.077887334246, "trades": 88, "profit_factor": 1.0650510580236934}
+  },
+  "path_diagnostics": {
+    "stop_exits": 175,
+    "channel_exits": 72,
+    "positive_trades_at_18bp": 49,
+    "negative_trades_at_18bp": 198,
+    "median_holding_hours": 23.7,
+    "mean_holding_hours": 51.61282051282051,
+    "slot_time_fraction": 0.5824363425925926,
+    "btc_18bp_pnl": -1425.3922792336084,
+    "eth_18bp_pnl": 1303.6425697032134,
+    "post_outcome_symbol_filter_authorized": false
+  },
+  "programization_audit": {
+    "exact_event_geometry_parity": true,
+    "canonical_data_hashes_verified": true,
+    "fixed_500ms_latency": true,
+    "actual_signed_funding": true,
+    "one_global_slot": true,
+    "full_exit_minute_occupied": true,
+    "no_elapsed_time_liquidation": true,
+    "notebook_default_output_side_effect_suppressed_without_event_logic_change": true,
+    "deterministic_source_archive_verified": true,
+    "focused_semantic_tests_passed": 6
+  },
+  "decision": [
+    "The unfiltered 96/48 channel event is not a frequent positive Core engine at realistic cost.",
+    "The event was weakly positive in each pre-2024 year but lost over the continuous official path at 18bp and 24bp.",
+    "Exact positive-winner deletion followed by full global-slot rerouting made every cost path materially negative.",
+    "Positive volume-sponsored and ML-selected channel routes should therefore be treated as Expansion selection, not evidence that every breakout compounds steadily.",
+    "Do not rescue the family with channel, ATR, exit, symbol, session, score, risk or leverage tuning using official outcomes."
+  ],
+  "reproduction": {
+    "github_pr": 479,
+    "workflow_run": 30512063911,
+    "artifact_id": 8747482602,
+    "artifact_zip_sha256": "65eed083cf749a3f48a46f1928a2cce19d8425051a98a481a42d55b0a9a14a22",
+    "result_sha256": "93e0abd48a660742ad179f68fc3316b4c86c61a27e53784cb9bffff833a7d99a",
+    "contract_sha256": "6fa2ff611b981b2873cc03e8e912956b438ef73b1fe59eb6690973112bd8070c"
+  },
+  "orders_submitted": false,
+  "live_permission": false,
+  "ranking_change": false
+}
