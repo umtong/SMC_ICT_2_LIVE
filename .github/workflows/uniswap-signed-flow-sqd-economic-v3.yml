@@ -1,0 +1,255 @@
+name: Signed Uniswap flow corrected pre-2024 screen
+
+on:
+  push:
+    branches:
+      - agent/r34-uniswap-signed-flow-sqd-takeover-001
+    paths:
+      - ".github/workflows/uniswap-signed-flow-sqd-economic-v3.yml"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_BUNDLE_V2.part*.b64"
+      - "research/uniswap_signed_flow_sqd/PATCH_003_FUNDING_MARK_VALUE.patch"
+      - "research/uniswap_signed_flow_sqd/ECONOMIC_MANIFEST.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json"
+      - "research/uniswap_signed_flow_sqd/AMENDMENT_003_FUNDING_MARK_VALUE.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: uniswap-signed-flow-corrected-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  full-source:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - year: "2021"
+            start: "2021-05-05T00:00:00+00:00"
+            end: "2022-01-01T00:00:00+00:00"
+          - year: "2022"
+            start: "2022-01-01T00:00:00+00:00"
+            end: "2023-01-01T00:00:00+00:00"
+          - year: "2023"
+            start: "2023-01-01T00:00:00+00:00"
+            end: "2024-01-01T00:00:00+00:00"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixed source environment
+        run: python -m pip install --disable-pip-version-check --no-cache-dir requests==2.32.4 pytest==8.3.5
+      - name: Materialize and verify corrected frozen engine
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          src=research_runs/uniswap_signed_flow_sqd/source_runtime
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          rm -rf "$src" "$econ"
+          mkdir -p "$src" "$econ"
+          base64 -d "$root/SOURCE_BUNDLE.tar.gz.b64" > "$src/bundle.tar.gz"
+          echo "842b281ea55e349ebfdf132c89f170fd88d427b1e228cdaa914666de76137a12  $src/bundle.tar.gz" | sha256sum -c -
+          tar -xzf "$src/bundle.tar.gz" -C "$src"
+          parts=(
+            "$root/ECONOMIC_BUNDLE_V2.part00.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part01.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part02.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part03.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part04.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part05.b64"
+            "$root/ECONOMIC_BUNDLE_V2.part06.b64"
+          )
+          : > "$econ/bundle.b64"
+          for part in "${parts[@]}"; do tr -d '\r\n\t ' < "$part" >> "$econ/bundle.b64"; done
+          test "$(wc -c < "$econ/bundle.b64")" -eq 25348
+          echo "e3d47d750d5bdb0ec0590a1eab1975de6b7e66acaf17e127c4a7a520e52005d1  $econ/bundle.b64" | sha256sum -c -
+          base64 -d "$econ/bundle.b64" > "$econ/bundle.tar.gz"
+          echo "57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8  $econ/bundle.tar.gz" | sha256sum -c -
+          tar -xzf "$econ/bundle.tar.gz" -C "$econ"
+          echo "185a8573349429538aed55c12e3ded21ed9072aed3e932cd3ef1d9799f9e7919  $root/PATCH_003_FUNDING_MARK_VALUE.patch" | sha256sum -c -
+          (cd "$econ" && patch --batch --forward -p0 < "$GITHUB_WORKSPACE/$root/PATCH_003_FUNDING_MARK_VALUE.patch")
+          echo "304d74a50b1cfbc01d03258be8cd93a9d875b58cc06fe23a1bbd75faa6247bae  $econ/full_history_sqd.py" | sha256sum -c -
+          echo "4ec2563f07e6c832b20b8260d7e81ee07b886ea1d56d323b1622ea1102fd26a2  $econ/test_full_history_sqd.py" | sha256sum -c -
+          echo "ab40098962bcd7b3d73544b43ea0f93832e41bda8c84b230eaeed9d9ac33755d  $econ/economic_screen.py" | sha256sum -c -
+          echo "ea6b8fb5a2f41c588dac5ad6069a48b19116b8fe6cdc936de9d4847f9ad4fc58  $econ/test_economic_screen.py" | sha256sum -c -
+          python -m json.tool "$root/ECONOMIC_MANIFEST.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_002_PRE_OUTCOME_SEMANTIC_CORRECTIONS.json" >/dev/null
+          python -m json.tool "$root/AMENDMENT_003_FUNDING_MARK_VALUE.json" >/dev/null
+      - name: Run source and economic regression tests
+        run: |
+          src=research_runs/uniswap_signed_flow_sqd/source_runtime
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          PYTHONPATH="$src:$econ" python -m pytest -q "$econ/test_full_history_sqd.py" "$econ/test_economic_screen.py"
+      - name: Stream and validate finalized signed-flow shard
+        run: |
+          set -uo pipefail
+          src=research_runs/uniswap_signed_flow_sqd/source_runtime
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          out=research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}
+          rm -rf "$out"
+          mkdir -p "$out"
+          set +e
+          PYTHONPATH="$src:$econ" python "$econ/full_history_sqd.py" \
+            --start '${{ matrix.start }}' \
+            --end '${{ matrix.end }}' \
+            --source-gate research_results/uniswap_signed_flow_sqd_source/RESULT.json \
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+          producer_status=${PIPESTATUS[0]}
+          set -e
+          python - <<PY
+          import json
+          from pathlib import Path
+          p=Path('research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}/SOURCE_SHARD_RESULT.json')
+          r=json.loads(p.read_text())
+          assert r['status']=='PASS'
+          assert r['total_decoded_swaps'] > 0
+          assert r['duplicate_identities']==0 and not r['decode_errors']
+          assert r['market_outcomes_opened'] is False and r['orders_submitted'] is False
+          print(json.dumps({'year':'${{ matrix.year }}','swaps':r['total_decoded_swaps'],'buckets':r['five_minute_nonzero_buckets'],'producer_exit':int('${producer_status}')},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uniswap-sqd-corrected-flow-${{ matrix.year }}
+          path: research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+  economic-screen:
+    needs: full-source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONUNBUFFERED: "1"
+      CANONICAL_ARTIFACT_ID: "8712672241"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixed economic environment
+        run: python -m pip install --disable-pip-version-check --no-cache-dir numpy==2.3.5 pandas==2.2.3 scikit-learn==1.8.0 pytest==8.3.5 requests==2.32.4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: uniswap-sqd-corrected-flow-*
+          path: deps/flow
+          merge-multiple: false
+      - name: Download and verify immutable canonical Bybit export
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('deps/canonical')
+          manifest=json.loads((root/'EXPORT_MANIFEST.json').read_text())
+          assert manifest['schema_version']==1 and len(manifest['tables'])==18
+          for item in manifest['tables']:
+              path=root/item['symbol']/(item['table']+'.pkl.gz')
+              assert path.stat().st_size==item['bytes']
+              assert hashlib.sha256(path.read_bytes()).hexdigest()==item['sha256']
+          print('canonical-ok')
+          PY
+      - name: Materialize funding-corrected economic engine
+        run: |
+          set -euo pipefail
+          root=research/uniswap_signed_flow_sqd
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          rm -rf "$econ"
+          mkdir -p "$econ"
+          for part in "$root"/ECONOMIC_BUNDLE_V2.part*.b64; do tr -d '\r\n\t ' < "$part" >> "$econ/bundle.b64"; done
+          echo "e3d47d750d5bdb0ec0590a1eab1975de6b7e66acaf17e127c4a7a520e52005d1  $econ/bundle.b64" | sha256sum -c -
+          base64 -d "$econ/bundle.b64" > "$econ/bundle.tar.gz"
+          echo "57bc9cbdc6c6bf12737f9f664110f9116de4a28d4f38b9fd6dd0197124ac72a8  $econ/bundle.tar.gz" | sha256sum -c -
+          tar -xzf "$econ/bundle.tar.gz" -C "$econ"
+          (cd "$econ" && patch --batch --forward -p0 < "$GITHUB_WORKSPACE/$root/PATCH_003_FUNDING_MARK_VALUE.patch")
+          echo "ab40098962bcd7b3d73544b43ea0f93832e41bda8c84b230eaeed9d9ac33755d  $econ/economic_screen.py" | sha256sum -c -
+          echo "ea6b8fb5a2f41c588dac5ad6069a48b19116b8fe6cdc936de9d4847f9ad4fc58  $econ/test_economic_screen.py" | sha256sum -c -
+      - name: Run focused economic semantics tests
+        run: |
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          PYTHONPATH="$econ" python -m pytest -q "$econ/test_economic_screen.py"
+      - name: Run frozen canonical-Bybit pre-2024 economic screen
+        run: |
+          set -uo pipefail
+          econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
+          out=research_runs/uniswap_signed_flow_sqd/economic
+          rm -rf "$out"
+          mkdir -p "$out"
+          set +e
+          PYTHONPATH="$econ" python "$econ/economic_screen.py" \
+            --source-root deps/flow \
+            --canonical-root deps/canonical/ETHUSDT \
+            --source-gate research_results/uniswap_signed_flow_sqd_source/RESULT.json \
+            --output "$out" 2>&1 | tee "$out/RUN.log"
+          producer_status=${PIPESTATUS[0]}
+          set -e
+          test -f "$out/RESULT.json"
+          echo "producer exit ${producer_status}; authority is validated RESULT.json"
+      - name: Enforce frozen decision boundary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('research_runs/uniswap_signed_flow_sqd/economic/RESULT.json').read_text())
+          assert r['claim_id']=='CLM-20260730-UNISWAP-SIGNED-FLOW-SQD-TAKEOVER-001'
+          assert r['source_gate_status']=='PASS'
+          assert r['status'] in {
+            'RETIRED_PRE2024_CONFIRMATION_GATE_FAILURE',
+            'RETIRED_PRE2024_DEVELOPMENT_GATE_FAILURE',
+            'PRE2024_DEVELOPMENT_PASS_OFFICIAL_EVALUATION_AUTHORIZED',
+          }
+          assert r['official_2024_2026_opened'] is False
+          assert r['ranking_change'] is False
+          assert r['live_permission'] is False and r['orders_submitted'] is False
+          if not r['confirmation_gate_pass']:
+              assert r['development_opened'] is False and r['development'] is None
+          if r['confirmation_gate_pass'] and not r['development_gate_pass']:
+              assert r['official_evaluation_authorized'] is False
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Publish corrected compact decision
+        if: ${{ always() && github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          src=research_runs/uniswap_signed_flow_sqd/economic
+          dest=research_results/uniswap_signed_flow_sqd_economic_v3
+          test -f "$src/RESULT.json"
+          mkdir -p "$dest"
+          cp "$src/RESULT.json" "$dest/RESULT.json"
+          test -f "$src/REPORT.md" && cp "$src/REPORT.md" "$dest/REPORT.md" || true
+          test -f "$src/SHA256SUMS.txt" && cp "$src/SHA256SUMS.txt" "$dest/SHA256SUMS.txt" || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record funding-corrected Uniswap decision"
+            git push origin HEAD:agent/r34-uniswap-signed-flow-sqd-takeover-001
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uniswap-signed-flow-corrected-economic-${{ github.sha }}
+          path: research_runs/uniswap_signed_flow_sqd/economic
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
