@@ -6,6 +6,11 @@ on:
       - agent/r32-core-expansion-one-slot-001
     paths:
       - .github/workflows/export-direct-core-materialized-source.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/export-direct-core-materialized-source.yml
+      - research/execution_aligned_direct_utility_core/**
   workflow_dispatch:
 
 permissions:
