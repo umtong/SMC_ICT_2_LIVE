@@ -1,0 +1,272 @@
+name: Independent LAST-D auction-state evaluation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/lastd/lastd_system.py
+      - research/lastd/lastd_system.py.gz.b64
+      - scripts/market_data/load_canonical_bybit.py
+      - .github/workflows/lastd-system-eval.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lastd-auction-state-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic research dependencies
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q numpy pandas scikit-learn pyarrow gdown
+
+      - name: Materialize reviewed LAST-D source carrier
+        run: |
+          python - <<'PY'
+          import base64
+          import gzip
+          from pathlib import Path
+          carrier = Path("research/lastd/lastd_system.py.gz.b64")
+          source = gzip.decompress(base64.b64decode(carrier.read_text(encoding="utf-8").strip()))
+          Path("research/lastd/lastd_system.py").write_bytes(source)
+          PY
+
+      - name: Compile and test LAST-D contract invariants
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m py_compile research/lastd/lastd_system.py scripts/market_data/load_canonical_bybit.py
+          python research/lastd/lastd_system.py --self-test
+
+      - name: Restore immutable canonical archive cache
+        uses: actions/cache@v4
+        with:
+          path: artifact/canonical-downloads
+          key: lastd-canonical-btceth-2023-2026h1-v1
+
+      - name: Materialize and verify canonical Bybit shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import shutil
+          import zipfile
+          from pathlib import Path
+
+          import gdown
+
+          archives = [
+              ("PRE_2024_2023", "BTCUSDT", "1HIJ4ARuF99IujRC6fzNiXo2d4tItkVMt", "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46"),
+              ("PRE_2024_2023", "ETHUSDT", "1F8lghO2sG_b2PeHkvr3UQE5nGdCUGoIR", "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322"),
+              ("2024_H1", "BTCUSDT", "1RMgFypk0P4WX99WJRN1FWkqOJICf2VC3", "95c932c4ce6e397738219e0bf5ad94defbbadb7dab215716fdd65438a4484eac"),
+              ("2024_H1", "ETHUSDT", "19ZE-pM5YseslNAL99KLZGKqUuQtVP3Xa", "58a10d224918d078b5738d37d9b0fbb20d9448f20a875e83b68d224ef3f9cef9"),
+              ("2024_H2", "BTCUSDT", "12M6ZthEtG5GwndvoowlgmhEf8Yhbio6V", None),
+              ("2024_H2", "ETHUSDT", "1-K5nE6sVJYSrRSY2dUfDyxcdAHxEs0YJ", None),
+              ("2025_H1", "BTCUSDT", "13ewfXYY9mr7qU8YlxJq90MRkQZzIFj6k", None),
+              ("2025_H1", "ETHUSDT", "15ng-iWym4oNj-Urmv4ZnRdGu_vpM7lWs", None),
+              ("2025_H2", "BTCUSDT", "1d8yIseheJ-IrZNNAXlIB69koDflN61Yl", None),
+              ("2025_H2", "ETHUSDT", "1hqNk1pSLF4vf0OmCDMaQcw7xqIoe-UUK", None),
+              ("2026_H1", "BTCUSDT", "1skEcgUHeykzFD3c8eFUblwFgo_oZEXLe", None),
+              ("2026_H1", "ETHUSDT", "13gwTwb_Saxe5xj5fiuLRFHA2DjrdGLzF", None),
+          ]
+          cache = Path("artifact/canonical-downloads")
+          root = Path("artifact/canonical")
+          cache.mkdir(parents=True, exist_ok=True)
+          root.mkdir(parents=True, exist_ok=True)
+
+          def digest(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for block in iter(lambda: handle.read(1 << 20), b""):
+                      h.update(block)
+              return h.hexdigest()
+
+          def verify_extracted(destination: Path, expected_id: str) -> dict:
+              manifest_path = destination / "DATASET_MANIFEST.json"
+              sha_path = destination / "DATASET_MANIFEST.sha256"
+              if not manifest_path.is_file() or not sha_path.is_file():
+                  raise RuntimeError(f"manifest pair missing: {destination}")
+              expected_manifest_sha = sha_path.read_text(encoding="utf-8").split()[0]
+              actual_manifest_sha = digest(manifest_path)
+              if actual_manifest_sha != expected_manifest_sha:
+                  raise RuntimeError(f"manifest hash mismatch: {destination}")
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+              if manifest.get("dataset_id") != expected_id:
+                  raise RuntimeError(
+                      f"dataset identity mismatch: {manifest.get('dataset_id')} != {expected_id}"
+                  )
+              for item in manifest.get("files", []):
+                  path = destination / item["path"]
+                  if not path.is_file() or digest(path) != item["sha256"]:
+                      raise RuntimeError(f"canonical member mismatch: {path}")
+              return {
+                  "dataset_id": expected_id,
+                  "manifest_sha256": actual_manifest_sha,
+                  "member_count": len(manifest.get("files", [])),
+                  "coverage": manifest.get("coverage", {}),
+              }
+
+          evidence = []
+          for segment, symbol, file_id, expected_archive_sha in archives:
+              expected_id = f"DS-BYBIT-LINEAR-{symbol}-{segment}-CANONICAL-V1"
+              archive = cache / f"{expected_id}.zip"
+              destination = root / segment / symbol
+
+              def materialize() -> str:
+                  if not archive.is_file():
+                      if not gdown.download(id=file_id, output=str(archive), quiet=False):
+                          raise RuntimeError(f"download failed: {expected_id}")
+                  archive_sha = digest(archive)
+                  if expected_archive_sha and archive_sha != expected_archive_sha:
+                      archive.unlink(missing_ok=True)
+                      raise RuntimeError(f"archive hash mismatch: {expected_id}")
+                  shutil.rmtree(destination, ignore_errors=True)
+                  destination.mkdir(parents=True, exist_ok=True)
+                  with zipfile.ZipFile(archive) as bundle:
+                      bundle.extractall(destination)
+                  return archive_sha
+
+              try:
+                  archive_sha = materialize()
+                  verified = verify_extracted(destination, expected_id)
+              except Exception:
+                  archive.unlink(missing_ok=True)
+                  archive_sha = materialize()
+                  verified = verify_extracted(destination, expected_id)
+              verified.update(
+                  {
+                      "segment": segment,
+                      "symbol": symbol,
+                      "drive_file_id": file_id,
+                      "archive_sha256": archive_sha,
+                  }
+              )
+              evidence.append(verified)
+          (root / "MATERIALIZATION.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Run causal 2023 fit and continuous 2024-2026 evaluation
+        env:
+          PYTHONPATH: .
+          OMP_NUM_THREADS: "2"
+          OPENBLAS_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+          NUMEXPR_NUM_THREADS: "2"
+        run: |
+          rm -rf artifact/lastd-v1
+          mkdir -p artifact/lastd-v1
+          python research/lastd/lastd_system.py \
+            --data-root artifact/canonical \
+            --output artifact/lastd-v1 \
+            2>&1 | tee artifact/lastd-v1/STDOUT.log
+
+      - name: Publish run summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("artifact/lastd-v1/RUN_SUMMARY.json")
+          if not path.exists():
+              raise SystemExit("RUN_SUMMARY.json missing")
+          summary = json.loads(path.read_text(encoding="utf-8"))
+          base = summary["baseline_unfiltered_scenario_policy"]["metrics"]
+          ml = summary["ml_state_action_policy"]["metrics"]
+          audit = summary["programization_audit"]
+          lines = [
+              "## Independent LAST-D auction-state evaluation",
+              f"- decision: `{summary['decision']}`",
+              f"- candidates pre-2024 / evaluation: `{summary['candidate_counts']['pre_2024']}` / `{summary['candidate_counts']['evaluation']}`",
+              f"- baseline daily growth / multiple / trades: `{base['geometric_daily_growth']}` / `{base['account_multiple']}` / `{base['completed_trades']}`",
+              f"- ML daily growth / multiple / trades: `{ml['geometric_daily_growth']}` / `{ml['account_multiple']}` / `{ml['completed_trades']}`",
+              f"- ML max drawdown / liquidations: `{ml['max_drawdown']}` / `{ml['liquidations']}`",
+              f"- programization audit: `{audit['passed']}`",
+          ]
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as handle:
+              handle.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload immutable run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lastd-auction-state-${{ github.sha }}
+          path: |
+            artifact/lastd-v1
+            artifact/canonical/MATERIALIZATION.json
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+      - name: Persist compact result pointer
+        if: success()
+        env:
+          RESULT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path("artifact/lastd-v1/RUN_SUMMARY.json")
+          summary = json.loads(source.read_text(encoding="utf-8"))
+          pointer = {
+              "schema_version": 1,
+              "system_id": summary["system_id"],
+              "contract_id": summary["contract_id"],
+              "claim_id": summary["claim_id"],
+              "decision": summary["decision"],
+              "source_sha": os.environ["GITHUB_SHA"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "artifact_name": f"lastd-auction-state-{os.environ['GITHUB_SHA']}",
+              "summary_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+              "candidate_counts": summary["candidate_counts"],
+              "baseline_metrics": summary["baseline_unfiltered_scenario_policy"]["metrics"],
+              "ml_metrics": summary["ml_state_action_policy"]["metrics"],
+              "programization_audit": summary["programization_audit"],
+              "data_verification": summary["data_verification"],
+              "runtime_seconds": summary["runtime_seconds"],
+          }
+          destination = Path("research/lastd/LATEST_RESULT.json")
+          destination.write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/lastd/LATEST_RESULT.json research/lastd/lastd_system.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Record LAST-D evaluation ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${RESULT_BRANCH}"
+            git push origin "HEAD:${RESULT_BRANCH}" && exit 0
+            sleep $((attempt * 2))
+          done
+          exit 1
