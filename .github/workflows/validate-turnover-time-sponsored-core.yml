@@ -1,0 +1,39 @@
+name: Validate turnover-time sponsored Core carrier
+
+on:
+  pull_request:
+    paths:
+      - 'research/turnover_time_sponsored_core/**'
+      - '.github/workflows/validate-turnover-time-sponsored-core.yml'
+  workflow_dispatch:
+
+jobs:
+  carrier:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install compact test dependencies
+        run: python -m pip install --disable-pip-version-check numpy pandas pytest
+      - name: Verify source, semantics and compact decision
+        run: |
+          set -euo pipefail
+          cd research/turnover_time_sponsored_core
+          echo '9cb5a661c42c8a8b926e658e51b15322fa63cbcb2ee1370c480dbd3d580b0484  run.py' | sha256sum -c -
+          echo 'd24edc816409c7edf8bae77a2ca4dde3ff27c2f3f0bedad50ac063e70c29a677  test_semantics.py' | sha256sum -c -
+          python -m pytest -q test_semantics.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('RESULT.json').read_text())
+          validation=json.loads(Path('VALIDATION_ATTESTATION.json').read_text())
+          assert result['decision']=='RETIRED_2022_TURNOVER_TIME_SPONSORED_CORE_FAILURE'
+          assert result['loaded_market_years']==[2021, 2022]
+          assert result['opened_2023'] is False
+          assert result['gate_2022'] is False
+          assert validation['status']=='PASS_LOCAL_CAUSAL_SEMANTICS_AND_TWO_FRESH_PROCESS_BYTE_IDENTITY'
+          assert validation['two_fresh_processes']['all_byte_identical'] is True
+          print('carrier valid')
+          PY
