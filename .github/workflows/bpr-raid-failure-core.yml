@@ -1,0 +1,96 @@
+name: Reproduce BPR raid-failure Core fatal screen
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/bpr_raid_failure_core/**"
+      - ".github/workflows/bpr-raid-failure-core.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: bpr-raid-failure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify portable quant runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+      - name: Download and verify canonical Bybit dependency
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/bybit
+          curl -L --fail --retry 4 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" -o deps/bybit.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/bybit.zip" | sha256sum -c -
+          unzip -q deps/bybit.zip -d deps/bybit
+          test -f deps/bybit/BTCUSDT/bars_5m.pkl.gz
+          test -f deps/bybit/ETHUSDT/bars_5m.pkl.gz
+      - name: Materialize source and reproduce twice
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" research/bpr_raid_failure_core/materialize.py --out materialized
+          "$PY" -m py_compile materialized/run.py materialized/validate.py
+          "$PY" materialized/run.py --root deps/bybit --output run1
+          "$PY" materialized/run.py --root deps/bybit --output run2
+          diff -qr run1 run2
+          "$PY" materialized/validate.py --root deps/bybit --output run1 --source materialized/run.py
+          "$PY" - <<'PY'
+          import hashlib,json
+          authority=json.load(open('research/bpr_raid_failure_core/RESULT.json'))
+          assert hashlib.sha256(open('run1/RESULT.json','rb').read()).hexdigest()==authority['full_result_sha256']
+          assert hashlib.sha256(open('run1/EVENTS.csv','rb').read()).hexdigest()==authority['events_sha256']
+          att=json.load(open('run1/VALIDATION_ATTESTATION.json'))
+          expected=json.load(open('research/bpr_raid_failure_core/VALIDATION_ATTESTATION.json'))
+          assert att['status']==expected['status']=='PASS'
+          assert att['check_count']==expected['check_count']==831
+          assert att['result_sha256']==expected['result_sha256']
+          assert att['source_sha256']==expected['source_sha256']
+          PY
+      - name: Assert sealed negative decision
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" - <<'PY'
+          import json
+          r=json.load(open('run1/RESULT.json'))
+          assert r['decision']=='RETIRED_PRE2024_BPR_RAID_FAILURE_NOT_CORE'
+          assert r['accounts']['CORE_REBALANCE']['24']['ordinary']['completed_trades']==108
+          assert abs(r['accounts']['CORE_REBALANCE']['24']['ordinary']['multiple']-0.9523611379962292)<1e-12
+          assert r['accounts']['EXPANSION_DELIVERY']['24']['ordinary']['completed_trades']==127
+          assert abs(r['accounts']['EXPANSION_DELIVERY']['24']['ordinary']['multiple']-0.9170226251632497)<1e-12
+          assert r['ml_opened'] is False and r['official_2024_2026_opened'] is False and r['orders_submitted'] is False
+          print('sealed negative decision reproduced')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bpr-raid-failure-core
+          path: run1
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
