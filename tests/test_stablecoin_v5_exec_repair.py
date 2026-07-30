@@ -65,7 +65,9 @@ def test_temporary_source_overlay_repairs_namespaces_and_authoritative_gate(
 
     assert observed == path
     text = path.read_text(encoding="utf-8")
-    assert repaired._SOURCE_OLD not in text
+    assert "authority.base.decode_log(" not in text
+    assert "authority.base.CONTRACTS" not in text
+    assert "authority.base.ISSUE_TOPIC" not in text
     assert text.count(repaired._SOURCE_NEW) == repaired._EXPECTED_SOURCE_REFERENCES
     assert repaired._SOURCE_GATE_CALL_OLD not in text
     assert text.count(repaired._SOURCE_GATE_CALL_NEW) == 1
