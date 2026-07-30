@@ -4,6 +4,7 @@ import base64
 import gzip
 import hashlib
 import json
+import zlib
 from pathlib import Path
 from typing import Iterable
 
@@ -13,6 +14,7 @@ MANIFEST_PATH = ROOT / "SOURCE_MANIFEST.json"
 BASE_PATH = ROOT / "run.py.gz.b64"
 PART_GLOB = "run.py.gz.b64.part*"
 OUTPUT_PATH = ROOT / "run.py"
+PARTIAL_PATH = ROOT / "run.partial.py"
 REPORT_PATH = ROOT / "MATERIALIZATION_REPORT.json"
 
 
@@ -43,6 +45,29 @@ def decode_candidate(text: str) -> bytes:
     return base64.b64decode(padded, validate=False)
 
 
+def partial_gzip_decompress(data: bytes) -> tuple[bytes, str | None]:
+    decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    raw = b""
+    error: str | None = None
+    try:
+        raw += decoder.decompress(data)
+        raw += decoder.flush()
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        try:
+            raw += decoder.flush()
+        except Exception:
+            pass
+    return raw, error
+
+
+def is_exact_source(raw: bytes, manifest: dict[str, object]) -> bool:
+    return (
+        len(raw) == int(manifest["source_bytes"])
+        and hashlib.sha256(raw).hexdigest() == manifest["source_sha256"]
+    )
+
+
 def main() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     base = compact_text(BASE_PATH) if BASE_PATH.exists() else ""
@@ -51,6 +76,8 @@ def main() -> None:
 
     attempts: list[dict[str, object]] = []
     selected: dict[str, object] | None = None
+    largest_partial = b""
+    largest_partial_name: str | None = None
 
     for name, candidate in unique_candidates(base, parts):
         attempt: dict[str, object] = {
@@ -61,32 +88,68 @@ def main() -> None:
             gz = decode_candidate(candidate)
             attempt["gzip_bytes"] = len(gz)
             attempt["gzip_sha256"] = hashlib.sha256(gz).hexdigest()
-            if attempt["gzip_sha256"] != manifest["gzip_sha256"]:
-                attempt["status"] = "gzip_hash_mismatch"
-                attempts.append(attempt)
-                continue
+            attempt["gzip_hash_matches"] = attempt["gzip_sha256"] == manifest["gzip_sha256"]
 
-            raw = gzip.decompress(gz)
-            attempt["source_bytes"] = len(raw)
-            attempt["source_sha256"] = hashlib.sha256(raw).hexdigest()
-            if len(raw) != manifest["source_bytes"]:
-                attempt["status"] = "source_length_mismatch"
-                attempts.append(attempt)
-                continue
-            if attempt["source_sha256"] != manifest["source_sha256"]:
-                attempt["status"] = "source_hash_mismatch"
-                attempts.append(attempt)
-                continue
+            raw: bytes | None = None
+            full_error: str | None = None
+            try:
+                raw = gzip.decompress(gz)
+            except Exception as exc:
+                full_error = f"{type(exc).__name__}: {exc}"
 
-            OUTPUT_PATH.write_bytes(raw)
-            attempt["status"] = "selected_exact_manifest_match"
+            if raw is not None:
+                attempt["source_bytes"] = len(raw)
+                attempt["source_sha256"] = hashlib.sha256(raw).hexdigest()
+                attempt["full_decompress_error"] = None
+                if len(raw) > len(largest_partial):
+                    largest_partial = raw
+                    largest_partial_name = name
+                if is_exact_source(raw, manifest):
+                    OUTPUT_PATH.write_bytes(raw)
+                    attempt["status"] = "selected_exact_source_match"
+                    attempts.append(attempt)
+                    selected = attempt
+                    break
+            else:
+                partial, partial_error = partial_gzip_decompress(gz)
+                attempt["full_decompress_error"] = full_error
+                attempt["partial_decompress_error"] = partial_error
+                attempt["partial_source_bytes"] = len(partial)
+                attempt["partial_source_sha256"] = hashlib.sha256(partial).hexdigest()
+                if len(partial) > len(largest_partial):
+                    largest_partial = partial
+                    largest_partial_name = name
+                if is_exact_source(partial, manifest):
+                    OUTPUT_PATH.write_bytes(partial)
+                    attempt["status"] = "selected_exact_source_match_from_truncated_gzip"
+                    attempts.append(attempt)
+                    selected = attempt
+                    break
+
+            attempt["status"] = (
+                "gzip_hash_mismatch_or_incomplete_source"
+                if not attempt["gzip_hash_matches"]
+                else "gzip_hash_match_but_source_mismatch"
+            )
             attempts.append(attempt)
-            selected = attempt
-            break
         except Exception as exc:
-            attempt["status"] = "decode_or_decompress_error"
+            attempt["status"] = "base64_decode_error"
             attempt["error"] = f"{type(exc).__name__}: {exc}"
             attempts.append(attempt)
+
+    partial_summary: dict[str, object] | None = None
+    if largest_partial:
+        PARTIAL_PATH.write_bytes(largest_partial)
+        try:
+            tail = largest_partial.decode("utf-8", errors="replace")[-4000:]
+        except Exception:
+            tail = ""
+        partial_summary = {
+            "candidate": largest_partial_name,
+            "bytes": len(largest_partial),
+            "sha256": hashlib.sha256(largest_partial).hexdigest(),
+            "utf8_tail": tail,
+        }
 
     report = {
         "manifest": manifest,
@@ -95,6 +158,7 @@ def main() -> None:
         "part_files": [path.name for path in part_paths],
         "part_base64_chars": [len(part) for part in parts],
         "attempts": attempts,
+        "largest_partial": partial_summary,
         "selected": selected,
     }
     report_text = json.dumps(report, indent=2, sort_keys=True) + "\n"
@@ -103,8 +167,8 @@ def main() -> None:
     if selected is None:
         print(report_text)
         raise RuntimeError(
-            "No declared carrier or deterministic carrier combination matched "
-            "the manifest gzip and source hashes."
+            "No carrier produced the exact manifest source. The largest recoverable "
+            "partial source and its tail were recorded."
         )
 
     print(json.dumps(selected, sort_keys=True))
