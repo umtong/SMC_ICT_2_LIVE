@@ -1,0 +1,71 @@
+{
+  "account": {
+    "actual_funding": true,
+    "costs_bp": [
+      12,
+      18,
+      24
+    ],
+    "funding_reserve": 0.0002,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "risk_fraction": 0.005
+  },
+  "action": {
+    "elapsed_time_exit": false,
+    "entry": "first observable 1m open strictly after completed-hour decision +500ms",
+    "state_loss": "first later completed-hour close back inside exact consumed boundary, executed after +500ms",
+    "stop": "opposite of consumed boundary and breakout-hour excursion, whichever is more conservative",
+    "target": "+1.5R full realization"
+  },
+  "chronology": {
+    "official_2024_2026_opened": false,
+    "period": "2021-01-01 through 2023-12-31 continuous NAV"
+  },
+  "claim_id": "CLM-20260730-MULTISCALE-SPONSORED-ACCEPTANCE-CORE-001",
+  "event_deduplication": "If one completed hour consumes multiple nested scales, emit one parent labeled by the largest consumed scale.",
+  "gate": {
+    "family_gate_is_pooled_not_best_scale_selection": true,
+    "family_min_completed_trades": 30,
+    "ge96_family_breadth": true,
+    "passed": false,
+    "sub96_family_breadth": true,
+    "years_positive": false
+  },
+  "logic": "High-participation close beyond a pre-existing external range tests new-price acceptance. One pooled full-realization Core must preserve the same meaning across 24/48/96/192-hour ranges and BTC/ETH long/short testbeds.",
+  "no_post_outcome_tuning": [
+    "scale",
+    "sponsorship threshold",
+    "symbol side",
+    "target",
+    "stop",
+    "state loss",
+    "cost",
+    "risk",
+    "leverage",
+    "ML"
+  ],
+  "pre_outcome_corrections": [
+    "state-loss execution minute cannot reuse later minute high/low",
+    "adverse/favorable state-exit gaps use stop-open/target cap",
+    "linear-contract planned-loss and realized-fee accounting",
+    "contiguous hourly/minute tape validation"
+  ],
+  "result_id": "RES-20260730-MULTISCALE-SPONSORED-ACCEPTANCE-CORE-001",
+  "scales_hours": [
+    24,
+    48,
+    96,
+    192
+  ],
+  "schema_version": 1,
+  "sponsorship": {
+    "feature": "completed-hour log1p(volume) z-score over inherited 168-hour calculation",
+    "provenance": "inherited 2021 upper-quartile threshold from retained accepted-delivery family",
+    "threshold": 2.2706072565238586
+  },
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ]
+}
