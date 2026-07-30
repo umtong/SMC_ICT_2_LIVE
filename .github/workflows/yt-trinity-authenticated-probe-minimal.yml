@@ -1,0 +1,38 @@
+name: YT Trinity minimal authenticated caption probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - diagnose_ytt_transport.py
+      - .github/workflows/yt-trinity-authenticated-probe-minimal.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yt-trinity-authenticated-probe-minimal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Diagnose registration, keyless, and keyed transcript paths
+        shell: bash
+        run: python diagnose_ytt_transport.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-minimal-auth-diagnostic-${{ github.sha }}
+          path: artifact/probe-result.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce positive control
+        run: |
+          python -c "import json,pathlib,sys; result=json.loads(pathlib.Path('artifact/probe-result.json').read_text(encoding='utf-8')); sys.exit(0 if result.get('positive_control_pass') else 1)"
