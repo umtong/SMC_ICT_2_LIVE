@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ML-PERP-INDEX-SWEEP-001",
+  "result_id": "RES-20260730-ML-PERP-INDEX-SWEEP-001",
+  "status": "ECONOMIC_FAILURE_PRE_2024",
+  "hard_validity": "PASS_WITH_RECORDED_SEMANTIC_CORRECTION",
+  "ranking_eligible": false,
+  "ranking_change": false,
+  "official_2024_2026_opened": false,
+  "ml_fitted": false,
+  "orders_submitted": false,
+  "semantic_correction": {
+    "defect": "the exploratory version compared the derivative level with the previous-day index extreme, which may have formed at a different time",
+    "repair": "pair each previous-day perpetual high or low with the index high or low in the exact completed five-minute bar that created that derivative extreme",
+    "economic_effect": "the repair did not create cost-surviving alpha"
+  },
+  "data": [
+    {"dataset_id": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1", "sha256": "7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca"},
+    {"dataset_id": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2021-CANONICAL-V1", "sha256": "b2ff98c7ea8968ec942bdf79a69fcd75d37871ca9ca9d6c42778ecf098945295"},
+    {"dataset_id": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2022-CANONICAL-V1", "sha256": "273995bf7efd905c147237ff14978b92ef65f4703b290986ba6fab5fe5e3e42c"},
+    {"dataset_id": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2022-CANONICAL-V1", "sha256": "681cb5c21826f05a12e40b25818c40d1be46cf4b394676998d8a6856180271da"},
+    {"dataset_id": "DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2023-CANONICAL-V1", "sha256": "ee145ba1dd51fe24357940a4a6a9ffe99f52a45f983c7e191ff38dece6ec3a46"},
+    {"dataset_id": "DS-BYBIT-LINEAR-ETHUSDT-PRE_2024_2023-CANONICAL-V1", "sha256": "87dbd84278f6cfd93c841e2312429915aa3a4877e931abf77650ae5d3506f322"}
+  ],
+  "verification": {
+    "zip_hashes_match_registry": true,
+    "manifest_hashes_match": true,
+    "internal_file_hash_failures": 0,
+    "runtime": "Python 3.12.12; numpy 2.3.3; pandas 2.3.3; pyarrow 21.0.0; scikit-learn 1.7.2",
+    "runtime_artifact_sha256": "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4"
+  },
+  "primary_cost_bps": 18,
+  "global_slot_results": {
+    "2021": {
+      "events_with_valid_trade_geometry": 27,
+      "selected_trades": 26,
+      "nav_multiple": 0.9425491758174563,
+      "return": -0.05745082418254366,
+      "geometric_daily_growth": -0.00016208873915257715,
+      "profit_factor": 0.3819000318344136,
+      "max_drawdown": -0.06485352141606104,
+      "median_account_return": -0.005,
+      "stops": 19,
+      "targets": 6,
+      "state_loss_exits": 1
+    },
+    "2022": {
+      "events_with_valid_trade_geometry": 20,
+      "selected_trades": 20,
+      "nav_multiple": 0.9549726527078626,
+      "return": -0.04502734729213742,
+      "geometric_daily_growth": -0.0001262182661863065,
+      "profit_factor": 0.3482215742080421,
+      "max_drawdown": -0.053214234310833386,
+      "median_account_return": -0.005,
+      "stops": 14,
+      "targets": 6,
+      "state_loss_exits": 0,
+      "mean_reversal_return_4h_before_cost": -0.004542008420438574
+    },
+    "2023_diagnostic_exposed": {
+      "events_with_valid_trade_geometry": 25,
+      "selected_trades": 24,
+      "nav_multiple": 0.9353400677143078,
+      "return": -0.06465993228569222,
+      "geometric_daily_growth": -0.00018312051093760662,
+      "profit_factor": 0.18681185391642263,
+      "max_drawdown": -0.06588546001243722,
+      "median_account_return": -0.005,
+      "stops": 16,
+      "targets": 8,
+      "state_loss_exits": 0
+    },
+    "2021_2023_diagnostic_continuous": {
+      "selected_trades": 70,
+      "nav_multiple": 0.8419077200037631,
+      "return": -0.15809227999623687,
+      "geometric_daily_growth": -0.00015714278140599447,
+      "profit_factor": 0.3076674139802793,
+      "max_drawdown": -0.1657989926438037,
+      "median_account_return": -0.005,
+      "top5_positive_pnl_share": 0.6784572231436858
+    }
+  },
+  "cost_stress_2022": {
+    "12bp_return": -0.03966221975431017,
+    "18bp_return": -0.04502734729213742,
+    "24bp_return": -0.049356688116912184
+  },
+  "decision": "Retire the exact perp-versus-paired-index previous-day sweep/reversal information unit. Do not add FVG, order-block, session, threshold, risk, leverage, or lower-cost rescue layers."
+}
