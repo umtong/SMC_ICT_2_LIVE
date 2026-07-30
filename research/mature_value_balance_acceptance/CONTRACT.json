@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-MATURE-VALUE-BALANCE-ACCEPTANCE-001",
+  "result_id": "RES-20260730-MATURE-VALUE-BALANCE-ACCEPTANCE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "logic": "two consecutive true two-sided daily value auctions with a running common-value intersection form a mature balance; the first outside completed-hour close retires it; a sponsored outside close takes a fixed +1.5R Core action with balance-reacceptance state loss",
+  "profile_bins": 64,
+  "value_fraction": 0.70,
+  "sponsorship_threshold": 2.2706072565238586,
+  "target_r": 1.5,
+  "fixed_latency_ms": 500,
+  "risk": 0.005,
+  "notional_cap": 3.0,
+  "one_global_slot": true,
+  "actual_signed_funding": true,
+  "same_minute_ambiguity": "adverse stop first",
+  "no_elapsed_time_close": true,
+  "chronology": "2021 diagnostic; 2022 untouched forward screen; later periods sealed without survivor",
+  "orders_submitted": false,
+  "live_permission": false
+}
