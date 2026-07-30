@@ -1,0 +1,112 @@
+name: GMX V1 SQD finalized liquidation source gate v2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/ml_gmx_v1_liquidation_20260726/**'
+      - 'research/gmx_v1_liquidation_sqd_takeover/**'
+      - '.github/workflows/gmx-v1-liquidation-sqd-source-gate-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gmx-v1-sqd-source-gate-v2-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  sqd-source-gate-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      ROOT: research/ml_gmx_v1_liquidation_20260726
+      TAKEOVER: research/gmx_v1_liquidation_sqd_takeover
+      OUT: research_runs/gmx_v1_liquidation_takeover/sqd_source_gate_v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pinned source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'requests==2.32.4'
+
+      - name: Validate source semantics and tuple adapter
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          {
+            python -m py_compile \
+              "$ROOT/probe_gmx_v1_liquidations.py" \
+              "$ROOT/probe_gmx_v1_liquidations_semantic.py" \
+              "$TAKEOVER/source_gate.py" \
+              "$TAKEOVER/source_gate_v2.py"
+            PYTHONPATH="$ROOT:$TAKEOVER" python "$ROOT/probe_gmx_v1_liquidations_semantic.py" --self-test
+            PYTHONPATH="$ROOT:$TAKEOVER" python "$TAKEOVER/source_gate_v2.py" --self-test
+          } 2>&1 | tee "$OUT/PRECHECK.log"
+
+      - name: Run corrected outcome-sealed SQD source gate
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$ROOT:$TAKEOVER" python "$TAKEOVER/source_gate_v2.py" \
+            --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
+
+      - name: Enforce source-only authority
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip, hashlib, json
+          from pathlib import Path
+          root=Path('research_runs/gmx_v1_liquidation_takeover/sqd_source_gate_v2')
+          path=root/'SOURCE_GATE_RESULT.json'
+          if not path.is_file():
+              raise SystemExit('SOURCE_GATE_RESULT.json missing')
+          result=json.loads(path.read_text())
+          assert result['parent_claim_id']=='CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001'
+          assert result['takeover_claim_id']=='CLM-20260730-GMX-V1-LIQUIDATION-TAKEOVER-001'
+          assert result['chain_id']==42161
+          assert result['information_delay_seconds']==120
+          assert isinstance(result['source_gate_pass'], bool)
+          raw=root/'RAW_GMX_V1_LIQUIDATIONS.jsonl.gz'
+          rows=[]
+          if raw.is_file():
+              with gzip.open(raw,'rt',encoding='utf-8') as handle:
+                  rows=[json.loads(line) for line in handle if line.strip()]
+              for row in rows:
+                  assert row['external_market_order_direction_asserted'] is False
+                  assert row['source_censoring']=='LIQUIDATION_STATE_1_ONLY'
+                  assert 'forced_flow_direction' not in row
+          decision={
+              'takeover_claim_id':result['takeover_claim_id'],
+              'parent_claim_id':result['parent_claim_id'],
+              'transport':'SQD_FINALIZED_PORTAL_V2',
+              'source_gate_pass':result['source_gate_pass'],
+              'scientific_decision':result['scientific_decision'],
+              'events':result.get('totals',{}).get('btc_eth_liquidations',0),
+              'orders_submitted':False,
+              'market_outcomes_opened':False,
+          }
+          (root/'TAKEOVER_SOURCE_DECISION.json').write_text(json.dumps(decision,indent=2,sort_keys=True)+'\n')
+          files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='SHA256SUMS.txt')
+          def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          (root/'SHA256SUMS.txt').write_text(''.join(f'{digest(p)}  {p.as_posix()}\n' for p in files))
+          print(json.dumps(decision,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gmx-v1-sqd-source-gate-v2-${{ github.run_id }}
+          path: research_runs/gmx_v1_liquidation_takeover/sqd_source_gate_v2
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
