@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-2006-ML-LEVEL-HAZARD-001",
+  "result_id": "RES-20260730-ML-LEVEL-HAZARD-TAKEOVER-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "logic": "prior-day high/low repeated-touch survival hazard with breakout/rejection/flat direct expected-R routing",
+  "life_days": [3, 5, 7],
+  "touch_separation_bars": [2, 4, 8],
+  "tolerance_scale": [0.1, 0.2],
+  "boundary_scale": [0.5, 0.75, 1.0],
+  "logistic_C": [0.1, 1.0, 10.0],
+  "ev_threshold": [0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0],
+  "costs_bps": [12, 18, 24],
+  "risk": 0.005,
+  "notional_cap": 3.0,
+  "one_global_slot": true,
+  "latency_ms": 500,
+  "no_elapsed_time_exit": true,
+  "chronology": "2021 fit; 2022 forward selection; 2023 sealed without survivor",
+  "orders_submitted": false,
+  "live_permission": false
+}
