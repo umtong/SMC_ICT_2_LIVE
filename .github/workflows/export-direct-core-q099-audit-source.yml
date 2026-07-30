@@ -1,0 +1,39 @@
+name: Export direct-Core q099 audit source
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/direct_core_q099_authority_audit/**"
+      - ".github/workflows/export-direct-core-q099-audit-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify inherited source fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f research/execution_aligned_direct_utility_core/materialized/direct_core_common.py
+          test -f research/execution_aligned_direct_utility_core/materialized/direct_core_account.py
+          test -f research/execution_aligned_direct_utility_core/materialized/train_score.py
+          test -f research/execution_aligned_direct_utility_core/materialized/evaluate_direct_core.py
+          (cd research/execution_aligned_direct_utility_core/materialized && sha256sum -c SHA256SUMS.txt)
+          find research/execution_aligned_direct_utility_core/materialized -type f -print0 | sort -z | xargs -0 sha256sum > SOURCE_EXPORT_SHA256SUMS.txt
+          cp research/direct_core_q099_authority_audit/WORK_CLAIM.json ./
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-q099-audit-source
+          path: |
+            research/execution_aligned_direct_utility_core/materialized
+            SOURCE_EXPORT_SHA256SUMS.txt
+            WORK_CLAIM.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
