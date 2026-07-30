@@ -1,0 +1,36 @@
+{
+  "claim_id": "CLM-20260730-BALANCE-CONTROL-TRANSFER-001",
+  "decision": "The causal balance identity correction and a second equal-turnover rebalance/redelivery packet did not create cost-surviving, breadth-preserving action value. Price location alone does not identify who opened inventory, who absorbed it, or who is trapped. Retire this exact information unit without threshold, profile, cost, risk, leverage, asset-specific or SMC-checklist rescue.",
+  "logic": "old two-sided balance -> edge liquidity consumption -> activity-normalized rebalance -> accepted outside control transfer or rejected rotation",
+  "next_logic": "Measure fresh leveraged inventory cost basis from directionally aggressive public trades plus OI change, then distinguish protected profitable inventory from trapped inventory after a liquidity interaction.",
+  "one_packet_strict_balance": {
+    "2022_24bp": {
+      "ACCEPT": {"median": -0.004701717126547097, "multiple": 0.8278883950045578, "pf": 0.377632835158909, "trades": 92, "winner_removed_multiple": 0.7524662891434107},
+      "REJECT": {"median": -0.0035464694738995073, "multiple": 0.9515246385125067, "pf": 0.4129710772434926, "trades": 30, "winner_removed_multiple": 0.9339580696194107}
+    },
+    "event_states": {"ACCEPT": 316, "REJECT": 100}
+  },
+  "orders_submitted": false,
+  "programization_audit": {
+    "correction": "open and close must finish inside the completed 70% value area and both UTC half-days must trade on both sides of the completed POC",
+    "defect": "the first implementation treated every completed day as a two-sided balance, including one-direction trend days",
+    "semantic_tests_passed": 5,
+    "strict_balance_counts": {
+      "BTCUSDT": {"complete_days": 1095, "rejected_close_outside_value": 251, "rejected_first_half_one_sided": 68, "rejected_open_outside_value": 542, "rejected_second_half_one_sided": 6, "strict_balances": 228},
+      "ETHUSDT": {"complete_days": 1022, "rejected_close_outside_value": 241, "rejected_first_half_one_sided": 75, "rejected_open_outside_value": 526, "rejected_second_half_one_sided": 8, "strict_balances": 172}
+    }
+  },
+  "ranking_changed": false,
+  "result_id": "RES-20260730-BALANCE-CONTROL-TRANSFER-001",
+  "schema_version": 1,
+  "status": "RETIRED_PROGRAMIZATION_CORRECTED_PRE2024_ECONOMIC_FAILURE",
+  "target_status": "NOT_MET",
+  "two_packet_rebalance_redelivery": {
+    "2022_24bp": {
+      "ACCEPT": {"median": -0.003243925218045895, "multiple": 0.9943752807627952, "pf": 0.8772304867119558, "trades": 19, "winner_removed_multiple": 0.9564071750045022},
+      "REJECT": {"median": -0.0035415497467494645, "multiple": 0.9008908788456466, "pf": 0.22253796364154338, "trades": 49, "winner_removed_multiple": 0.878250768005013}
+    },
+    "event_states": {"ACCEPT": 73, "REJECT": 160},
+    "selection": {"passed": false, "rule": "positive at 18/24bp, PF>1, >=40 trades, exact top10% winner-deletion reroute positive", "survivors": []}
+  }
+}
