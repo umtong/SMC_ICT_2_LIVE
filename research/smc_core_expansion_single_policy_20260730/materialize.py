@@ -4,11 +4,21 @@ import base64,hashlib,json,tarfile
 root=Path(__file__).resolve().parent
 m=json.loads((root/"SOURCE_MANIFEST.json").read_text())
 chunks=[]
+errors=[]
 for spec in m["bundle_parts"]:
     text="".join((root/spec["file"]).read_text().split())
-    assert len(text)==spec["base64_chars"]
-    assert hashlib.sha256(text.encode()).hexdigest()==spec["sha256"]
+    observed={
+        "file":spec["file"],
+        "expected_chars":spec["base64_chars"],
+        "observed_chars":len(text),
+        "expected_sha256":spec["sha256"],
+        "observed_sha256":hashlib.sha256(text.encode()).hexdigest(),
+    }
+    print(json.dumps(observed,sort_keys=True),flush=True)
+    if observed["expected_chars"]!=observed["observed_chars"] or observed["expected_sha256"]!=observed["observed_sha256"]:
+        errors.append(observed)
     chunks.append(text)
+assert not errors, errors
 
 b64="".join(chunks)
 assert len(b64)==m["base64_chars"]
