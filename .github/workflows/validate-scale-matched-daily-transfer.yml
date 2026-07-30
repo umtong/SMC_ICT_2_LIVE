@@ -1,0 +1,49 @@
+name: Validate scale-matched daily transfer fatal screen
+
+on:
+  push:
+    branches:
+      - agent/r36-scale-matched-daily-transfer-001
+    paths:
+      - "research/scale_matched_daily_transfer/**"
+      - ".github/workflows/validate-scale-matched-daily-transfer.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/scale_matched_daily_transfer/**"
+      - ".github/workflows/validate-scale-matched-daily-transfer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "numpy==2.3.3" "pandas==2.3.3" "pyarrow==21.0.0"
+      - name: Materialize and verify deterministic source
+        run: |
+          cd research/scale_matched_daily_transfer
+          python materialize.py
+          python -m py_compile materialized/daily_transfer_microflow.py materialized/test_daily_transfer_microflow.py
+          cd materialized
+          python -m unittest -v test_daily_transfer_microflow.py
+      - name: Validate compact result files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('research/scale_matched_daily_transfer')
+          contract=json.loads((root/'CONTRACT.json').read_text())
+          result=json.loads((root/'RESULT.json').read_text())
+          validation=json.loads((root/'VALIDATION.json').read_text())
+          assert contract['result_id']==result['result_id']==validation['result_id']
+          assert result['status']=='RETIRED_RESEARCH_EXPOSED_FORWARD_ECONOMIC_FAILURE'
+          assert result['official_2024_2026_opened'] is False
+          assert result['orders_submitted'] is False
+          PY
