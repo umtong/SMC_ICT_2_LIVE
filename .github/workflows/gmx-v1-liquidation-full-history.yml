@@ -1,0 +1,94 @@
+name: GMX V1 finalized liquidation full pre-2024 history
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/gmx_v1_liquidation_takeover/SOURCE_GATE_AUTHORITY.json'
+      - 'research/gmx_v1_liquidation_takeover/full_history_sqd.py'
+      - 'research/gmx_v1_liquidation_sqd_takeover/source_gate.py'
+      - 'research/gmx_v1_liquidation_sqd_takeover/source_gate_v2.py'
+      - '.github/workflows/gmx-v1-liquidation-full-history.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gmx-v1-full-history-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  full-history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      PYTHONHASHSEED: '0'
+      PYTHONUNBUFFERED: '1'
+      PYTHONFAULTHANDLER: '1'
+      ROOT: research/ml_gmx_v1_liquidation_20260726
+      SQD: research/gmx_v1_liquidation_sqd_takeover
+      TAKEOVER: research/gmx_v1_liquidation_takeover
+      OUT: research_runs/gmx_v1_liquidation_takeover/full_history
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pinned source environment
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'requests==2.32.4'
+
+      - name: Validate authority and acquisition source
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          {
+            python -m py_compile \
+              "$ROOT/probe_gmx_v1_liquidations.py" \
+              "$ROOT/probe_gmx_v1_liquidations_semantic.py" \
+              "$SQD/source_gate.py" \
+              "$SQD/source_gate_v2.py" \
+              "$TAKEOVER/full_history_sqd.py"
+            python -m json.tool "$TAKEOVER/SOURCE_GATE_AUTHORITY.json" >/dev/null
+          } 2>&1 | tee "$OUT/PRECHECK.log"
+
+      - name: Acquire authority-matched finalized full history
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$ROOT:$SQD:$TAKEOVER" python "$TAKEOVER/full_history_sqd.py" \
+            --authority "$TAKEOVER/SOURCE_GATE_AUTHORITY.json" \
+            --output "$OUT" 2>&1 | tee "$OUT/RUN.log"
+
+      - name: Enforce no market outcome and freeze hashes
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('research_runs/gmx_v1_liquidation_takeover/full_history')
+          result=json.loads((root/'FULL_HISTORY_RESULT.json').read_text())
+          assert result['takeover_claim_id']=='CLM-20260730-GMX-V1-LIQUIDATION-TAKEOVER-001'
+          assert result['phase']=='FROZEN_PRE2024_FULL_HISTORY'
+          assert result['btc_eth_liquidations']==result['unique_identities']
+          assert result['btc_eth_liquidations']>=6111
+          assert result['probe_identity_sha256']=='3a6823c8658bdbccdfabedd70a64db8d9eef2f0705a0022f859a30aba847d69f'
+          assert result['probe_semantic_sha256']=='0cf60e9abae34a0c51b995fad75dfa9ee1794aa29f586c344c94f25f728e9a2d'
+          assert result['market_outcomes_opened'] is False
+          assert result['orders_submitted'] is False
+          files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='ALL_SHA256SUMS.txt')
+          def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+          (root/'ALL_SHA256SUMS.txt').write_text(''.join(f'{digest(p)}  {p.as_posix()}\n' for p in files))
+          print(json.dumps(result,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gmx-v1-full-history-${{ github.run_id }}
+          path: research_runs/gmx_v1_liquidation_takeover/full_history
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6

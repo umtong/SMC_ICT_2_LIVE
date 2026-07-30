@@ -1,0 +1,35 @@
+{
+  "base_revision": 20,
+  "branch": "agent/r20-ml-gmx-v1-liquidation-001",
+  "claim_id": "CLM-20260726-2324-ML-GMX-V1-LIQUIDATION-001",
+  "created_at": "2026-07-26T23:24:00+09:00",
+  "credentials_used": false,
+  "current_phase": "OUTCOME_SEALED_SOURCE_GATE",
+  "distinct_information_unit": "Canonical GMX V1 Arbitrum Vault LiquidatePosition logs, available only after block confirmation plus a frozen 120-second delay.",
+  "duplication_check": {
+    "drive_work_claim_registry": "no GMX claim found before creation",
+    "github_open_pr_search": "no GMX work claim found before creation"
+  },
+  "excluded_overlap": [
+    "Binance or Bybit liquidation messages",
+    "Hyperliquid ledger liquidations",
+    "Aave collateral LiquidationCall events",
+    "inferred funding or open-interest state",
+    "joint Bybit order-book and aggressive-flow state",
+    "ordinary CEX trade prints or completed-bar setup extensions"
+  ],
+  "objective": "Test whether finalized GMX V1 Arbitrum BTC/ETH LiquidatePosition events contain causal information about the next executable Bybit BTCUSDT/ETHUSDT structural-liquidity first passage after realistic costs.",
+  "objective_fingerprint": "1526071f57fe002e128a61380e9809acefe0eac49a18629674b161e8bdf96919",
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "owner": "gpt-5.6-pro-20260726-2324",
+  "schema_version": 1,
+  "scope": [
+    "verify Arbitrum chain ID, canonical GMX V1 Vault bytecode, frozen event topic and deterministic ABI decoding",
+    "measure BTC/ETH liquidation density and side breadth in six frozen pre-2024 stress windows",
+    "open no market price, future return, label, model, action, trade, PnL, official interval, credential or order before source passage",
+    "conditionally implement one preregistered pooled HGBT structural first-passage policy only after source passage"
+  ],
+  "scope_fingerprint": "244af82532cb77b6a7f1696bf685d1ffb5a41e54264973ea48acddf0d5bd20e4",
+  "status": "ACTIVE"
+}
