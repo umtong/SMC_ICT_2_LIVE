@@ -1,7 +1,8 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "claim_id": "CLM-20260730-REAL-ACCOUNT-BEHAVIOR-DECOMP-001",
-  "result_id": "RES-20260730-REAL-ACCOUNT-BEHAVIOR-DECOMP-001",
+  "result_id": "RES-20260730-REAL-ACCOUNT-BEHAVIOR-DECOMP-002",
+  "supersedes_result_id": "RES-20260730-REAL-ACCOUNT-BEHAVIOR-DECOMP-001",
   "purpose": "Pre-2024 hypothesis-generation decomposition of repeated decision behavior in one public BitMEX account ledger; never a copied strategy or rank-eligible result.",
   "source": {
     "repository": "bwjoke/BTC-Trading-Since-2020",
@@ -14,19 +15,21 @@
       "api-v1-user-walletHistory.csv"
     ],
     "required_file_hashes": "must equal the pinned manifest",
+    "effective_timestamp": "timestamp first; transactTime only when timestamp is unavailable",
     "economic_cutoff": "2023-12-31T23:59:59.999Z",
     "future_rows": "transport-only; discard before behavior reconstruction and prohibit from summaries, hypotheses and decisions"
   },
   "scope": {
-    "symbols": "BTC-related symbols identified by XBT or BTC in the source-native symbol",
+    "symbols": "inverse XBT derivatives only; XBTUSD plus dated XBT futures; XBT_USDT spot is excluded",
     "report_separately": ["symbol", "settlement_currency", "side"],
     "position_episode": "flat-to-position through flat or sign reversal; no arbitrary time split",
     "position_effect_execution_types": ["Trade", "Settlement"],
-    "discretionary_behavior_execution_type": "Trade"
+    "discretionary_behavior_execution_type": "Trade",
+    "partial_fills": "multiple fills sharing one order ID are collapsed to one behavior action after position accounting"
   },
   "fixed_decomposition": [
     "position establishment",
-    "scale-in while favorable versus adverse to the current position reference",
+    "scale-in while favorable versus adverse to the current inverse-cost reference",
     "scale-out while favorable versus adverse",
     "direct sign reversal and re-entry within 60 minutes",
     "maker/taker execution mix",
@@ -35,14 +38,18 @@
     "positive-PnL concentration and long-duration contribution"
   ],
   "pnl_semantics": {
-    "authority": "preserve exchange-native realisedPnl and execComm separately by settlement currency",
-    "realised_minus_comm": "labeled proxy only; not asserted wallet NAV",
-    "wallet_history": "cross-check layer, not a forced equality assertion"
+    "inverse_contract_trade_pnl": "for a long reduction q*(1/average_entry_price - 1/exit_price); short is the sign-reversed expression; average entry is harmonic in contract quantity",
+    "execution_commission": "subtract source-native execComm after converting XBt satoshi units to XBT",
+    "funding": "assign funding rows only while the same symbol episode is open, using wallet-history address as the source-native symbol field",
+    "episode_net_proxy": "inverse realised trade PnL minus execution commission plus matched-symbol funding",
+    "wallet_history": "symbol-level and total cross-check layer only; no forced equality because wallet history includes other instruments, transfers, conversion and accounting adjustments",
+    "authority_boundary": "episode outcome is a behavioral proxy, not reconstructed account NAV"
   },
   "hypothesis_rule": {
     "maximum": 2,
     "required_fields": ["mechanism", "who_pays", "persistence_reason", "invalidation", "required_bybit_information"],
-    "authorization": "idea evidence only; any Bybit test must be separately preregistered and frozen through 2023-12-31"
+    "authorization": "idea evidence only; any Bybit test must be separately preregistered and frozen through 2023-12-31",
+    "no_direction_copy": true
   },
   "decision_rule": {
     "no_strategy_when": [
@@ -50,15 +57,17 @@
       "evidence is dominated by rare long-duration episodes",
       "positive PnL is concentrated in a small tail without a repeated causal behavior",
       "private discretionary context is essential",
-      "no behavior has sufficient breadth and a coherent economic payer"
+      "no behavior has sufficient breadth and a coherent economic payer",
+      "the required Bybit queue and trade-through evidence is not registered"
     ],
-    "possible_next_step": "open at most one separate canonical-Bybit preregistration when a repeated behavior survives the fixed descriptive screen"
+    "possible_next_step": "open at most one separate canonical-Bybit preregistration when a repeated behavior survives the fixed descriptive screen and its required source is available"
   },
   "prohibited": [
     "copying external thresholds, sizes, sides or holding times",
     "using external-account rows after 2023-12-31 for rule formation",
     "calling this a backtest or ranking result",
     "risk or leverage optimization",
+    "assuming limit touch equals fill",
     "credentials, paper orders, testnet orders or live orders"
   ],
   "orders_submitted": false,
