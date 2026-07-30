@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-ETH-VALIDATOR-WITHDRAWAL-CORE-001",
+  "stage": "OUTCOME_SEALED_SOURCE_GATE",
+  "protocol": "EIP-4895 beacon-chain withdrawals as execution-payload operations",
+  "source": {
+    "provider": "ethPandaOps Xatu public data",
+    "table": "canonical_beacon_block_withdrawal",
+    "url_template": "https://data.ethpandaops.io/xatu/mainnet/databases/default/canonical_beacon_block_withdrawal/YYYY/M/D.parquet",
+    "schema_repository": "ethpandaops/xatu-data",
+    "license": "CC BY 4.0"
+  },
+  "pre2024_coverage": ["2023-04-12", "2023-12-31"],
+  "official_coverage_probe": ["2024-01-01", "2026-06-30"],
+  "fixed_probe_dates": [
+    "2023-04-12",
+    "2023-04-13",
+    "2023-07-01",
+    "2023-12-31",
+    "2024-01-01",
+    "2025-10-05",
+    "2026-06-30"
+  ],
+  "required_columns": [
+    "slot",
+    "slot_start_date_time",
+    "epoch",
+    "block_root",
+    "withdrawal_index",
+    "withdrawal_validator_index",
+    "withdrawal_address",
+    "withdrawal_amount"
+  ],
+  "source_event_key": "withdrawal_index",
+  "market_outcomes_opened": false,
+  "bybit_data_opened": false,
+  "orders_submitted": false
+}
