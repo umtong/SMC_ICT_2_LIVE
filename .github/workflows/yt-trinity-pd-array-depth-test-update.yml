@@ -1,0 +1,69 @@
+name: YT Trinity PD-array depth test update
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-pd-array-depth-test-update.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pd-array-depth-test-update
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Update and run causal depth tests
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/tests/test_causal_action_candidates.py')
+          text=p.read_text()
+          text=text.replace(
+              '    assert len(passive) == 1\n    assert market == []\n    assert passive[0].timestamp == frame.index[4]\n    assert passive[0].entry_reference == 102.5\n    assert passive[0].target_reference == 95.0\n    assert diagnostics["causal_passive_actions"] == 1\n',
+              '    assert len(passive) == 5\n    assert market == []\n    assert {row.timestamp for row in passive} == {frame.index[4]}\n    assert sorted(row.feature_row["passive_depth_fraction"] for row in passive) == [0.0, 0.25, 0.5, 0.75, 1.0]\n    midpoint = next(row for row in passive if row.feature_row["passive_depth_fraction"] == 0.5)\n    assert midpoint.entry_reference == 102.5\n    assert {row.target_reference for row in passive} == {95.0}\n    assert len({row.stop_reference for row in passive}) == 1\n    assert diagnostics["causal_passive_actions"] == 5\n    assert diagnostics["causal_pd_arrays_armed"] == 1\n',
+              1,
+          )
+          text=text.replace(
+              '    assert len(passive) == 1\n    assert len(market) == 1\n    assert passive[0].timestamp < market[0].timestamp\n    assert passive[0].entry_reference != market[0].entry_reference\n    assert diagnostics["causal_passive_actions"] == 1\n    assert diagnostics["confirmed_market_actions"] == 1\n',
+              '    assert len(passive) == 5\n    assert len(market) == 1\n    assert all(row.timestamp < market[0].timestamp for row in passive)\n    assert market[0].feature_row["passive_depth_fraction"] == -1.0\n    assert diagnostics["causal_passive_actions"] == 5\n    assert diagnostics["causal_pd_arrays_armed"] == 1\n    assert diagnostics["confirmed_market_actions"] == 1\n',
+              1,
+          )
+          p.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py
+          git rm .github/workflows/yt-trinity-pd-array-depth-test-update.yml
+      - name: Commit updated tests
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/tests/test_causal_action_candidates.py
+          git commit -m 'Test all causal PD-array mitigation depths'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

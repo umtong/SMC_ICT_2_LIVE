@@ -1,0 +1,47 @@
+name: YT Trinity causal coarse survivor selection
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/CISD_BPR_IFVG_RUN_POINTER.json
+      - research/yt_trinity_ml/COMPRESSION_BPR_RUN_POINTER.json
+      - research/yt_trinity_ml/SMT_CISD_RUN_POINTER.json
+      - research/yt_trinity_ml/select_coarse_survivor.py
+      - .github/workflows/yt-trinity-coarse-survivor-selection.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-coarse-survivor-selection-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Select only explicit positive 2024H1 survivors
+        run: |
+          python research/yt_trinity_ml/select_coarse_survivor.py \
+            --root research/yt_trinity_ml \
+            --output research/yt_trinity_ml/COARSE_SURVIVOR_POINTER.json
+      - name: Persist selection state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/COARSE_SURVIVOR_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Reconcile YT Trinity causal coarse survivor"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

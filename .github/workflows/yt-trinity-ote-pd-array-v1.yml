@@ -1,0 +1,135 @@
+name: YT Trinity OTE PD-array confluence v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-ote-pd-array-v1.yml
+      - research/yt_trinity_ml/system/corpus_alpha.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-ote-pd-array-v1
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Add selectable OTE overlap contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+          cfg_anchor = '    strong_counter_bias_floor: float = -3.0\n'
+          if 'ote_pd_array_mode' not in text:
+              if cfg_anchor not in text:
+                  raise SystemExit('config anchor missing')
+              text = text.replace(
+                  cfg_anchor,
+                  cfg_anchor + '    ote_pd_array_mode: str = "FEATURE_ONLY"\n    ote_retracement_lower: float = 0.62\n    ote_retracement_upper: float = 0.79\n',
+                  1,
+              )
+          state_anchor = '''    ob_width_atr: float = 0.0\n    first_retest_pos: int | None = None\n'''
+          state_new = '''    ob_width_atr: float = 0.0\n    ote_overlap_fraction: float = 0.0\n    first_retest_pos: int | None = None\n'''
+          if 'ote_overlap_fraction: float = 0.0' not in text:
+              if state_anchor not in text:
+                  raise SystemExit('state OTE anchor missing')
+              text = text.replace(state_anchor, state_new, 1)
+
+          choose_signature_old = ') -> tuple[float, float, int, float, float] | None:\n'
+          choose_signature_new = ') -> tuple[float, float, int, float, float, float] | None:\n'
+          choose_start = text.find('def _choose_pd_array(')
+          choose_end = text.find('\ndef ', choose_start + 1)
+          choose_block = text[choose_start:choose_end]
+          if 'tuple[float, float, int, float, float, float]' not in choose_block:
+              if choose_signature_old not in choose_block:
+                  raise SystemExit('PD-array return signature missing')
+              choose_block = choose_block.replace(choose_signature_old, choose_signature_new, 1)
+
+          return_anchor = '''    return lower, upper, kind, fvg_width, ob_width\n'''
+          ote_block = '''    impulse = features.iloc[max(0, state.created_pos) : pos + 1]\n    impulse_low = float(impulse[\"low\"].min())\n    impulse_high = float(impulse[\"high\"].max())\n    impulse_width = max(impulse_high - impulse_low, 1e-12)\n    lower_retracement = float(config.ote_retracement_lower)\n    upper_retracement = float(config.ote_retracement_upper)\n    if not 0.0 < lower_retracement < upper_retracement < 1.0:\n        raise ValueError(\"OTE retracement bounds must satisfy 0 < lower < upper < 1\")\n    if state.side > 0:\n        ote_lower = impulse_high - upper_retracement * impulse_width\n        ote_upper = impulse_high - lower_retracement * impulse_width\n    else:\n        ote_lower = impulse_low + lower_retracement * impulse_width\n        ote_upper = impulse_low + upper_retracement * impulse_width\n    overlap_lower = max(lower, ote_lower)\n    overlap_upper = min(upper, ote_upper)\n    overlap = max(0.0, overlap_upper - overlap_lower)\n    overlap_fraction = overlap / max(upper - lower, 1e-12)\n    ote_mode = str(config.ote_pd_array_mode).upper()\n    if ote_mode == \"INTERSECT\":\n        if overlap <= 0:\n            return None\n        lower, upper = overlap_lower, overlap_upper\n    elif ote_mode not in {\"OFF\", \"FEATURE_ONLY\"}:\n        raise ValueError(f\"unknown ote_pd_array_mode: {config.ote_pd_array_mode}\")\n    return lower, upper, kind, fvg_width, ob_width, overlap_fraction\n'''
+          if 'ote_mode = str(config.ote_pd_array_mode).upper()' not in choose_block:
+              if return_anchor not in choose_block:
+                  raise SystemExit('PD-array return anchor missing')
+              choose_block = choose_block.replace(return_anchor, ote_block, 1)
+              text = text[:choose_start] + choose_block + text[choose_end:]
+
+          unpack_old = '''    lower, upper, kind, fvg_width, ob_width = zone\n'''
+          unpack_new = '''    lower, upper, kind, fvg_width, ob_width, ote_overlap_fraction = zone\n'''
+          if unpack_new not in text:
+              if unpack_old not in text:
+                  raise SystemExit('PD-array unpack anchor missing')
+              text = text.replace(unpack_old, unpack_new, 1)
+          state_set_anchor = '''    state.ob_width_atr = ob_width\n'''
+          if 'state.ote_overlap_fraction = ote_overlap_fraction' not in text:
+              if state_set_anchor not in text:
+                  raise SystemExit('state OB width anchor missing')
+              text = text.replace(state_set_anchor, state_set_anchor + '    state.ote_overlap_fraction = ote_overlap_fraction\n', 1)
+          feature_anchor = '''            \"ob_width_atr\": float(state.ob_width_atr),\n'''
+          if '"ote_overlap_fraction"' not in text[text.find('def _setup_features'):text.find('def _event_from_state')]:
+              if feature_anchor not in text:
+                  raise SystemExit('setup feature OB anchor missing')
+              text = text.replace(feature_anchor, feature_anchor + '            "ote_overlap_fraction": float(state.ote_overlap_fraction),\n            "pd_array_in_ote": float(state.ote_overlap_fraction > 0.0),\n', 1)
+          snapshot_anchor = '''            'ob_width_atr': float(state.ob_width_atr),\n'''
+          if 'snapshot_armed_setup' in text and "'ote_overlap_fraction': float(state.ote_overlap_fraction)" not in text:
+              if snapshot_anchor not in text:
+                  raise SystemExit('setup snapshot OB anchor missing')
+              text = text.replace(snapshot_anchor, snapshot_anchor + "            'ote_overlap_fraction': float(state.ote_overlap_fraction),\n            'pd_array_in_ote': float(state.ote_overlap_fraction > 0.0),\n", 1)
+          path.write_text(text)
+          PY
+      - name: Add OTE regressions
+        run: |
+          cat >> research/yt_trinity_ml/tests/test_corpus_alpha.py <<'PY'
+
+
+def test_ote_intersect_rejects_pd_array_outside_retracement_zone() -> None:
+    from system.corpus_alpha import CorpusAlphaConfig, _NarrativeState, _choose_pd_array
+    frame = _features([
+        {'open': 100, 'high': 101, 'low': 99, 'close': 100},
+        {'open': 100, 'high': 110, 'low': 100, 'close': 109, 'bull_fvg_lower': 107, 'bull_fvg_upper': 108},
+    ])
+    state = _NarrativeState(
+        family=EventFamily.DISPLACEMENT_BREAK_RETEST_CONTINUATION, side=1,
+        created_pos=0, created_at=frame.index[0], structural_level=101,
+        origin_extreme=99, internal_break=101, draw_target=120,
+        draw_target_quality=6, swept_level_count=1, sweep_depth_atr=1,
+        liquidity_quality=3,
+    )
+    assert _choose_pd_array(
+        frame, state, 1, 1.0,
+        CorpusAlphaConfig(ote_pd_array_mode='INTERSECT')
+    ) is None
+PY
+      - name: Install and test OTE contract
+        run: |
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pyarrow==19.0.1' 'pytest==8.3.5'
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_regressions.py
+      - name: Commit tested OTE confluence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/corpus_alpha.py research/yt_trinity_ml/tests/test_corpus_alpha.py
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add causal OTE confluence to PD arrays'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

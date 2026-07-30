@@ -1,0 +1,54 @@
+name: YT Trinity bind history audit to tested HEAD
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-history-audit-head-binding.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-history-audit-head-binding
+  cancel-in-progress: false
+
+jobs:
+  patch-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Bind audit pointer to the tested branch HEAD
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('.github/workflows/yt-trinity-history-stack-status.yml')
+          text=path.read_text()
+          marker='''      - name: Audit signatures and regressions\n        env:\n          PYTHONPATH: research/yt_trinity_ml\n        run: |\n          set +e\n          mkdir -p /tmp/history-audit\n'''
+          replacement='''      - name: Audit signatures and regressions\n        env:\n          PYTHONPATH: research/yt_trinity_ml\n        run: |\n          set +e\n          mkdir -p /tmp/history-audit\n          git rev-parse HEAD > /tmp/history-audit/SOURCE_COMMIT.txt\n'''
+          if marker not in text:
+              raise SystemExit('audit start marker missing')
+          text=text.replace(marker,replacement,1)
+          old="              'source_commit': os.environ['GITHUB_SHA'],\n"
+          new="              'source_commit': (root / 'SOURCE_COMMIT.txt').read_text().strip(),\n              'workflow_trigger_commit': os.environ['GITHUB_SHA'],\n"
+          if old not in text:
+              raise SystemExit('audit source commit marker missing')
+          path.write_text(text.replace(old,new,1))
+          PY
+          git rm .github/workflows/yt-trinity-history-audit-head-binding.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/yt-trinity-history-stack-status.yml
+          git commit -m 'Bind history audit to tested checkout HEAD'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

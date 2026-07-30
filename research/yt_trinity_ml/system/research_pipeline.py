@@ -1,0 +1,457 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from hashlib import sha256
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+import json
+
+import numpy as np
+import pandas as pd
+
+from .coarse import CoarseEventReplay, CoarseExecutionConfig, CoarseLabeler, coarse_closeout_price
+from .core import EventCandidate, FeatureConfig, RiskConfig
+from .corpus_alpha import build_corpus_features, generate_corpus_candidates
+from .metrics import AccountMetrics, select_pre2024_configuration, summarize_account
+from .model import ChronologicalEventModel, ModelConfig, ScoredCandidate, candidate_model_features
+from .policy import GlobalSlotPolicy
+
+
+@dataclass(frozen=True)
+class InstrumentRule:
+    symbol: str
+    quantity_step: float
+    minimum_quantity: float
+
+
+@dataclass(frozen=True)
+class ResearchConfiguration:
+    identifier: str
+    symbols: tuple[str, ...]
+    model: ModelConfig
+    update_cadence_days: int
+    training_completion_lag_minutes: int
+    passive_fill_threshold: float
+    risk: RiskConfig
+    instrument_rules: tuple[InstrumentRule, ...]
+
+
+@dataclass(frozen=True)
+class ModelUpdateRecord:
+    update_started_at: pd.Timestamp
+    model_activated_at: pd.Timestamp
+    training_rows: int
+    latest_label_end: pd.Timestamp
+
+
+@dataclass(frozen=True)
+class ConfigurationResult:
+    configuration: ResearchConfiguration
+    metrics: AccountMetrics
+    update_records: tuple[ModelUpdateRecord, ...]
+    candidate_count: int
+    scored_positive_count: int
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "configuration": _jsonable(asdict(self.configuration)),
+            "metrics": self.metrics.as_dict(),
+            "update_records": [_jsonable(asdict(row)) for row in self.update_records],
+            "candidate_count": self.candidate_count,
+            "scored_positive_count": self.scored_positive_count,
+        }
+
+
+@dataclass(frozen=True)
+class Pre2024Decision:
+    status: str
+    selected: ConfigurationResult | None
+    all_results: tuple[ConfigurationResult, ...]
+    reason: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "selected": self.selected.as_dict() if self.selected else None,
+            "all_results": [row.as_dict() for row in self.all_results],
+            "reason": self.reason,
+        }
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, tuple):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    return value
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(_jsonable(value), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def configuration_sha256(configuration: ResearchConfiguration) -> str:
+    return sha256(canonical_json(asdict(configuration)).encode("utf-8")).hexdigest()
+
+
+def _event_identity(candidate: EventCandidate) -> tuple[Any, ...]:
+    return (
+        candidate.timestamp,
+        candidate.symbol,
+        candidate.family.value,
+        candidate.side,
+        candidate.entry_reference,
+        candidate.stop_reference,
+        candidate.target_reference,
+    )
+
+
+def encode_event_features(candidate: EventCandidate) -> dict[str, float]:
+    return candidate_model_features(candidate)
+
+
+
+def estimated_action_loss_budget(
+    candidate: EventCandidate,
+    action: str,
+    config: CoarseExecutionConfig,
+) -> float:
+    """Planned per-unit loss in the same units used by NAV risk sizing.
+
+    The old labels divided PnL by raw stop distance while position sizing budgeted
+    stop distance plus entry/stop fees, spread and slippage.  That caused the ML
+    log-growth objective to treat a realized account-risk loss near -1R as roughly
+    -1.5 raw-stop R.  Use a causal pre-entry cost estimate so one model R maps to
+    one planned account-risk R.
+    """
+    if action not in {"MARKETABLE", "PASSIVE_RETEST"}:
+        raise ValueError(f"unknown action: {action}")
+    entry = abs(float(candidate.entry_reference))
+    stop = abs(float(candidate.stop_reference))
+    raw = float(candidate.stop_distance)
+    half_spread = float(config.minimum_spread_bps) / 20_000.0
+    if action == "MARKETABLE":
+        entry_rate = float(config.taker_fee_rate) + float(config.market_slippage_bps) / 10_000.0 + half_spread
+    else:
+        entry_rate = float(config.maker_fee_rate)
+    stop_rate = float(config.taker_fee_rate) + float(config.stop_slippage_bps) / 10_000.0 + half_spread
+    return raw + entry * entry_rate + stop * stop_rate
+
+def label_event_dataset(
+    candidates: Sequence[EventCandidate],
+    execution_bars_by_symbol: Mapping[str, pd.DataFrame],
+    config: CoarseExecutionConfig = CoarseExecutionConfig(),
+) -> pd.DataFrame:
+    """Create fully timestamped labels without treating censoring as loss."""
+    rows: list[dict[str, Any]] = []
+    labelers = {symbol: CoarseLabeler(frame, config) for symbol, frame in execution_bars_by_symbol.items()}
+    for candidate in sorted(candidates, key=_event_identity):
+        labeler = labelers.get(candidate.symbol)
+        if labeler is None:
+            continue
+        market = labeler.label(candidate, passive=False)
+        passive = labeler.label(candidate, passive=True)
+        if market.target_before_stop is None or market.net_r is None or market.event_end is None:
+            continue
+        passive_resolved = passive.status in {"TARGET", "STOP", "CANCELLED_BEFORE_FILL"}
+        if not passive_resolved or passive.event_end is None:
+            continue
+        event_end = max(market.event_end, passive.event_end)
+        passive_target = (
+            int(passive.target_before_stop)
+            if passive.passive_filled and passive.target_before_stop is not None
+            else np.nan
+        )
+        passive_net_r = float(passive.net_r) if passive.passive_filled and passive.net_r is not None else 0.0
+        row: dict[str, Any] = {
+            "event_start": candidate.timestamp,
+            "event_end": event_end,
+            # Backward-compatible aliases are market-action labels.
+            "target_before_stop": int(market.target_before_stop),
+            "net_r": float(market.net_r),
+            "market_target_before_stop": int(market.target_before_stop),
+            "market_net_r": float(market.net_r),
+            "market_budget_r": float(market.net_r) * candidate.stop_distance
+            / estimated_action_loss_budget(candidate, "MARKETABLE", config),
+            "passive_filled": int(passive.passive_filled),
+            "passive_target_before_stop": passive_target,
+            "passive_net_r": passive_net_r,
+            "passive_budget_r": (
+                passive_net_r * candidate.stop_distance
+                / estimated_action_loss_budget(candidate, "PASSIVE_RETEST", config)
+                if passive.passive_filled
+                else 0.0
+            ),
+            "market_status": market.status,
+            "passive_status": passive.status,
+            "symbol": candidate.symbol,
+            "family": candidate.family.value,
+        }
+        row.update(encode_event_features(candidate))
+        rows.append(row)
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows).sort_values(["event_end", "event_start", "symbol"], kind="stable").reset_index(drop=True)
+
+
+def _purged_rows_asof(rows: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
+    if rows.empty:
+        return rows.copy()
+    eligible = rows[pd.to_datetime(rows["event_end"], utc=True) <= asof].copy()
+    return eligible.sort_values(["event_end", "event_start"], kind="stable").reset_index(drop=True)
+
+
+def _distribution(
+    rows: pd.DataFrame,
+    target_column: str = "market_target_before_stop",
+    return_column: str = "market_net_r",
+) -> tuple[float, float]:
+    if target_column not in rows.columns:
+        target_column = "target_before_stop"
+    if return_column not in rows.columns:
+        return_column = "net_r"
+    usable = rows[rows[target_column].notna() & rows[return_column].notna()]
+    wins = usable.loc[usable[target_column] == 1, return_column].astype(float)
+    losses = usable.loc[usable[target_column] == 0, return_column].astype(float)
+    winner = float(wins.median()) if not wins.empty else 1.0
+    loser = float(losses.median()) if not losses.empty else -1.0
+    if winner <= 0:
+        winner = max(0.01, float(usable[return_column].quantile(0.75))) if not usable.empty else 1.0
+    if loser >= 0:
+        loser = min(-0.01, float(usable[return_column].quantile(0.25))) if not usable.empty else -1.0
+    return winner, loser
+
+
+def _action_distributions(rows: pd.DataFrame) -> tuple[float, float, float, float]:
+    market_return = "market_budget_r" if "market_budget_r" in rows.columns else "market_net_r"
+    passive_return = "passive_budget_r" if "passive_budget_r" in rows.columns else "passive_net_r"
+    market_winner, market_loser = _distribution(rows, "market_target_before_stop", market_return)
+    passive_rows = rows[rows["passive_filled"].astype(int).eq(1)] if "passive_filled" in rows.columns else rows.iloc[0:0]
+    if passive_rows.empty:
+        return market_winner, market_loser, market_winner, market_loser
+    passive_winner, passive_loser = _distribution(
+        passive_rows,
+        "passive_target_before_stop",
+        passive_return,
+    )
+    return market_winner, market_loser, passive_winner, passive_loser
+
+
+def _aligned_updates(start: pd.Timestamp, end: pd.Timestamp, cadence_days: int) -> list[pd.Timestamp]:
+    if cadence_days <= 0:
+        raise ValueError("cadence_days must be positive")
+    return list(pd.date_range(start.floor("D"), end, freq=pd.Timedelta(days=cadence_days), tz="UTC"))
+
+
+def score_candidates_walk_forward(
+    candidates: Sequence[EventCandidate],
+    label_rows: pd.DataFrame,
+    configuration: ResearchConfiguration,
+    evaluation_start: pd.Timestamp,
+    evaluation_end_exclusive: pd.Timestamp,
+) -> tuple[list[ScoredCandidate], tuple[ModelUpdateRecord, ...]]:
+    ordered = [
+        candidate
+        for candidate in sorted(candidates, key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))
+        if evaluation_start <= candidate.timestamp < evaluation_end_exclusive
+    ]
+    if not ordered:
+        return [], ()
+    lag = pd.Timedelta(minutes=configuration.training_completion_lag_minutes)
+    update_starts = _aligned_updates(evaluation_start, evaluation_end_exclusive, configuration.update_cadence_days)
+    update_index = 0
+    active_model: ChronologicalEventModel | None = None
+    active_distribution = (1.0, -1.0, 1.0, -1.0)
+    pending: tuple[pd.Timestamp, ChronologicalEventModel, tuple[float, float, float, float], int, pd.Timestamp] | None = None
+    scored: list[ScoredCandidate] = []
+    ledger: list[ModelUpdateRecord] = []
+
+    def start_update(update_start: pd.Timestamp) -> tuple[pd.Timestamp, ChronologicalEventModel, tuple[float, float, float, float], int, pd.Timestamp] | None:
+        training = _purged_rows_asof(label_rows, update_start)
+        minimum = max(50, configuration.model.min_samples_leaf * 2)
+        if len(training) < minimum:
+            return None
+        try:
+            model = ChronologicalEventModel(configuration.model).fit(training)
+        except ValueError:
+            return None
+        latest = pd.Timestamp(training["event_end"].max())
+        return update_start + lag, model, _action_distributions(training), len(training), latest
+
+    initial_started = evaluation_start - lag
+    initial = start_update(initial_started)
+    if initial is not None:
+        activated_at, active_model, active_distribution, count, latest = initial
+        ledger.append(ModelUpdateRecord(initial_started, activated_at, count, latest))
+
+    for candidate in ordered:
+        while update_index < len(update_starts) and update_starts[update_index] <= candidate.timestamp:
+            candidate_update = start_update(update_starts[update_index])
+            if candidate_update is not None:
+                pending = candidate_update
+            update_index += 1
+        if pending is not None and pending[0] <= candidate.timestamp:
+            activated_at, active_model, active_distribution, count, latest = pending
+            ledger.append(
+                ModelUpdateRecord(
+                    update_started_at=activated_at - lag,
+                    model_activated_at=activated_at,
+                    training_rows=count,
+                    latest_label_end=latest,
+                )
+            )
+            pending = None
+        if active_model is None:
+            continue
+        market_winner, market_loser, passive_winner, passive_loser = active_distribution
+        scored.append(
+            active_model.score(
+                candidate,
+                risk_fraction=configuration.risk.risk_fraction,
+                winner_net_r=market_winner,
+                loser_net_r=market_loser,
+                fixed_cost_fraction=0.0,
+                passive_winner_net_r=passive_winner,
+                passive_loser_net_r=passive_loser,
+                passive_fixed_cost_fraction=0.0,
+            )
+        )
+    return scored, tuple(ledger)
+
+
+def generate_candidates_by_symbol(
+    decision_frames: Mapping[str, pd.DataFrame],
+    feature_config: FeatureConfig = FeatureConfig(),
+) -> tuple[dict[str, pd.DataFrame], list[EventCandidate]]:
+    features: dict[str, pd.DataFrame] = {}
+    candidates: list[EventCandidate] = []
+    for symbol, frame in sorted(decision_frames.items()):
+        calculated = build_corpus_features(frame, feature_config)
+        features[symbol] = calculated
+        candidates.extend(generate_corpus_candidates(calculated, symbol))
+    candidates.sort(key=lambda item: (item.timestamp, item.symbol, item.family.value, item.side))
+    return features, candidates
+
+
+def evaluate_configuration(
+    configuration: ResearchConfiguration,
+    candidates: Sequence[EventCandidate],
+    label_rows: pd.DataFrame,
+    execution_bars_by_symbol: Mapping[str, pd.DataFrame],
+    evaluation_start: pd.Timestamp,
+    evaluation_end_exclusive: pd.Timestamp,
+    initial_nav: float = 10000.0,
+    execution_config: CoarseExecutionConfig = CoarseExecutionConfig(),
+    funding: Mapping[tuple[str, pd.Timestamp], float] | None = None,
+) -> ConfigurationResult:
+    selected_symbols = set(configuration.symbols)
+    selected_candidates = [candidate for candidate in candidates if candidate.symbol in selected_symbols]
+    selected_labels = label_rows[label_rows["symbol"].isin(selected_symbols)].copy() if not label_rows.empty else label_rows.copy()
+    selected_bars = {
+        symbol: frame.loc[pd.to_datetime(frame["bar_start"], utc=True) < evaluation_end_exclusive].copy()
+        for symbol, frame in execution_bars_by_symbol.items()
+        if symbol in selected_symbols
+    }
+    scored, updates = score_candidates_walk_forward(
+        selected_candidates,
+        selected_labels,
+        configuration,
+        evaluation_start,
+        evaluation_end_exclusive,
+    )
+    policy = GlobalSlotPolicy(configuration.passive_fill_threshold)
+    instrument_rules = {rule.symbol: (rule.quantity_step, rule.minimum_quantity) for rule in configuration.instrument_rules}
+    account = CoarseEventReplay(selected_bars, execution_config).run(
+        scored,
+        policy,
+        configuration.risk,
+        evaluation_start,
+        evaluation_end_exclusive,
+        initial_nav=initial_nav,
+        funding=funding,
+        instrument_rules=instrument_rules,
+    )
+    last_candidates = [
+        frame.loc[frame["bar_start"] < evaluation_end_exclusive]
+        for frame in selected_bars.values()
+        if not frame.empty and "bar_start" in frame.columns
+    ]
+    final_prices = [float(frame.iloc[-1].get("mark_close", frame.iloc[-1]["close"])) for frame in last_candidates if not frame.empty]
+    final_mark = final_prices[-1] if final_prices else 0.0
+    final_closeout: float | None = None
+    if account.position is not None:
+        symbol_frame = selected_bars[account.position.candidate.symbol]
+        eligible = symbol_frame.loc[symbol_frame["bar_start"] < evaluation_end_exclusive]
+        if not eligible.empty:
+            final_row = eligible.iloc[-1]
+            final_mark = float(final_row.get("mark_close", final_row["close"]))
+            final_closeout = coarse_closeout_price(final_row, account.position.side, execution_config)
+    metrics = summarize_account(
+        account,
+        evaluation_start,
+        evaluation_end_exclusive,
+        final_mark,
+        final_closeout_price=final_closeout,
+        final_closeout_fee_rate=execution_config.taker_fee_rate if final_closeout is not None else 0.0,
+    )
+    return ConfigurationResult(
+        configuration=configuration,
+        metrics=metrics,
+        update_records=updates,
+        candidate_count=sum(evaluation_start <= row.timestamp < evaluation_end_exclusive for row in selected_candidates),
+        scored_positive_count=sum(row.lower_confidence_score > 0 for row in scored),
+    )
+
+
+def select_pre2024(
+    configurations: Sequence[ResearchConfiguration],
+    candidates: Sequence[EventCandidate],
+    label_rows: pd.DataFrame,
+    execution_bars_by_symbol: Mapping[str, pd.DataFrame],
+    evaluation_start: pd.Timestamp,
+    evaluation_end_exclusive: pd.Timestamp,
+    execution_config: CoarseExecutionConfig = CoarseExecutionConfig(),
+    funding: Mapping[tuple[str, pd.Timestamp], float] | None = None,
+) -> Pre2024Decision:
+    results = tuple(
+        evaluate_configuration(
+            configuration,
+            candidates,
+            label_rows,
+            execution_bars_by_symbol,
+            evaluation_start,
+            evaluation_end_exclusive,
+            execution_config=execution_config,
+            funding=funding,
+        )
+        for configuration in configurations
+    )
+    if not results:
+        return Pre2024Decision("NO_CONFIGURATIONS", None, (), "no frozen configuration supplied")
+    identifier, metrics = select_pre2024_configuration((row.configuration.identifier, row.metrics) for row in results)
+    selected = next(row for row in results if row.configuration.identifier == identifier)
+    if metrics.geometric_daily_growth <= 0:
+        return Pre2024Decision(
+            "ECONOMIC_FAIL_NO_OFFICIAL_OPEN",
+            selected,
+            results,
+            "best basic-risk pre-2024 sequential account has nonpositive after-cost geometric growth",
+        )
+    return Pre2024Decision(
+        "POSITIVE_BASIC_ALPHA_OPEN_RISK_SEARCH",
+        selected,
+        results,
+        "positive after-cost pre-2024 sequential account; risk/leverage/order-style refinement may proceed before freezing",
+    )
+
+
+def write_decision(output: Path, decision: Pre2024Decision) -> None:
+    output.mkdir(parents=True, exist_ok=True)
+    payload = decision.as_dict()
+    path = output / "PRE2024_DECISION.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (output / "PRE2024_DECISION.sha256").write_text(f"{sha256(path.read_bytes()).hexdigest()}  {path.name}\n", encoding="utf-8")

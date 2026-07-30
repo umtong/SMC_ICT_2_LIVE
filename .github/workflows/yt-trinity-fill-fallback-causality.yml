@@ -1,0 +1,84 @@
+name: YT Trinity passive fill fallback causality
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-fill-fallback-causality.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-fill-fallback-causality
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Freeze fill fallback at training time
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/causal_action_model.py')
+          text=p.read_text()
+          text=text.replace(
+              '    fallback_win_r: float\n',
+              '    fallback_fill_probability: float\n    fallback_win_r: float\n',
+              1,
+          )
+          text=text.replace(
+              '            passive=passive,\n            fallback_win_r=max(fallback_win, 0.001),\n',
+              '            passive=passive,\n            fallback_fill_probability=float(base["filled"].astype(int).mean()) if passive else 1.0,\n            fallback_win_r=max(fallback_win, 0.001),\n',
+              1,
+          )
+          text=text.replace(
+              '            fill_probability = np.full(len(values), float(rows["filled"].mean()) if "filled" in rows else 0.5)\n',
+              '            fill_probability = np.full(len(values), head.fallback_fill_probability)\n',
+              1,
+          )
+          text=text.replace(
+              '                "fallback_win_r": head.fallback_win_r,\n',
+              '                "fallback_fill_probability": head.fallback_fill_probability,\n                "fallback_win_r": head.fallback_win_r,\n',
+              1,
+          )
+          p.write_text(text)
+
+          test=Path('research/yt_trinity_ml/tests/test_grouped_causal_action_model.py')
+          t=test.read_text()
+          t += '''\n\ndef test_prediction_never_reads_realized_fill_label() -> None:\n    rows = _rows()\n    rows["filled"] = np.where(\n        rows["action"].eq("EARLY_PASSIVE"),\n        (np.arange(len(rows)) % 3 != 0).astype(int),\n        1,\n    )\n    model = GroupedCausalActionValueModel(\n        GroupedActionModelConfig(\n            min_samples_leaf=15,\n            minimum_group_rows=100,\n            max_iter=120,\n            lower_confidence_penalty=0.10,\n        )\n    ).fit(rows, ["quality", "passive_depth_fraction"])\n    query = pd.DataFrame(\n        [\n            {"action": "EARLY_PASSIVE", "quality": 0.2, "passive_depth_fraction": 0.5, "filled": 0},\n            {"action": "EARLY_PASSIVE", "quality": 0.2, "passive_depth_fraction": 0.5, "filled": 1},\n        ]\n    )\n    scored = model.predict(query)\n    assert scored.loc[0, "fill_probability"] == scored.loc[1, "fill_probability"]\n    assert scored.loc[0, "lower_confidence_net_r"] == scored.loc[1, "lower_confidence_net_r"]\n'''
+          test.write_text(t)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/causal_action_model.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_grouped_causal_action_model.py
+          git rm .github/workflows/yt-trinity-fill-fallback-causality.yml
+      - name: Commit causal fill fallback
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/causal_action_model.py \
+            research/yt_trinity_ml/tests/test_grouped_causal_action_model.py
+          git commit -m 'Freeze passive fill fallback before evaluation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

@@ -1,0 +1,73 @@
+name: YT Trinity causal action indexed carrier switch
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-causal-action-fast-switch.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-causal-action-fast-switch
+  cancel-in-progress: false
+
+jobs:
+  switch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Route screens through indexed replay
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          workflow=Path('.github/workflows/yt-trinity-causal-action-v1.yml')
+          text=workflow.read_text()
+          if 'research/yt_trinity_ml/run_causal_action_fast.py' not in text.split('permissions:')[0]:
+              text=text.replace('      - research/yt_trinity_ml/run_causal_action_v1.py\n', '      - research/yt_trinity_ml/run_causal_action_v1.py\n      - research/yt_trinity_ml/run_causal_action_fast.py\n', 1)
+          text=text.replace('            research/yt_trinity_ml/run_causal_action_v1.py \\\n', '            research/yt_trinity_ml/run_causal_action_v1.py \\\n            research/yt_trinity_ml/run_causal_action_fast.py \\\n', 1)
+          text=text.replace('          python research/yt_trinity_ml/run_causal_action_v1.py \\\n', '          python research/yt_trinity_ml/run_causal_action_fast.py \\\n', 1)
+          workflow.write_text(text)
+
+          full=Path('research/yt_trinity_ml/run_causal_action_full.py')
+          text=full.read_text()
+          text=text.replace('    _rows,\n', '', 1)
+          marker='from run_research import PRIMARY, load_canonical_frames, load_instrument_rules\n'
+          if 'from run_causal_action_fast import _rows_fast as _rows' not in text:
+              text=text.replace(marker, 'from run_causal_action_fast import _rows_fast as _rows\n'+marker, 1)
+          full.write_text(text)
+
+          full_workflow=Path('.github/workflows/yt-trinity-causal-action-full.yml')
+          text=full_workflow.read_text()
+          text=text.replace('            research/yt_trinity_ml/run_causal_action_v1.py \\\n            research/yt_trinity_ml/run_causal_action_full.py\n', '            research/yt_trinity_ml/run_causal_action_v1.py \\\n            research/yt_trinity_ml/run_causal_action_fast.py \\\n            research/yt_trinity_ml/run_causal_action_full.py\n', 1)
+          full_workflow.write_text(text)
+          PY
+          python -m py_compile \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/run_causal_action_full.py
+          git rm .github/workflows/yt-trinity-causal-action-fast-switch.yml
+      - name: Commit indexed carrier
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/yt-trinity-causal-action-v1.yml \
+            .github/workflows/yt-trinity-causal-action-full.yml \
+            research/yt_trinity_ml/run_causal_action_full.py \
+            research/yt_trinity_ml/run_causal_action_fast.py
+          git commit -m 'Use indexed replay for causal SMC actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

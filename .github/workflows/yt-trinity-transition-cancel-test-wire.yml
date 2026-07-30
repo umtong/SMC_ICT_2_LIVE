@@ -1,0 +1,65 @@
+name: YT Trinity passive transition cancellation test wire
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-transition-cancel-test-wire.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-transition-cancel-test-wire
+  cancel-in-progress: false
+
+jobs:
+  test-wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run transition cancellation regression
+        run: |
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py
+      - name: Wire regression into economic authority
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/yt-trinity-causal-action-v1.yml')
+          text=p.read_text()
+          head=text.split('permissions:')[0]
+          if 'test_passive_transition_cancel.py' not in head:
+              anchor='      - research/yt_trinity_ml/tests/test_causal_action_candidates.py\n'
+              text=text.replace(anchor,anchor+'      - research/yt_trinity_ml/tests/test_passive_transition_cancel.py\n',1)
+          body=text[text.index('pytest -q'):]
+          if 'test_passive_transition_cancel.py' not in body:
+              anchor='            research/yt_trinity_ml/tests/test_causal_action_candidates.py \\\n'
+              text=text.replace(anchor,anchor+'            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \\\n',1)
+          p.write_text(text)
+          PY
+          git rm .github/workflows/yt-trinity-transition-cancel-test-wire.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/yt-trinity-causal-action-v1.yml \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py
+          git commit -m 'Require passive state-transition cancellation regression'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

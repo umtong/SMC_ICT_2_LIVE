@@ -1,0 +1,198 @@
+name: YT Trinity strict same-size public trade-tape stress
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/PUBLIC_TRADE_TAPE_RESULT_*.json
+      - research/yt_trinity_ml/run_public_trade_tape_validation.py
+      - .github/workflows/yt-trinity-public-trade-tape-strict-stress.yml
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: yt-trinity-strict-public-trade-tape-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.gate.outputs.authorized }}
+      matrix: ${{ steps.gate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - id: gate
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          rows = []
+          allowed = {
+              'TARGET_EXCEEDED_PUBLIC_TRADE_TAPE_PENDING_STRICT_STRESS',
+              'TARGET_EXCEEDED_PUBLIC_TRADE_TAPE_PENDING_QUOTE_STRESS',
+          }
+          for path in sorted(Path('research/yt_trinity_ml').glob('PUBLIC_TRADE_TAPE_RESULT_*.json')):
+              try:
+                  payload = json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              if payload.get('decision') not in allowed:
+                  continue
+              key = str(payload.get('authority_key') or path.stem.removeprefix('PUBLIC_TRADE_TAPE_RESULT_'))
+              if not payload.get('source_authority_run_id') or not payload.get('source_authority_artifact'):
+                  continue
+              rows.append({
+                  'key': key,
+                  'source_run_id': int(payload['source_authority_run_id']),
+                  'source_artifact': payload['source_authority_artifact'],
+                  'baseline_pointer': path.name,
+                  'baseline_run_id': payload.get('run_id'),
+                  'strategy_id': payload.get('strategy_id'),
+              })
+          authorized = bool(rows)
+          matrix = json.dumps({'authority': rows}, separators=(',', ':'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"authorized={'true' if authorized else 'false'}\n")
+              handle.write(f"matrix={matrix}\n")
+          print(json.dumps({'authorized': authorized, 'authorities': rows}, indent=2))
+          PY
+
+  stress:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.authorize.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install and test strict tape stack
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest playwright
+          python -m py_compile research/yt_trinity_ml/run_public_trade_tape_validation.py
+          pytest -q research/yt_trinity_ml/tests/test_public_trade_tape.py
+      - name: Download exact frozen authority source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifact/source
+          gh run download "${{ matrix.authority.source_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name "${{ matrix.authority.source_artifact }}" \
+            --dir artifact/source
+      - uses: actions/cache@v4
+        with:
+          path: artifact/tape-cache
+          key: yt-trinity-public-bybit-trades-and-marks-v1-${{ matrix.authority.key }}
+          restore-keys: |
+            yt-trinity-public-bybit-trades-and-marks-v1-
+      - name: Replay same frozen signals and position sizes under severe execution
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -o pipefail
+          root="artifact/strict-${{ matrix.authority.key }}"
+          mkdir -p artifact/tape-cache "$root"
+          python research/yt_trinity_ml/run_public_trade_tape_validation.py \
+            --source artifact/source \
+            --cache-dir artifact/tape-cache \
+            --output "$root" \
+            --execution-profile strict \
+            2>&1 | tee "$root/STDOUT.log"
+      - name: Hash strict evidence
+        if: always()
+        run: |
+          root="artifact/strict-${{ matrix.authority.key }}"
+          if [[ -d "$root" ]]; then
+            (
+              cd "$root"
+              find . -type f ! -name SHA256SUMS -print0 \
+                | LC_ALL=C sort -z \
+                | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-strict-trade-tape-${{ matrix.authority.key }}-${{ github.sha }}
+          path: artifact/strict-${{ matrix.authority.key }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist strict result pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          key = '${{ matrix.authority.key }}'
+          summary_path = Path(f'artifact/strict-{key}/RUN_SUMMARY.json')
+          summary = json.loads(summary_path.read_text(encoding='utf-8')) if summary_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity strict same-size public trade-tape stress',
+              'authority_key': key,
+              'baseline_pointer': '${{ matrix.authority.baseline_pointer }}',
+              'baseline_run_id': '${{ matrix.authority.baseline_run_id }}',
+              'source_authority_run_id': int('${{ matrix.authority.source_run_id }}'),
+              'source_authority_artifact': '${{ matrix.authority.source_artifact }}',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-strict-trade-tape-{key}-{os.environ['GITHUB_SHA']}",
+              'summary_sha256': hashlib.sha256(summary_path.read_bytes()).hexdigest() if summary_path.exists() else None,
+              'decision': summary.get('decision') if isinstance(summary, dict) else 'EXECUTION_FAILED_NO_SUMMARY',
+              'strategy_id': summary.get('source_strategy_id') if isinstance(summary, dict) else '${{ matrix.authority.strategy_id }}',
+              'route_key': summary.get('source_route_key') if isinstance(summary, dict) else None,
+              'metrics': summary.get('metrics') if isinstance(summary, dict) else None,
+              'sizing_config': summary.get('sizing_config') if isinstance(summary, dict) else None,
+              'strict_execution_config': summary.get('tape_config') if isinstance(summary, dict) else None,
+              'evidence': summary.get('evidence') if isinstance(summary, dict) else None,
+              'rankable': False,
+          }
+          Path(f'research/yt_trinity_ml/STRICT_TRADE_TAPE_RESULT_{key}.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "research/yt_trinity_ml/STRICT_TRADE_TAPE_RESULT_${{ matrix.authority.key }}.json"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record ${{ matrix.authority.key }} strict trade-tape stress ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+  skip:
+    needs: authorize
+    if: needs.authorize.outputs.authorized != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'No baseline public trade-tape result currently exceeds the target.' >> "$GITHUB_STEP_SUMMARY"

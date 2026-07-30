@@ -1,0 +1,107 @@
+name: YT Trinity period and pivot liquidity identity
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-liquidity-period-identity.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-liquidity-period-identity
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replace value-change identity with period and pivot identity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+
+          old = '''    bars["last_swing_high"] = pivot_high.ffill()\n    bars["last_swing_low"] = pivot_low.ffill()\n'''
+          new = '''    bars["last_swing_high"] = pivot_high.ffill()\n    bars["last_swing_low"] = pivot_low.ffill()\n    bar_ns = pd.Series(\n        pd.DatetimeIndex(bars.index).as_unit("ns").asi8.astype(float),\n        index=bars.index,\n    )\n    bars["last_swing_high_identity_ns"] = bar_ns.where(pivot_high.notna()).ffill()\n    bars["last_swing_low_identity_ns"] = bar_ns.where(pivot_low.notna()).ffill()\n'''
+          if old not in text:
+              raise SystemExit('HTF pivot assignment marker missing')
+          text = text.replace(old, new, 1)
+
+          old = '''    context = bars[["bias", "last_swing_high", "last_swing_low", "equilibrium", "range_position"]].copy()\n'''
+          new = '''    context = bars[[\n        "bias", "last_swing_high", "last_swing_low",\n        "last_swing_high_identity_ns", "last_swing_low_identity_ns",\n        "equilibrium", "range_position",\n    ]].copy()\n'''
+          if old not in text:
+              raise SystemExit('HTF context selection marker missing')
+          text = text.replace(old, new, 1)
+
+          old = '''    for name in ("bias", "last_swing_high", "last_swing_low", "equilibrium", "range_position"):\n        out[f"{prefix}_{name}"] = merged[name].to_numpy()\n'''
+          new = '''    for name in (\n        "bias", "last_swing_high", "last_swing_low",\n        "last_swing_high_identity_ns", "last_swing_low_identity_ns",\n        "equilibrium", "range_position",\n    ):\n        out[f"{prefix}_{name}"] = merged[name].to_numpy()\n'''
+          if old not in text:
+              raise SystemExit('HTF context output marker missing')
+          text = text.replace(old, new, 1)
+
+          old = '''    out["micro_pivot_high"] = micro_high\n    out["micro_pivot_low"] = micro_low\n    out["micro_last_swing_high"] = micro_high.ffill()\n    out["micro_last_swing_low"] = micro_low.ffill()\n'''
+          new = '''    out["micro_pivot_high"] = micro_high\n    out["micro_pivot_low"] = micro_low\n    out["micro_last_swing_high"] = micro_high.ffill()\n    out["micro_last_swing_low"] = micro_low.ffill()\n    decision_ns = pd.Series(\n        time_basis.as_unit("ns").asi8.astype(float),\n        index=out.index,\n    )\n    out["micro_last_swing_high_identity_ns"] = decision_ns.where(\n        micro_high.notna()\n    ).ffill()\n    out["micro_last_swing_low_identity_ns"] = decision_ns.where(\n        micro_low.notna()\n    ).ffill()\n'''
+          if old not in text:
+              raise SystemExit('micro pivot marker missing')
+          text = text.replace(old, new, 1)
+
+          old = '''    out["equal_high_liquidity"] = ((micro_high + previous_micro_high) / 2.0).where(\n        micro_high.notna() & previous_micro_high.notna() & (micro_high - previous_micro_high).abs().le(equality_tolerance)\n    ).ffill()\n    out["equal_low_liquidity"] = ((micro_low + previous_micro_low) / 2.0).where(\n        micro_low.notna() & previous_micro_low.notna() & (micro_low - previous_micro_low).abs().le(equality_tolerance)\n    ).ffill()\n'''
+          new = '''    equal_high_event = (\n        micro_high.notna()\n        & previous_micro_high.notna()\n        & (micro_high - previous_micro_high).abs().le(equality_tolerance)\n    )\n    equal_low_event = (\n        micro_low.notna()\n        & previous_micro_low.notna()\n        & (micro_low - previous_micro_low).abs().le(equality_tolerance)\n    )\n    out["equal_high_liquidity"] = ((micro_high + previous_micro_high) / 2.0).where(\n        equal_high_event\n    ).ffill()\n    out["equal_low_liquidity"] = ((micro_low + previous_micro_low) / 2.0).where(\n        equal_low_event\n    ).ffill()\n    out["equal_high_liquidity_identity_ns"] = decision_ns.where(\n        equal_high_event\n    ).ffill()\n    out["equal_low_liquidity_identity_ns"] = decision_ns.where(\n        equal_low_event\n    ).ffill()\n'''
+          if old not in text:
+              raise SystemExit('equal liquidity marker missing')
+          text = text.replace(old, new, 1)
+
+          start = text.index('    # The same source label and price can represent a completely new liquidity pool')
+          end = text.index('    return out\n', start)
+          replacement = '''    # Time-bucket sources renew even when the price exactly matches the prior bucket.\n    day_start = pd.Series(time_basis.floor("D"), index=out.index)\n    hour_start = pd.Series(time_basis.floor("1h"), index=out.index)\n    four_hour_start = pd.Series(time_basis.floor("4h"), index=out.index)\n    weekday = pd.Series(time_basis.weekday, index=out.index)\n    week_start = day_start - pd.to_timedelta(weekday, unit="D")\n    period_identity: dict[str, pd.Series] = {}\n    for name in ("previous_day_high", "previous_day_low"):\n        period_identity[name] = day_start - pd.Timedelta(days=1)\n    for name in ("previous_week_high", "previous_week_low"):\n        period_identity[name] = week_start - pd.Timedelta(days=7)\n    for name in ("current_asia_high", "current_asia_low", "current_london_open_high", "current_london_open_low"):\n        period_identity[name] = day_start\n    for name in ("previous_1h_high", "previous_1h_low"):\n        period_identity[name] = hour_start - pd.Timedelta(hours=1)\n    for name in ("previous_4h_high", "previous_4h_low"):\n        period_identity[name] = four_hour_start - pd.Timedelta(hours=4)\n    for name, identity_time in period_identity.items():\n        if name in out.columns:\n            values = pd.to_numeric(out[name], errors="coerce")\n            identity_ns = pd.DatetimeIndex(identity_time).as_unit("ns").asi8.astype(float)\n            out[f"{name}_identity_ns"] = pd.Series(identity_ns, index=out.index).where(\n                values.notna()\n            )\n\n    # Confirmed swing sources already carry their exact pivot-confirmation identity.\n    for prefix in ("htf_1h", "htf_4h"):\n        for side in ("high", "low"):\n            source = f"{prefix}_last_swing_{side}_identity_ns"\n            if source in out.columns:\n                out[source] = pd.to_numeric(out[source], errors="coerce")\n\n    # Remaining structural sources use their first causal value appearance as fallback.\n    decision_ns_fallback = pd.Series(\n        time_basis.as_unit("ns").asi8.astype(float),\n        index=out.index,\n    )\n    source_names = {\n        name for name, _quality, _kind in (*_HIGH_POOL_SOURCES, *_LOW_POOL_SOURCES)\n    }\n    for name in sorted(source_names):\n        identity_name = f"{name}_identity_ns"\n        if name not in out.columns:\n            continue\n        if identity_name in out.columns and out[identity_name].notna().any():\n            continue\n        values = pd.to_numeric(out[name], errors="coerce")\n        changed = values.notna() & (values.shift(1).isna() | values.ne(values.shift(1)))\n        out[identity_name] = decision_ns_fallback.where(changed).ffill()\n'''
+          text = text[:start] + replacement + text[end:]
+          path.write_text(text)
+          PY
+          cat >> research/yt_trinity_ml/tests/test_liquidity_identity_time.py <<'PY'
+
+
+def test_equal_price_on_consecutive_days_has_distinct_period_identity() -> None:
+    first = _row("2023-01-02T00:00:00Z", pd.Timestamp("2023-01-01T00:00:00Z").value)
+    second = _row("2023-01-03T00:00:00Z", pd.Timestamp("2023-01-02T00:00:00Z").value)
+    first_pool = _liquidity_pools(first, True, 1.0, 0.01)[0]
+    second_pool = _liquidity_pools(second, True, 1.0, 0.01)[0]
+    assert first_pool.price == second_pool.price
+    assert _pool_key(first_pool) != _pool_key(second_pool)
+PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/corpus_alpha.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_liquidity_identity_time.py \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py
+          git rm .github/workflows/yt-trinity-liquidity-period-identity.yml
+      - name: Commit exact period and pivot identity
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_liquidity_identity_time.py
+          git commit -m 'Renew liquidity identity by period and pivot formation'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

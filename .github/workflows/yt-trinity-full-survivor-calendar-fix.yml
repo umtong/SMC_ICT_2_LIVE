@@ -1,0 +1,52 @@
+name: YT Trinity full survivor calendar fix
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/apply_full_survivor_calendar_fix.py
+      - .github/workflows/yt-trinity-full-survivor-calendar-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-full-survivor-calendar-fix
+  cancel-in-progress: false
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Apply calendar fix
+        run: python research/yt_trinity_ml/apply_full_survivor_calendar_fix.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Compile and test shared invariants
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade numpy pandas scikit-learn pyarrow requests pytest
+          python -m py_compile research/yt_trinity_ml/run_full_sequential_survivor.py research/yt_trinity_ml/system/*.py
+          pytest -q research/yt_trinity_ml/tests
+      - name: Commit fix and remove materializer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/run_full_sequential_survivor.py
+          git rm -f research/yt_trinity_ml/apply_full_survivor_calendar_fix.py .github/workflows/yt-trinity-full-survivor-calendar-fix.yml
+          git commit -m "Fix full survivor half-year calendar construction"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

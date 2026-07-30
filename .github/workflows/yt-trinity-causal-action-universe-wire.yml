@@ -1,0 +1,151 @@
+name: YT Trinity causal armed-action universe wire
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-causal-action-universe-wire.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-causal-action-universe-wire
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Wire separate causal action candidates
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          v1=Path('research/yt_trinity_ml/run_causal_action_v1.py')
+          text=v1.read_text()
+          text=text.replace(
+              'from system.research_pipeline import generate_candidates_by_symbol\n',
+              'from system.causal_action_candidates import generate_causal_action_candidates_by_symbol\n',
+              1,
+          )
+          text=text.replace(
+              '    _, candidates_2023 = generate_candidates_by_symbol(decision_2023, FeatureConfig())\n',
+              '    _, candidates_2023, diagnostics_2023 = generate_causal_action_candidates_by_symbol(decision_2023, FeatureConfig())\n',
+              1,
+          )
+          text=text.replace(
+              '    _, candidates_2024 = generate_candidates_by_symbol(decision_2024, FeatureConfig())\n',
+              '    _, candidates_2024, diagnostics_2024 = generate_causal_action_candidates_by_symbol(decision_2024, FeatureConfig())\n',
+              1,
+          )
+          text=text.replace(
+              '            "candidate_count_2023": len(candidates_2023), "action_rows_2023": len(rows_2023),\n',
+              '            "candidate_count_2023": len(candidates_2023), "action_rows_2023": len(rows_2023),\n            "causal_armed_candidate_universe": True,\n            "candidate_diagnostics_2023": diagnostics_2023,\n',
+              1,
+          )
+          text=text.replace(
+              '        "candidate_count_2023": len(candidates_2023),\n',
+              '        "candidate_count_2023": len(candidates_2023),\n        "causal_armed_candidate_universe": True,\n        "candidate_diagnostics_2023": diagnostics_2023,\n',
+              1,
+          )
+          text=text.replace(
+              '        "candidate_count_2024_h1": len(candidates_2024),\n',
+              '        "candidate_count_2024_h1": len(candidates_2024),\n        "candidate_diagnostics_2024_h1": diagnostics_2024,\n',
+              1,
+          )
+          v1.write_text(text)
+
+          fast=Path('research/yt_trinity_ml/run_causal_action_fast.py')
+          text=fast.read_text()
+          old='''    if action == "EARLY_PASSIVE":\n        geometry = v1._early_geometry(candidate)\n        if geometry is None:\n            return None\n        signal_time, entry_reference = geometry\n        activation = signal_time + pd.Timedelta(milliseconds=config.activation_latency_ms)\n    else:\n'''
+          new='''    if action == "EARLY_PASSIVE":\n        if float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) < 0.5:\n            return None\n        entry_reference = float(candidate.entry_reference)\n        activation = candidate.timestamp + pd.Timedelta(milliseconds=config.activation_latency_ms)\n    else:\n        if float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) < 0.5:\n            return None\n'''
+          if old not in text:
+              raise SystemExit('fast action activation block not found')
+          text=text.replace(old,new,1)
+          old='''        for action in ("EARLY_PASSIVE", "CONFIRMED_MARKET"):\n            for variant in variants:\n'''
+          new='''        if float(candidate.feature_row.get("action_candidate_early_passive", 0.0)) >= 0.5:\n            actions = ("EARLY_PASSIVE",)\n        elif float(candidate.feature_row.get("action_candidate_confirmed_market", 0.0)) >= 0.5:\n            actions = ("CONFIRMED_MARKET",)\n        else:\n            actions = ("CONFIRMED_MARKET",)\n        for action in actions:\n            for variant in variants:\n'''
+          if old not in text:
+              raise SystemExit('fast action loop not found')
+          fast.write_text(text.replace(old,new,1))
+
+          full=Path('research/yt_trinity_ml/run_causal_action_full.py')
+          text=full.read_text()
+          text=text.replace(
+              'from system.research_pipeline import generate_candidates_by_symbol\n',
+              'from system.causal_action_candidates import generate_causal_action_candidates_by_symbol\n',
+              1,
+          )
+          text=text.replace(
+              '    _, candidates_2023 = generate_candidates_by_symbol(decision_2023, FeatureConfig())\n',
+              '    _, candidates_2023, diagnostics_2023 = generate_causal_action_candidates_by_symbol(decision_2023, FeatureConfig())\n',
+              1,
+          )
+          text=text.replace(
+              '    _, candidates = generate_candidates_by_symbol(decision, FeatureConfig())\n',
+              '    _, candidates, diagnostics = generate_causal_action_candidates_by_symbol(decision, FeatureConfig())\n',
+              1,
+          )
+          text=text.replace(
+              '        "candidate_count": len(candidates),\n',
+              '        "candidate_count": len(candidates),\n        "causal_armed_candidate_universe": True,\n        "candidate_diagnostics_2023": diagnostics_2023,\n        "candidate_diagnostics_evaluation": diagnostics,\n',
+              1,
+          )
+          full.write_text(text)
+
+          workflow=Path('.github/workflows/yt-trinity-causal-action-v1.yml')
+          text=workflow.read_text()
+          if 'system/causal_action_candidates.py' not in text.split('permissions:')[0]:
+              text=text.replace(
+                  '      - research/yt_trinity_ml/run_causal_action_fast.py\n',
+                  '      - research/yt_trinity_ml/run_causal_action_fast.py\n      - research/yt_trinity_ml/system/causal_action_candidates.py\n',
+                  1,
+              )
+          text=text.replace(
+              '            research/yt_trinity_ml/system/corpus_alpha.py \\\n',
+              '            research/yt_trinity_ml/system/corpus_alpha.py \\\n            research/yt_trinity_ml/system/causal_action_candidates.py \\\n',
+              1,
+          )
+          workflow.write_text(text)
+
+          full_workflow=Path('.github/workflows/yt-trinity-causal-action-full.yml')
+          text=full_workflow.read_text()
+          text=text.replace(
+              "              positive=float(h1.get('geometric_daily_growth',0.0))>0\n",
+              "              positive=(float(h1.get('geometric_daily_growth',0.0))>0 and bool(result.get('causal_armed_candidate_universe',False)))\n",
+              1,
+          )
+          full_workflow.write_text(text)
+          PY
+          python -m py_compile \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/run_causal_action_full.py
+          git rm .github/workflows/yt-trinity-causal-action-universe-wire.yml
+      - name: Commit causal universe
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/yt-trinity-causal-action-v1.yml \
+            .github/workflows/yt-trinity-causal-action-full.yml \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/run_causal_action_v1.py \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/run_causal_action_full.py
+          git commit -m 'Separate causally armed limit and confirmed market actions'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

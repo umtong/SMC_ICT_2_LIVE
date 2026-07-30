@@ -1,0 +1,207 @@
+name: YT Trinity monotonic corpus pointer upgrade
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-pointer-monotonic-upgrade.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-pointer-monotonic-upgrade
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+
+      - name: Make pointer updates monotonic and restore the best historical pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import subprocess
+          from pathlib import Path
+
+          workflow_path = Path('.github/workflows/yt-trinity-transcript-harvest.yml')
+          text = workflow_path.read_text(encoding='utf-8')
+          start_marker = "          manifest_path = Path('artifact/yt-trinity-corpus/manifest.json')\n"
+          end_marker = "          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\\n', encoding='utf-8')\n"
+          start = text.find(start_marker)
+          if start < 0:
+              raise SystemExit('pointer writer start marker not found')
+          end_start = text.find(end_marker, start)
+          if end_start < 0:
+              raise SystemExit('pointer writer end marker not found')
+          end = end_start + len(end_marker)
+
+          replacement = r'''          def pointer_quality(candidate):
+              candidate = candidate if isinstance(candidate, dict) else {}
+              manifest = candidate.get('manifest') if isinstance(candidate.get('manifest'), dict) else {}
+              counts = manifest.get('caption_status_counts') if isinstance(manifest.get('caption_status_counts'), dict) else {}
+              unresolved_keys = {
+                  'fetch_failed',
+                  'unresolved',
+                  'transport_failed',
+                  'retry_required',
+              }
+              unresolved = sum(int(value or 0) for key, value in counts.items() if key in unresolved_keys)
+              resolved = sum(int(value or 0) for key, value in counts.items() if key not in unresolved_keys)
+              expected = manifest.get('expected_channel_slugs') or []
+              channel_count = int(manifest.get('channel_count') or 0)
+              return (
+                  int(manifest.get('decision') == 'PASS_COMPLETE'),
+                  int(bool(manifest.get('caption_attempt_complete'))),
+                  int(bool(manifest.get('inventory_complete'))),
+                  int(bool(expected) and channel_count == len(expected)),
+                  int(manifest.get('unique_public_video_count') or 0),
+                  resolved,
+                  -unresolved,
+                  int(manifest.get('total_caption_segments') or 0),
+                  int(candidate.get('run_id') or 0),
+              )
+
+          manifest_path = Path('artifact/yt-trinity-corpus/manifest.json')
+          manifest = None
+          manifest_sha256 = None
+          if manifest_path.exists():
+              raw = manifest_path.read_bytes()
+              manifest_sha256 = hashlib.sha256(raw).hexdigest()
+              manifest = json.loads(raw)
+          payload = {
+              'schema_version': 2,
+              'workflow': 'YT Trinity public transcript corpus',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'artifact_name': f"yt-trinity-corpus-{os.environ['GITHUB_SHA']}",
+              'manifest_sha256': manifest_sha256,
+              'manifest': manifest,
+          }
+          path = Path(os.environ['POINTER_PATH'])
+          path.parent.mkdir(parents=True, exist_ok=True)
+          existing = None
+          if path.exists():
+              try:
+                  existing = json.loads(path.read_text(encoding='utf-8'))
+              except (OSError, json.JSONDecodeError):
+                  existing = None
+          if existing is not None and pointer_quality(existing) > pointer_quality(payload):
+              print(
+                  'retaining stronger corpus pointer',
+                  {'existing': pointer_quality(existing), 'candidate': pointer_quality(payload)},
+              )
+          else:
+              path.write_text(
+                  json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+                  encoding='utf-8',
+              )
+'''
+          workflow_path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+
+          pointer_path = Path('research/yt_trinity_ml/CORPUS_RUN_POINTER.json')
+
+          def quality(candidate):
+              candidate = candidate if isinstance(candidate, dict) else {}
+              manifest = candidate.get('manifest') if isinstance(candidate.get('manifest'), dict) else {}
+              counts = manifest.get('caption_status_counts') if isinstance(manifest.get('caption_status_counts'), dict) else {}
+              unresolved_keys = {'fetch_failed', 'unresolved', 'transport_failed', 'retry_required'}
+              unresolved = sum(int(value or 0) for key, value in counts.items() if key in unresolved_keys)
+              resolved = sum(int(value or 0) for key, value in counts.items() if key not in unresolved_keys)
+              expected = manifest.get('expected_channel_slugs') or []
+              return (
+                  int(manifest.get('decision') == 'PASS_COMPLETE'),
+                  int(bool(manifest.get('caption_attempt_complete'))),
+                  int(bool(manifest.get('inventory_complete'))),
+                  int(bool(expected) and int(manifest.get('channel_count') or 0) == len(expected)),
+                  int(manifest.get('unique_public_video_count') or 0),
+                  resolved,
+                  -unresolved,
+                  int(manifest.get('total_caption_segments') or 0),
+                  int(candidate.get('run_id') or 0),
+              )
+
+          candidates = []
+          history = subprocess.check_output(
+              ['git', 'log', '--format=%H', '--', str(pointer_path)],
+              text=True,
+          ).splitlines()
+          for commit in history:
+              try:
+                  raw = subprocess.check_output(
+                      ['git', 'show', f'{commit}:{pointer_path.as_posix()}'],
+                      text=True,
+                      stderr=subprocess.DEVNULL,
+                  )
+                  payload = json.loads(raw)
+              except (subprocess.CalledProcessError, json.JSONDecodeError):
+                  continue
+              candidates.append(payload)
+          if pointer_path.exists():
+              try:
+                  candidates.append(json.loads(pointer_path.read_text(encoding='utf-8')))
+              except json.JSONDecodeError:
+                  pass
+          if not candidates:
+              raise SystemExit('no recoverable corpus pointer found in branch history')
+          best = max(candidates, key=quality)
+          pointer_path.write_text(
+              json.dumps(best, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print('restored corpus pointer quality', quality(best))
+          PY
+
+      - name: Validate monotonic guard and restored pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'retaining stronger corpus pointer' .github/workflows/yt-trinity-transcript-harvest.yml
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path('research/yt_trinity_ml/CORPUS_RUN_POINTER.json').read_text(encoding='utf-8'))
+          manifest = payload.get('manifest') or {}
+          if not manifest.get('inventory_complete'):
+              raise SystemExit('best historical pointer did not restore complete inventory')
+          if int(manifest.get('unique_public_video_count') or 0) < 186:
+              raise SystemExit('best historical pointer contains fewer than 186 public videos')
+          print({
+              'run_id': payload.get('run_id'),
+              'videos': manifest.get('unique_public_video_count'),
+              'caption_status_counts': manifest.get('caption_status_counts'),
+          })
+          PY
+
+      - name: Commit guarded pointer state atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/yt-trinity-pointer-monotonic-upgrade.yml
+          git add \
+            .github/workflows/yt-trinity-transcript-harvest.yml \
+            research/yt_trinity_ml/CORPUS_RUN_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '4189826+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Keep transcript corpus pointer monotonic across cancelled runs'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1

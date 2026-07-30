@@ -1,0 +1,243 @@
+name: YT Trinity explicit-history continuous 2024-2026H1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-history-full-evaluation.yml
+      - research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json
+      - research/yt_trinity_ml/run_causal_action_history_full.py
+      - research/yt_trinity_ml/run_causal_action_history.py
+      - research/yt_trinity_ml/system/causal_action_history_model.py
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-history-full-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  TARGET_BRANCH: agent/r22-yt-trinity-ml-001
+  CANONICAL_COMMIT: a2bb231966a517d29495bed7673e4d08ab8e30a9
+
+jobs:
+  continuous-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    steps:
+      - name: Checkout exact frozen source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Resolve positive 2024H1 route
+        id: route
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json')
+          positive = False
+          if path.exists():
+              pointer = json.loads(path.read_text())
+              result = pointer.get('result') or {}
+              h1 = result.get('result_2024_h1') or {}
+              positive = (
+                  pointer.get('job_status') == 'success'
+                  and int(pointer.get('exit_code', 99)) == 0
+                  and bool(result.get('causal_armed_candidate_universe'))
+                  and bool(result.get('official_2024_h1_opened'))
+                  and float(h1.get('geometric_daily_growth', 0.0)) > 0
+                  and bool((result.get('production_refit_contract') or {}).get('model_fingerprint'))
+              )
+          Path('/tmp/positive').write_text('true' if positive else 'false')
+          PY
+          echo "positive=$(cat /tmp/positive)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact canonical loader
+        if: steps.route.outputs.positive == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: ${{ env.CANONICAL_COMMIT }}
+          path: canonical_repo
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        if: steps.route.outputs.positive == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deterministic dependencies
+        if: steps.route.outputs.positive == 'true'
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade pip
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+
+      - name: Download immutable continuous data matrix
+        if: steps.route.outputs.positive == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs/data output
+          fetch_named_artifact() {
+            local name="$1" target="$2"
+            local metadata id digest
+            metadata="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100")"
+            id="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["id"])' <<<"${metadata}")"
+            digest="$(python -c 'import json,sys; a=[x for x in json.load(sys.stdin)["artifacts"] if not x["expired"]]; print(max(a,key=lambda x:x["created_at"])["digest"])' <<<"${metadata}")"
+            mkdir -p "${target}"
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              -o "/tmp/${id}.zip"
+            unzip -q "/tmp/${id}.zip" -d "${target}"
+            printf '%s\t%s\t%s\n' "${name}" "${id}" "${digest}" >> output/DATA_ARTIFACTS.tsv
+          }
+          for segment in \
+            PRE_2024_2021 PRE_2024_2022 PRE_2024_2023 \
+            2024_H1 2024_H2 2025_H1 2025_H2 2026_H1; do
+            for symbol in BTCUSDT ETHUSDT; do
+              fetch_named_artifact \
+                "canonical-bybit-${segment}-${symbol}" \
+                "inputs/data/${segment}/${symbol}"
+            done
+          done
+
+      - name: Verify frozen identity and execute continuous account
+        if: steps.route.outputs.positive == 'true'
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set +e
+          {
+            python -m py_compile \
+              research/yt_trinity_ml/system/causal_action_history_model.py \
+              research/yt_trinity_ml/run_causal_action_history.py \
+              research/yt_trinity_ml/run_causal_action_history_full.py
+            pytest -q \
+              research/yt_trinity_ml/tests/test_causal_action_history_model.py \
+              research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+              research/yt_trinity_ml/tests/test_causal_action_fast.py \
+              research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+              research/yt_trinity_ml/tests/test_passive_supersession.py \
+              research/yt_trinity_ml/tests/test_pd_array_failure_exit.py \
+              research/yt_trinity_ml/tests/test_causal_risk_domain.py
+            python research/yt_trinity_ml/run_causal_action_history_full.py \
+              --repo-root canonical_repo \
+              --data-root inputs/data \
+              --instrument-rules research/yt_trinity_ml/INSTRUMENT_RULES.json \
+              --pointer research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json \
+              --output output
+          } 2>&1 | tee output/STDOUT.log
+          code=${PIPESTATUS[0]}
+          echo "$code" > output/EXIT_CODE.txt
+          exit 0
+
+      - name: Record unopened full-period route
+        if: steps.route.outputs.positive != 'true'
+        run: |
+          mkdir -p output
+          cat > output/CAUSAL_ACTION_HISTORY_FULL_RESULT.json <<'JSON'
+          {
+            "schema_version": 1,
+            "stage": "EXPLICIT_HISTORY_FULL_PERIOD_NOT_OPENED",
+            "reason": "positive completed explicit-history 2024H1 result is absent",
+            "ranking_effect": "NONE"
+          }
+          JSON
+          echo 0 > output/EXIT_CODE.txt
+
+      - name: Bind result and persist compact pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import sys
+          from pathlib import Path
+
+          output = Path('output')
+          output.mkdir(exist_ok=True)
+          result_path = output / 'CAUSAL_ACTION_HISTORY_FULL_RESULT.json'
+          result = json.loads(result_path.read_text()) if result_path.exists() else None
+          exit_code = int((output / 'EXIT_CODE.txt').read_text()) if (output / 'EXIT_CODE.txt').exists() else 99
+          log = (output / 'STDOUT.log').read_text(errors='replace') if (output / 'STDOUT.log').exists() else ''
+          pointer = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'stage': 'EXPLICIT_HISTORY_2024_TO_2026H1_COARSE_NOT_RANKABLE',
+              'source_commit': os.environ['GITHUB_SHA'],
+              'workflow_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'workflow_run_attempt': int(os.environ.get('GITHUB_RUN_ATTEMPT', '1')),
+              'canonical_loader_commit': os.environ['CANONICAL_COMMIT'],
+              'exit_code': exit_code,
+              'job_status': 'success' if exit_code == 0 else 'execution_failure_not_economic_failure',
+              'result': result,
+              'result_sha256': hashlib.sha256(result_path.read_bytes()).hexdigest() if result_path.exists() else None,
+              'stdout_tail': log[-16000:],
+              'python': sys.version,
+              'platform': platform.platform(),
+              'ranking_effect': 'NONE_COARSE_1M_NOT_RANKABLE',
+          }
+          target = output / 'CAUSAL_ACTION_HISTORY_FULL_POINTER.json'
+          target.write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          Path('/tmp/CAUSAL_ACTION_HISTORY_FULL_POINTER.json').write_bytes(target.read_bytes())
+          PY
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+          git fetch origin "$TARGET_BRANCH"
+          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          cp /tmp/CAUSAL_ACTION_HISTORY_FULL_POINTER.json \
+            research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_FULL_POINTER.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_FULL_POINTER.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record explicit-history continuous result ${GITHUB_RUN_ID}"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin "$TARGET_BRANCH"
+              if git push origin "HEAD:$TARGET_BRANCH"; then break; fi
+              sleep $((attempt * 3))
+            done
+          fi
+
+      - name: Upload immutable continuous evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-history-full-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail after preserving execution evidence
+        if: always()
+        run: test "$(cat output/EXIT_CODE.txt 2>/dev/null || echo 99)" = 0

@@ -1,0 +1,85 @@
+name: YT Trinity grouped passive fill head
+
+on:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-grouped-fill-head.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-grouped-fill-head
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Separate fill and conditional outcome economics
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/yt_trinity_ml/system/causal_action_model.py')
+          text=p.read_text()
+          text=text.replace(
+              '    classifier: Any\n    mean_regressor: Any\n',
+              '    classifier: Any\n    fill_classifier: Any | None\n    mean_regressor: Any\n',
+              1,
+          )
+          text=text.replace(
+              '    calibrator: IsotonicRegression | None\n',
+              '    calibrator: IsotonicRegression | None\n    fill_calibrator: IsotonicRegression | None\n    passive: bool\n',
+              1,
+          )
+          start=text.index('    def _fit_head(')
+          end=text.index('\n    def fit(',start)
+          replacement='''    def _fit_head(self, rows: pd.DataFrame, passive: bool) -> _ActionHead | None:\n        ordered = rows.sort_values(["event_end", "activation"], kind="stable").reset_index(drop=True)\n        if len(ordered) < self.config.minimum_group_rows:\n            return None\n        split = int(len(ordered) * (1.0 - self.config.calibration_fraction))\n        split = min(max(split, 1), len(ordered) - 1)\n        calibration = ordered.iloc[split:].copy()\n        calibration_start = pd.to_datetime(calibration["activation"], utc=True).min()\n        base = ordered.iloc[:split].copy()\n        base = base[pd.to_datetime(base["event_end"], utc=True) < calibration_start]\n        minimum_base = max(50, self.config.min_samples_leaf * 2)\n        if len(base) < minimum_base:\n            return None\n\n        x_base_all = base[self.feature_names].replace([np.inf, -np.inf], np.nan)\n        mean_regressor = self._regressor()\n        mean_regressor.fit(x_base_all, base["net_budget_r"].astype(float))\n\n        fill_classifier = None\n        fill_calibrator = None\n        outcome_base = base\n        outcome_calibration = calibration\n        if passive:\n            fill_target = base["filled"].astype(int)\n            if fill_target.nunique() >= 2:\n                fill_classifier = self._classifier()\n                fill_classifier.fit(x_base_all, fill_target)\n                if len(calibration) >= 10:\n                    raw_fill = self._probability(\n                        fill_classifier,\n                        calibration[self.feature_names].replace([np.inf, -np.inf], np.nan),\n                    )\n                    fill_truth = calibration["filled"].astype(int).to_numpy()\n                    if np.unique(raw_fill).size >= 2 and np.unique(fill_truth).size >= 2:\n                        fill_calibrator = IsotonicRegression(out_of_bounds="clip")\n                        fill_calibrator.fit(raw_fill, fill_truth)\n            outcome_base = base[base["filled"].astype(int).eq(1)].copy()\n            outcome_calibration = calibration[calibration["filled"].astype(int).eq(1)].copy()\n\n        minimum_outcome = max(40, self.config.min_samples_leaf)\n        if len(outcome_base) < minimum_outcome:\n            return None\n        x_outcome = outcome_base[self.feature_names].replace([np.inf, -np.inf], np.nan)\n        y_positive = outcome_base["net_budget_r"].astype(float).gt(0).astype(int)\n        if y_positive.nunique() < 2:\n            return None\n        classifier = self._classifier()\n        classifier.fit(x_outcome, y_positive)\n\n        wins = outcome_base[outcome_base["net_budget_r"].astype(float) > 0]\n        losses = outcome_base[outcome_base["net_budget_r"].astype(float) <= 0]\n        fallback_win = float(wins["net_budget_r"].median()) if len(wins) else 1.0\n        fallback_loss = float(losses["net_budget_r"].median()) if len(losses) else -1.0\n        win_regressor = None\n        loss_regressor = None\n        minimum_conditional = max(30, self.config.min_samples_leaf)\n        if len(wins) >= minimum_conditional:\n            win_regressor = self._regressor()\n            win_regressor.fit(\n                wins[self.feature_names].replace([np.inf, -np.inf], np.nan),\n                wins["net_budget_r"].astype(float),\n            )\n        if len(losses) >= minimum_conditional:\n            loss_regressor = self._regressor()\n            loss_regressor.fit(\n                losses[self.feature_names].replace([np.inf, -np.inf], np.nan),\n                losses["net_budget_r"].astype(float),\n            )\n\n        calibrator = None\n        residual_scale = float(\n            np.median(np.abs(base["net_budget_r"] - base["net_budget_r"].median()))\n        )\n        if len(outcome_calibration) >= 10:\n            x_cal = outcome_calibration[self.feature_names].replace([np.inf, -np.inf], np.nan)\n            raw = self._probability(classifier, x_cal)\n            targets = outcome_calibration["net_budget_r"].astype(float).gt(0).astype(int).to_numpy()\n            if np.unique(targets).size >= 2 and np.unique(raw).size >= 2:\n                calibrator = IsotonicRegression(out_of_bounds="clip")\n                calibrator.fit(raw, targets)\n        if len(calibration) >= 10:\n            x_cal_all = calibration[self.feature_names].replace([np.inf, -np.inf], np.nan)\n            mean_prediction = mean_regressor.predict(x_cal_all)\n            residual_scale = max(\n                residual_scale,\n                float(\n                    np.quantile(\n                        np.abs(calibration["net_budget_r"].to_numpy(float) - mean_prediction),\n                        0.70,\n                    )\n                ),\n            )\n        return _ActionHead(\n            classifier=classifier,\n            fill_classifier=fill_classifier,\n            mean_regressor=mean_regressor,\n            win_regressor=win_regressor,\n            loss_regressor=loss_regressor,\n            calibrator=calibrator,\n            fill_calibrator=fill_calibrator,\n            passive=passive,\n            fallback_win_r=max(fallback_win, 0.001),\n            fallback_loss_r=min(fallback_loss, -0.001),\n            residual_scale=max(residual_scale, 0.05),\n            training_rows=len(ordered),\n            base_rows=len(base),\n            calibration_rows=len(calibration),\n        )\n'''
+          text=text[:start]+replacement+text[end:]
+          text=text.replace(
+              '        self.pooled_head = self._fit_head(rows)\n        for action, group in rows.groupby("action", sort=True):\n            head = self._fit_head(group)\n',
+              '        self.pooled_head = self._fit_head(rows, passive=False)\n        for action, group in rows.groupby("action", sort=True):\n            head = self._fit_head(group, passive="PASSIVE" in str(action))\n',
+              1,
+          )
+          start=text.index('    def _predict_head(')
+          end=text.index('\n    def predict(',start)
+          replacement='''    def _predict_head(self, head: _ActionHead, rows: pd.DataFrame) -> pd.DataFrame:\n        values = rows[self.feature_names].replace([np.inf, -np.inf], np.nan)\n        raw_probability = self._probability(head.classifier, values)\n        probability = (\n            head.calibrator.predict(raw_probability)\n            if head.calibrator is not None\n            else raw_probability\n        )\n        if head.passive and head.fill_classifier is not None:\n            raw_fill = self._probability(head.fill_classifier, values)\n            fill_probability = (\n                head.fill_calibrator.predict(raw_fill)\n                if head.fill_calibrator is not None\n                else raw_fill\n            )\n        elif head.passive:\n            fill_probability = np.full(len(values), float(rows["filled"].mean()) if "filled" in rows else 0.5)\n        else:\n            fill_probability = np.ones(len(values))\n        mean_r = head.mean_regressor.predict(values)\n        if head.win_regressor is not None:\n            winner_r = np.maximum(head.win_regressor.predict(values), 0.001)\n        else:\n            winner_r = np.full(len(values), head.fallback_win_r)\n        if head.loss_regressor is not None:\n            loser_r = np.minimum(head.loss_regressor.predict(values), -0.001)\n        else:\n            loser_r = np.full(len(values), head.fallback_loss_r)\n        conditional_r = probability * winner_r + (1.0 - probability) * loser_r\n        expected_r = fill_probability * conditional_r\n        disagreement = np.abs(expected_r - mean_r)\n        uncertainty = (\n            fill_probability * probability * (1.0 - probability)\n            + fill_probability * (1.0 - fill_probability)\n        )\n        lower = expected_r - self.config.lower_confidence_penalty * (\n            disagreement + uncertainty * head.residual_scale\n        )\n        return pd.DataFrame(\n            {\n                "fill_probability": fill_probability,\n                "win_probability_given_fill": probability,\n                "winner_net_r": winner_r,\n                "loser_net_r": loser_r,\n                "unconditional_net_r": mean_r,\n                "conditional_expected_net_r": conditional_r,\n                "expected_net_r": expected_r,\n                "lower_confidence_net_r": lower,\n            },\n            index=rows.index,\n        )\n'''
+          text=text[:start]+replacement+text[end:]
+          text=text.replace(
+              '                "probability_calibrated": head.calibrator is not None,\n',
+              '                "probability_calibrated": head.calibrator is not None,\n                "passive": head.passive,\n                "fill_model_fitted": head.fill_classifier is not None,\n                "fill_probability_calibrated": head.fill_calibrator is not None,\n',
+              1,
+          )
+          p.write_text(text)
+          PY
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile research/yt_trinity_ml/system/causal_action_model.py
+          PYTHONPATH=research/yt_trinity_ml pytest -q \
+            research/yt_trinity_ml/tests/test_grouped_causal_action_model.py
+          git rm .github/workflows/yt-trinity-grouped-fill-head.yml
+      - name: Commit conditional fill model
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/system/causal_action_model.py
+          git commit -m 'Separate passive fill from conditional outcome value'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

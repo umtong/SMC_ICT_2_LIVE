@@ -1,0 +1,64 @@
+name: YT Trinity indexed causal passive cancellation
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-cancel-index.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-cancel-index
+  cancel-in-progress: false
+
+jobs:
+  optimize-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact tested optimization
+        run: |
+          set -euo pipefail
+          test "$(git hash-object research/yt_trinity_ml/run_causal_action_fast.py)" = "b7eea9c899bc9fee8342f2a05aa0e0710993203e"
+          python research/yt_trinity_ml/_apply_cancel_index.py
+          test "$(git hash-object research/yt_trinity_ml/run_causal_action_fast.py)" = "b49386e18efde47c621fbd943e53b43624631127"
+      - name: Run causality and execution regressions
+        run: |
+          set -euo pipefail
+          python -m pip install -q 'numpy==2.2.6' 'pandas==2.2.3' 'scikit-learn==1.6.1' 'pytest==8.3.5'
+          export PYTHONPATH=research/yt_trinity_ml
+          python -m py_compile research/yt_trinity_ml/run_causal_action_fast.py
+          pytest -q \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py \
+            research/yt_trinity_ml/tests/test_causal_risk_domain.py \
+            research/yt_trinity_ml/tests/test_execution_realism.py \
+            research/yt_trinity_ml/tests/test_entry_fill_guard.py
+      - name: Commit tested optimization and remove carriers
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/run_causal_action_fast.py
+          git rm \
+            research/yt_trinity_ml/_apply_cancel_index.py \
+            research/yt_trinity_ml/_cancel_index_helper.txt \
+            .github/workflows/yt-trinity-cancel-index.yml
+          git commit -m 'Index causal passive cancellation search'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

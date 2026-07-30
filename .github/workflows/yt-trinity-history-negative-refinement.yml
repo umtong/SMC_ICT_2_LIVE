@@ -1,0 +1,273 @@
+name: YT Trinity explicit-history negative refinement router
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/r22-yt-trinity-ml-001
+    paths:
+      - .github/workflows/yt-trinity-history-negative-refinement.yml
+      - research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-history-negative-refinement
+  cancel-in-progress: false
+
+jobs:
+  refine-one-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+
+      - name: Resolve one information-value stage
+        id: route
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          pointer_path = Path('research/yt_trinity_ml/CAUSAL_ACTION_HISTORY_POINTER.json')
+          stage = 'HOLD'
+          reason = 'completed negative explicit-history result is absent'
+          if pointer_path.exists():
+              pointer = json.loads(pointer_path.read_text())
+              result = pointer.get('result') or {}
+              h1 = result.get('result_2024_h1') or {}
+              completed = (
+                  pointer.get('job_status') == 'success'
+                  and int(pointer.get('exit_code', 99)) == 0
+              )
+              negative = (
+                  result.get('decision') == 'NO_POSITIVE_EXPLICIT_HISTORY_SURVIVOR'
+                  or (
+                      bool(result.get('official_2024_h1_opened'))
+                      and float(h1.get('geometric_daily_growth', 0.0)) <= 0
+                  )
+              )
+              source = str(pointer.get('source_commit') or '')
+              corpus = ''
+              candidates = ''
+              if source:
+                  try:
+                      corpus = subprocess.check_output(
+                          ['git', 'show', f'{source}:research/yt_trinity_ml/system/corpus_alpha.py'],
+                          text=True,
+                      )
+                      candidates = subprocess.check_output(
+                          ['git', 'show', f'{source}:research/yt_trinity_ml/system/causal_action_candidates.py'],
+                          text=True,
+                      )
+                  except subprocess.CalledProcessError:
+                      pass
+              if completed and negative and source:
+                  if 'pd_array_action_kind' not in candidates:
+                      stage = 'MULTI_PD_ARRAY'
+                      reason = 'primary PD array implementation remained economically weak'
+                  elif 'displacement_strict_joint' not in corpus:
+                      stage = 'GRADED_DISPLACEMENT'
+                      reason = 'multi-array actions remained weak under a hard displacement wall'
+                  elif 'stop_action_kind' not in candidates:
+                      stage = 'STRUCTURAL_STOP_ACTIONS'
+                      reason = 'graded displacement and multi-array actions remained weak with one stop geometry'
+                  else:
+                      stage = 'HOLD'
+                      reason = 'all predefined SMC fidelity stages were evaluated; inspect exact funnel before another scientific change'
+          Path('/tmp/stage').write_text(stage)
+          Path('/tmp/reason').write_text(reason)
+          PY
+          echo "stage=$(cat /tmp/stage)" >> "$GITHUB_OUTPUT"
+          echo "reason=$(cat /tmp/reason)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        if: steps.route.outputs.stage != 'HOLD'
+        with:
+          python-version: "3.12"
+
+      - name: Add independent FVG OB and overlap actions
+        if: steps.route.outputs.stage == 'MULTI_PD_ARRAY'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          core = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = core.read_text()
+          state_marker = '''    fvg_width_atr: float = 0.0\n    ob_width_atr: float = 0.0\n'''
+          state_add = '''    fvg_width_atr: float = 0.0\n    ob_width_atr: float = 0.0\n    fvg_zone_lower: float | None = None\n    fvg_zone_upper: float | None = None\n    ob_zone_lower: float | None = None\n    ob_zone_upper: float | None = None\n'''
+          if 'fvg_zone_lower' not in text:
+              if state_marker not in text:
+                  raise SystemExit('narrative state PD-array marker missing')
+              text = text.replace(state_marker, state_add, 1)
+          if 'return lower, upper, kind, fvg_width, ob_width' in text:
+              text = text.replace(
+                  '    return lower, upper, kind, fvg_width, ob_width\n',
+                  '''    return (\n        lower, upper, kind, fvg_width, ob_width,\n        None if fvg is None else float(fvg[0]),\n        None if fvg is None else float(fvg[1]),\n        None if ob is None else float(ob[0]),\n        None if ob is None else float(ob[1]),\n    )\n''',
+                  1,
+              )
+          if 'lower, upper, kind, fvg_width, ob_width = zone' in text:
+              text = text.replace(
+                  '    lower, upper, kind, fvg_width, ob_width = zone\n',
+                  '''    (\n        lower, upper, kind, fvg_width, ob_width,\n        fvg_lower, fvg_upper, ob_lower, ob_upper,\n    ) = zone\n''',
+                  1,
+              )
+          assignment = '''    state.fvg_width_atr = fvg_width\n    state.ob_width_atr = ob_width\n'''
+          if 'state.fvg_zone_lower = fvg_lower' not in text:
+              if assignment not in text:
+                  raise SystemExit('PD-array state assignment marker missing')
+              text = text.replace(
+                  assignment,
+                  assignment
+                  + '''    state.fvg_zone_lower = fvg_lower\n    state.fvg_zone_upper = fvg_upper\n    state.ob_zone_lower = ob_lower\n    state.ob_zone_upper = ob_upper\n''',
+                  1,
+              )
+          core.write_text(text)
+
+          candidates = Path('research/yt_trinity_ml/system/causal_action_candidates.py')
+          text = candidates.read_text()
+          start = text.index('def _passive_events(')
+          end = text.index('\n\ndef _market_event', start)
+          replacement = '''def _passive_events(\n    state: _NarrativeState,\n    row: pd.Series,\n    timestamp: pd.Timestamp,\n    symbol: str,\n    pos: int,\n) -> list[EventCandidate]:\n    """Emit independent FVG, OB and overlap depths at the causal arming time."""\n\n    if state.phase != "AWAIT_RETEST" or state.stop is None:\n        return []\n    raw_arrays: list[tuple[float, float, int, str]] = []\n    if state.zone_lower is not None and state.zone_upper is not None:\n        raw_arrays.append((float(state.zone_lower), float(state.zone_upper), int(state.zone_kind), "PRIMARY"))\n    if state.fvg_zone_lower is not None and state.fvg_zone_upper is not None:\n        raw_arrays.append((float(state.fvg_zone_lower), float(state.fvg_zone_upper), 2, "FVG"))\n    if state.ob_zone_lower is not None and state.ob_zone_upper is not None:\n        raw_arrays.append((float(state.ob_zone_lower), float(state.ob_zone_upper), 1, "OB"))\n    if (\n        state.fvg_zone_lower is not None and state.fvg_zone_upper is not None\n        and state.ob_zone_lower is not None and state.ob_zone_upper is not None\n    ):\n        overlap_lower = max(float(state.fvg_zone_lower), float(state.ob_zone_lower))\n        overlap_upper = min(float(state.fvg_zone_upper), float(state.ob_zone_upper))\n        if overlap_upper > overlap_lower:\n            raw_arrays.append((overlap_lower, overlap_upper, 3, "FVG_OB_OVERLAP"))\n    arrays: list[tuple[float, float, int, str]] = []\n    seen: set[tuple[float, float]] = set()\n    for lower, upper, kind, name in raw_arrays:\n        key = (round(lower, 10), round(upper, 10))\n        if upper <= lower or key in seen:\n            continue\n        seen.add(key)\n        arrays.append((lower, upper, kind, name))\n\n    stop = float(state.stop)\n    target = float(state.draw_target)\n    events: list[EventCandidate] = []\n    for array_index, (lower, upper, kind, _name) in enumerate(arrays):\n        for depth in (0.0, 0.25, 0.50, 0.75, 1.0):\n            entry = (\n                upper - depth * (upper - lower)\n                if state.side > 0\n                else lower + depth * (upper - lower)\n            )\n            if (state.side > 0 and not stop < entry < target) or (\n                state.side < 0 and not target < entry < stop\n            ):\n                continue\n            shadow = _NarrativeState(**state.__dict__)\n            shadow.zone_lower = lower\n            shadow.zone_upper = upper\n            shadow.zone_kind = kind\n            features = _setup_features(row, shadow, pos, entry, stop)\n            features.update(\n                {\n                    "action_candidate_early_passive": 1.0,\n                    "action_candidate_confirmed_market": 0.0,\n                    "entry_confirmation_kind": 0.0,\n                    "causal_pd_array_armed": 1.0,\n                    "passive_depth_fraction": float(depth),\n                    "passive_is_proximal": float(depth == 0.0),\n                    "passive_is_consequent_encroachment": float(depth == 0.5),\n                    "passive_is_distal": float(depth == 1.0),\n                    "pd_array_action_kind": float(kind),\n                    "pd_array_action_index": float(array_index),\n                    "pd_array_action_is_fvg": float(kind == 2),\n                    "pd_array_action_is_ob": float(kind == 1),\n                    "pd_array_action_is_overlap": float(kind == 3),\n                }\n            )\n            events.append(\n                EventCandidate(\n                    timestamp=timestamp,\n                    symbol=symbol,\n                    family=state.family,\n                    side=state.side,\n                    decision_price=float(row["close"]),\n                    entry_reference=float(entry),\n                    stop_reference=stop,\n                    target_reference=target,\n                    structural_level=float(state.structural_level),\n                    feature_row=features,\n                )\n            )\n    return events\n'''
+          text = text[:start] + replacement + text[end:]
+          candidates.write_text(text)
+
+          test = Path('research/yt_trinity_ml/tests/test_causal_action_candidates.py')
+          value = test.read_text()
+          value = value.replace('    assert len(passive) == 5\n', '    assert len(passive) >= 5\n', 2)
+          value = value.replace(
+              '    assert diagnostics["causal_passive_actions"] == 5\n',
+              '    assert diagnostics["causal_passive_actions"] == len(passive)\n',
+              2,
+          )
+          test.write_text(value)
+          PY
+
+      - name: Grade displacement as ML quality
+        if: steps.route.outputs.stage == 'GRADED_DISPLACEMENT'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/corpus_alpha.py')
+          text = path.read_text()
+          text = text.replace('    displacement_body_atr: float = 0.55\n', '    displacement_body_atr: float = 0.20\n', 1)
+          text = text.replace('    displacement_range_atr: float = 0.90\n', '    displacement_range_atr: float = 0.45\n', 1)
+          text = text.replace('    displacement_close_location: float = 0.70\n', '    displacement_close_location: float = 0.55\n', 1)
+          text = text.replace('    minimum_displacement_efficiency: float = 0.50\n', '    minimum_displacement_efficiency: float = 0.25\n', 1)
+          marker = '            "displacement_efficiency_at_confirmation": float(state.displacement_efficiency),\n'
+          if 'displacement_strict_joint' not in text:
+              if marker not in text:
+                  raise SystemExit('displacement feature marker missing')
+              text = text.replace(
+                  marker,
+                  marker
+                  + '''            "displacement_strict_body": float(abs(state.confirmation_body_atr) >= 0.55),\n            "displacement_strict_efficiency": float(state.displacement_efficiency >= 0.50),\n            "displacement_strict_joint": float(\n                abs(state.confirmation_body_atr) >= 0.55\n                and state.displacement_efficiency >= 0.50\n            ),\n''',
+                  1,
+              )
+          path.write_text(text)
+          PY
+
+      - name: Add structural and distal stop actions
+        if: steps.route.outputs.stage == 'STRUCTURAL_STOP_ACTIONS'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('research/yt_trinity_ml/system/causal_action_candidates.py')
+          text = path.read_text()
+          passive_start = text.index('def _passive_events(')
+          passive_end = text.index('\n\ndef _market_event', passive_start)
+          passive = text[passive_start:passive_end]
+          old = '''            if (state.side > 0 and not stop < entry < target) or (\n                state.side < 0 and not target < entry < stop\n            ):\n                continue\n            shadow = _NarrativeState(**state.__dict__)\n            shadow.zone_lower = lower\n            shadow.zone_upper = upper\n            shadow.zone_kind = kind\n            features = _setup_features(row, shadow, pos, entry, stop)\n            features.update(\n                {\n'''
+          new = '''            atr = float(row["atr"])\n            stop_buffer = config.stop_buffer_atr * atr\n            stop_options = [(stop, 0)]\n            distal_stop = lower - stop_buffer if state.side > 0 else upper + stop_buffer\n            displacement_stop = (\n                float(row["low"]) - stop_buffer\n                if state.side > 0\n                else float(row["high"]) + stop_buffer\n            )\n            stop_options.extend([(distal_stop, 1), (displacement_stop, 2)])\n            seen_stops: set[float] = set()\n            for candidate_stop, stop_kind in stop_options:\n                rounded = round(float(candidate_stop), 10)\n                if rounded in seen_stops:\n                    continue\n                seen_stops.add(rounded)\n                if (state.side > 0 and not candidate_stop < entry < target) or (\n                    state.side < 0 and not target < entry < candidate_stop\n                ):\n                    continue\n                shadow = _NarrativeState(**state.__dict__)\n                shadow.zone_lower = lower\n                shadow.zone_upper = upper\n                shadow.zone_kind = kind\n                shadow.stop = float(candidate_stop)\n                features = _setup_features(row, shadow, pos, entry, float(candidate_stop))\n                features.update(\n                    {\n'''
+          if old not in passive:
+              raise SystemExit('passive stop action insertion marker missing')
+          passive = passive.replace(old, new, 1)
+          passive = passive.replace(
+              '                    "pd_array_action_is_overlap": float(kind == 3),\n',
+              '                    "pd_array_action_is_overlap": float(kind == 3),\n                    "stop_action_kind": float(stop_kind),\n                    "stop_action_is_origin": float(stop_kind == 0),\n                    "stop_action_is_pd_distal": float(stop_kind == 1),\n                    "stop_action_is_displacement_extreme": float(stop_kind == 2),\n',
+              1,
+          )
+          passive = passive.replace(
+              '                    stop_reference=stop,\n',
+              '                    stop_reference=float(candidate_stop),\n',
+              1,
+          )
+          # The inserted nested loop needs one additional indentation level for the
+          # existing feature dictionary and EventCandidate block.
+          lines = passive.splitlines()
+          loop_line = next(i for i, line in enumerate(lines) if 'for candidate_stop, stop_kind in stop_options:' in line)
+          event_end_line = max(i for i, line in enumerate(lines) if line.strip() == ')')
+          for i in range(loop_line + 1, event_end_line + 1):
+              if lines[i].startswith('            '):
+                  lines[i] = '    ' + lines[i]
+          passive = '\n'.join(lines) + '\n'
+          passive = passive.replace(
+              '    pos: int,\n) -> list[EventCandidate]:',
+              '    pos: int,\n    config: CorpusAlphaConfig,\n) -> list[EventCandidate]:',
+              1,
+          )
+          text = text[:passive_start] + passive + text[passive_end:]
+          text = text.replace(
+              '_passive_events(updated, row, timestamp, symbol, pos)',
+              '_passive_events(updated, row, timestamp, symbol, pos, config)',
+          )
+          text = text.replace(
+              '_passive_events(continuation, row, timestamp, symbol, pos)',
+              '_passive_events(continuation, row, timestamp, symbol, pos, config)',
+          )
+          path.write_text(text)
+          PY
+
+      - name: Compile and run causal regressions
+        if: steps.route.outputs.stage != 'HOLD'
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python -m pip install -q \
+            "numpy==2.2.6" "pandas==2.2.3" "scikit-learn==1.6.1" \
+            "pyarrow==19.0.1" "pytest==8.3.5"
+          python -m py_compile \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/run_causal_action_fast.py \
+            research/yt_trinity_ml/run_causal_action_history.py
+          pytest -q \
+            research/yt_trinity_ml/tests/test_corpus_alpha.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_fast.py \
+            research/yt_trinity_ml/tests/test_passive_transition_cancel.py \
+            research/yt_trinity_ml/tests/test_passive_supersession.py \
+            research/yt_trinity_ml/tests/test_pd_array_failure_exit.py
+
+      - name: Commit one SMC implementation transition
+        if: steps.route.outputs.stage != 'HOLD'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/causal_action_candidates.py \
+            research/yt_trinity_ml/tests/test_causal_action_candidates.py
+          git commit -m "Refine SMC implementation after negative history result: ${{ steps.route.outputs.stage }}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
+
+      - name: Hold current system without unrelated alpha switch
+        if: steps.route.outputs.stage == 'HOLD'
+        run: |
+          echo "${{ steps.route.outputs.reason }}"

@@ -1,0 +1,376 @@
+name: YT Trinity frozen 2024H1 v1
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - .github/workflows/yt-trinity-frozen-2024h1-v1.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: yt-trinity-frozen-2024h1-v1
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Persist frozen evaluation identity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload = {
+            'schema_version': 1,
+            'run_id': int(os.environ['GITHUB_RUN_ID']),
+            'trigger_sha': os.environ['GITHUB_SHA'],
+            'artifact_name': f"yt-trinity-frozen-2024h1-v1-{os.environ['GITHUB_SHA']}",
+            'status': 'in_progress',
+            'scientific_source_sha': 'd08e0f7f2aa3ea983cc719a16a1569ad61005bbe',
+            'evaluation_start': '2024-01-01T00:00:00Z',
+            'evaluation_end_exclusive': '2024-07-01T00:00:00Z',
+            'risk_fraction': 0.17,
+            'maximum_leverage': 20.0,
+            'ml_action_threshold_budget_r': -0.20,
+          }
+          Path('research/yt_trinity_ml/FROZEN_2024H1_V1_POINTER.json').write_text(json.dumps(payload, indent=2, sort_keys=True) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/FROZEN_2024H1_V1_POINTER.json
+          git commit -m "Announce frozen YT Trinity 2024H1 ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+  evaluate:
+    needs: announce
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout frozen scientific source
+        uses: actions/checkout@v4
+        with:
+          ref: d08e0f7f2aa3ea983cc719a16a1569ad61005bbe
+          fetch-depth: 1
+      - name: Checkout canonical Bybit loader
+        uses: actions/checkout@v4
+        with:
+          repository: umtong/SMC_ICT_2_LIVE
+          ref: a2bb231966a517d29495bed7673e4d08ab8e30a9
+          path: canonical_repo
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen dependencies
+        run: |
+          python -m pip install -q \
+            'numpy==2.2.6' 'pandas==2.2.3' 'pyarrow==19.0.1' \
+            'scikit-learn==1.6.1' 'pytest==8.3.5'
+      - name: Download immutable 2023 training labels and market shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          fetch_artifact() {
+            curl --fail --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/$1/zip" -o "$2"
+          }
+          mkdir -p inputs/labels inputs/data/PRE_2024_2023/BTCUSDT inputs/data/PRE_2024_2023/ETHUSDT inputs/data/2024_H1/BTCUSDT inputs/data/2024_H1/ETHUSDT output
+          fetch_artifact 8643192491 /tmp/labels.zip
+          fetch_artifact 8636781702 /tmp/btc2023.zip
+          fetch_artifact 8636761741 /tmp/eth2023.zip
+          fetch_artifact 8636867995 /tmp/btc2024h1.zip
+          fetch_artifact 8636882043 /tmp/eth2024h1.zip
+          unzip -q /tmp/labels.zip -d inputs/labels
+          unzip -q /tmp/btc2023.zip -d inputs/data/PRE_2024_2023/BTCUSDT
+          unzip -q /tmp/eth2023.zip -d inputs/data/PRE_2024_2023/ETHUSDT
+          unzip -q /tmp/btc2024h1.zip -d inputs/data/2024_H1/BTCUSDT
+          unzip -q /tmp/eth2024h1.zip -d inputs/data/2024_H1/ETHUSDT
+          test -f inputs/labels/EVENT_LABELS.pkl.gz
+      - name: Verify frozen source and tests
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            research/yt_trinity_ml/system/corpus_alpha.py \
+            research/yt_trinity_ml/system/canonical_adapter.py \
+            research/yt_trinity_ml/system/coarse.py
+          pytest -q research/yt_trinity_ml/tests \
+            --ignore=research/yt_trinity_ml/tests/test_harvest_ytt_api.py
+      - name: Execute frozen causal ML 2024H1 account
+        env:
+          PYTHONPATH: research/yt_trinity_ml
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+          from collections import Counter
+          from dataclasses import asdict
+          import hashlib, json, os
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+          from sklearn.ensemble import HistGradientBoostingRegressor
+
+          from run_research import PRIMARY, load_canonical_frames
+          from system.coarse import CoarseEventReplay, CoarseExecutionConfig, coarse_closeout_price
+          from system.core import FeatureConfig, RiskConfig
+          from system.corpus_alpha import build_corpus_features, generate_corpus_candidates_with_diagnostics
+          from system.metrics import summarize_account
+          from system.model import ScoredCandidate
+          from system.policy import GlobalSlotPolicy
+
+          SOURCE_SHA = 'd08e0f7f2aa3ea983cc719a16a1569ad61005bbe'
+          START = pd.Timestamp('2024-01-01T00:00:00Z')
+          END = pd.Timestamp('2024-07-01T00:00:00Z')
+          THRESHOLD = -0.20
+          RISK_FRACTION = 0.17
+          MAX_LEVERAGE = 20.0
+
+          FEATURE_COLUMNS = [
+            'raw_reward_risk','atr_fraction','stop_distance_atr','target_distance_atr','path_excursion_atr','sweep_depth_atr',
+            'liquidity_quality','draw_target_quality','htf_bias_alignment','dealing_range_side_alignment',
+            'session_code','killzone','pd_array_kind','entry_confirmation_kind','zone_width_atr','zone_midpoint_distance_atr',
+            'retest_depth_fraction','narrative_age_bars','confirmation_age_bars','ob_search_age_bars','mitigation_count',
+            'volume_z','confirmation_volume_z','bollinger_bandwidth','realized_vol_20','compression_ratio_96','range_expansion_ratio_20',
+            'side','family_liquidity_sweep','symbol_btc','utc_hour_sin','utc_hour_cos'
+          ]
+
+          def budget_targets(rows: pd.DataFrame) -> pd.DataFrame:
+              out = rows.copy()
+              stop_fraction = pd.to_numeric(out['stop_distance_fraction'], errors='coerce').clip(lower=1e-9)
+              side = pd.to_numeric(out['side'], errors='coerce')
+              stop_ratio = 1.0 - side * stop_fraction
+              market_plan = stop_fraction + 0.00075 + stop_ratio * 0.00095
+              passive_plan = stop_fraction + 0.00020 + stop_ratio * 0.00095
+              out['market_budget_r'] = pd.to_numeric(out['market_net_r'], errors='coerce') * stop_fraction / market_plan
+              out['passive_budget_r'] = pd.to_numeric(out['passive_net_r'], errors='coerce') * stop_fraction / passive_plan
+              return out
+
+          def candidate_row(candidate) -> dict[str, float]:
+              values = {
+                str(k): float(v) for k, v in candidate.feature_row.items()
+                if isinstance(v, (int, float, np.integer, np.floating)) and np.isfinite(v)
+              }
+              values.update({
+                'raw_reward_risk': candidate.target_distance / max(candidate.stop_distance, 1e-12),
+                'side': float(candidate.side),
+                'family_liquidity_sweep': float(candidate.family.value == 'LIQUIDITY_SWEEP_REVERSAL'),
+                'symbol_btc': float(candidate.symbol == 'BTCUSDT'),
+                'utc_hour_sin': float(np.sin(2*np.pi*candidate.timestamp.hour/24)),
+                'utc_hour_cos': float(np.cos(2*np.pi*candidate.timestamp.hour/24)),
+              })
+              return {name: values.get(name, np.nan) for name in FEATURE_COLUMNS}
+
+          def quality_eligible(candidate) -> bool:
+              f = candidate.feature_row
+              rr = candidate.target_distance / max(candidate.stop_distance, 1e-12)
+              if candidate.family.value == 'LIQUIDITY_SWEEP_REVERSAL':
+                  return (
+                    float(f.get('target_distance_atr', 0.0)) >= 5.5
+                    and float(f.get('sweep_depth_atr', 0.0)) >= 1.2
+                    and rr >= 1.0
+                  )
+              return (
+                float(f.get('stop_distance_atr', 0.0)) >= 4.0
+                and float(f.get('path_excursion_atr', 0.0)) >= 6.0
+                and rr >= 1.25
+              )
+
+          labels = pd.read_pickle('inputs/labels/EVENT_LABELS.pkl.gz', compression='gzip')
+          labels['event_end'] = pd.to_datetime(labels['event_end'], utc=True)
+          labels = budget_targets(labels)
+          labels = labels[(labels['event_end'] < START) & labels['market_budget_r'].notna() & labels['passive_budget_r'].notna()].copy()
+          train_x = labels.reindex(columns=FEATURE_COLUMNS).replace([np.inf, -np.inf], np.nan)
+          model_kwargs = dict(max_leaf_nodes=7, min_samples_leaf=40, max_iter=100, learning_rate=0.05, l2_regularization=5.0, random_state=20260727)
+          market_model = HistGradientBoostingRegressor(**model_kwargs).fit(train_x, labels['market_budget_r'].astype(float))
+          passive_model = HistGradientBoostingRegressor(**model_kwargs).fit(train_x, labels['passive_budget_r'].astype(float))
+
+          decision, execution, funding = load_canonical_frames(
+              Path('inputs/data'), Path('canonical_repo'), PRIMARY, ('PRE_2024_2023', '2024_H1')
+          )
+          eligible = []
+          diagnostics = {}
+          all_2024_candidates = 0
+          for symbol, frame in sorted(decision.items()):
+              features = build_corpus_features(frame, FeatureConfig())
+              rows, diag = generate_corpus_candidates_with_diagnostics(features, symbol)
+              diagnostics[symbol] = diag
+              for candidate in rows:
+                  if START <= candidate.timestamp < END:
+                      all_2024_candidates += 1
+                      if quality_eligible(candidate):
+                          eligible.append(candidate)
+          eligible.sort(key=lambda c: (c.timestamp, c.symbol, c.family.value, c.side))
+
+          if eligible:
+              score_x = pd.DataFrame([candidate_row(c) for c in eligible], columns=FEATURE_COLUMNS).replace([np.inf, -np.inf], np.nan)
+              pred_market = market_model.predict(score_x)
+              pred_passive = passive_model.predict(score_x)
+          else:
+              pred_market = np.asarray([], dtype=float)
+              pred_passive = np.asarray([], dtype=float)
+
+          scored = []
+          action_counts = Counter()
+          threshold_pass = 0
+          score_rows = []
+          for candidate, pm, pp in zip(eligible, pred_market, pred_passive):
+              market_score = float(pm - THRESHOLD)
+              passive_score = float(pp - THRESHOLD)
+              best = max(market_score, passive_score)
+              if best > 0:
+                  threshold_pass += 1
+                  action_counts['PASSIVE_RETEST' if passive_score >= market_score else 'MARKETABLE'] += 1
+              scored.append(ScoredCandidate(
+                  candidate=candidate,
+                  win_probability=0.5,
+                  expected_net_r=float(pm),
+                  passive_fill_probability=1.0,
+                  expected_log_growth=max(float(pm), float(pp)),
+                  lower_confidence_score=best,
+                  passive_win_probability=0.5,
+                  market_expected_log_growth=float(pm),
+                  passive_expected_log_growth=float(pp),
+                  market_lower_confidence_score=market_score,
+                  passive_lower_confidence_score=passive_score,
+                  preferred_action='PASSIVE_RETEST' if passive_score >= market_score else 'MARKETABLE',
+              ))
+              score_rows.append({
+                  'timestamp': candidate.timestamp.isoformat(), 'symbol': candidate.symbol,
+                  'family': candidate.family.value, 'side': candidate.side,
+                  'entry_reference': candidate.entry_reference, 'stop_reference': candidate.stop_reference,
+                  'target_reference': candidate.target_reference,
+                  'predicted_market_budget_r': float(pm), 'predicted_passive_budget_r': float(pp),
+                  'passes_threshold': bool(best > 0),
+                  'preferred_action': 'PASSIVE_RETEST' if passive_score >= market_score else 'MARKETABLE',
+              })
+
+          execution_config = CoarseExecutionConfig()
+          account = CoarseEventReplay(execution, execution_config).run(
+              scored,
+              GlobalSlotPolicy(),
+              RiskConfig(RISK_FRACTION, MAX_LEVERAGE, 0.001, 0.001),
+              START,
+              END,
+              initial_nav=10000.0,
+              funding=funding,
+              instrument_rules={'BTCUSDT': (0.001, 0.001), 'ETHUSDT': (0.01, 0.01)},
+          )
+          final_mark = 0.0
+          final_closeout = None
+          if account.position is not None:
+              frame = execution[account.position.candidate.symbol]
+              eligible_bars = frame.loc[pd.to_datetime(frame['bar_start'], utc=True) < END]
+              row = eligible_bars.iloc[-1]
+              final_mark = float(row.get('mark_close', row['close']))
+              final_closeout = coarse_closeout_price(row, account.position.side, execution_config)
+          else:
+              for frame in execution.values():
+                  rows = frame.loc[pd.to_datetime(frame['bar_start'], utc=True) < END]
+                  if not rows.empty:
+                      final_mark = float(rows.iloc[-1].get('mark_close', rows.iloc[-1]['close']))
+          metrics = summarize_account(
+              account, START, END, final_mark,
+              final_closeout_price=final_closeout,
+              final_closeout_fee_rate=execution_config.taker_fee_rate if final_closeout is not None else 0.0,
+          )
+
+          result = {
+            'schema_version': 1,
+            'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+            'stage': '2024_H1_FROZEN_CAUSAL_ML_COARSE_PROVISIONAL',
+            'scientific_source_sha': SOURCE_SHA,
+            'canonical_loader_sha': 'a2bb231966a517d29495bed7673e4d08ab8e30a9',
+            'training_label_artifact_id': 8643192491,
+            'training_cutoff': START.isoformat(),
+            'evaluation_start': START.isoformat(),
+            'evaluation_end_exclusive': END.isoformat(),
+            'system_contract': {
+              'reversal_gate': {'target_distance_atr_min': 5.5, 'sweep_depth_atr_min': 1.2, 'external_rr_min': 1.0},
+              'continuation_gate': {'stop_distance_atr_min': 4.0, 'path_excursion_atr_min': 6.0, 'external_rr_min': 1.25},
+              'risk_fraction': RISK_FRACTION,
+              'maximum_leverage': MAX_LEVERAGE,
+              'ml_action_threshold_budget_r': THRESHOLD,
+              'model': model_kwargs,
+              'model_update_during_period': False,
+              'entry_latency_ms': 500,
+              'global_entry_slots': 1,
+            },
+            'training_rows': int(len(labels)),
+            'all_structural_2024h1_candidates': int(all_2024_candidates),
+            'quality_eligible_candidates': int(len(eligible)),
+            'ml_threshold_pass_candidates': int(threshold_pass),
+            'predicted_action_counts_before_slot': dict(action_counts),
+            'candidate_generation_diagnostics': diagnostics,
+            'metrics': metrics.as_dict(),
+            'closed_trades': [asdict(t) for t in account.closed_trades],
+            'daily_nav': [asdict(x) for x in account.daily_nav],
+            'candidate_scores': score_rows,
+            'ranking_effect': 'PROVISIONAL_NOT_EVENT_TAPE_VALIDATED',
+          }
+          out = Path('output/FROZEN_2024H1_RESULT.json')
+          out.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True, default=str) + '\n')
+          Path('output/FROZEN_2024H1_RESULT.sha256').write_text(hashlib.sha256(out.read_bytes()).hexdigest() + '  FROZEN_2024H1_RESULT.json\n')
+          print(json.dumps({
+              'metrics': result['metrics'],
+              'quality_eligible_candidates': len(eligible),
+              'ml_threshold_pass_candidates': threshold_pass,
+              'actions': dict(action_counts),
+          }, indent=2, default=str))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-frozen-2024h1-v1-${{ github.sha }}
+          path: output
+          if-no-files-found: error
+          retention-days: 90
+      - name: Persist compact result pointer
+        if: always()
+        run: |
+          set -euo pipefail
+          git fetch origin agent/r22-yt-trinity-ml-001
+          git checkout -B agent/r22-yt-trinity-ml-001 origin/agent/r22-yt-trinity-ml-001
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          result_path = Path('output/FROZEN_2024H1_RESULT.json')
+          result = json.loads(result_path.read_text()) if result_path.exists() else None
+          payload = {
+            'schema_version': 1,
+            'run_id': int(os.environ['GITHUB_RUN_ID']),
+            'trigger_sha': os.environ['GITHUB_SHA'],
+            'artifact_name': f"yt-trinity-frozen-2024h1-v1-{os.environ['GITHUB_SHA']}",
+            'status': 'success' if result else 'execution_failure_not_economic_failure',
+            'result_sha256': hashlib.sha256(result_path.read_bytes()).hexdigest() if result else None,
+            'result': result,
+          }
+          Path('research/yt_trinity_ml/FROZEN_2024H1_V1_POINTER.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str) + '\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/yt_trinity_ml/FROZEN_2024H1_V1_POINTER.json
+          git commit -m "Record frozen YT Trinity 2024H1 ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1

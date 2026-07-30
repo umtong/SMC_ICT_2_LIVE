@@ -1,0 +1,16 @@
+{
+  "artifact_name": "yt-trinity-smt-or-bpr-replay-9b07fb3ba28c0e022860e2edc2079f124d018ec4",
+  "claim_id": "CLM-20260727-0346-YT-TRINITY-ML-001",
+  "exit_code": 1,
+  "ranking_effect": "NONE_COARSE_NOT_EVENT_TAPE_VALIDATED",
+  "run_id": 30246235855,
+  "schema_version": 1,
+  "scientific_source_blob": "8ef34cd2bc3357d873bfa8d073328b8681f2157f",
+  "scientific_source_commit": "bd266a0338eb4c376ec092ad12b862cbdb1c7a94",
+  "source_sha": "9b07fb3ba28c0e022860e2edc2079f124d018ec4",
+  "stage": "PRE2024_SMT_OR_BPR_COARSE_NOT_RANKABLE",
+  "status": "execution_failure_not_economic_failure",
+  "stdout_tail": "Traceback (most recent call last):\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/system/public_archive.py\", line 146, in _download\n    response.raise_for_status()\n  File \"/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py\", line 1024, in raise_for_status\n    raise HTTPError(http_error_msg, response=self)\nrequests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://public.bybit.com/kline_for_metatrader4/ETHUSDT/2021/ETHUSDT_1_2021-01-01_2021-01-31.csv.gz\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py\", line 1508, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py\", line 1504, in main\n    return run_screen(args)\n           ^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/experiments/smt_or_bpr_screen.py\", line 1218, in run_screen\n    result = load_public_archive(args.cache_root, symbol, 1, data_start, evaluation_end)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/system/public_archive.py\", line 211, in load_public_archive\n    payload, raw_frame = _read_or_download(\n                         ^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/system/public_archive.py\", line 177, in _read_or_download\n    payload = _download(session, url, target, attempts=attempts, timeout_seconds=timeout_seconds)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/SMC_ICT_2_LIVE/SMC_ICT_2_LIVE/research/yt_trinity_ml/system/public_archive.py\", line 159, in _download\n    raise RuntimeError(f\"download failed after {attempts} attempts: {url}: {error}\") from error\nRuntimeError: download failed after 4 attempts: https://public.bybit.com/kline_for_metatrader4/ETHUSDT/2021/ETHUSDT_1_2021-01-01_2021-01-31.csv.gz: 404 Client Error: Not Found for url: https://public.bybit.com/kline_for_metatrader4/ETHUSDT/2021/ETHUSDT_1_2021-01-01_2021-01-31.csv.gz\n",
+  "summary": null,
+  "summary_sha256": null
+}

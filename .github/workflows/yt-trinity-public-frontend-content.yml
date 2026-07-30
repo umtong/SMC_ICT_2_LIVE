@@ -1,0 +1,329 @@
+name: YT Trinity validated frontend content completion
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/PUBLIC_FRONTEND_WINNER_Linux.json
+      - research/yt_trinity_ml/PUBLIC_FRONTEND_WINNER_macOS.json
+      - research/yt_trinity_ml/harvest_public_frontend_content.py
+      - .github/workflows/yt-trinity-public-frontend-content.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-public-frontend-content-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  prepare:
+    runs-on: macos-14
+    timeout-minutes: 35
+    outputs:
+      winner_available: ${{ steps.select.outputs.available }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Select highest-coverage validated frontend
+        id: select
+        run: |
+          mkdir -p artifact/control artifact/inventory
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          candidates = []
+          for path in Path('research/yt_trinity_ml').glob('PUBLIC_FRONTEND_WINNER_*.json'):
+              try:
+                  payload = json.loads(path.read_text(encoding='utf-8'))
+                  winner = payload.get('winner') or {}
+                  score = (
+                      int(winner.get('target_caption_count') or 0),
+                      int(bool(winner.get('control_caption_usable'))),
+                      int(winner.get('target_audio_count') or 0),
+                      int(bool(winner.get('control_audio_usable'))),
+                  )
+                  candidates.append((score, path, payload))
+              except Exception:
+                  continue
+          candidates.sort(key=lambda row: row[0], reverse=True)
+          if candidates:
+              _, source, payload = candidates[0]
+              Path('artifact/control/SELECTED_PUBLIC_FRONTEND.json').write_text(
+                  json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+              )
+              print(f'selected {source}')
+              available = 'true'
+          else:
+              Path('artifact/control/NO_WINNER.txt').write_text('No validated public frontend winner exists.\n', encoding='utf-8')
+              available = 'false'
+          with open('${GITHUB_OUTPUT}', 'a', encoding='utf-8') as handle:
+              handle.write(f'available={available}\n')
+          PY
+      - name: Install exact public inventory transport
+        if: steps.select.outputs.available == 'true'
+        run: python -m pip install -q --pre --upgrade "yt-dlp[default,curl-cffi]"
+      - name: Build exact uploads/videos/shorts/streams union
+        if: steps.select.outputs.available == 'true'
+        run: |
+          python research/yt_trinity_ml/build_public_inventory_union.py
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION.jsonl artifact/inventory/
+          cp research/yt_trinity_ml/PUBLIC_VIDEO_INVENTORY_UNION_MANIFEST.json artifact/inventory/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yt-trinity-frontend-content-control-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 30
+
+  harvest:
+    needs: prepare
+    if: needs.prepare.outputs.winner_available == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-frontend-content-control-${{ github.sha }}
+          path: artifact/control-download
+      - name: Install native-caption and transient-ASR stack
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install -q --upgrade pip
+          python -m pip install -q --upgrade requests faster-whisper
+      - name: Complete exact shard
+        continue-on-error: true
+        run: |
+          mkdir -p "artifact/shard-${{ matrix.shard }}"
+          python research/yt_trinity_ml/harvest_public_frontend_content.py \
+            --inventory artifact/control-download/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl \
+            --winner artifact/control-download/control/SELECTED_PUBLIC_FRONTEND.json \
+            --output "artifact/shard-${{ matrix.shard }}" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count 16 \
+            --asr-model small \
+            2>&1 | tee "artifact/shard-${{ matrix.shard }}/STDOUT.log"
+      - name: Hash shard text evidence
+        if: always()
+        run: |
+          root="artifact/shard-${{ matrix.shard }}"
+          if [[ -d "$root" ]]; then
+            (
+              cd "$root"
+              find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+            )
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-content-shard-${{ matrix.shard }}-${{ github.sha }}
+          path: artifact/shard-${{ matrix.shard }}
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+
+  merge:
+    needs: [prepare, harvest]
+    if: always() && needs.prepare.outputs.winner_available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: yt-trinity-frontend-content-control-${{ github.sha }}
+          path: artifact/control-download
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: yt-trinity-content-shard-*-${{ github.sha }}
+          path: artifact/shards
+          merge-multiple: false
+      - name: Merge complete text corpus and ledger
+        run: |
+          mkdir -p artifact/yt-trinity-content-corpus
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import shutil
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          inventory_path = Path('artifact/control-download/inventory/PUBLIC_VIDEO_INVENTORY_UNION.jsonl')
+          inventory = [json.loads(line) for line in inventory_path.read_text(encoding='utf-8').splitlines() if line.strip()]
+          expected = {row['video_id']: row for row in inventory}
+          rows = {}
+          output = Path('artifact/yt-trinity-content-corpus')
+          transcripts = output / 'transcripts'
+          transcripts.mkdir(parents=True, exist_ok=True)
+          shard_manifests = []
+          for wrapper in sorted(Path('artifact/shards').glob('*')):
+              for videos_path in wrapper.rglob('videos.jsonl'):
+                  root = videos_path.parent
+                  manifest_path = root / 'manifest.json'
+                  if manifest_path.exists():
+                      shard_manifests.append(json.loads(manifest_path.read_text(encoding='utf-8')))
+                  for line in videos_path.read_text(encoding='utf-8').splitlines():
+                      if not line.strip(): continue
+                      row = json.loads(line)
+                      video_id = row['video_id']
+                      if video_id in rows:
+                          raise RuntimeError(f'duplicate shard video: {video_id}')
+                      rows[video_id] = row
+                  source = root / 'transcripts'
+                  if source.exists():
+                      for path in source.rglob('*'):
+                          if not path.is_file(): continue
+                          destination = transcripts / path.relative_to(source)
+                          destination.parent.mkdir(parents=True, exist_ok=True)
+                          shutil.copy2(path, destination)
+          missing = sorted(set(expected) - set(rows))
+          extra = sorted(set(rows) - set(expected))
+          if extra:
+              raise RuntimeError(f'unexpected videos: {extra}')
+          for video_id in missing:
+              rows[video_id] = {
+                  **expected[video_id],
+                  'caption_status': 'fetch_failed',
+                  'caption_provider': None,
+                  'caption_segment_count': 0,
+                  'caption_char_count': 0,
+                  'caption_error': 'missing shard result',
+                  'transcript_jsonl': None,
+              }
+          ordered = [rows[row['video_id']] for row in inventory]
+          raw = ''.join(json.dumps(row, ensure_ascii=False, sort_keys=True) + '\n' for row in ordered)
+          (output / 'videos.jsonl').write_text(raw, encoding='utf-8')
+          counts = Counter(row.get('caption_status') for row in ordered)
+          providers = Counter(row.get('caption_provider') for row in ordered if row.get('caption_provider'))
+          complete = len(ordered) == len(inventory) and counts.get('fetch_failed', 0) == 0 and counts.get('ok', 0) == len(ordered)
+          manifest = {
+              'schema_version': 1,
+              'claim_id': 'CLM-20260727-0346-YT-TRINITY-ML-001',
+              'source_sha': os.environ['GITHUB_SHA'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'built_at_utc': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'inventory_count': len(inventory),
+              'inventory_sha256': hashlib.sha256(inventory_path.read_bytes()).hexdigest(),
+              'status_counts': dict(sorted(counts.items())),
+              'provider_counts': dict(sorted(providers.items())),
+              'content_attempt_complete': complete,
+              'caption_attempt_complete': complete,
+              'decision': 'PASS_COMPLETE' if complete else 'PARTIAL_REQUIRES_RETRY',
+              'transcript_video_count': counts.get('ok', 0),
+              'total_caption_segments': sum(int(row.get('caption_segment_count') or 0) for row in ordered),
+              'total_caption_characters': sum(int(row.get('caption_char_count') or 0) for row in ordered),
+              'videos_sha256': hashlib.sha256(raw.encode('utf-8')).hexdigest(),
+              'corpus_digest_sha256': hashlib.sha256(''.join(
+                  json.dumps({
+                      'video_id': row['video_id'],
+                      'channel_slug': row['channel_slug'],
+                      'caption_status': row.get('caption_status'),
+                      'caption_sha256': row.get('caption_sha256'),
+                  }, ensure_ascii=False, sort_keys=True) for row in ordered
+              ).encode('utf-8')).hexdigest(),
+              'shard_manifests': shard_manifests,
+              'media_retained': False,
+              'transient_audio_only_for_asr': True,
+          }
+          (output / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+          PY
+      - name: Build timestamp-addressable concept and rule evidence
+        if: always()
+        run: |
+          python research/yt_trinity_ml/build_concept_index.py \
+            --corpus artifact/yt-trinity-content-corpus \
+            | tee artifact/CONCEPT_INDEX_STDOUT.json
+          python research/yt_trinity_ml/extract_rule_ontology.py \
+            --corpus artifact/yt-trinity-content-corpus \
+            | tee artifact/RULE_ONTOLOGY_STDOUT.json
+          (
+            cd artifact/yt-trinity-content-corpus
+            find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yt-trinity-complete-content-corpus-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 90
+      - name: Persist compact content corpus pointer
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          root = Path('artifact/yt-trinity-content-corpus')
+          manifest_path = root / 'manifest.json'
+          ontology_path = root / 'rule_ontology_candidates.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
+          pointer = {
+              'schema_version': 1,
+              'workflow': 'YT Trinity validated frontend content completion',
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'artifact_name': f"yt-trinity-complete-content-corpus-{os.environ['GITHUB_SHA']}",
+              'manifest': manifest,
+              'manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest() if manifest_path.exists() else None,
+              'rule_ontology_sha256': hashlib.sha256(ontology_path.read_bytes()).hexdigest() if ontology_path.exists() else None,
+          }
+          Path('research/yt_trinity_ml/COMPLETE_CONTENT_CORPUS_POINTER.json').write_text(
+              json.dumps(pointer, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/yt_trinity_ml/COMPLETE_CONTENT_CORPUS_POINTER.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record complete YT Trinity content corpus ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - name: Enforce content completeness
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('artifact/yt-trinity-content-corpus/manifest.json')
+          if not path.exists(): raise SystemExit('content manifest missing')
+          manifest = json.loads(path.read_text(encoding='utf-8'))
+          if manifest.get('decision') != 'PASS_COMPLETE':
+              raise SystemExit(f"content corpus incomplete: {manifest}")
+          PY

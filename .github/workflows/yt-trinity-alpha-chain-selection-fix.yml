@@ -1,0 +1,58 @@
+name: YT Trinity alpha-chain causal selection fix
+
+on:
+  push:
+    branches: [agent/r22-yt-trinity-ml-001]
+    paths:
+      - research/yt_trinity_ml/apply_alpha_chain_selection_fix.py
+      - .github/workflows/yt-trinity-alpha-chain-selection-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yt-trinity-alpha-chain-selection-fix
+  cancel-in-progress: false
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/r22-yt-trinity-ml-001
+          fetch-depth: 0
+      - name: Apply causal chain fix
+        run: python research/yt_trinity_ml/apply_alpha_chain_selection_fix.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile selector and validate workflow gates
+        run: |
+          python -m py_compile research/yt_trinity_ml/select_coarse_survivor.py
+          python - <<'PY'
+          from pathlib import Path
+          for name in ('yt-trinity-compression-bpr-research.yml', 'yt-trinity-smt-cisd-research.yml'):
+              text = (Path('.github/workflows') / name).read_text(encoding='utf-8')
+              assert "'POSITIVE_PRE2024_OPENED_2024H1_COARSE'" in text
+              assert "'ECONOMIC_FAIL_SWITCH_ALPHA'" in text
+          selector = Path('research/yt_trinity_ml/select_coarse_survivor.py').read_text(encoding='utf-8')
+          assert 'frozen pre-2024 sequential account' in selector
+          PY
+      - name: Commit fix and remove materializer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/yt-trinity-compression-bpr-research.yml \
+            .github/workflows/yt-trinity-smt-cisd-research.yml \
+            research/yt_trinity_ml/select_coarse_survivor.py
+          git rm -f research/yt_trinity_ml/apply_alpha_chain_selection_fix.py .github/workflows/yt-trinity-alpha-chain-selection-fix.yml
+          git commit -m "Run resolved alphas and select by pre-2024 evidence"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin agent/r22-yt-trinity-ml-001
+            if git push origin HEAD:agent/r22-yt-trinity-ml-001; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
