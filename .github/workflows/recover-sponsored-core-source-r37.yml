@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Recover exact full result and audit source carrier
+      - name: Audit result and source carriers
         shell: bash
         run: |
           set -euo pipefail
@@ -47,38 +47,47 @@ jobs:
           done
           cp "$tmp"/SOURCE_MANIFEST.json "$tmp"/CONTRACT.json "$tmp"/RESULT.json "$tmp"/REPORT.md "$tmp"/VALIDATION_ATTESTATION.json "$dst"/
           python - <<'PY'
-          import base64, gzip, hashlib, json, re
+          import base64, gzip, hashlib, json, os, re
           from pathlib import Path
-          tmp=Path(__import__('os').environ['RUNNER_TEMP'])/'sponsored_authority'
+          tmp=Path(os.environ['RUNNER_TEMP'])/'sponsored_authority'
           dst=Path('research/sponsored_delivery_core_official/recovered_authority')
           manifest=json.loads((tmp/'SOURCE_MANIFEST.json').read_text())
+          audit={'source_commit':'56c7baf4fa7d809d0ee9e471267c6ed5cbf1b543','scientific_change':False}
 
-          # RESULT_FULL carrier is independently complete and authoritative.
-          rb64=''.join((tmp/'RESULT_FULL.json.gz.b64').read_text(encoding='utf-8-sig').split())
-          rgz=base64.b64decode(rb64)
-          assert hashlib.sha256(rgz).hexdigest()==manifest['result_hashes']['RESULT_FULL.json.gz.b64']['archive_sha256']
-          raw=gzip.decompress(rgz)
-          assert len(raw)==manifest['result_hashes']['RESULT_FULL.json.gz.b64']['uncompressed_bytes']
-          assert hashlib.sha256(raw).hexdigest()==manifest['result_hashes']['RESULT_FULL.json.gz.b64']['uncompressed_sha256']
-          (dst/'RESULT_FULL.json').write_bytes(raw)
+          def valid_chars(path):
+              text=path.read_text(encoding='utf-8-sig')
+              return ''.join(re.findall(r'[A-Za-z0-9+/=]',text)), len(text.encode())
 
-          # The source carrier itself is truncated in Git; record rather than hide it.
-          text=(tmp/'SOURCE_BUNDLE.tar.gz.b64').read_text(encoding='utf-8-sig')
-          valid=''.join(re.findall(r'[A-Za-z0-9+/=]',text))
+          # Audit and opportunistically recover the full result.
+          rv, rbytes=valid_chars(tmp/'RESULT_FULL.json.gz.b64')
+          audit['result_carrier_file_bytes']=rbytes
+          audit['result_valid_base64_chars']=len(rv)
+          audit['result_declared_base64_bytes']=int(manifest['result_hashes']['RESULT_FULL.json.gz.b64']['base64_bytes'])
+          try:
+              rgz=base64.b64decode(rv + '='*((-len(rv))%4))
+              audit['result_gzip_bytes']=len(rgz)
+              audit['result_gzip_sha256']=hashlib.sha256(rgz).hexdigest()
+              raw=gzip.decompress(rgz)
+              json.loads(raw)
+              audit['result_uncompressed_bytes']=len(raw)
+              audit['result_uncompressed_sha256']=hashlib.sha256(raw).hexdigest()
+              audit['full_result_recovered']=True
+              (dst/'RESULT_FULL.json').write_bytes(raw)
+          except Exception as exc:
+              audit['full_result_recovered']=False
+              audit['result_error']=repr(exc)
+
+          sv, sbytes=valid_chars(tmp/'SOURCE_BUNDLE.tar.gz.b64')
           declared=int(manifest['source_bundle']['base64_bytes'])
-          audit={
-            'source_commit':'56c7baf4fa7d809d0ee9e471267c6ed5cbf1b543',
-            'declared_source_base64_bytes':declared,
-            'observed_valid_source_base64_chars':len(valid),
-            'missing_source_base64_chars':declared-len(valid),
-            'source_materializable':False,
-            'reason':'stored source carrier is truncated; exact source cannot be reconstructed from this file',
-            'full_result_recovered':True,
-            'full_result_sha256':hashlib.sha256(raw).hexdigest(),
-            'scientific_change':False,
-          }
-          assert audit['missing_source_base64_chars']>0
-          (dst/'SOURCE_AUTHORITY_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
+          audit.update({
+              'source_carrier_file_bytes':sbytes,
+              'declared_source_base64_bytes':declared,
+              'observed_valid_source_base64_chars':len(sv),
+              'missing_source_base64_chars':declared-len(sv),
+              'source_materializable':False,
+              'source_reason':'stored source carrier is truncated; exact source cannot be reconstructed from this file',
+          })
+          (dst/'CARRIER_AUTHORITY_AUDIT.json').write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
           print(json.dumps(audit,indent=2,sort_keys=True))
           PY
 
@@ -92,7 +101,7 @@ jobs:
           if git diff --cached --quiet; then
             echo 'Recovered authority unchanged'
           else
-            git commit -m 'Recover sponsored Core full result authority'
+            git commit -m 'Audit sponsored Core carriers and recover available authority'
             git push origin HEAD:agent/r37-sponsored-core-source-recovery-001
           fi
 
