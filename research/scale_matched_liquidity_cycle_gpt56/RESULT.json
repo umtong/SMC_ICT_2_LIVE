@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260730-SCALE-MATCHED-LIQUIDITY-CYCLE-001",
+  "claim_id": "CLM-20260730-SCALE-MATCHED-LIQUIDITY-CYCLE-001",
+  "status": "RETIRED_PRE2024_NAIVE_PIVOT_PAIR_TRANSLATION_FAILURE",
+  "target_status": "NOT_MET",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "portfolio": {"planned_loss_fraction": 0.005, "notional_cap": 3.0, "global_slots": 1},
+  "actions": {
+    "SHIFT_NOW": {
+      "2021": {"0bp_multiple": 1.1519, "24bp_multiple": 0.6076, "24bp_trades": 1005},
+      "2022": {"0bp_multiple": 1.0272, "24bp_multiple": 0.4807, "24bp_trades": 1023, "winner_reroute_multiple": 0.3069},
+      "2023": {"0bp_multiple": 0.8661, "24bp_multiple": 0.2768, "24bp_trades": 1085}
+    },
+    "FIRST_GENUINE_FVG_REBALANCE": {
+      "2021": {"0bp_multiple": 1.3485, "24bp_multiple": 0.6689, "24bp_trades": 763},
+      "2022": {"0bp_multiple": 0.9564, "24bp_multiple": 0.4138, "24bp_trades": 881, "winner_reroute_multiple": 0.2715},
+      "2023": {"0bp_multiple": 0.9179, "24bp_multiple": 0.3187, "24bp_trades": 866}
+    }
+  },
+  "programization_audit": {
+    "causal_pivot_availability": true,
+    "one_time_pool_consumption": true,
+    "source_destination_pairing": true,
+    "genuine_fvg_only": true,
+    "fixed_latency_ms": 500,
+    "actual_signed_funding": true,
+    "adverse_same_minute_stop_first": true,
+    "material_translation_defect": "Every radius-2 one-hour pivot pair was treated as a same-scale dealing range even without evidence of a mature two-sided auction. The implementation created roughly 2,000-2,500 pools per symbol-year and therefore did not represent the transcript-grounded scale-matched inventory premise."
+  },
+  "decision": [
+    "Retire this exact paired-pivot translation.",
+    "Do not rescue it with pivot radius, target, stop, FVG threshold, symbol/side, risk or leverage tuning.",
+    "A distinct balance-manipulation-distribution hypothesis may be tested only after requiring a causally mature two-sided auction before boundary consumption."
+  ],
+  "official_2024_2026_opened": false,
+  "orders_submitted": false,
+  "live_permission": false
+}
