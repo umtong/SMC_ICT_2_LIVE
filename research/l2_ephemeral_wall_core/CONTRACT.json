@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-1945-L2-EPHEMERAL-WALL-CORE-001",
+  "result_id": "RES-20260730-L2-EPHEMERAL-WALL-CORE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbol": "BTCUSDT",
+  "source": {
+    "artifact_id": 8626087323,
+    "fit_date": "2022-07-01",
+    "development_date": "2023-07-01",
+    "state_frequency_ms": 100,
+    "depth": "top five levels"
+  },
+  "proxy": {
+    "meaning": "large displayed top-five wall that rapidly disappears without enough opposite aggressive amount to explain the lost depth; not proof of spoofing",
+    "prior_depth_window_s": 30,
+    "large_wall_boundary": "fit-day q99 side depth / prior-only 30s median",
+    "cancellation_window_s": 1,
+    "minimum_excess_depth_disappearance": 0.75,
+    "maximum_opposite_executed_fraction": 0.25,
+    "rearm_s": 5,
+    "rearm_depth_ratio_below": 1.0,
+    "direction": {"bid_wall": "long", "ask_wall": "short"}
+  },
+  "fatal_screen": {
+    "entry": "executable ask for long or bid for short at completed one-second decision",
+    "horizons_s": [5, 15, 30],
+    "primary_horizon_s": 15,
+    "costs_bp": [12, 18, 24],
+    "gate": "at least 40 events, positive 18/24bp mean and median, both sides, >=6 positive UTC hours, positive top-10%-positive-event-deleted 24bp mean"
+  },
+  "account_opened": false,
+  "ml_opened": false,
+  "official_opened": false,
+  "orders_submitted": false
+}
