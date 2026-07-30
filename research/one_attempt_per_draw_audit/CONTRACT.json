@@ -1,0 +1,39 @@
+{
+  "account": {
+    "actual_signed_funding": true,
+    "costs_bp": [12, 18, 24],
+    "global_pending_open_slots": 1,
+    "notional_cap": 3.0,
+    "planned_loss_fraction": 0.005,
+    "stop_slippage_bp": 4.0
+  },
+  "claim_id": "CLM-20260730-ONE-ATTEMPT-PER-DRAW-AUDIT-001",
+  "dependency": {
+    "parent_result_id": "RES-20260730-IOF-FIRST-PULLBACK-FATAL-001",
+    "parent_source_sha256": "326ca2f415935167ef6f1f072ac897a625ff515d7015ba691c9f2f7e80d683eb"
+  },
+  "evaluation": {
+    "elapsed_time_exit": false,
+    "official_2024_2026_opened": false,
+    "unchanged_years": [2022, 2023],
+    "winner_deletion": "remove top five positive event IDs before rebuilding attempt consumption and the complete global-slot account"
+  },
+  "one_attempt_policy": {
+    "blocked_candidate_consumes_attempt": true,
+    "candidate_order": ["entry_ms ascending", "symbol ascending", "event_id ascending"],
+    "outcome_used_in_thinning": false,
+    "thesis_key": ["symbol", "direction", "target_level_id"],
+    "rule": "retain the first executable candidate for each thesis key across the target's causal lifetime; ignore every later candidate regardless of the first attempt's outcome or slot availability"
+  },
+  "result_id": "RES-20260730-ONE-ATTEMPT-PER-DRAW-AUDIT-001",
+  "schema_version": 1,
+  "survival": {
+    "both_half_years_positive": true,
+    "each_year": [2022, 2023],
+    "minimum_completed_trades_each_year": 60,
+    "nonnegative_median": true,
+    "positive_24bp_nav": true,
+    "positive_winner_deleted_rerouted_nav": true,
+    "profit_factor_above_one": true
+  }
+}
