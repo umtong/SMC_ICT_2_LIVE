@@ -18,9 +18,14 @@ SERIES = {
 def download(series: str, url: str) -> tuple[bytes, list[dict[str, str]]]:
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "SMC_ICT_2_LIVE-daily-macro-risk/1.0"},
+        headers={
+            "User-Agent": "Mozilla/5.0 SMC_ICT_2_LIVE-daily-macro-risk/1.0",
+            "Accept": "text/csv,*/*;q=0.8",
+        },
     )
-    with urllib.request.urlopen(request, timeout=180) as response:
+    # Transport-only fail-closed timeout. It does not change source identity,
+    # dates, values or the economic contract.
+    with urllib.request.urlopen(request, timeout=45) as response:
         payload = response.read()
     reader = csv.DictReader(io.StringIO(payload.decode("utf-8-sig")))
     fields = reader.fieldnames or []
