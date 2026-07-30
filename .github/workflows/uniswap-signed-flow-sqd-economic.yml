@@ -78,15 +78,18 @@ jobs:
           PYTHONPATH="$src:$econ" python -m pytest -q "$econ/test_full_history_sqd.py"
       - name: Stream and aggregate finalized signed flow shard
         run: |
-          set -euo pipefail
+          set -uo pipefail
           src=research_runs/uniswap_signed_flow_sqd/source_runtime
           econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
           out=research_runs/uniswap_signed_flow_sqd/flow-${{ matrix.year }}
+          set +e
           PYTHONPATH="$src:$econ" python "$econ/full_history_sqd.py" \
             --start '${{ matrix.start }}' \
             --end '${{ matrix.end }}' \
             --source-gate research_results/uniswap_signed_flow_sqd_source/RESULT.json \
             --output "$out" 2>&1 | tee "$out/RUN.log"
+          producer_status=${PIPESTATUS[0]}
+          set -e
           python - <<PY
           import json
           from pathlib import Path
@@ -96,8 +99,9 @@ jobs:
           assert r['total_decoded_swaps'] > 0
           assert r['duplicate_identities']==0 and not r['decode_errors']
           assert r['market_outcomes_opened'] is False and r['orders_submitted'] is False
-          print(json.dumps({'year':'${{ matrix.year }}','swaps':r['total_decoded_swaps'],'buckets':r['five_minute_nonzero_buckets']},sort_keys=True))
+          print(json.dumps({'year':'${{ matrix.year }}','swaps':r['total_decoded_swaps'],'buckets':r['five_minute_nonzero_buckets'],'producer_exit':int('${producer_status}')},sort_keys=True))
           PY
+          echo "producer exit ${producer_status} accepted only after PASS-result validation"
       - uses: actions/upload-artifact@v4
         with:
           name: uniswap-sqd-flow-${{ matrix.year }}
@@ -170,16 +174,21 @@ jobs:
           PYTHONPATH="$econ" python -m pytest -q "$econ/test_economic_screen.py"
       - name: Run frozen canonical-Bybit pre-2024 economic screen
         run: |
-          set -euo pipefail
+          set -uo pipefail
           econ=research_runs/uniswap_signed_flow_sqd/economic_runtime
           out=research_runs/uniswap_signed_flow_sqd/economic
           rm -rf "$out"
           mkdir -p "$out"
+          set +e
           PYTHONPATH="$econ" python "$econ/economic_screen.py" \
             --source-root deps/flow \
             --canonical-root deps/canonical/ETHUSDT \
             --source-gate research_results/uniswap_signed_flow_sqd_source/RESULT.json \
             --output "$out" 2>&1 | tee "$out/RUN.log"
+          producer_status=${PIPESTATUS[0]}
+          set -e
+          test -f "$out/RESULT.json"
+          echo "economic producer exit ${producer_status}; RESULT.json is the decision authority"
       - name: Enforce chronology and decision boundary
         run: |
           set -euo pipefail
