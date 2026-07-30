@@ -5,19 +5,14 @@ on:
     branches: [agent/r34-protected-boundary-core-realization-001]
     paths:
       - '.github/workflows/protected-boundary-source-r34.yml'
-      - 'research/protected_boundary_core_realization/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/protected-boundary-source-r34.yml'
-      - 'research/protected_boundary_core_realization/**'
+      - 'research/protected_boundary_core_realization/CONTRACT.json'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: protected-boundary-source-r34-${{ github.event.pull_request.number || github.ref }}
+  group: protected-boundary-source-r34
   cancel-in-progress: true
 
 jobs:
@@ -36,7 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           out=research_runs/protected_boundary_source_r34
-          mkdir -p "$out"
+          vendor=research/protected_boundary_core_realization/vendor
+          mkdir -p "$out" "$vendor"
           git fetch --no-tags --depth=1 origin agent/r24-volume-protected-boundary-001
           git show FETCH_HEAD:research/volume_protected_boundary_20260730/SOURCE_BUNDLE.tar.gz.b64 \
             > "$out/SOURCE_BUNDLE.tar.gz.b64"
@@ -45,7 +41,21 @@ jobs:
           test "$observed" = 3855e2e76482f75b63a53543d275a940bdd5175a6b1fddb2ad7155f868ab5298
           tar -xzf "$out/SOURCE_BUNDLE.tar.gz" -C "$out"
           python -m py_compile "$out"/*.py
+          cp "$out"/*.py "$vendor"/
+          sha256sum "$vendor"/*.py > "$vendor/SOURCE_SHA256SUMS.txt"
           sha256sum "$out"/* > "$out/SHA256SUMS.txt"
+      - name: Commit verified source files for the frozen audit
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research/protected_boundary_core_realization/vendor
+          if git diff --cached --quiet; then
+            echo 'Verified source already committed'
+            exit 0
+          fi
+          git commit -m 'Vendor exact protected-boundary source for Core audit'
+          git push origin HEAD:agent/r34-protected-boundary-core-realization-001
       - uses: actions/upload-artifact@v4
         with:
           name: protected-boundary-source-r34-${{ github.run_id }}
