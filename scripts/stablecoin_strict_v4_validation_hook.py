@@ -22,7 +22,7 @@ MARKER = RUNNER_TEMP / "stablecoin_profit_v5_validator_summary.json"
 AUTHORITY = (
     ROOT
     / "scripts"
-    / "run_stablecoin_profit_v5_transport_window_authority.py"
+    / "run_stablecoin_profit_v5_rpc_log_authority.py"
 )
 
 
@@ -78,6 +78,7 @@ def main() -> int:
             "-q",
             "tests/test_stablecoin_v5_exec_repair.py",
             "tests/test_stablecoin_transport_window_authority.py",
+            "tests/test_stablecoin_rpc_log_authority.py",
         ]
     )
     shutil.rmtree(WORK, ignore_errors=True)
