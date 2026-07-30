@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260730-XSEC-OVERSHOOT-REVERSION-CORE-001",
+  "result_id": "RES-20260730-XSEC-OVERSHOOT-REVERSION-CORE-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "hypothesis": "extreme six-hour idiosyncratic residual against the other-three median partially reverts after urgent inventory consumption",
+  "event": {
+    "decision_interval": "completed 1h",
+    "residual": "asset 6h log return minus median 6h log return of other three",
+    "normalization": "prior-only 720 completed common hours",
+    "trigger": "abs(z)>=2 and abs(residual)>=1%",
+    "rearm": "abs(z)<1"
+  },
+  "action": {
+    "side": "fade residual",
+    "entry": "first observable 1m open strictly after fixed 500ms",
+    "target": "completed 5m relative move offsets 50% of event residual",
+    "state_loss": "completed 5m relative move extends 50% further",
+    "hard_stop": "max(2*completed-hour ATR20,0.5% of executable entry)",
+    "elapsed_time_exit": false
+  },
+  "account": {
+    "risk_fraction": 0.005,
+    "notional_cap": 3.0,
+    "one_global_slot": true,
+    "simultaneous_arbitration": "largest absolute z then symbol",
+    "costs_bp": [
+      12,
+      18,
+      24
+    ],
+    "funding": "actual signed funding at contemporaneous mark",
+    "same_minute": "hard-stop first"
+  },
+  "chronology": {
+    "warmup": "2021",
+    "forward": [
+      "2022",
+      "2023 unchanged"
+    ],
+    "official": "sealed unless 2022 and 2023 both positive, PF>1, >=60 trades and top-five-event deletion/rerouting positive at 24bp"
+  },
+  "orders_submitted": false
+}
