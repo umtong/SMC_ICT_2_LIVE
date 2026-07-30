@@ -1,0 +1,32 @@
+{
+  "2023_gate": "not loaded unless the complete 2022 24bp Core gate passes",
+  "account": {
+    "cost_bps": [0, 12, 18, 24],
+    "funding": "actual signed in (entry,exit]",
+    "global_slots": 1,
+    "notional_cap": 3.0,
+    "risk_fraction": 0.005
+  },
+  "claim_id": "CLM-20260730-DEVELOPING-VALUE-MIGRATION-CORE-001",
+  "decision": "RETIRED_2022_SPARSE_AND_NEGATIVE_GROSS_DEVELOPING_VALUE_MIGRATION_FAILURE",
+  "entry": "first strictly later observed one-minute open after completed 5m rebalance availability + 500ms",
+  "logic": "Two consecutive non-overlapping equal-turnover packets both form value beyond the same frozen prior-day value edge; the first causal rebalance to the near new-value edge trades toward the frozen new POC, and loss of the near edge invalidates the same premise.",
+  "packet": {
+    "each_turnover_fraction_of_prior_day": 0.125,
+    "non_overlapping": true,
+    "same_minute_cannot_populate_both": true
+  },
+  "pre_gate_market_years": [2021, 2022],
+  "products_as_testbeds": ["BTCUSDT", "ETHUSDT"],
+  "profile": {
+    "bins": 64,
+    "minute_allocation": "turnover at minute turnover/volume VWAP",
+    "value_fraction": 0.7
+  },
+  "result_id": "RES-20260730-DEVELOPING-VALUE-MIGRATION-CORE-001",
+  "schema_version": 1,
+  "state_loss": "first completed 5m close through near new-value edge",
+  "stop": "1bp beyond full rebalance-bar excursion",
+  "target": "frozen combined-packet POC",
+  "time_exit": null
+}
