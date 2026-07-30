@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260729-ML-CME-GAP-CURRENT-CONTRACT-001",
+  "venue": "Bybit USDT linear perpetual",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "portfolio_slot": 1,
+  "decision": "two completed 15m bars",
+  "latency_ms": 500,
+  "first_fill": "first observed 1m open strictly after activation",
+  "features": [
+    "gap_signed_atr",
+    "residual_in_gap_direction",
+    "response_in_gap_direction_atr",
+    "rebalance_progress",
+    "log_continuation_to_rebalance_distance"
+  ],
+  "model": "standardized L2 logistic C=0.25; direct value Ridge diagnostic only",
+  "risk_fraction": 0.005,
+  "notional_cap": 3.0,
+  "entry_fee": 0.00055,
+  "target_fee": 0.0002,
+  "stop_fee": 0.00055,
+  "entry_slippage_bps": 1.0,
+  "stop_slippage_bps": 2.0,
+  "same_minute": "stop first",
+  "exit": "selected structural destination only; no elapsed-time close",
+  "official_2024_opened": false
+}
