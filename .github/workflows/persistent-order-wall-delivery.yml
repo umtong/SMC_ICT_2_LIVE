@@ -30,9 +30,13 @@ jobs:
         run: |
           python research/persistent_order_wall_delivery/materialize.py
 
-      - name: Apply outcome-sealed completed-state correction
+      - name: Apply outcome-sealed state/account corrections
         run: |
           python research/persistent_order_wall_delivery/patch_completed_state.py
+
+      - name: Apply official wide-snapshot schema correction
+        run: |
+          python research/persistent_order_wall_delivery/patch_wide_snapshot.py
 
       - name: Semantic self-test
         run: |
@@ -40,6 +44,7 @@ jobs:
 
       - name: Run frozen March-May-July fatal screen
         run: |
+          set -o pipefail
           python research/persistent_order_wall_delivery/materialized/run.py \
             --manifest research/persistent_order_wall_delivery/materialized/SOURCE_MANIFEST.json \
             --funding research/persistent_order_wall_delivery/materialized/FUNDING_2023_BTCETH.csv \
