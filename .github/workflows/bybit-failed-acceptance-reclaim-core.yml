@@ -1,0 +1,164 @@
+name: Bybit failed-acceptance reclaim Core
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/failed_acceptance_reclaim_20260730/**
+      - .github/workflows/bybit-failed-acceptance-reclaim-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: failed-acceptance-reclaim-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  RUNTIME_ARTIFACT_ID: "8661372527"
+  CANONICAL_ARTIFACT_ID: "8712672241"
+
+jobs:
+  pre2024-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify portable quant runtime
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/runtime/root
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RUNTIME_ARTIFACT_ID}/zip" \
+            -o deps/runtime.zip
+          echo "e404ff4bfa3da8f0ec83ec982c20e936dd7f2694f86512af46478fdb8d61fef4  deps/runtime.zip" | sha256sum -c -
+          unzip -q deps/runtime.zip -d deps/runtime
+          echo "ab452bc18a3197e9275cc7cf0aac04fae974eb006c1cb8bb32e52248729eddd5  deps/runtime/python312-quant-runtime.tar.zst" | sha256sum -c -
+          tar --zstd -xf deps/runtime/python312-quant-runtime.tar.zst -C deps/runtime/root
+          deps/runtime/root/python/bin/python3 -c "import numpy,pandas,sklearn; print('runtime-ok')"
+
+      - name: Materialize and verify frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf materialized
+          "$PY" research/failed_acceptance_reclaim_20260730/materialize.py --out materialized
+          "$PY" -m py_compile materialized/run.py materialized/test_semantics.py materialized/channel_dependency.py
+          "$PY" - <<'PY'
+          import importlib.util
+          import pathlib
+          import sys
+          path = pathlib.Path('materialized/test_semantics.py')
+          spec = importlib.util.spec_from_file_location('test_semantics', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules['test_semantics'] = module
+          spec.loader.exec_module(module)
+          tests = sorted(name for name in dir(module) if name.startswith('test_'))
+          for name in tests:
+              getattr(module, name)()
+              print('PASS', name)
+          assert len(tests) == 6
+          PY
+
+      - name: Download and verify canonical Bybit export
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p deps/canonical
+          curl -L --fail --retry 4 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${CANONICAL_ARTIFACT_ID}/zip" \
+            -o deps/canonical.zip
+          echo "950ad2ee0f5d6df729c11a15b817e30e19ead754a35385e5535233d0af8e6c02  deps/canonical.zip" | sha256sum -c -
+          unzip -q deps/canonical.zip -d deps/canonical
+          deps/runtime/root/python/bin/python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path('deps/canonical')
+          manifest = json.loads((root / 'EXPORT_MANIFEST.json').read_text())
+          assert manifest['schema_version'] == 1 and len(manifest['tables']) == 18
+          for item in manifest['tables']:
+              path = root / item['symbol'] / (item['table'] + '.pkl.gz')
+              assert path.stat().st_size == item['bytes']
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']
+          print('canonical-ok')
+          PY
+
+      - name: Run frozen pre-2024 mechanism twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          rm -rf artifact run2
+          "$PY" materialized/run.py \
+            --audit-source materialized/channel_dependency.py \
+            --canonical-root deps/canonical \
+            --output artifact \
+            | tee RUN1.log
+          "$PY" materialized/run.py \
+            --audit-source materialized/channel_dependency.py \
+            --canonical-root deps/canonical \
+            --output run2 \
+            | tee RUN2.log
+          cmp artifact/RESULT.json run2/RESULT.json
+          cmp artifact/EVENT_ACTIONS.csv run2/EVENT_ACTIONS.csv
+          cp RUN1.log artifact/RUN1.log
+          cp RUN2.log artifact/RUN2.log
+          cp research/failed_acceptance_reclaim_20260730/CONTRACT.json artifact/CONTRACT.json
+          cp research/failed_acceptance_reclaim_20260730/RESULT.json artifact/COMPACT_RESULT.json
+          cp research/failed_acceptance_reclaim_20260730/REPORT.md artifact/REPORT.md
+          cp research/failed_acceptance_reclaim_20260730/SOURCE_MANIFEST.json artifact/SOURCE_MANIFEST.json
+
+      - name: Assert economic failure and closed boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=deps/runtime/root/python/bin/python3
+          "$PY" - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('artifact/RESULT.json').read_text())
+          assert r['status'] == 'RETIRED_FAILED_ACCEPTANCE_RECLAIM_BASE_FAILURE'
+          assert r['base_survivors'] == []
+          assert r['counts']['events'] == 134
+          assert r['counts']['rows'] == 267
+          assert r['official_2024_2026_opened'] is False
+          assert r['orders_submitted'] is False
+          assert r['accounts']['midpoint']['2022']['24']['end_nav'] > 10000
+          assert r['accounts']['midpoint']['2022']['24']['winner_deleted']['end_nav'] < 10000
+          assert r['accounts']['midpoint']['2023']['24']['end_nav'] < 10000
+          assert r['accounts']['midpoint']['2023']['24']['winner_deleted']['end_nav'] < 10000
+          assert r['accounts']['opposite']['2022']['24']['end_nav'] < 10000
+          assert r['accounts']['opposite']['2023']['24']['end_nav'] < 10000
+          print(json.dumps({
+              'status': r['status'],
+              'counts': r['counts'],
+              'midpoint_2022_24': r['accounts']['midpoint']['2022']['24'],
+              'midpoint_2023_24': r['accounts']['midpoint']['2023']['24'],
+              'opposite_2022_24': r['accounts']['opposite']['2022']['24'],
+              'opposite_2023_24': r['accounts']['opposite']['2023']['24'],
+          }, indent=2))
+          PY
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bybit-failed-acceptance-reclaim-core
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
