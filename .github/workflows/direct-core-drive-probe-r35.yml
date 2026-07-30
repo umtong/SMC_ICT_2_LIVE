@@ -20,28 +20,36 @@ jobs:
           ref: ${{ github.ref }}
           fetch-depth: 0
       - name: Download one registered canonical ZIP
+        id: download
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          mkdir -p /tmp/canonical
-          python -m pip install --quiet gdown==5.2.0
-          gdown --id 1kzyUwgZfWNlZwIXGIgAKQhFHZmzlVHlM -O /tmp/canonical/BTC2021.zip
-          echo '7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca  /tmp/canonical/BTC2021.zip' | sha256sum -c -
-          unzip -tq /tmp/canonical/BTC2021.zip
+          set -o pipefail
+          mkdir -p /tmp/canonical research/direct_utility_first_minute_acceptance
+          python -m pip install --quiet gdown==5.2.0 2>&1 | tee research/direct_utility_first_minute_acceptance/DRIVE_PROBE.log
+          gdown --id 1kzyUwgZfWNlZwIXGIgAKQhFHZmzlVHlM -O /tmp/canonical/BTC2021.zip 2>&1 | tee -a research/direct_utility_first_minute_acceptance/DRIVE_PROBE.log
+          echo '7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca  /tmp/canonical/BTC2021.zip' | sha256sum -c - 2>&1 | tee -a research/direct_utility_first_minute_acceptance/DRIVE_PROBE.log
+          unzip -tq /tmp/canonical/BTC2021.zip 2>&1 | tee -a research/direct_utility_first_minute_acceptance/DRIVE_PROBE.log
+      - name: Write and commit terminal probe status
+        if: always()
+        env:
+          DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+        run: |
           python - <<'PY'
-          import json
+          import json, os
           from pathlib import Path
-          Path('research/direct_utility_first_minute_acceptance').mkdir(parents=True,exist_ok=True)
-          Path('research/direct_utility_first_minute_acceptance/DRIVE_PROBE.json').write_text(json.dumps({
-            'status':'PASS','dataset':'DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1',
-            'sha256':'7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca',
+          root=Path('research/direct_utility_first_minute_acceptance'); root.mkdir(parents=True,exist_ok=True)
+          status='PASS' if os.environ.get('DOWNLOAD_OUTCOME')=='success' else 'FAIL'
+          root.joinpath('DRIVE_PROBE.json').write_text(json.dumps({
+            'status':status,
+            'download_outcome':os.environ.get('DOWNLOAD_OUTCOME'),
+            'dataset':'DS-BYBIT-LINEAR-BTCUSDT-PRE_2024_2021-CANONICAL-V1',
+            'expected_sha256':'7b54adac09cb9aadb9208288f23167f154e40fe430da1be85794a38bf401e3ca',
             'orders_submitted':False
           },indent=2)+'\n')
           PY
-      - name: Commit probe status
-        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add research/direct_utility_first_minute_acceptance/DRIVE_PROBE.json
-          git commit -m 'research: record canonical Drive transport probe'
+          git add research/direct_utility_first_minute_acceptance/DRIVE_PROBE.json research/direct_utility_first_minute_acceptance/DRIVE_PROBE.log
+          git commit -m 'research: record canonical Drive transport probe terminal status'
           git push origin HEAD:${GITHUB_REF_NAME}
