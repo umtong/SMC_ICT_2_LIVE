@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260731-LASTD-PATH-A-MULTITF-FULL-001",
+  "contract": "LAST-D_PATH_A_TRANSCRIPT_FAITHFUL",
+  "stage": "FULL_PERIOD_CAUSAL_PROVISIONAL_1M_EXECUTION",
+  "target_status": "NOT_MET",
+  "deployment_authority": "NONE",
+  "evaluation": {
+    "start": "2024-01-01T00:00:00Z",
+    "end_exclusive": "2026-07-01T00:00:00Z",
+    "days": 912,
+    "initial_nav": 10000.0,
+    "symbols": ["BTCUSDT", "ETHUSDT"],
+    "global_slots": 1
+  },
+  "baseline": {
+    "completed_trades": 1023,
+    "ending_nav": 202.1595865426058,
+    "forced_liquidations": 0,
+    "geometric_daily_growth": -0.004268586114670292,
+    "maximum_drawdown": 0.9797840413457394,
+    "mean_realized_r": -0.12548757736942917,
+    "median_realized_r": -0.16361488531363078,
+    "multiple": 0.020215958654260582,
+    "profit_factor": 0.32481896575549896,
+    "submitted_or_accounted_attempts": 1834,
+    "target_met": false,
+    "total_return": -0.9797840413457394,
+    "win_rate": 0.13880742913000976,
+    "halfyear_returns": {
+      "2024_H1": -0.3433913754412521,
+      "2024_H2": -0.48851113960880066,
+      "2025_H1": -0.5896402958204606,
+      "2025_H2": -0.5095040954792619,
+      "2026_H1": -0.7009447131632491
+    }
+  },
+  "ml": {
+    "completed_trades": 135,
+    "ending_nav": 7295.951323131882,
+    "forced_liquidations": 0,
+    "geometric_daily_growth": -0.00034562612590616215,
+    "maximum_drawdown": 0.27423506147089227,
+    "mean_realized_r": -0.07711013737614879,
+    "median_realized_r": -0.0561478968003366,
+    "multiple": 0.7295951323131883,
+    "profit_factor": 0.3334564910819074,
+    "submitted_or_accounted_attempts": 1834,
+    "target_met": false,
+    "total_return": -0.2704048676868117,
+    "win_rate": 0.16296296296296298,
+    "halfyear_returns": {
+      "2024_H1": -0.05259684150951505,
+      "2024_H2": -0.07459543691106552,
+      "2025_H1": -0.05746428434354378,
+      "2025_H2": -0.0879184986309165,
+      "2026_H1": -0.031980737460547415
+    }
+  },
+  "diagnostics": {
+    "baseline_gross_pnl_at_actual_sizes": -4084.107480792719,
+    "baseline_gross_profit_factor": 0.5776903120319862,
+    "baseline_execution_and_funding_drag": 5713.732932664667,
+    "baseline_delivery_boundary_reaccepted_trades": 908,
+    "baseline_median_holding_minutes": 7.0,
+    "audit_all_passed": true,
+    "audit_check_count": 27
+  },
+  "fingerprints": {
+    "source_sha256": "6d32ab39b905e2b6f205899a0c42214a61a86e4785e626c912cde862466766b1",
+    "config_sha256": "364ffdd6ae97c9a70b490268fad107a650b6b5e9552a8fe41ea6ff411e1fc1fd",
+    "canonical_manifest_count": 12,
+    "canonical_member_count": 168
+  },
+  "known_limitations": [
+    "conservative completed-1m execution surface rather than exact L2/L3 queue replay",
+    "ETH product limits require live Bybit refresh before deployment"
+  ],
+  "decision": "The exact multi-timeframe Path A implementation is negative before and after costs in every half-year. It is an economic failure under the evaluated contract and must not be rescued with filters, fixed-R targets, leverage or risk changes."
+}
