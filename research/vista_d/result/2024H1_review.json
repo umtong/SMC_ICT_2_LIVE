@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260802-VISTA-D-2024H1-FROZEN-BASELINE-001",
+  "implementation": "VISTA-D frozen semantic baseline",
+  "stage": "OFFICIAL_2024H1_CAUSAL_BASELINE_REVIEWED",
+  "source_aggregate_sha256": "9c7decf3f74a5987cc22f20b691406bd41561ba6e79cb1ac5b337beacd9a0f8c",
+  "evaluation_period": {
+    "start": "2024-01-01T00:00:00Z",
+    "end": "2024-06-30T23:59:59.999Z",
+    "days": 182
+  },
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "global_slot": 1,
+  "economic_result": {
+    "initial_nav": 10000.0,
+    "final_nav": 4521.593760488302,
+    "account_multiple": 0.4521593760488302,
+    "total_return": -0.5478406239511697,
+    "geometric_daily_growth": -0.004351606178685796,
+    "calendar_days": 182,
+    "max_drawdown": 0.5491367376988618,
+    "completed_trades": 107,
+    "take_profits": 30,
+    "stop_losses": 77,
+    "unfilled": 111,
+    "win_rate": 0.34579439252336447,
+    "profit_factor": 0.4060581893132205,
+    "gross_profit": 3745.403468676676,
+    "gross_loss": 9223.809708188373,
+    "forced_liquidations": 0,
+    "final_open_position": false
+  },
+  "actual_pre_cost_result": {
+    "gross_pnl": -3144.7689596499067,
+    "gross_R": -14.274739422598733,
+    "fees": 2340.7092195922746,
+    "funding": -7.071939730484999,
+    "net_pnl": -5478.406239511697
+  },
+  "independent_audits": {
+    "setup_contract": {"setups": 218, "passed": 218, "failed": 0, "all_passed": true, "issues": []},
+    "account": {"passed": true, "issues": [], "selected_orders": 218, "records": 218, "completed_trades": 107, "unfilled_orders": 111, "final_open_positions": 0},
+    "semantic_lifecycle": {"all_passed": true, "records": 218, "passed": 218},
+    "trade_lifecycle": {"all_passed": true, "records": 218, "passed": 218},
+    "prefix_2024_january_vs_h1": {"all_passed": true, "checks": 8}
+  },
+  "root_cause_assessment": {
+    "low_level_runtime_or_accounting_bug": "NOT_SUPPORTED_BY_EVIDENCE",
+    "frozen_formal_contract_fidelity": "CONFIRMED",
+    "frozen_baseline_economic_status": "NEGATIVE_BEFORE_AND_AFTER_COSTS",
+    "abstract_vista_d_status": "NOT_REJECTED",
+    "primary_shortfall": "SEMANTIC_STATE_OBSERVABILITY_AND_UNCERTAINTY_COMPRESSION",
+    "details": [
+      "Every selected setup and order/trade chronology was independently reconstructed from causal canonical data.",
+      "The non-ML baseline maps total OI plus completed price discovery to directional sponsorship even though signed flow is unavailable for the full period.",
+      "Premium and account-ratio sensors are present with full coverage but are not yet incorporated into sponsorship-state uncertainty.",
+      "The liquidity book keeps one currently active auction selected from a flat multi-timeframe node set; this is a minimal proxy for the natural-language multi-role liquidity graph.",
+      "Natural destinations are valid frozen-contract pools, but the baseline records rather than estimates path resistance and remaining inventory vulnerability.",
+      "The baseline converts these uncertain states into deterministic actions; this is narrower than the full VISTA-D state/action design."
+    ]
+  },
+  "decision": {
+    "full_2024_2026_run": "NOT_AUTHORIZED_IN_THIS_TASK",
+    "deployment": "NONE",
+    "next_gate": "IMPLEMENT_FULL_VISTA_D_UNCERTAINTY_AND_MULTI_ROLE_STATE_REPRESENTATION, THEN REPEAT DEVELOPMENT-MONTH_FIDELITY_AND_2024H1",
+    "not_allowed": ["RR filter based on this result", "period or symbol filter", "risk/leverage rescue", "hard sponsor-floor exit", "full-period run before semantic-state completion"]
+  },
+  "artifact_bundle": {
+    "local_name": "VISTA_D_2024H1_REVIEW_20260802.tar.gz",
+    "sha256": "5418b89fcbc622f1ef620e53c93f1017c563cdc27b24039ed560c29e3a8b5b35"
+  }
+}
