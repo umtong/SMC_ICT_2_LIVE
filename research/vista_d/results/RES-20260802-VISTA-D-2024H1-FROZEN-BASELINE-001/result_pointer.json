@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "result_id": "RES-20260802-VISTA-D-2024H1-FROZEN-BASELINE-001",
+  "status": "AUDITED_DETERMINISTIC_BASELINE_NOT_COMPLETE_VISTA_D_POLICY",
+  "ranking_eligibility": "NOT_ELIGIBLE_INCOMPLETE_ACTION_POLICY",
+  "implementation_freeze_id": "VISTA-D-IMPLEMENTATION-FREEZE-20260802-001",
+  "source_aggregate_sha256": "9c7decf3f74a5987cc22f20b691406bd41561ba6e79cb1ac5b337beacd9a0f8c",
+  "period": {
+    "start": "2024-01-01T00:00:00Z",
+    "end": "2024-06-30T23:59:59.999Z",
+    "calendar_days": 182
+  },
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "global_slot": 1,
+  "metrics": {
+    "initial_nav": 10000.0,
+    "final_nav": 4521.593760488302,
+    "account_multiple": 0.4521593760488302,
+    "total_return": -0.5478406239511697,
+    "geometric_daily_growth": -0.004351606178685796,
+    "max_drawdown": 0.5491367376988618,
+    "selected_orders": 218,
+    "completed_trades": 107,
+    "take_profits": 30,
+    "stop_losses": 77,
+    "unfilled": 111,
+    "win_rate": 0.34579439252336447,
+    "profit_factor": 0.4060581893132205,
+    "forced_liquidations": 0,
+    "final_open_position": false,
+    "gross_pnl_before_fees_and_funding": -3144.768959649907,
+    "gross_profit_factor_before_fees_and_funding": 0.5882,
+    "fees": 2340.7092195922746,
+    "funding_sum": -7.071939730484996,
+    "net_pnl": -5478.406239511698
+  },
+  "audits": {
+    "source_files": "23/23 PASS",
+    "contract_tests": "73/73 PASS",
+    "setup_causality": "218/218 PASS",
+    "independent_semantic_lifecycle": "218/218 PASS",
+    "independent_trade_price_accounting": "218/218 PASS",
+    "account_global_slot_nav": "PASS",
+    "january_prefix_normalized": "PASS"
+  },
+  "provenance": {
+    "supersedes": "eval_2024H1_final_v3",
+    "superseded_reason": "The earlier 5,751.80-USDT result does not reproduce from the frozen source fingerprint; its January order prefix differs from the frozen-source replay."
+  },
+  "implementation_boundary": {
+    "implemented": "causal scenario candidate construction and order lifecycle",
+    "missing": "contract-native WAIT / ABANDON / WORK_LIMIT action-value policy and active delivery-path plausibility",
+    "interpretation": "economic failure of the deterministic all-feasible-candidate baseline, not a final economic verdict on the complete VISTA-D policy"
+  },
+  "full_2024_2026_evaluation_performed": false
+}
