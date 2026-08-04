@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "claim_id": "CLM-20260804-PASSIVE-SOURCE-LIMIT-001",
+  "issue": 750,
+  "status": "FROZEN_BEFORE_OUTCOME",
+  "mechanism": "After a causal 15-minute external pool raid is classified from the first complete five seconds of observed signed flow and price progress, do not chase the completed state. Rest a source-level limit after decision plus 500 ms and require one-tick penetration for conservative full fill.",
+  "arena": ["BTCUSDT"],
+  "state": {
+    "pool": "nearest still-live radius-2 confirmed 15-minute swing pool, usable only after the second completed right-side bar",
+    "raid": "first observed 500 ms trade bucket strictly through the pool",
+    "window": "the complete five seconds beginning at the raid bucket",
+    "accept": "signed progress > 0, outside dwell > 0.5, signed aggressive turnover > 0",
+    "reject": "signed progress <= 0 after a positive outward excursion",
+    "otherwise": "flat"
+  },
+  "action": {
+    "activation": "state decision plus fixed 500 ms",
+    "entry": "resting source-price limit; full fill only after one-tick penetration",
+    "target": "original pre-existing external pool in the selected direction, frozen before outcome",
+    "stop": "original completed-state structural extreme plus one tick",
+    "results": ["full target", "full stop", "unfilled or cancelled", "window-end mark"],
+    "elapsed_time_exit": null,
+    "same_bucket_ambiguity": "adverse stop first"
+  },
+  "account": {
+    "initial_nav": 10000,
+    "planned_loss_fraction": 0.03,
+    "minimum_cost_net_natural_r": 0.5,
+    "normal_desired_natural_r": ">=1.0 without changing entry, stop or target",
+    "global_slots": 1,
+    "cost_bp": [12, 18, 24],
+    "maker_entry_bp": 2
+  },
+  "diagnostic_windows": [
+    "2023-03-05/2023-03-11",
+    "2023-05-01/2023-05-07",
+    "2023-07-09/2023-07-15"
+  ],
+  "warmup_days": 7,
+  "decision": "A single positive week is insufficient. The exact action must preserve meaningful density and show positive cost-net account value in more than one frozen short window without one-trade dependence. Otherwise close without adjacent threshold, execution, target, stop, ML, risk or leverage rescue.",
+  "official_2024_2026": "unopened",
+  "orders_submitted": false
+}
