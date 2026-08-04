@@ -1,0 +1,57 @@
+name: Export PR550 source for VISTA-D recovery
+
+on:
+  push:
+    branches: [agent/vista-d-pr550-recovery-001]
+    paths:
+      - '.github/workflows/export-pr550-vista-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode and verify source
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/pr550_recovery"
+          mkdir -p "$out"
+          cp -R research/protected_boundary_core_realization "$out/carrier"
+          python - <<'PY'
+          import base64, gzip, hashlib, json, re
+          from pathlib import Path
+          import os
+          root=Path(os.environ['RUNNER_TEMP'])/'pr550_recovery'
+          carrier=root/'carrier'
+          manifest=json.loads((carrier/'SOURCE_MANIFEST.json').read_text())
+          text=(carrier/'AUDIT_SOURCE.py.gz.b64').read_text(encoding='utf-8-sig')
+          compact=''.join(re.findall(r'[A-Za-z0-9+/=]', ''.join(text.split())))
+          compact += '='*((-len(compact))%4)
+          gz=base64.b64decode(compact, validate=False)
+          raw=gzip.decompress(gz)
+          out=root/'protected_boundary_core_realization.py'
+          out.write_bytes(raw)
+          observed=hashlib.sha256(raw).hexdigest()
+          expected=(manifest.get('audit_source_sha256') or manifest.get('source_sha256') or manifest.get('source_file_sha256'))
+          att={'raw_bytes':len(raw),'raw_sha256':observed,'manifest':manifest,'expected_source_sha256':expected}
+          (root/'RECOVERY_ATTESTATION.json').write_text(json.dumps(att,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(att,indent=2,sort_keys=True))
+          if expected and observed != expected:
+              raise SystemExit(f'source hash mismatch: {observed} != {expected}')
+          PY
+          python -m py_compile "$out/protected_boundary_core_realization.py"
+          find "$out" -maxdepth 3 -type f -printf '%P\n' | sort
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr550-vista-recovery-${{ github.run_id }}
+          path: ${{ runner.temp }}/pr550_recovery
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
