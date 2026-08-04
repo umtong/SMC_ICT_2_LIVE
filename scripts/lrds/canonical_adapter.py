@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from scripts.market_data import load_canonical_bybit as canonical
+from scripts.market_data import load_public_trade_compact_v5 as compact_v5
 
 from .contracts import Bar
 
@@ -196,6 +197,38 @@ def first_exact_execution(
         half_start_time_ms=int(raw["half_start_time_ms"]),
         side_is_unambiguous_buy=bool(raw["side_is_unambiguous_buy"]),
     )
+
+
+def first_exact_execution_v5(
+    observed_500ms: pd.DataFrame,
+    decision_time_ms: int,
+) -> ExactExecutionObservation | None:
+    """Resolve exact execution from the canonical sparse tick-index V5 shard."""
+
+    raw = compact_v5.first_executable_trade_after(
+        observed_500ms,
+        decision_time_ms,
+        activation_delay_ms=500,
+    )
+    if raw is None:
+        return None
+    return ExactExecutionObservation(
+        activation_time_ms=int(raw["activation_time_ms"]),
+        trade_time_ms=int(raw["trade_time_ms"]),
+        price=float(raw["price"]),
+        half_start_time_ms=int(raw["bucket_start_time_ms"]),
+        side_is_unambiguous_buy=False,
+    )
+
+
+def load_first_exact_execution_v5(
+    shard: str | Path,
+    decision_time_ms: int,
+) -> ExactExecutionObservation | None:
+    observed = compact_v5.load_observed_500ms(shard)
+    if observed.empty:
+        return None
+    return first_exact_execution_v5(observed, decision_time_ms)
 
 
 def load_first_exact_execution(
