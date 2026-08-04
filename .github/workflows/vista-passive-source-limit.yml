@@ -1,0 +1,51 @@
+name: VISTA-D passive source-level limit short screen
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - research/vista_d_passive_source_limit/**
+      - .github/workflows/vista-passive-source-limit.yml
+  workflow_dispatch:
+
+concurrency:
+  group: vista-passive-source-limit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  short-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install narrow research dependencies
+        run: python -m pip install "numpy==2.3.2" "pandas==2.2.3" "requests==2.32.4" "pytest==8.3.4"
+      - name: Compile and run contract tests
+        run: |
+          python -m py_compile research/vista_d_passive_source_limit/passive_source_limit_screen.py
+          python -m pytest -q research/vista_d_passive_source_limit/test_passive_source_limit.py
+          python -m json.tool research/vista_d_passive_source_limit/CONTRACT.json >/dev/null
+      - name: Run three frozen seven-day screens
+        run: |
+          python research/vista_d_passive_source_limit/passive_source_limit_screen.py \
+            --symbol BTCUSDT \
+            --window MARCH:2023-03-05:2023-03-11 \
+            --window MAY:2023-05-01:2023-05-07 \
+            --window JULY:2023-07-09:2023-07-15 \
+            --output artifact
+          find artifact -type f -print0 | sort -z | xargs -0 sha256sum > artifact/SHA256SUMS.txt
+      - name: Upload immutable short-screen evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: vista-passive-source-limit-${{ github.run_id }}
+          path: artifact
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
