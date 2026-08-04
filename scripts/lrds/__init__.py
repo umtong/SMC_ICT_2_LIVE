@@ -21,6 +21,7 @@ from .contracts import (
     ExecutablePremise,
     ExitDecision,
     ExitScope,
+    PremiseMode,
     PriceZone,
     RootOwnershipBasis,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "LRDSStateMachine",
     "OneSlotPortfolio",
     "Position",
+    "PremiseMode",
     "PriceZone",
     "RootOwnershipBasis",
     "ScenarioContractError",
