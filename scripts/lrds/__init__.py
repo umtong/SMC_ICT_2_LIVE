@@ -7,7 +7,9 @@ from .canonical_adapter import (
     CanonicalDecisionStream,
     ExactExecutionObservation,
     first_exact_execution,
+    first_exact_execution_v5,
     load_first_exact_execution,
+    load_first_exact_execution_v5,
 )
 from .contracts import (
     Bar,
@@ -47,5 +49,7 @@ __all__ = [
     "RootOwnershipBasis",
     "ScenarioContractError",
     "first_exact_execution",
+    "first_exact_execution_v5",
     "load_first_exact_execution",
+    "load_first_exact_execution_v5",
 ]
