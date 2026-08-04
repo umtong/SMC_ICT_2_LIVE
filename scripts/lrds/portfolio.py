@@ -56,6 +56,11 @@ class OneSlotPortfolio:
             raise RuntimeError("child premise must belong to the same root hypothesis")
         if child.direction is not parent.direction:
             raise RuntimeError("opposite direction requires closing the current position first")
+        if child.mode is not parent.mode:
+            raise RuntimeError(
+                "Core and Expansion are separate full-position trades; close the slot "
+                "before changing premise mode"
+            )
         if child.proof_id in position.proof_lineage:
             raise RuntimeError("a consumed proof cannot be adopted twice")
 
@@ -104,6 +109,8 @@ class OneSlotPortfolio:
             "gross_pnl": pnl,
             "nav": self.nav,
             "proof_id": decision.proof_id or "",
+            "mode": position.premise.mode.value,
+            "premise_id": position.premise.premise_id,
         }
         self.closed.append(record)
         self.position = None
