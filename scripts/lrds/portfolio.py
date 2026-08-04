@@ -91,10 +91,15 @@ class OneSlotPortfolio:
         decision: ExitDecision,
         *,
         fill_price: float,
-        executed_at_ms: int,
+        executed_at_ms: int | None = None,
     ) -> dict[str, float | str | int]:
         position = self._position()
-        if executed_at_ms < decision.available_at_ms:
+        # Unit-level state-machine tests may use immediate abstract execution. Canonical
+        # replay must pass the exact post-500ms observed execution timestamp explicitly.
+        execution_time_ms = (
+            decision.available_at_ms if executed_at_ms is None else int(executed_at_ms)
+        )
+        if execution_time_ms < decision.available_at_ms:
             raise RuntimeError("exit execution precedes the causal decision")
         pnl = (
             (fill_price - position.entry_price) * position.quantity
@@ -106,7 +111,7 @@ class OneSlotPortfolio:
             "scope": decision.scope.value,
             "reason": decision.reason,
             "decision_at_ms": decision.available_at_ms,
-            "executed_at_ms": int(executed_at_ms),
+            "executed_at_ms": execution_time_ms,
             "entry_price": position.entry_price,
             "exit_price": float(fill_price),
             "quantity": position.quantity,
