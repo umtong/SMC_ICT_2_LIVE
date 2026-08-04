@@ -91,8 +91,11 @@ class OneSlotPortfolio:
         decision: ExitDecision,
         *,
         fill_price: float,
+        executed_at_ms: int,
     ) -> dict[str, float | str | int]:
         position = self._position()
+        if executed_at_ms < decision.available_at_ms:
+            raise RuntimeError("exit execution precedes the causal decision")
         pnl = (
             (fill_price - position.entry_price) * position.quantity
             if position.premise.direction is Direction.UP
@@ -102,7 +105,8 @@ class OneSlotPortfolio:
         record: dict[str, float | str | int] = {
             "scope": decision.scope.value,
             "reason": decision.reason,
-            "available_at_ms": decision.available_at_ms,
+            "decision_at_ms": decision.available_at_ms,
+            "executed_at_ms": int(executed_at_ms),
             "entry_price": position.entry_price,
             "exit_price": float(fill_price),
             "quantity": position.quantity,
