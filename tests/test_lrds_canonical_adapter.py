@@ -9,6 +9,7 @@ from scripts.lrds.canonical_adapter import (
     CanonicalDataContractError,
     CanonicalDecisionStream,
     first_exact_execution,
+    first_exact_execution_v5,
 )
 
 
@@ -102,3 +103,20 @@ def test_exact_execution_uses_first_observed_trade_after_aligned_500ms() -> None
 def test_exact_execution_rejects_unaligned_decision_clock() -> None:
     with pytest.raises(ValueError, match="aligned"):
         first_exact_execution(_half_second_frame(), 1_250)
+
+
+def test_real_btc_20230121_sparse_v5_execution_matches_canonical_trade() -> None:
+    # Captured from the verified BTCUSDT January-2023 sparse V5 shard. The LRDS
+    # decision was available at 01:00:00.000 UTC; the first stored trade in the
+    # 01:00:00.500 bucket occurred 28 ms later at 22,570.5.
+    observed = pd.DataFrame({
+        "start_time_ms": [1_674_262_800_500],
+        "open": [22_570.5],
+        "first_offset_ms": [28],
+    })
+    execution = first_exact_execution_v5(observed, 1_674_262_800_000)
+    assert execution is not None
+    assert execution.activation_time_ms == 1_674_262_800_500
+    assert execution.half_start_time_ms == 1_674_262_800_500
+    assert execution.trade_time_ms == 1_674_262_800_528
+    assert execution.price == pytest.approx(22_570.5)
