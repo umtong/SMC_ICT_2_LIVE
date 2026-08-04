@@ -13,7 +13,9 @@ from .contracts import (
     ExecutablePremise,
     ExitDecision,
     ExitScope,
+    PremiseMode,
     RootHypothesis,
+    RootOwnershipBasis,
 )
 
 
@@ -40,6 +42,10 @@ class LRDSStateMachine:
     Public root hypotheses, tactical Control attempts and capital premises have
     different owners. A local retest cannot silently become root market-state
     evidence, and a fresh Source cannot confirm its own first retest.
+
+    Core and Expansion are also separate full-position premises. Core must fully
+    complete before later promotion evidence can authorize a newly sized Expansion.
+    No partial runner or slot reservation is represented by this state machine.
     """
 
     def __init__(self) -> None:
@@ -106,6 +112,38 @@ class LRDSStateMachine:
         hypothesis.evidence.append(event)
         self.trace.append(event)
 
+    def add_expansion_promotion(
+        self,
+        hypothesis_id: str,
+        *,
+        parent_premise_id: str,
+        event: EvidenceEvent,
+    ) -> None:
+        """Register new post-Core information which may own a separate Expansion.
+
+        The promotion is not a pending order. It only makes a later tactical Source
+        eligible to begin its own separation/retest/redelivery lifecycle.
+        """
+
+        hypothesis = self._active_hypothesis(hypothesis_id)
+        try:
+            core_completed_at_ms = hypothesis.completed_core_premises[parent_premise_id]
+        except KeyError as exc:
+            raise ScenarioContractError("Expansion promotion requires completed Core premise") from exc
+        if event.kind is not EvidenceKind.BOUNDARY_PROMOTED:
+            raise ScenarioContractError("Expansion promotion requires BOUNDARY_PROMOTED evidence")
+        if event.branch is not hypothesis.branch:
+            raise ScenarioContractError("Expansion promotion branch mismatch")
+        if event.ownership_basis is not RootOwnershipBasis.PROMOTED_BOUNDARY:
+            raise ScenarioContractError("Expansion promotion lacks promoted-boundary ownership")
+        if event.available_at_ms <= core_completed_at_ms:
+            raise ScenarioContractError("Expansion promotion must be new information after Core completion")
+        if event.event_id in hypothesis.promotion_events:
+            raise ScenarioContractError("duplicate Expansion promotion event")
+        hypothesis.promotion_events[event.event_id] = event
+        hypothesis.evidence.append(event)
+        self.trace.append(event)
+
     def open_control_attempt(
         self,
         *,
@@ -113,6 +151,9 @@ class LRDSStateMachine:
         hypothesis_id: str,
         source,
         proof_seed: EvidenceEvent,
+        mode: PremiseMode = PremiseMode.CORE,
+        parent_premise_id: str | None = None,
+        promotion_event_id: str | None = None,
     ) -> None:
         hypothesis = self._active_hypothesis(hypothesis_id)
         if hypothesis.ownership_event is None:
@@ -129,6 +170,25 @@ class LRDSStateMachine:
             EvidenceKind.SOURCE_CREATED,
         }:
             raise ScenarioContractError("unsupported Control Source proof seed")
+
+        if mode is PremiseMode.CORE:
+            if parent_premise_id is not None or promotion_event_id is not None:
+                raise ScenarioContractError("Core attempt cannot reference Expansion ancestry")
+        else:
+            if not parent_premise_id or not promotion_event_id:
+                raise ScenarioContractError("Expansion attempt requires Core parent and promotion")
+            try:
+                core_completed_at_ms = hypothesis.completed_core_premises[parent_premise_id]
+                promotion = hypothesis.promotion_events[promotion_event_id]
+            except KeyError as exc:
+                raise ScenarioContractError("Expansion attempt lacks completed Core/promotion ownership") from exc
+            if promotion.available_at_ms <= core_completed_at_ms:
+                raise ScenarioContractError("Expansion promotion is not later than Core completion")
+            if source.available_at_ms < promotion.available_at_ms:
+                raise ScenarioContractError("Expansion Source cannot predate its promotion")
+            if proof_seed.available_at_ms < promotion.available_at_ms:
+                raise ScenarioContractError("Expansion proof cannot predate its promotion")
+
         attempt = ControlAttempt(
             attempt_id=attempt_id,
             hypothesis_id=hypothesis_id,
@@ -136,6 +196,9 @@ class LRDSStateMachine:
             direction=hypothesis.direction,
             source=source,
             proof_seed=proof_seed,
+            mode=mode,
+            parent_premise_id=parent_premise_id,
+            promotion_event_id=promotion_event_id,
             evidence=[proof_seed],
         )
         self.attempts[attempt_id] = attempt
@@ -249,6 +312,21 @@ class LRDSStateMachine:
         if hypothesis.direction is Direction.DOWN and decision_price >= hypothesis.root_invalidation_price:
             raise ScenarioContractError("root premise already failed")
 
+        if attempt.mode is PremiseMode.CORE:
+            ownership_basis = hypothesis.ownership_event.ownership_basis
+            extra_evidence: tuple[str, ...] = ()
+        else:
+            assert attempt.parent_premise_id is not None
+            assert attempt.promotion_event_id is not None
+            if attempt.parent_premise_id not in hypothesis.completed_core_premises:
+                raise ScenarioContractError("Expansion parent Core is not completed")
+            try:
+                promotion = hypothesis.promotion_events[attempt.promotion_event_id]
+            except KeyError as exc:
+                raise ScenarioContractError("Expansion promotion was not registered") from exc
+            ownership_basis = RootOwnershipBasis.PROMOTED_BOUNDARY
+            extra_evidence = (promotion.event_id,)
+
         information_exit = (
             attempt.source.low if attempt.direction is Direction.UP else attempt.source.high
         )
@@ -267,6 +345,7 @@ class LRDSStateMachine:
             hypothesis_id=hypothesis.hypothesis_id,
             attempt_id=attempt.attempt_id,
             proof_id=attempt.proof_id,
+            mode=attempt.mode,
             branch=hypothesis.branch,
             direction=hypothesis.direction,
             control_source=attempt.source,
@@ -276,14 +355,17 @@ class LRDSStateMachine:
             decision_price=decision_price,
             authorized_index=int(attempt.defended_index),
             authorized_at_ms=int(attempt.defended_at_ms),
-            root_ownership_basis=hypothesis.ownership_event.ownership_basis,
-            evidence_ids=tuple(
-                event.event_id for event in hypothesis.evidence + attempt.evidence
+            root_ownership_basis=ownership_basis,
+            evidence_ids=(
+                tuple(event.event_id for event in hypothesis.evidence + attempt.evidence)
+                + extra_evidence
             ),
             quantity=quantity,
             planned_loss_budget=loss_budget,
             per_unit_planned_loss=per_unit_loss,
             conservative_route_r=route_r,
+            parent_premise_id=attempt.parent_premise_id,
+            promotion_event_id=attempt.promotion_event_id,
         )
         attempt.state = ControlAttemptState.CONSUMED
         attempt.consumed_at_ms = premise.authorized_at_ms
@@ -344,6 +426,14 @@ class LRDSStateMachine:
         *,
         available_at_ms: int,
     ) -> ExitDecision:
+        if available_at_ms < premise.authorized_at_ms:
+            raise ScenarioContractError("route completion precedes premise authorization")
+        if premise.mode is PremiseMode.CORE:
+            hypothesis = self._active_hypothesis(premise.hypothesis_id)
+            previous = hypothesis.completed_core_premises.get(premise.premise_id)
+            if previous is not None and previous != available_at_ms:
+                raise ScenarioContractError("Core premise completion time is inconsistent")
+            hypothesis.completed_core_premises[premise.premise_id] = available_at_ms
         return ExitDecision(
             scope=ExitScope.ROUTE_COMPLETE,
             reason=(
