@@ -1,10 +1,11 @@
-name: Export PR550 source for VISTA-D recovery
+name: Export PR550 and parent source for VISTA-D recovery
 
 on:
   push:
     branches: [agent/vista-d-pr550-recovery-001]
     paths:
       - '.github/workflows/export-pr550-vista-recovery.yml'
+      - 'research/vista_recovery/TRIGGER.txt'
   workflow_dispatch:
 
 permissions:
@@ -13,45 +14,49 @@ permissions:
 jobs:
   export:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Decode and verify source
+        with:
+          fetch-depth: 1
+      - name: Decode PR550 audit and exact PR531 parent source
         shell: bash
         run: |
           set -euo pipefail
-          out="$RUNNER_TEMP/pr550_recovery"
-          mkdir -p "$out"
-          cp -R research/protected_boundary_core_realization "$out/carrier"
+          out="$RUNNER_TEMP/vista_recovery"
+          mkdir -p "$out/pr550" "$out/pr531"
+          cp -R research/protected_boundary_core_realization "$out/pr550/carrier"
           python - <<'PY'
           import base64, gzip, hashlib, json, re
           from pathlib import Path
           import os
-          root=Path(os.environ['RUNNER_TEMP'])/'pr550_recovery'
+          root=Path(os.environ['RUNNER_TEMP'])/'vista_recovery'/'pr550'
           carrier=root/'carrier'
           manifest=json.loads((carrier/'SOURCE_MANIFEST.json').read_text())
-          text=(carrier/'AUDIT_SOURCE.py.gz.b64').read_text(encoding='utf-8-sig')
-          compact=''.join(re.findall(r'[A-Za-z0-9+/=]', ''.join(text.split())))
+          compact=''.join(re.findall(r'[A-Za-z0-9+/=]', (carrier/'AUDIT_SOURCE.py.gz.b64').read_text(encoding='utf-8-sig')))
           compact += '='*((-len(compact))%4)
-          gz=base64.b64decode(compact, validate=False)
-          raw=gzip.decompress(gz)
-          out=root/'protected_boundary_core_realization.py'
-          out.write_bytes(raw)
+          raw=gzip.decompress(base64.b64decode(compact, validate=False))
+          dest=root/'protected_boundary_core_realization.py'
+          dest.write_bytes(raw)
           observed=hashlib.sha256(raw).hexdigest()
-          expected=(manifest.get('audit_source_sha256') or manifest.get('source_sha256') or manifest.get('source_file_sha256'))
-          att={'raw_bytes':len(raw),'raw_sha256':observed,'manifest':manifest,'expected_source_sha256':expected}
-          (root/'RECOVERY_ATTESTATION.json').write_text(json.dumps(att,indent=2,sort_keys=True)+'\n')
-          print(json.dumps(att,indent=2,sort_keys=True))
-          if expected and observed != expected:
-              raise SystemExit(f'source hash mismatch: {observed} != {expected}')
+          expected=manifest['source_sha256']
+          (root/'RECOVERY_ATTESTATION.json').write_text(json.dumps({'raw_bytes':len(raw),'raw_sha256':observed,'expected':expected},indent=2)+'\n')
+          if observed != expected: raise SystemExit(f'PR550 source hash mismatch {observed} != {expected}')
           PY
-          python -m py_compile "$out/protected_boundary_core_realization.py"
-          find "$out" -maxdepth 3 -type f -printf '%P\n' | sort
+          git fetch --no-tags --depth=1 origin agent/r24-volume-protected-boundary-001
+          git show FETCH_HEAD:research/volume_protected_boundary_20260730/SOURCE_BUNDLE.tar.gz.b64 > "$out/pr531/SOURCE_BUNDLE.tar.gz.b64"
+          base64 -d "$out/pr531/SOURCE_BUNDLE.tar.gz.b64" > "$out/pr531/SOURCE_BUNDLE.tar.gz"
+          observed=$(sha256sum "$out/pr531/SOURCE_BUNDLE.tar.gz" | awk '{print $1}')
+          test "$observed" = 3855e2e76482f75b63a53543d275a940bdd5175a6b1fddb2ad7155f868ab5298
+          tar -xzf "$out/pr531/SOURCE_BUNDLE.tar.gz" -C "$out/pr531"
+          python -m py_compile "$out/pr550/protected_boundary_core_realization.py" "$out/pr531"/*.py
+          sha256sum "$out"/pr550/* "$out"/pr531/* > "$out/SHA256SUMS.txt" || true
+          find "$out" -maxdepth 4 -type f -printf '%P\n' | sort
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pr550-vista-recovery-${{ github.run_id }}
-          path: ${{ runner.temp }}/pr550_recovery
+          name: vista-pr550-pr531-recovery-${{ github.run_id }}
+          path: ${{ runner.temp }}/vista_recovery
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
