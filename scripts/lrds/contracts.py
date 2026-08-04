@@ -19,6 +19,18 @@ class Branch(str, Enum):
     ROTATE = "rotate"
 
 
+class PremiseMode(str, Enum):
+    """Capital role owned by one full-position premise.
+
+    CORE completes the first natural liquidity route. EXPANSION is a separate later
+    trade authorized only by new post-Core promotion evidence. It is never a partial
+    runner retained from the Core position.
+    """
+
+    CORE = "core"
+    EXPANSION = "expansion"
+
+
 class RootOwnershipBasis(str, Enum):
     """Independent evidence that owns the root market hypothesis.
 
@@ -32,6 +44,7 @@ class RootOwnershipBasis(str, Enum):
     ACCEPTED_VALUE_MIGRATION = "accepted_value_migration"
     AUCTION_RECLAIM = "auction_reclaim"
     DIRECT_CONTROL_SHIFT = "direct_control_shift"
+    PROMOTED_BOUNDARY = "promoted_boundary"
 
 
 class EvidenceKind(str, Enum):
@@ -43,6 +56,7 @@ class EvidenceKind(str, Enum):
     SOURCE_FAILED = "source_failed"
     ROOT_INVALIDATED = "root_invalidated"
     OBJECTIVE_CONSUMED = "objective_consumed"
+    BOUNDARY_PROMOTED = "boundary_promoted"
     MSS = "mss"
     CSD = "csd"
     VALUE_ACCEPTED = "value_accepted"
@@ -137,6 +151,9 @@ class EvidenceEvent:
             raise ValueError("evidence availability cannot be negative")
         if self.kind is EvidenceKind.ROOT_OWNERSHIP and self.ownership_basis is None:
             raise ValueError("root ownership evidence requires a basis")
+        if self.kind is EvidenceKind.BOUNDARY_PROMOTED:
+            if self.ownership_basis is not RootOwnershipBasis.PROMOTED_BOUNDARY:
+                raise ValueError("boundary promotion requires PROMOTED_BOUNDARY ownership")
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +162,7 @@ class ExecutablePremise:
     hypothesis_id: str
     attempt_id: str
     proof_id: str
+    mode: PremiseMode
     branch: Branch
     direction: Direction
     control_source: PriceZone
@@ -160,6 +178,8 @@ class ExecutablePremise:
     planned_loss_budget: float
     per_unit_planned_loss: float
     conservative_route_r: float
+    parent_premise_id: str | None = None
+    promotion_event_id: str | None = None
 
     def __post_init__(self) -> None:
         scalars = (
@@ -178,6 +198,16 @@ class ExecutablePremise:
             raise ValueError("premise sizing must be positive")
         if self.conservative_route_r < 0.5:
             raise ValueError("premise violates the fixed 0.5R economic floor")
+        if self.mode is PremiseMode.CORE:
+            if self.parent_premise_id is not None or self.promotion_event_id is not None:
+                raise ValueError("Core premise cannot carry Expansion parent/promotion identity")
+            if self.root_ownership_basis is RootOwnershipBasis.PROMOTED_BOUNDARY:
+                raise ValueError("Core premise cannot be owned by a later promotion")
+        else:
+            if not self.parent_premise_id or not self.promotion_event_id:
+                raise ValueError("Expansion premise requires completed Core and promotion identity")
+            if self.root_ownership_basis is not RootOwnershipBasis.PROMOTED_BOUNDARY:
+                raise ValueError("Expansion premise requires promoted-boundary ownership")
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,6 +234,8 @@ class RootHypothesis:
     invalidated_at_ms: int | None = None
     invalidation_reason: str | None = None
     evidence: list[EvidenceEvent] = field(default_factory=list)
+    completed_core_premises: dict[str, int] = field(default_factory=dict)
+    promotion_events: dict[str, EvidenceEvent] = field(default_factory=dict)
 
     @property
     def is_active(self) -> bool:
@@ -218,6 +250,9 @@ class ControlAttempt:
     direction: Direction
     source: PriceZone
     proof_seed: EvidenceEvent
+    mode: PremiseMode = PremiseMode.CORE
+    parent_premise_id: str | None = None
+    promotion_event_id: str | None = None
     state: ControlAttemptState = ControlAttemptState.CANDIDATE
     separated_index: int | None = None
     separated_at_ms: int | None = None
