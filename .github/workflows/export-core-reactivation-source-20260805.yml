@@ -1,0 +1,95 @@
+name: Export exact Core reactivation authority for short-week diagnosis
+
+on:
+  push:
+    branches: [agent/export-core-reactivation-source-20260805]
+    paths:
+      - '.github/workflows/export-core-reactivation-source-20260805.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Recover, verify, and export exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/core_reactivation_authority"
+          mkdir -p "$out/carrier" "$out/materialized"
+          authority=aa13e82b51c5587ebf6c5d308406d4ff64cf3ed6
+          src=research/core_then_protected_reactivation
+          git fetch --depth=1 origin "$authority"
+          for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json RESULT_FULL.json.gz.b64 REPORT.md VALIDATION_ATTESTATION.json; do
+            git show "$authority:$src/$f" > "$out/carrier/$f"
+          done
+          OUT="$out" python - <<'PY'
+          import base64, gzip, hashlib, json, os, re, tarfile
+          from pathlib import Path
+          root=Path(os.environ['OUT'])
+          carrier=root/'carrier'
+          manifest=json.loads((carrier/'SOURCE_MANIFEST.json').read_text())
+          text=(carrier/'SOURCE_BUNDLE.tar.gz.b64').read_text(encoding='utf-8-sig', errors='replace')
+          clean=''.join(re.findall(r'[A-Za-z0-9+/=]', ''.join(text.split())))
+          expected=manifest['source_bundle_gzip_sha256']
+          candidates=[]
+          # Original plus the documented missing F around data position 9527.
+          for idx in [None, 9525, 9526, 9527, 9528, 9529]:
+              value=clean if idx is None else clean[:idx]+'F'+clean[idx:]
+              value=value.rstrip('=') + '='*((-len(value.rstrip('=')))%4)
+              try:
+                  raw=base64.b64decode(value, validate=False)
+              except Exception:
+                  continue
+              digest=hashlib.sha256(raw).hexdigest()
+              candidates.append({'insert_index':idx,'chars':len(value),'bytes':len(raw),'sha256':digest})
+              if digest==expected:
+                  selected=(idx, raw)
+                  break
+          else:
+              raise RuntimeError(json.dumps(candidates, indent=2))
+          idx, raw=selected
+          assert len(raw)==manifest['source_bundle_gzip_bytes']
+          archive=root/'SOURCE_BUNDLE.tar.gz'
+          archive.write_bytes(raw)
+          with tarfile.open(archive,'r:gz') as tf:
+              tf.extractall(root/'materialized', filter='data')
+          observed={}
+          for p in sorted((root/'materialized').rglob('*')):
+              if p.is_file():
+                  observed[str(p.relative_to(root/'materialized'))]=hashlib.sha256(p.read_bytes()).hexdigest()
+          for name, digest in manifest['source_files'].items():
+              assert observed[name]==digest, (name,observed.get(name),digest)
+          full_text=(carrier/'RESULT_FULL.json.gz.b64').read_text(encoding='utf-8-sig', errors='replace')
+          full_b64=''.join(re.findall(r'[A-Za-z0-9+/=]',''.join(full_text.split())))
+          full_b64=full_b64.rstrip('=')+'='*((-len(full_b64.rstrip('=')))%4)
+          full=gzip.decompress(base64.b64decode(full_b64,validate=False))
+          assert hashlib.sha256(full).hexdigest()==manifest['result_full_raw_sha256']
+          (root/'RESULT_FULL.json').write_bytes(full)
+          att={
+              'authority_commit': 'aa13e82b51c5587ebf6c5d308406d4ff64cf3ed6',
+              'inserted_F_index': idx,
+              'source_bundle_sha256': hashlib.sha256(raw).hexdigest(),
+              'source_files': observed,
+              'result_full_sha256': hashlib.sha256(full).hexdigest(),
+          }
+          (root/'EXPORT_ATTESTATION.json').write_text(json.dumps(att,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(att,indent=2,sort_keys=True))
+          PY
+          python -m py_compile "$out/materialized/core_then_protected_reactivation.py"
+          pytest -q "$out/materialized/test_core_then_protected_reactivation.py"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-reactivation-authority-${{ github.run_id }}
+          path: ${{ runner.temp }}/core_reactivation_authority
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
