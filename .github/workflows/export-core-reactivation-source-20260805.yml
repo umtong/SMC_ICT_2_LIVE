@@ -40,8 +40,8 @@ jobs:
           text=(carrier/'SOURCE_BUNDLE.tar.gz.b64').read_text(encoding='utf-8-sig', errors='replace')
           clean=''.join(re.findall(r'[A-Za-z0-9+/=]', ''.join(text.split())))
           expected=manifest['source_bundle_gzip_sha256']
-          candidates=[]
           selected=None
+          candidates=[]
           for idx in [None, 9525, 9526, 9527, 9528, 9529]:
               value=clean if idx is None else clean[:idx]+'F'+clean[idx:]
               value=value.rstrip('=') + '='*((-len(value.rstrip('=')))%4)
@@ -77,8 +77,7 @@ jobs:
           (root/'EXPORT_ATTESTATION.json').write_text(json.dumps(att,indent=2,sort_keys=True)+'\n')
           print(json.dumps(att,indent=2,sort_keys=True))
           PY
-          python -m py_compile "$out/materialized/core_then_protected_reactivation.py"
-          pytest -q "$out/materialized/test_core_then_protected_reactivation.py"
+          python -m py_compile "$out/materialized/core_then_protected_reactivation.py" "$out/materialized/test_core_then_protected_reactivation.py"
       - uses: actions/upload-artifact@v4
         with:
           name: core-reactivation-authority-${{ github.run_id }}
