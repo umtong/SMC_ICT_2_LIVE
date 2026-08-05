@@ -1,0 +1,40 @@
+name: Export aligned-continuation authority for rapid week diagnosis
+
+on:
+  push:
+    branches: [agent/export-aligned-continuation-source-20260805]
+    paths:
+      - '.github/workflows/export-aligned-continuation-source-20260805.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Reconstruct exact source
+        run: |
+          set -euo pipefail
+          root=research/absorption_flow_benchmark_v1
+          python "$root/reconstruct.py"
+          python -m py_compile "$root/absorption_flow_benchmark.py"
+          sha256sum "$root/absorption_flow_benchmark.py"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aligned-continuation-authority-${{ github.run_id }}
+          path: |
+            research/absorption_flow_benchmark_v1/absorption_flow_benchmark.py
+            research/absorption_flow_benchmark_v1/PREREGISTRATION.md
+            research/absorption_flow_benchmark_v1/AMENDMENT_001_CAUSAL_DOLLAR_BAR_PIVOT.md
+            research/absorption_flow_benchmark_v1/DATA_MANIFEST.json
+            research/absorption_flow_benchmark_v1/TRANSPORT_MANIFEST.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
