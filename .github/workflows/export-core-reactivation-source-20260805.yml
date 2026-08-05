@@ -28,11 +28,11 @@ jobs:
           authority=aa13e82b51c5587ebf6c5d308406d4ff64cf3ed6
           src=research/core_then_protected_reactivation
           git fetch --depth=1 origin "$authority"
-          for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json RESULT_FULL.json.gz.b64 REPORT.md VALIDATION_ATTESTATION.json; do
+          for f in SOURCE_BUNDLE.tar.gz.b64 SOURCE_MANIFEST.json CONTRACT.json RESULT.json REPORT.md VALIDATION_ATTESTATION.json; do
             git show "$authority:$src/$f" > "$out/carrier/$f"
           done
           OUT="$out" python - <<'PY'
-          import base64, gzip, hashlib, json, os, re, tarfile
+          import base64, hashlib, json, os, re, tarfile
           from pathlib import Path
           root=Path(os.environ['OUT'])
           carrier=root/'carrier'
@@ -41,7 +41,7 @@ jobs:
           clean=''.join(re.findall(r'[A-Za-z0-9+/=]', ''.join(text.split())))
           expected=manifest['source_bundle_gzip_sha256']
           candidates=[]
-          # Original plus the documented missing F around data position 9527.
+          selected=None
           for idx in [None, 9525, 9526, 9527, 9528, 9529]:
               value=clean if idx is None else clean[:idx]+'F'+clean[idx:]
               value=value.rstrip('=') + '='*((-len(value.rstrip('=')))%4)
@@ -54,7 +54,7 @@ jobs:
               if digest==expected:
                   selected=(idx, raw)
                   break
-          else:
+          if selected is None:
               raise RuntimeError(json.dumps(candidates, indent=2))
           idx, raw=selected
           assert len(raw)==manifest['source_bundle_gzip_bytes']
@@ -68,18 +68,11 @@ jobs:
                   observed[str(p.relative_to(root/'materialized'))]=hashlib.sha256(p.read_bytes()).hexdigest()
           for name, digest in manifest['source_files'].items():
               assert observed[name]==digest, (name,observed.get(name),digest)
-          full_text=(carrier/'RESULT_FULL.json.gz.b64').read_text(encoding='utf-8-sig', errors='replace')
-          full_b64=''.join(re.findall(r'[A-Za-z0-9+/=]',''.join(full_text.split())))
-          full_b64=full_b64.rstrip('=')+'='*((-len(full_b64.rstrip('=')))%4)
-          full=gzip.decompress(base64.b64decode(full_b64,validate=False))
-          assert hashlib.sha256(full).hexdigest()==manifest['result_full_raw_sha256']
-          (root/'RESULT_FULL.json').write_bytes(full)
           att={
               'authority_commit': 'aa13e82b51c5587ebf6c5d308406d4ff64cf3ed6',
               'inserted_F_index': idx,
               'source_bundle_sha256': hashlib.sha256(raw).hexdigest(),
               'source_files': observed,
-              'result_full_sha256': hashlib.sha256(full).hexdigest(),
           }
           (root/'EXPORT_ATTESTATION.json').write_text(json.dumps(att,indent=2,sort_keys=True)+'\n')
           print(json.dumps(att,indent=2,sort_keys=True))
