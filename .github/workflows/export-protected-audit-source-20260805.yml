@@ -1,0 +1,48 @@
+name: Export protected-boundary parent audit source
+
+on:
+  push:
+    branches: [agent/export-core-reactivation-source-20260805]
+    paths:
+      - '.github/workflows/export-protected-audit-source-20260805.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Fetch and decode verified audit source
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/protected_audit_source"
+          mkdir -p "$out"
+          git fetch --depth=1 origin agent/r34-protected-boundary-core-realization-001
+          git show FETCH_HEAD:research/protected_boundary_core_realization/AUDIT_SOURCE.py.gz.b64 > "$out/source.py.gz.b64"
+          python - "$out" <<'PY'
+          import base64,gzip,hashlib,re,sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          text=(root/'source.py.gz.b64').read_text(encoding='utf-8-sig',errors='replace')
+          compact=''.join(re.findall(r'[A-Za-z0-9+/=]',''.join(text.split())))
+          compact=compact.rstrip('=')+'='*((-len(compact.rstrip('=')))%4)
+          raw=gzip.decompress(base64.b64decode(compact,validate=False))
+          (root/'protected_boundary_core_audit.py').write_bytes(raw)
+          (root/'SHA256.txt').write_text(hashlib.sha256(raw).hexdigest()+'  protected_boundary_core_audit.py\n')
+          print(len(raw),hashlib.sha256(raw).hexdigest())
+          PY
+          python -m py_compile "$out/protected_boundary_core_audit.py"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: protected-audit-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/protected_audit_source
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
