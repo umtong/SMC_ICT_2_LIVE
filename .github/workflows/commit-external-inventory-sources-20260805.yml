@@ -1,0 +1,107 @@
+name: Commit external inventory source bundle for rapid research
+
+on:
+  push:
+    branches: [agent/export-external-inventory-sources-20260805]
+    paths:
+      - '.github/workflows/commit-external-inventory-sources-20260805.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Export reusable external payer and inventory sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+          work=/tmp/external_inventory_source_export_20260805
+          out=research/external_inventory_source_export_20260805
+          rm -rf "$work" "$out"
+          mkdir -p "$work/files" "$out"
+          : > "$work/MATCHES.tsv"
+          pattern='stablecoin|issuance|destruction|uniswap|inventory.transfer|inventory_transfer|hyperliquid|liquidation|forced.flow|forced_flow|mint|burn|refill|replenish'
+          while read -r ref; do
+            branch=${ref#refs/remotes/origin/}
+            [ "$branch" = HEAD ] && continue
+            git grep -IlE "$pattern" "$ref" -- 'research/**' '*.py' '*.md' '*.json' '*.csv' 2>/dev/null | head -n 300 | while read -r spec; do
+              path=${spec#*:}
+              printf '%s\t%s\n' "$branch" "$path" >> "$work/MATCHES.tsv"
+            done || true
+          done < <(git for-each-ref --format='%(refname)' refs/remotes/origin | sort)
+          sort -u "$work/MATCHES.tsv" -o "$work/MATCHES.tsv"
+          python - <<'PY'
+          import pathlib, subprocess, re, json, hashlib
+          work=pathlib.Path('/tmp/external_inventory_source_export_20260805')
+          rows=[]
+          for raw in (work/'MATCHES.tsv').read_text(errors='ignore').splitlines():
+              if not raw.strip(): continue
+              branch,path=raw.split('\t',1)
+              rows.append((branch,path))
+          def score(x):
+              b,p=x; q=p.lower(); s=0
+              if q.endswith('.py'): s+=40
+              if q.endswith('result.json') or q.endswith('contract.json') or q.endswith('source_manifest.json'): s+=35
+              if 'stablecoin' in q or 'uniswap' in q or 'inventory' in q: s+=30
+              if 'hyperliquid' in q or 'liquidation' in q or 'forced' in q: s+=25
+              if 'loader' in q or 'download' in q or 'source' in q or 'snapshot' in q: s+=20
+              if 'report' in q or 'readme' in q: s+=8
+              if q.endswith('.csv'): s+=4
+              return (-s,b,p)
+          chosen=sorted(rows,key=score)[:500]
+          manifest=[]
+          total=0
+          for branch,path in chosen:
+              proc=subprocess.run(['git','show',f'refs/remotes/origin/{branch}:{path}'],capture_output=True)
+              if proc.returncode: continue
+              data=proc.stdout
+              # Keep the bundle source-oriented and bounded. Large market payloads stay external.
+              if len(data)>5_000_000: continue
+              safe_branch=re.sub(r'[^A-Za-z0-9_.-]+','_',branch)
+              dest=work/'files'/safe_branch/path
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              dest.write_bytes(data)
+              manifest.append({
+                  'branch':branch,'path':path,'bytes':len(data),
+                  'sha256':hashlib.sha256(data).hexdigest(),
+                  'exported':str(dest.relative_to(work))
+              })
+              total += len(data)
+          (work/'MANIFEST.json').write_text(json.dumps({
+              'schema_version':1,'match_count':len(rows),'export_count':len(manifest),
+              'export_bytes':total,'files':manifest
+          },indent=2))
+          print(json.dumps({'matches':len(rows),'exported':len(manifest),'bytes':total},indent=2))
+          PY
+          tar -C "$work" -czf "$out/SOURCE_BUNDLE.tar.gz" MANIFEST.json MATCHES.tsv files
+          sha256sum "$out/SOURCE_BUNDLE.tar.gz" > "$out/SOURCE_BUNDLE.tar.gz.sha256"
+          cp "$work/MANIFEST.json" "$out/MANIFEST.json"
+          python - <<'PY'
+          import json, pathlib, hashlib
+          out=pathlib.Path('research/external_inventory_source_export_20260805')
+          manifest=json.loads((out/'MANIFEST.json').read_text())
+          bundle=out/'SOURCE_BUNDLE.tar.gz'
+          done={
+            'status':'READY',
+            'match_count':manifest['match_count'],
+            'export_count':manifest['export_count'],
+            'export_bytes':manifest['export_bytes'],
+            'bundle_bytes':bundle.stat().st_size,
+            'bundle_sha256':hashlib.sha256(bundle.read_bytes()).hexdigest(),
+          }
+          (out/'DONE.json').write_text(json.dumps(done,indent=2)+'\n')
+          PY
+          git add "$out"
+          git commit -m 'Export external payer and inventory research sources'
+          git push origin HEAD:agent/export-external-inventory-sources-20260805
