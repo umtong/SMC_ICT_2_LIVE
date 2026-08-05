@@ -1,0 +1,75 @@
+name: Export external inventory-transfer research sources
+
+on:
+  push:
+    branches: [agent/export-external-inventory-sources-20260805]
+    paths:
+      - '.github/workflows/export-external-inventory-sources-20260805.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Locate and export payer-source work across branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+          out=/tmp/external-inventory-sources
+          mkdir -p "$out/files"
+          : > "$out/MATCHES.tsv"
+          pattern='stablecoin|issuance|destruction|uniswap|inventory.transfer|inventory_transfer|hyperliquid|liquidation|forced.flow|forced_flow|mint|burn'
+          while read -r ref; do
+            branch=${ref#refs/remotes/origin/}
+            [ "$branch" = HEAD ] && continue
+            git grep -IlE "$pattern" "$ref" -- 'research/**' '*.py' '*.md' '*.json' 2>/dev/null | head -n 100 | while read -r spec; do
+              path=${spec#*:}
+              printf '%s\t%s\n' "$branch" "$path" >> "$out/MATCHES.tsv"
+            done || true
+          done < <(git for-each-ref --format='%(refname)' refs/remotes/origin | sort)
+          sort -u "$out/MATCHES.tsv" -o "$out/MATCHES.tsv"
+          python - <<'PY'
+          import pathlib, subprocess, re, json
+          out=pathlib.Path('/tmp/external-inventory-sources')
+          rows=[]
+          for raw in (out/'MATCHES.tsv').read_text(errors='ignore').splitlines():
+              if not raw.strip(): continue
+              branch,path=raw.split('\t',1)
+              rows.append((branch,path))
+          # Prefer executable/result-bearing files and cap transport size.
+          def score(x):
+              b,p=x; q=p.lower(); s=0
+              if q.endswith('.py'): s+=20
+              if q.endswith('result.json') or q.endswith('contract.json'): s+=18
+              if 'stablecoin' in q or 'uniswap' in q or 'inventory' in q: s+=15
+              if 'hyperliquid' in q or 'liquidation' in q: s+=10
+              if 'report' in q or 'readme' in q: s+=5
+              return (-s,b,p)
+          chosen=sorted(rows,key=score)[:250]
+          manifest=[]
+          for branch,path in chosen:
+              proc=subprocess.run(['git','show',f'refs/remotes/origin/{branch}:{path}'],capture_output=True)
+              if proc.returncode: continue
+              safe_branch=re.sub(r'[^A-Za-z0-9_.-]+','_',branch)
+              dest=out/'files'/safe_branch/path
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              dest.write_bytes(proc.stdout)
+              manifest.append({'branch':branch,'path':path,'bytes':len(proc.stdout),'exported':str(dest.relative_to(out))})
+          (out/'MANIFEST.json').write_text(json.dumps(manifest,indent=2))
+          print(json.dumps({'matches':len(rows),'exported':len(manifest)},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: external-inventory-sources-${{ github.run_id }}
+          path: /tmp/external-inventory-sources
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
