@@ -1,0 +1,40 @@
+name: Export execution-aligned direct-Core authority for rapid diagnosis
+
+on:
+  push:
+    branches: [agent/export-direct-core-source-20260805]
+    paths:
+      - '.github/workflows/export-direct-core-source-20260805.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Materialize exact source
+        run: |
+          set -euo pipefail
+          root=research/execution_aligned_direct_utility_core
+          python "$root/materialize.py"
+          python -m py_compile "$root"/materialized/*.py
+          find "$root/materialized" -maxdepth 1 -type f -printf '%f\n' | sort
+      - uses: actions/upload-artifact@v4
+        with:
+          name: direct-core-authority-${{ github.run_id }}
+          path: |
+            research/execution_aligned_direct_utility_core/materialized
+            research/execution_aligned_direct_utility_core/CONTRACT.json
+            research/execution_aligned_direct_utility_core/REPORT.md
+            research/execution_aligned_direct_utility_core/RESULT.json
+            research/execution_aligned_direct_utility_core/SOURCE_MANIFEST.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
