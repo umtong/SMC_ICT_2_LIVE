@@ -13,12 +13,13 @@ permissions:
 jobs:
   export:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Fetch and decode verified audit source
+      - name: Fetch and recover verified audit source
         shell: bash
         run: |
           set -euo pipefail
@@ -26,19 +27,47 @@ jobs:
           mkdir -p "$out"
           git fetch --depth=1 origin agent/r34-protected-boundary-core-realization-001
           git show FETCH_HEAD:research/protected_boundary_core_realization/AUDIT_SOURCE.py.gz.b64 > "$out/source.py.gz.b64"
+          git show FETCH_HEAD:research/protected_boundary_core_realization/SOURCE_MANIFEST.json > "$out/SOURCE_MANIFEST.json"
           python - "$out" <<'PY'
-          import base64,gzip,hashlib,re,sys
+          import base64,gzip,hashlib,json,re,sys
           from pathlib import Path
           root=Path(sys.argv[1])
+          manifest=json.loads((root/'SOURCE_MANIFEST.json').read_text())
           text=(root/'source.py.gz.b64').read_text(encoding='utf-8-sig',errors='replace')
           compact=''.join(re.findall(r'[A-Za-z0-9+/=]',''.join(text.split())))
-          compact=compact.rstrip('=')+'='*((-len(compact.rstrip('=')))%4)
-          raw=gzip.decompress(base64.b64decode(compact,validate=False))
-          (root/'protected_boundary_core_audit.py').write_bytes(raw)
-          (root/'SHA256.txt').write_text(hashlib.sha256(raw).hexdigest()+'  protected_boundary_core_audit.py\n')
-          print(len(raw),hashlib.sha256(raw).hexdigest())
+          compact=compact.rstrip('=')
+          target=manifest['gzip_sha256']
+          alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+          def decode(s):
+              return base64.b64decode(s+'='*((-len(s))%4),validate=False)
+          selected=None
+          raw0=decode(compact)
+          if hashlib.sha256(raw0).hexdigest()==target:
+              selected=('unchanged',None,None,raw0)
+          else:
+              chars=list(compact)
+              for i,old in enumerate(chars):
+                  for new in alphabet:
+                      if new==old: continue
+                      chars[i]=new
+                      raw=decode(''.join(chars))
+                      if hashlib.sha256(raw).hexdigest()==target:
+                          selected=('substitution',i,new,raw)
+                          break
+                  chars[i]=old
+                  if selected: break
+          if selected is None:
+              raise RuntimeError('single-character recovery failed')
+          mode,index,new,compressed=selected
+          assert len(compressed)==manifest['gzip_bytes']
+          source=gzip.decompress(compressed)
+          assert hashlib.sha256(source).hexdigest()==manifest['source_sha256']
+          (root/'protected_boundary_core_realization.py').write_bytes(source)
+          rec={'mode':mode,'index':index,'replacement':new,'gzip_sha256':hashlib.sha256(compressed).hexdigest(),'source_sha256':hashlib.sha256(source).hexdigest(),'source_bytes':len(source)}
+          (root/'RECOVERY.json').write_text(json.dumps(rec,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(rec,indent=2,sort_keys=True))
           PY
-          python -m py_compile "$out/protected_boundary_core_audit.py"
+          python -m py_compile "$out/protected_boundary_core_realization.py"
       - uses: actions/upload-artifact@v4
         with:
           name: protected-audit-source-${{ github.run_id }}
